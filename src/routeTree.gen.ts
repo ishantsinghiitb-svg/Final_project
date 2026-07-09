@@ -23,6 +23,7 @@ import { Route as DashboardIndexRouteImport } from './routes/dashboard.index'
 import { Route as DashboardSavedRouteImport } from './routes/dashboard.saved'
 import { Route as DashboardResumesRouteImport } from './routes/dashboard.resumes'
 import { Route as DashboardJobsRouteImport } from './routes/dashboard.jobs'
+import { Route as DashboardInterviewsRouteImport } from './routes/dashboard.interviews'
 import { Route as DashboardApplicationsRouteImport } from './routes/dashboard.applications'
 
 const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
@@ -95,6 +96,11 @@ const DashboardJobsRoute = DashboardJobsRouteImport.update({
   path: '/jobs',
   getParentRoute: () => DashboardRoute,
 } as any)
+const DashboardInterviewsRoute = DashboardInterviewsRouteImport.update({
+  id: '/interviews',
+  path: '/interviews',
+  getParentRoute: () => DashboardRoute,
+} as any)
 const DashboardApplicationsRoute = DashboardApplicationsRouteImport.update({
   id: '/applications',
   path: '/applications',
@@ -113,6 +119,7 @@ export interface FileRoutesByFullPath {
   '/signup': typeof SignupRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/dashboard/applications': typeof DashboardApplicationsRoute
+  '/dashboard/interviews': typeof DashboardInterviewsRoute
   '/dashboard/jobs': typeof DashboardJobsRoute
   '/dashboard/resumes': typeof DashboardResumesRoute
   '/dashboard/saved': typeof DashboardSavedRoute
@@ -129,6 +136,7 @@ export interface FileRoutesByTo {
   '/signup': typeof SignupRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/dashboard/applications': typeof DashboardApplicationsRoute
+  '/dashboard/interviews': typeof DashboardInterviewsRoute
   '/dashboard/jobs': typeof DashboardJobsRoute
   '/dashboard/resumes': typeof DashboardResumesRoute
   '/dashboard/saved': typeof DashboardSavedRoute
@@ -147,6 +155,7 @@ export interface FileRoutesById {
   '/signup': typeof SignupRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/dashboard/applications': typeof DashboardApplicationsRoute
+  '/dashboard/interviews': typeof DashboardInterviewsRoute
   '/dashboard/jobs': typeof DashboardJobsRoute
   '/dashboard/resumes': typeof DashboardResumesRoute
   '/dashboard/saved': typeof DashboardSavedRoute
@@ -166,6 +175,7 @@ export interface FileRouteTypes {
     | '/signup'
     | '/sitemap.xml'
     | '/dashboard/applications'
+    | '/dashboard/interviews'
     | '/dashboard/jobs'
     | '/dashboard/resumes'
     | '/dashboard/saved'
@@ -182,6 +192,7 @@ export interface FileRouteTypes {
     | '/signup'
     | '/sitemap.xml'
     | '/dashboard/applications'
+    | '/dashboard/interviews'
     | '/dashboard/jobs'
     | '/dashboard/resumes'
     | '/dashboard/saved'
@@ -199,6 +210,7 @@ export interface FileRouteTypes {
     | '/signup'
     | '/sitemap.xml'
     | '/dashboard/applications'
+    | '/dashboard/interviews'
     | '/dashboard/jobs'
     | '/dashboard/resumes'
     | '/dashboard/saved'
@@ -318,6 +330,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardJobsRouteImport
       parentRoute: typeof DashboardRoute
     }
+    '/dashboard/interviews': {
+      id: '/dashboard/interviews'
+      path: '/interviews'
+      fullPath: '/dashboard/interviews'
+      preLoaderRoute: typeof DashboardInterviewsRouteImport
+      parentRoute: typeof DashboardRoute
+    }
     '/dashboard/applications': {
       id: '/dashboard/applications'
       path: '/applications'
@@ -330,6 +349,7 @@ declare module '@tanstack/react-router' {
 
 interface DashboardRouteChildren {
   DashboardApplicationsRoute: typeof DashboardApplicationsRoute
+  DashboardInterviewsRoute: typeof DashboardInterviewsRoute
   DashboardJobsRoute: typeof DashboardJobsRoute
   DashboardResumesRoute: typeof DashboardResumesRoute
   DashboardSavedRoute: typeof DashboardSavedRoute
@@ -338,6 +358,7 @@ interface DashboardRouteChildren {
 
 const DashboardRouteChildren: DashboardRouteChildren = {
   DashboardApplicationsRoute: DashboardApplicationsRoute,
+  DashboardInterviewsRoute: DashboardInterviewsRoute,
   DashboardJobsRoute: DashboardJobsRoute,
   DashboardResumesRoute: DashboardResumesRoute,
   DashboardSavedRoute: DashboardSavedRoute,
