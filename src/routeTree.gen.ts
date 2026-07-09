@@ -22,6 +22,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as DashboardIndexRouteImport } from './routes/dashboard.index'
 import { Route as DashboardSavedRouteImport } from './routes/dashboard.saved'
 import { Route as DashboardResumesRouteImport } from './routes/dashboard.resumes'
+import { Route as DashboardNotesRouteImport } from './routes/dashboard.notes'
 import { Route as DashboardJobsRouteImport } from './routes/dashboard.jobs'
 import { Route as DashboardInterviewsRouteImport } from './routes/dashboard.interviews'
 import { Route as DashboardApplicationsRouteImport } from './routes/dashboard.applications'
@@ -91,6 +92,11 @@ const DashboardResumesRoute = DashboardResumesRouteImport.update({
   path: '/resumes',
   getParentRoute: () => DashboardRoute,
 } as any)
+const DashboardNotesRoute = DashboardNotesRouteImport.update({
+  id: '/notes',
+  path: '/notes',
+  getParentRoute: () => DashboardRoute,
+} as any)
 const DashboardJobsRoute = DashboardJobsRouteImport.update({
   id: '/jobs',
   path: '/jobs',
@@ -121,6 +127,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/applications': typeof DashboardApplicationsRoute
   '/dashboard/interviews': typeof DashboardInterviewsRoute
   '/dashboard/jobs': typeof DashboardJobsRoute
+  '/dashboard/notes': typeof DashboardNotesRoute
   '/dashboard/resumes': typeof DashboardResumesRoute
   '/dashboard/saved': typeof DashboardSavedRoute
   '/dashboard/': typeof DashboardIndexRoute
@@ -138,6 +145,7 @@ export interface FileRoutesByTo {
   '/dashboard/applications': typeof DashboardApplicationsRoute
   '/dashboard/interviews': typeof DashboardInterviewsRoute
   '/dashboard/jobs': typeof DashboardJobsRoute
+  '/dashboard/notes': typeof DashboardNotesRoute
   '/dashboard/resumes': typeof DashboardResumesRoute
   '/dashboard/saved': typeof DashboardSavedRoute
   '/dashboard': typeof DashboardIndexRoute
@@ -157,6 +165,7 @@ export interface FileRoutesById {
   '/dashboard/applications': typeof DashboardApplicationsRoute
   '/dashboard/interviews': typeof DashboardInterviewsRoute
   '/dashboard/jobs': typeof DashboardJobsRoute
+  '/dashboard/notes': typeof DashboardNotesRoute
   '/dashboard/resumes': typeof DashboardResumesRoute
   '/dashboard/saved': typeof DashboardSavedRoute
   '/dashboard/': typeof DashboardIndexRoute
@@ -177,6 +186,7 @@ export interface FileRouteTypes {
     | '/dashboard/applications'
     | '/dashboard/interviews'
     | '/dashboard/jobs'
+    | '/dashboard/notes'
     | '/dashboard/resumes'
     | '/dashboard/saved'
     | '/dashboard/'
@@ -194,6 +204,7 @@ export interface FileRouteTypes {
     | '/dashboard/applications'
     | '/dashboard/interviews'
     | '/dashboard/jobs'
+    | '/dashboard/notes'
     | '/dashboard/resumes'
     | '/dashboard/saved'
     | '/dashboard'
@@ -212,6 +223,7 @@ export interface FileRouteTypes {
     | '/dashboard/applications'
     | '/dashboard/interviews'
     | '/dashboard/jobs'
+    | '/dashboard/notes'
     | '/dashboard/resumes'
     | '/dashboard/saved'
     | '/dashboard/'
@@ -323,6 +335,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardResumesRouteImport
       parentRoute: typeof DashboardRoute
     }
+    '/dashboard/notes': {
+      id: '/dashboard/notes'
+      path: '/notes'
+      fullPath: '/dashboard/notes'
+      preLoaderRoute: typeof DashboardNotesRouteImport
+      parentRoute: typeof DashboardRoute
+    }
     '/dashboard/jobs': {
       id: '/dashboard/jobs'
       path: '/jobs'
@@ -351,6 +370,7 @@ interface DashboardRouteChildren {
   DashboardApplicationsRoute: typeof DashboardApplicationsRoute
   DashboardInterviewsRoute: typeof DashboardInterviewsRoute
   DashboardJobsRoute: typeof DashboardJobsRoute
+  DashboardNotesRoute: typeof DashboardNotesRoute
   DashboardResumesRoute: typeof DashboardResumesRoute
   DashboardSavedRoute: typeof DashboardSavedRoute
   DashboardIndexRoute: typeof DashboardIndexRoute
@@ -360,6 +380,7 @@ const DashboardRouteChildren: DashboardRouteChildren = {
   DashboardApplicationsRoute: DashboardApplicationsRoute,
   DashboardInterviewsRoute: DashboardInterviewsRoute,
   DashboardJobsRoute: DashboardJobsRoute,
+  DashboardNotesRoute: DashboardNotesRoute,
   DashboardResumesRoute: DashboardResumesRoute,
   DashboardSavedRoute: DashboardSavedRoute,
   DashboardIndexRoute: DashboardIndexRoute,
