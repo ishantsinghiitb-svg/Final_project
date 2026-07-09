@@ -13,7 +13,7 @@ function SavedPage() {
   const saved = jobs.filter((j) => j.saved);
   const groups = [
     { title: "Applied", items: saved.filter((j) => j.stage === "applied") },
-    { title: "Still deciding", items: saved.filter((j) => j.stage === "interested" || !j.stage) },
+    { title: "Interested", items: saved.filter((j) => j.stage === "interested" || !j.stage) },
     { title: "In progress", items: saved.filter((j) => j.stage === "interview" || j.stage === "offer") },
   ];
 

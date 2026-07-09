@@ -17,11 +17,11 @@ export function Section({
   align?: "left" | "center";
 }) {
   return (
-    <section className={cn("mx-auto w-full max-w-6xl px-6 py-20 md:py-28", className)}>
+    <section className={cn("mx-auto w-full max-w-6xl px-6 py-12 md:py-16", className)}>
       {(eyebrow || title || description) && (
         <div
           className={cn(
-            "mb-12 max-w-2xl",
+            "mb-8 max-w-2xl",
             align === "center" && "mx-auto text-center",
           )}
         >

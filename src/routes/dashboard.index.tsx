@@ -1,37 +1,20 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { ArrowUpRight, Briefcase, CalendarClock, CircleCheck as CheckCircle2, Circle, FileText, Flame, Plus, Sparkles, Target, TrendingUp, Clock, Send, Wand as Wand2, CircleAlert as AlertCircle } from "lucide-react";
+import { ArrowUpRight, Briefcase, CalendarClock, CircleCheck as CheckCircle2, Circle, Flame, Plus, Sparkles, Target, TrendingUp } from "lucide-react";
 import { DashCard, PageHeader, SectionTitle, Chip, CompanyMark } from "@/components/dashboard/primitives";
 import { DashButtonLink } from "@/components/dashboard/DashButton";
 import {
-  actionItems,
   interviews,
   jobs,
   stats,
   stageMeta,
   onboardingSteps,
-  type ActionItem,
 } from "@/lib/dashboard-data";
 
 export const Route = createFileRoute("/dashboard/")({
   head: () => ({ meta: [{ title: "Overview — NextOffer" }, { name: "robots", content: "noindex" }] }),
   component: OverviewPage,
 });
-
-const actionIcon: Record<ActionItem["kind"], React.ComponentType<{ className?: string }>> = {
-  interview: CalendarClock,
-  followup: Send,
-  resume: FileText,
-  deadline: AlertCircle,
-  match: Sparkles,
-  apply: Briefcase,
-};
-
-const priorityTone: Record<ActionItem["priority"], string> = {
-  high: "border-[#7C3AED]/20 bg-gradient-to-br from-[#7C3AED]/[0.06] to-[#2563EB]/[0.04]",
-  medium: "border-black/5 bg-[oklch(0.98_0.005_265)]",
-  low: "border-black/5 bg-white",
-};
 
 function OverviewPage() {
   const [onboardingDone, setOnboardingDone] = useState<Set<string>>(new Set(["ob1"]));
@@ -135,7 +118,7 @@ function OverviewPage() {
         ))}
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-[1.5fr_1fr]">
+      <div className="grid gap-4">
         {/* Up next */}
         <DashCard>
           <SectionTitle
@@ -187,45 +170,6 @@ function OverviewPage() {
               ))}
             </div>
           </div>
-        </DashCard>
-
-        {/* Action Center — replaces Recent Activity */}
-        <DashCard>
-          <SectionTitle action={<span className="text-xs text-[oklch(0.5_0.02_265)]">{actionItems.length} tasks</span>}>
-            What to do next
-          </SectionTitle>
-          <p className="mt-1 text-xs text-[oklch(0.5_0.02_265)]">
-            Actionable steps, ranked by priority.
-          </p>
-          <ul className="mt-4 space-y-2.5">
-            {actionItems.map((a) => {
-              const Icon = actionIcon[a.kind];
-              return (
-                <li key={a.id} className={`rounded-xl border p-3 ${priorityTone[a.priority]}`}>
-                  <div className="flex items-start gap-3">
-                    <span className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-white text-[#2563EB] shadow-sm">
-                      <Icon className="h-3.5 w-3.5" />
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium leading-snug">{a.title}</p>
-                      <p className="mt-0.5 text-xs text-[oklch(0.5_0.02_265)]">{a.detail}</p>
-                      <Link
-                        to={a.to}
-                        className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-[#2563EB] hover:underline"
-                      >
-                        {a.cta} <ArrowUpRight className="h-3 w-3" />
-                      </Link>
-                    </div>
-                    {a.priority === "high" && (
-                      <span className="shrink-0 rounded-full bg-[#7C3AED]/10 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-[#7C3AED]">
-                        Now
-                      </span>
-                    )}
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
         </DashCard>
       </div>
 

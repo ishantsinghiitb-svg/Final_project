@@ -33,7 +33,7 @@ function FeaturesPage() {
       <OptimizeSection />
       <OrganizeSection />
 
-      <Section className="pb-32">
+      <Section className="pb-16">
         <div className="rounded-3xl border border-white/10 bg-gradient-to-br from-[oklch(0.22_0.06_265)] to-[oklch(0.18_0.08_290)] p-10 md:p-14">
           <h3 className="font-display text-3xl font-semibold md:text-4xl">Ready to try it?</h3>
           <p className="mt-3 max-w-xl text-muted-foreground">
@@ -79,17 +79,11 @@ function ProblemSolutionOutcome({
   outcome: string;
 }) {
   return (
-    <div className="mt-8 grid gap-3 md:grid-cols-3">
-      {[
-        { k: "The problem", v: problem as React.ReactNode, tone: "text-muted-foreground" },
-        { k: "How NextOffer helps", v: solution, tone: "text-foreground" },
-        { k: "The outcome", v: outcome as React.ReactNode, tone: "text-[#93C5FD]" },
-      ].map((b) => (
-        <div key={b.k} className="rounded-xl border border-white/8 bg-white/[0.02] p-4">
-          <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">{b.k}</p>
-          <div className={`mt-2 text-sm ${b.tone}`}>{b.v}</div>
-        </div>
-      ))}
+    <div className="mt-6 flex flex-col gap-2 rounded-xl border border-white/5 bg-white/[0.015] p-4 text-sm md:flex-row md:items-center md:gap-6">
+      <span className="text-xs font-semibold uppercase tracking-widest text-muted-foreground md:w-28 md:shrink-0">The problem</span>
+      <span className="text-muted-foreground">{problem}</span>
+      <span className="hidden text-muted-foreground/30 md:inline">·</span>
+      <span className="text-[#93C5FD]">{outcome}</span>
     </div>
   );
 }
@@ -155,7 +149,7 @@ function CaptureSection() {
       title="Save the jobs worth your time."
       description="The best roles are scattered across a dozen sites. NextOffer gives you one way to grab them all — with context attached."
     >
-      <div className="space-y-24">
+      <div className="space-y-12">
         <FeatureRow
           n={1}
           step="Capture"
@@ -216,7 +210,7 @@ function OptimizeSection() {
       title="Tailor your resume. Beat the bots. Write the letter."
       description="A generic resume gets filtered out. NextOffer grounds every suggestion in the job you're actually applying to."
     >
-      <div className="space-y-24">
+      <div className="space-y-12">
         <FeatureRow
           n={4}
           step="Optimize"
@@ -302,7 +296,7 @@ function OrganizeSection() {
       title="Track every step. Never drop the ball."
       description="A kanban for your search, a tracker for your interviews, a home for your notes, and the numbers that predict outcomes."
     >
-      <div className="space-y-24">
+      <div className="space-y-12">
         <FeatureRow
           n={8}
           step="Organize"

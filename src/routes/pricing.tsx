@@ -111,22 +111,44 @@ function Pricing() {
         title="Simple, honest pricing."
         description="Free forever for casual browsing. Upgrade when the search gets serious. Cancel any time, no email required."
       >
-        <div className="mb-10 flex items-center justify-center gap-3 text-sm">
-          <span className={annual ? "text-muted-foreground" : "text-foreground"}>Monthly</span>
-          <button
-            aria-label="Toggle billing period"
-            onClick={() => setAnnual((a) => !a)}
-            className="relative h-6 w-11 rounded-full border border-white/10 bg-white/5"
+        <div className="mb-10 flex items-center justify-center">
+          <div
+            role="radiogroup"
+            aria-label="Billing period"
+            className="relative flex items-center rounded-full border border-white/10 bg-white/[0.03] p-1"
           >
-            <span
-              className={`absolute top-0.5 h-4 w-4 rounded-full bg-gradient-to-br from-[#2563EB] to-[#7C3AED] transition-transform ${
-                annual ? "translate-x-6" : "translate-x-1"
+            <div
+              className={`absolute top-1 bottom-1 rounded-full bg-gradient-to-br from-[#2563EB] to-[#7C3AED] shadow-[0_4px_16px_-4px_rgba(37,99,235,0.6)] transition-transform duration-300 ease-out ${
+                annual ? "translate-x-[calc(100%-0.5px)]" : "translate-x-0"
               }`}
+              style={{ width: "calc(50% - 4px)" }}
             />
-          </button>
-          <span className={!annual ? "text-muted-foreground" : "text-foreground"}>
-            Annual <span className="ml-1 rounded bg-[#22C55E]/15 px-1.5 py-0.5 text-[10px] text-[#22C55E]">Save 20%</span>
-          </span>
+            <button
+              role="radio"
+              aria-checked={!annual}
+              onClick={() => setAnnual(false)}
+              className={`relative z-10 rounded-full px-5 py-1.5 text-sm font-medium transition-colors ${
+                !annual ? "text-white" : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              Monthly
+            </button>
+            <button
+              role="radio"
+              aria-checked={annual}
+              onClick={() => setAnnual(true)}
+              className={`relative z-10 flex items-center gap-1.5 rounded-full px-5 py-1.5 text-sm font-medium transition-colors ${
+                annual ? "text-white" : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              Annual
+              <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold transition-colors ${
+                annual ? "bg-white/20 text-white" : "bg-[#22C55E]/15 text-[#22C55E]"
+              }`}>
+                −20%
+              </span>
+            </button>
+          </div>
         </div>
 
         <div className="grid gap-4 md:grid-cols-3">
