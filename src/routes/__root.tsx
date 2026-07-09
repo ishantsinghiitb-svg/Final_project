@@ -80,29 +80,30 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "NextOffer — Your AI-Powered Job Search Copilot" },
+      { title: "NextOffer — The workspace for your job search" },
       {
         name: "description",
         content:
-          "NextOffer is the AI copilot for your job search. Save jobs from anywhere, tailor your resume, track applications, and land your next offer faster.",
+          "NextOffer is the workspace for your entire job search. Save jobs from anywhere, tailor your resume with AI, track applications, and land your next offer.",
       },
-      { name: "theme-color", content: "#030712" },
-      { property: "og:title", content: "NextOffer — Your AI-Powered Job Search Copilot" },
+      { name: "theme-color", content: "#0B1120" },
+      { property: "og:title", content: "NextOffer — The workspace for your job search" },
       {
         property: "og:description",
         content:
-          "Save, tailor, track and land jobs from LinkedIn, Wellfound, Greenhouse and more — all from one intelligent workspace.",
+          "Save jobs from anywhere, tailor your resume with AI, track every application, and land your next offer — all in one calm workspace.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:title", content: "NextOffer — Your AI-Powered Job Search Copilot" },
+      { name: "twitter:title", content: "NextOffer — The workspace for your job search" },
     ],
     links: [
       {
         rel: "stylesheet",
         href: appCss,
       },
-      { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
+      { rel: "icon", type: "image/svg+xml", href: "/favicon.svg" },
+      { rel: "alternate icon", href: "/favicon.ico", type: "image/x-icon" },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       {

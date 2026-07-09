@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import { Sparkles } from "lucide-react";
 import { Button } from "@/components/site/PrimaryButton";
+import { Logo } from "@/components/site/Logo";
 
 export const Route = createFileRoute("/login")({
   head: () => ({
@@ -39,10 +39,9 @@ export function AuthCard({
     <section className="mx-auto flex min-h-[calc(100vh-4rem)] max-w-6xl items-center px-6 py-32">
       <div className="mx-auto w-full max-w-md">
         <div className="mb-6 flex items-center justify-center gap-2">
-          <span className="grid h-8 w-8 place-items-center rounded-lg bg-gradient-to-br from-[#2563EB] to-[#7C3AED]">
-            <Sparkles className="h-4 w-4 text-white" />
-          </span>
-          <span className="font-display text-lg font-semibold">NextOffer</span>
+          <Link to="/" aria-label="NextOffer home">
+            <Logo size={32} wordmarkClassName="text-lg" />
+          </Link>
         </div>
         <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-8 backdrop-blur">
           <h1 className="font-display text-2xl font-semibold tracking-tight">{title}</h1>

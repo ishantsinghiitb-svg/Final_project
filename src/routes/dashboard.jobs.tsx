@@ -1,7 +1,8 @@
 import { useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { Filter, MapPin, Plus, Search, SlidersHorizontal, Bookmark, BookmarkCheck, ArrowUpRight, Sparkles } from "lucide-react";
+import { ListFilter as Filter, MapPin, Plus, Search, SlidersHorizontal, Bookmark, BookmarkCheck, ArrowUpRight, Sparkles } from "lucide-react";
 import { DashCard, PageHeader, Chip, CompanyMark, EmptyState } from "@/components/dashboard/primitives";
+import { DashButton, DashButtonLink } from "@/components/dashboard/DashButton";
 import { jobs as seed } from "@/lib/dashboard-data";
 
 export const Route = createFileRoute("/dashboard/jobs")({
@@ -37,9 +38,9 @@ function JobsPage() {
         title="Discover roles worth your time."
         subtitle="Every job you save from the extension or add manually shows up here — ranked by how well it matches you."
         actions={
-          <button className="inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-br from-[#2563EB] to-[#7C3AED] px-3 py-2 text-sm font-medium text-white">
+          <DashButton>
             <Plus className="h-4 w-4" /> Add job
-          </button>
+          </DashButton>
         }
       />
 
@@ -90,17 +91,18 @@ function JobsPage() {
               title="No jobs match those filters"
               body="Try widening your match threshold or clearing the search."
               cta={
-                <button
+                <DashButton
+                  variant="ghost"
+                  size="sm"
                   onClick={() => {
                     setQ("");
                     setSource("All sources");
                     setRemoteOnly(false);
                     setMinMatch(0);
                   }}
-                  className="rounded-lg bg-black/5 px-3 py-1.5 text-xs font-medium"
                 >
                   Reset filters
-                </button>
+                </DashButton>
               }
             />
           </div>
@@ -129,9 +131,9 @@ function JobsPage() {
                 >
                   {saved[j.id] ? <BookmarkCheck className="h-4 w-4 text-[#2563EB]" /> : <Bookmark className="h-4 w-4" />}
                 </button>
-                <button className="hidden items-center gap-1 rounded-lg bg-gradient-to-br from-[#2563EB] to-[#7C3AED] px-3 py-1.5 text-xs font-medium text-white md:inline-flex">
+                <DashButtonLink to="/dashboard/applications" size="sm" className="hidden md:inline-flex">
                   Apply <ArrowUpRight className="h-3 w-3" />
-                </button>
+                </DashButtonLink>
               </li>
             ))}
           </ul>

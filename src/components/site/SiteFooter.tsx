@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router";
-import { Sparkles, Github, Twitter, Linkedin } from "lucide-react";
+import { Github, Twitter, Linkedin } from "lucide-react";
+import { Logo } from "@/components/site/Logo";
 
 const cols = [
   {
@@ -32,15 +33,12 @@ export function SiteFooter() {
     <footer className="relative mt-32 border-t border-white/10 bg-[oklch(0.15_0.02_265)]/60">
       <div className="mx-auto grid max-w-6xl gap-10 px-6 py-16 md:grid-cols-[1.4fr_1fr_1fr_1fr]">
         <div>
-          <Link to="/" className="flex items-center gap-2">
-            <span className="grid h-7 w-7 place-items-center rounded-lg bg-gradient-to-br from-[oklch(0.58_0.21_260)] to-[oklch(0.55_0.24_295)]">
-              <Sparkles className="h-4 w-4 text-white" />
-            </span>
-            <span className="font-display font-semibold">NextOffer</span>
+          <Link to="/" className="flex items-center gap-2" aria-label="NextOffer home">
+            <Logo size={28} wordmarkClassName="text-[15px]" />
           </Link>
           <p className="mt-3 max-w-sm text-sm text-muted-foreground">
-            The AI copilot for your job search. Save, tailor, track and land
-            offers — everywhere you already apply.
+            The workspace for your entire job search. Save jobs from anywhere,
+            tailor your resume with AI, and track every application in one calm place.
           </p>
           <div className="mt-5 flex gap-2">
             {[Twitter, Linkedin, Github].map((Icon, i) => (

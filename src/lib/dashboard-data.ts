@@ -125,3 +125,36 @@ export const notifications = [
   { id: "notif3", title: "Follow up with Vercel", body: "It's been 5 days since the recruiter call.", when: "Yesterday", unread: false },
   { id: "notif4", title: "New matches on LinkedIn", body: "3 roles above 85% match were posted today.", when: "Yesterday", unread: false },
 ];
+export type ActionItem = {
+  id: string;
+  kind: "interview" | "followup" | "resume" | "deadline" | "match" | "apply";
+  title: string;
+  detail: string;
+  cta: string;
+  to: string;
+  priority: "high" | "medium" | "low";
+};
+
+export const actionItems: ActionItem[] = [
+  { id: "act1", kind: "interview", title: "Linear design round — today at 2:30 PM", detail: "With Karri Saarinen. Open AI prep for likely questions and company research.", cta: "Prepare interview", to: "/dashboard/interviews", priority: "high" },
+  { id: "act2", kind: "followup", title: "Follow up with Vercel", detail: "It's been 5 days since the recruiter call. A short nudge usually helps.", cta: "Send follow-up", to: "/dashboard/applications", priority: "high" },
+  { id: "act3", kind: "resume", title: "Your Linear resume scores 76 on keywords", detail: "Add 'motion' and 'interaction' — they're 4 of the 10 JD keywords.", cta: "Improve resume", to: "/dashboard/resumes", priority: "medium" },
+  { id: "act4", kind: "deadline", title: "Retool take-home due Monday", detail: "You have 2 days left. The prompt is in your interview notes.", cta: "Open take-home", to: "/dashboard/interviews", priority: "medium" },
+  { id: "act5", kind: "match", title: "3 new roles above 85% match", detail: "Perplexity, Arc, and Ramp were posted today and fit your resume well.", cta: "Review matches", to: "/dashboard/jobs", priority: "low" },
+];
+
+export type OnboardingStep = {
+  id: string;
+  label: string;
+  detail: string;
+  to: string;
+};
+
+export const onboardingSteps: OnboardingStep[] = [
+  { id: "ob1", label: "Upload your resume", detail: "So NextOffer can score it against jobs you save.", to: "/dashboard/resumes" },
+  { id: "ob2", label: "Install the Chrome extension", detail: "Save any job from LinkedIn, Wellfound, or Greenhouse in one click.", to: "/features" },
+  { id: "ob3", label: "Save your first job", detail: "Browse a job board and hit the NextOffer button.", to: "/dashboard/jobs" },
+  { id: "ob4", label: "Generate a resume match", detail: "See how well your resume fits a role — and what to change.", to: "/dashboard/resumes" },
+  { id: "ob5", label: "Apply to your first role", detail: "Move a job from Interested to Applied to start your pipeline.", to: "/dashboard/applications" },
+  { id: "ob6", label: "Track your progress", detail: "Watch your pipeline fill up as you apply and hear back.", to: "/dashboard/analytics" },
+];

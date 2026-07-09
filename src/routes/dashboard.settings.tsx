@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { DashCard, PageHeader, SectionTitle, Chip } from "@/components/dashboard/primitives";
+import { DashButton } from "@/components/dashboard/DashButton";
 
 export const Route = createFileRoute("/dashboard/settings")({
   head: () => ({ meta: [{ title: "Settings — NextOffer" }, { name: "robots", content: "noindex" }] }),
@@ -48,7 +49,7 @@ function SettingsPage() {
           </div>
           <div className="mt-4 flex justify-end gap-2">
             <button className="rounded-lg border border-black/5 bg-white px-3 py-1.5 text-sm">Cancel</button>
-            <button className="rounded-lg bg-gradient-to-br from-[#2563EB] to-[#7C3AED] px-3 py-1.5 text-sm font-medium text-white">Save changes</button>
+            <DashButton>Save changes</DashButton>
           </div>
         </DashCard>
       )}
@@ -108,7 +109,7 @@ function SettingsPage() {
             <p className="font-display font-semibold">Pro trial · 9 days left</p>
             <p className="mt-1 text-xs text-[oklch(0.5_0.02_265)]">Unlimited AI, cover letters, and analytics.</p>
             <div className="mt-3 flex gap-2">
-              <button className="rounded-lg bg-gradient-to-br from-[#2563EB] to-[#7C3AED] px-3 py-1.5 text-xs font-medium text-white">Upgrade to Pro</button>
+              <DashButton size="sm">Upgrade to Pro</DashButton>
               <button className="rounded-lg border border-black/5 bg-white px-3 py-1.5 text-xs font-medium">Manage plan</button>
             </div>
           </div>

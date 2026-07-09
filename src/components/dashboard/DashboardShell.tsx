@@ -1,28 +1,12 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
-import {
-  Activity,
-  Bell,
-  Bookmark,
-  Briefcase,
-  CalendarClock,
-  ChevronRight,
-  Command,
-  FileText,
-  LineChart,
-  Plus,
-  Search,
-  Settings,
-  Sparkles,
-  StickyNote,
-  Target,
-  X,
-  Menu,
-} from "lucide-react";
+import { Activity, Bell, Bookmark, Briefcase, CalendarClock, ChevronRight, Command, FileText, ChartLine as LineChart, Plus, Search, Settings, StickyNote, Target, X, Menu } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CommandPalette } from "./CommandPalette";
 import { notifications } from "@/lib/dashboard-data";
 import { Kbd } from "./primitives";
+import { DashButtonLink } from "./DashButton";
+import { Logo } from "@/components/site/Logo";
 
 type NavItem = {
   to: string;
@@ -77,11 +61,8 @@ export function DashboardShell({ children }: { children: ReactNode }) {
           )}
         >
           <div className="flex items-center justify-between">
-            <Link to="/" className="flex items-center gap-2">
-              <span className="grid h-7 w-7 place-items-center rounded-lg bg-gradient-to-br from-[#2563EB] to-[#7C3AED] shadow-[0_4px_20px_-4px_rgba(37,99,235,0.6)]">
-                <Sparkles className="h-3.5 w-3.5 text-white" />
-              </span>
-              <span className="font-display text-[15px] font-semibold">NextOffer</span>
+            <Link to="/" className="flex items-center gap-2 rounded-lg px-1" aria-label="NextOffer home">
+              <Logo size={26} wordmarkClassName="text-[15px] text-[oklch(0.2_0.02_265)]" />
             </Link>
             <button
               onClick={() => setMobileNav(false)}
@@ -248,12 +229,9 @@ export function DashboardShell({ children }: { children: ReactNode }) {
                   </div>
                 )}
               </div>
-              <Link
-                to="/dashboard/jobs"
-                className="hidden items-center gap-1.5 rounded-lg bg-gradient-to-br from-[#2563EB] to-[#7C3AED] px-3 py-2 text-sm font-medium text-white shadow-[inset_0_1px_0_0_rgba(255,255,255,0.25),0_6px_20px_-8px_rgba(37,99,235,0.8)] transition-transform hover:-translate-y-px sm:inline-flex"
-              >
+              <DashButtonLink to="/dashboard/jobs" size="md" className="hidden sm:inline-flex">
                 <Plus className="h-4 w-4" /> Add job
-              </Link>
+              </DashButtonLink>
             </div>
           </header>
 

@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Menu, X, Sparkles } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Logo } from "@/components/site/Logo";
 
 const links = [
   { to: "/", label: "Home" },
@@ -38,13 +39,8 @@ export function SiteNav() {
             : "border-transparent bg-transparent",
         )}
       >
-        <Link to="/" className="group flex items-center gap-2 pl-2">
-          <span className="grid h-7 w-7 place-items-center rounded-lg bg-gradient-to-br from-[oklch(0.58_0.21_260)] to-[oklch(0.55_0.24_295)] shadow-[0_4px_20px_-4px_oklch(0.58_0.21_260/0.6)]">
-            <Sparkles className="h-4 w-4 text-white" />
-          </span>
-          <span className="font-display text-[15px] font-semibold tracking-tight">
-            NextOffer
-          </span>
+        <Link to="/" className="group flex items-center gap-2 rounded-lg pl-1" aria-label="NextOffer home">
+          <Logo size={28} wordmarkClassName="text-[15px]" />
         </Link>
 
         <nav className="hidden items-center gap-1 md:flex">
@@ -80,7 +76,7 @@ export function SiteNav() {
             to="/signup"
             className="rounded-lg bg-gradient-to-br from-[oklch(0.62_0.21_260)] to-[oklch(0.55_0.24_290)] px-3.5 py-1.5 text-sm font-medium text-white shadow-[inset_0_1px_0_0_rgba(255,255,255,0.2),0_6px_20px_-8px_oklch(0.58_0.21_260/0.8)] transition-transform hover:-translate-y-px"
           >
-            Get Started
+            Get Started Free
           </Link>
         </div>
 
@@ -116,7 +112,7 @@ export function SiteNav() {
                 to="/signup"
                 className="flex-1 rounded-lg bg-gradient-to-br from-[oklch(0.62_0.21_260)] to-[oklch(0.55_0.24_290)] px-3 py-2 text-center text-sm font-medium text-white"
               >
-                Get Started
+                Get Started Free
               </Link>
             </div>
           </nav>

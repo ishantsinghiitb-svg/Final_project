@@ -1,67 +1,126 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import {
-  ArrowUpRight,
-  Briefcase,
-  CalendarClock,
-  CheckCircle2,
-  FileText,
-  Flame,
-  Plus,
-  Sparkles,
-  Target,
-  TrendingUp,
-} from "lucide-react";
+import { useState } from "react";
+import { ArrowUpRight, Briefcase, CalendarClock, CircleCheck as CheckCircle2, Circle, FileText, Flame, Plus, Sparkles, Target, TrendingUp, Clock, Send, Wand as Wand2, CircleAlert as AlertCircle } from "lucide-react";
 import { DashCard, PageHeader, SectionTitle, Chip, CompanyMark } from "@/components/dashboard/primitives";
-import { activity, interviews, jobs, stats, stageMeta } from "@/lib/dashboard-data";
+import { DashButtonLink } from "@/components/dashboard/DashButton";
+import {
+  actionItems,
+  interviews,
+  jobs,
+  stats,
+  stageMeta,
+  onboardingSteps,
+  type ActionItem,
+} from "@/lib/dashboard-data";
 
 export const Route = createFileRoute("/dashboard/")({
   head: () => ({ meta: [{ title: "Overview — NextOffer" }, { name: "robots", content: "noindex" }] }),
   component: OverviewPage,
 });
 
-const kindDot: Record<string, string> = {
-  interview: "bg-[#7C3AED]",
-  match: "bg-[#2563EB]",
-  offer: "bg-[#16A34A]",
-  saved: "bg-black/20",
-  resume: "bg-[#2563EB]",
-  reject: "bg-black/20",
+const actionIcon: Record<ActionItem["kind"], React.ComponentType<{ className?: string }>> = {
+  interview: CalendarClock,
+  followup: Send,
+  resume: FileText,
+  deadline: AlertCircle,
+  match: Sparkles,
+  apply: Briefcase,
+};
+
+const priorityTone: Record<ActionItem["priority"], string> = {
+  high: "border-[#7C3AED]/20 bg-gradient-to-br from-[#7C3AED]/[0.06] to-[#2563EB]/[0.04]",
+  medium: "border-black/5 bg-[oklch(0.98_0.005_265)]",
+  low: "border-black/5 bg-white",
 };
 
 function OverviewPage() {
+  const [onboardingDone, setOnboardingDone] = useState<Set<string>>(new Set(["ob1"]));
   const nextInterview = interviews[0];
   const suggested = jobs.filter((j) => !j.stage).slice(0, 3);
+  const onboardingComplete = onboardingDone.size === onboardingSteps.length;
 
   return (
     <>
       <PageHeader
         eyebrow="Overview"
         title="Good afternoon, Ava."
-        subtitle={`You have ${interviews.length} interviews this week and 2 follow-ups waiting. Let's get you closer to your next offer.`}
+        subtitle={onboardingComplete ? "You're all set up. Here's what needs your attention today." : "A few setup steps left, then your workspace is fully tuned. Here's what to do next."}
         actions={
           <>
-            <Link
-              to="/dashboard/interviews"
-              className="hidden items-center gap-1.5 rounded-lg border border-black/5 bg-white px-3 py-2 text-sm font-medium hover:bg-black/[0.03] sm:inline-flex"
-            >
+            <DashButtonLink to="/dashboard/interviews" variant="outline" className="hidden sm:inline-flex">
               <CalendarClock className="h-4 w-4" /> This week
-            </Link>
-            <Link
-              to="/dashboard/jobs"
-              className="inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-br from-[#2563EB] to-[#7C3AED] px-3 py-2 text-sm font-medium text-white"
-            >
+            </DashButtonLink>
+            <DashButtonLink to="/dashboard/jobs">
               <Plus className="h-4 w-4" /> Add job
-            </Link>
+            </DashButtonLink>
           </>
         }
       />
 
+      {/* Onboarding checklist — only while incomplete */}
+      {!onboardingComplete && (
+        <DashCard className="border-[#2563EB]/15 bg-gradient-to-br from-[#2563EB]/[0.04] to-[#7C3AED]/[0.06]">
+          <div className="flex items-center justify-between">
+            <SectionTitle>Set up your workspace</SectionTitle>
+            <span className="text-xs text-[oklch(0.5_0.02_265)]">
+              {onboardingDone.size} of {onboardingSteps.length} done
+            </span>
+          </div>
+          <p className="mt-1 text-xs text-[oklch(0.5_0.02_265)]">
+            A few steps to get your search moving. Each one takes under a minute.
+          </p>
+          <div className="mt-4 grid gap-2 md:grid-cols-2">
+            {onboardingSteps.map((step) => {
+              const done = onboardingDone.has(step.id);
+              return (
+                <button
+                  key={step.id}
+                  onClick={() =>
+                    setOnboardingDone((prev) => {
+                      const next = new Set(prev);
+                      if (done) next.delete(step.id);
+                      else next.add(step.id);
+                      return next;
+                    })
+                  }
+                  className={`flex items-start gap-3 rounded-xl border p-3 text-left transition-colors ${
+                    done ? "border-[#22C55E]/20 bg-[#22C55E]/[0.04]" : "border-black/5 bg-white hover:bg-black/[0.02]"
+                  }`}
+                >
+                  {done ? (
+                    <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-[#22C55E]" />
+                  ) : (
+                    <Circle className="mt-0.5 h-5 w-5 shrink-0 text-[oklch(0.7_0.02_265)]" />
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <p className={`text-sm font-medium ${done ? "text-[oklch(0.5_0.02_265)] line-through" : ""}`}>
+                      {step.label}
+                    </p>
+                    <p className="text-xs text-[oklch(0.5_0.02_265)]">{step.detail}</p>
+                  </div>
+                  {!done && (
+                    <Link
+                      to={step.to}
+                      onClick={(e) => e.stopPropagation()}
+                      className="shrink-0 text-xs font-medium text-[#2563EB] hover:underline"
+                    >
+                      Go →
+                    </Link>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </DashCard>
+      )}
+
+      {/* Stats — each answers one question */}
       <div className="grid gap-4 md:grid-cols-4">
         {[
-          { l: "Active applications", v: stats.activeApps, d: "+3 this week", icon: Target, tone: "text-[#16A34A]" },
-          { l: "Interviews", v: stats.interviews, d: "2 upcoming", icon: CalendarClock, tone: "text-[#7C3AED]" },
-          { l: "Match avg.", v: stats.matchAvg + "%", d: "Across 12 roles", icon: Sparkles, tone: "text-[#2563EB]" },
-          { l: "Offers", v: stats.offers, d: "$210k avg.", icon: TrendingUp, tone: "text-[#16A34A]" },
+          { l: "Active applications", v: stats.activeApps, q: "How many am I waiting on?", icon: Target, tone: "text-[#2563EB]" },
+          { l: "Interviews this week", v: stats.interviews, q: "What's coming up?", icon: CalendarClock, tone: "text-[#7C3AED]" },
+          { l: "Avg. match score", v: stats.matchAvg + "%", q: "Am I aiming at the right roles?", icon: Sparkles, tone: "text-[#2563EB]" },
+          { l: "Offers", v: stats.offers, q: "How close am I to landing?", icon: TrendingUp, tone: "text-[#16A34A]" },
         ].map((s) => (
           <DashCard key={s.l}>
             <div className="flex items-start justify-between">
@@ -71,12 +130,13 @@ function OverviewPage() {
               </div>
               <s.icon className={`h-4 w-4 ${s.tone}`} />
             </div>
-            <p className={`mt-1 text-[11px] ${s.tone}`}>{s.d}</p>
+            <p className="mt-1.5 text-[11px] text-[oklch(0.55_0.02_265)]">{s.q}</p>
           </DashCard>
         ))}
       </div>
 
       <div className="grid gap-4 lg:grid-cols-[1.5fr_1fr]">
+        {/* Up next */}
         <DashCard>
           <SectionTitle
             action={
@@ -100,12 +160,9 @@ function OverviewPage() {
                   {nextInterview.when} · {nextInterview.time} · with {nextInterview.interviewer}
                 </p>
               </div>
-              <Link
-                to="/dashboard/interviews"
-                className="hidden items-center gap-1.5 rounded-lg bg-white px-3 py-2 text-sm font-medium shadow-sm hover:shadow-md md:inline-flex"
-              >
+              <DashButtonLink to="/dashboard/interviews" variant="outline" className="hidden md:inline-flex">
                 Prep with AI <Sparkles className="h-3.5 w-3.5 text-[#7C3AED]" />
-              </Link>
+              </DashButtonLink>
             </div>
           )}
 
@@ -132,22 +189,47 @@ function OverviewPage() {
           </div>
         </DashCard>
 
+        {/* Action Center — replaces Recent Activity */}
         <DashCard>
-          <SectionTitle action={<span className="text-xs text-[oklch(0.5_0.02_265)]">Last 7 days</span>}>
-            Recent activity
+          <SectionTitle action={<span className="text-xs text-[oklch(0.5_0.02_265)]">{actionItems.length} tasks</span>}>
+            What to do next
           </SectionTitle>
-          <ul className="mt-3 space-y-3 text-sm">
-            {activity.slice(0, 6).map((a) => (
-              <li key={a.id} className="flex items-start gap-3">
-                <span className={`mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full ${kindDot[a.kind] ?? "bg-black/20"}`} />
-                <span className="flex-1 leading-snug">{a.text}</span>
-                <span className="whitespace-nowrap text-[11px] text-[oklch(0.55_0.02_265)]">{a.when}</span>
-              </li>
-            ))}
+          <p className="mt-1 text-xs text-[oklch(0.5_0.02_265)]">
+            Actionable steps, ranked by priority.
+          </p>
+          <ul className="mt-4 space-y-2.5">
+            {actionItems.map((a) => {
+              const Icon = actionIcon[a.kind];
+              return (
+                <li key={a.id} className={`rounded-xl border p-3 ${priorityTone[a.priority]}`}>
+                  <div className="flex items-start gap-3">
+                    <span className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-white text-[#2563EB] shadow-sm">
+                      <Icon className="h-3.5 w-3.5" />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium leading-snug">{a.title}</p>
+                      <p className="mt-0.5 text-xs text-[oklch(0.5_0.02_265)]">{a.detail}</p>
+                      <Link
+                        to={a.to}
+                        className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-[#2563EB] hover:underline"
+                      >
+                        {a.cta} <ArrowUpRight className="h-3 w-3" />
+                      </Link>
+                    </div>
+                    {a.priority === "high" && (
+                      <span className="shrink-0 rounded-full bg-[#7C3AED]/10 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-[#7C3AED]">
+                        Now
+                      </span>
+                    )}
+                  </div>
+                </li>
+              );
+            })}
           </ul>
         </DashCard>
       </div>
 
+      {/* Pipeline at a glance */}
       <DashCard>
         <SectionTitle
           action={
@@ -190,6 +272,7 @@ function OverviewPage() {
         </div>
       </DashCard>
 
+      {/* Suggested jobs */}
       <DashCard>
         <SectionTitle
           action={
@@ -201,7 +284,7 @@ function OverviewPage() {
           Suggested for you
         </SectionTitle>
         <p className="mt-1 text-xs text-[oklch(0.5_0.02_265)]">
-          Based on your saved roles and resume — refreshed hourly.
+          Based on your saved roles and resume.
         </p>
         <div className="mt-4 grid gap-3 md:grid-cols-3">
           {suggested.map((j) => (
@@ -225,6 +308,7 @@ function OverviewPage() {
         </div>
       </DashCard>
 
+      {/* AI coach + quick actions */}
       <div className="grid gap-4 md:grid-cols-2">
         <DashCard>
           <SectionTitle>Quick actions</SectionTitle>
@@ -249,16 +333,14 @@ function OverviewPage() {
         <DashCard className="bg-gradient-to-br from-[#2563EB]/[0.06] to-[#7C3AED]/[0.08]">
           <SectionTitle>Your AI coach says</SectionTitle>
           <p className="mt-3 text-sm leading-relaxed">
-            "You're doing great — your average match score jumped 6 points this week. Focus on Linear
-            and Raycast next; both have interviews queued and your resumes are already 90%+ tuned."
+            Your average match score is holding at 87%. Two applications have gone
+            quiet for over a week — a short follow-up usually gets them moving
+            again. Linear's interview is today; you're ready.
           </p>
           <div className="mt-4">
-            <Link
-              to="/dashboard/analytics"
-              className="inline-flex items-center gap-1.5 rounded-lg bg-white px-3 py-2 text-xs font-medium shadow-sm"
-            >
+            <DashButtonLink to="/dashboard/analytics" variant="outline" size="sm">
               See analytics <ArrowUpRight className="h-3 w-3" />
-            </Link>
+            </DashButtonLink>
           </div>
         </DashCard>
       </div>

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { Plus, Search, StickyNote } from "lucide-react";
 import { DashCard, PageHeader, Chip, EmptyState } from "@/components/dashboard/primitives";
+import { DashButton } from "@/components/dashboard/DashButton";
 import { notes, type Note } from "@/lib/dashboard-data";
 
 export const Route = createFileRoute("/dashboard/notes")({
@@ -31,9 +32,9 @@ function NotesPage() {
         title="Everything worth remembering."
         subtitle="Prep notes, follow-up drafts, questions to ask — kept next to the roles they belong to."
         actions={
-          <button className="inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-br from-[#2563EB] to-[#7C3AED] px-3 py-2 text-sm font-medium text-white">
+          <DashButton>
             <Plus className="h-4 w-4" /> New note
-          </button>
+          </DashButton>
         }
       />
 
@@ -42,6 +43,11 @@ function NotesPage() {
           icon={StickyNote}
           title="No notes yet"
           body="Jot down anything — prep, questions, follow-up drafts — and NextOffer will keep it linked to the right role."
+          cta={
+            <DashButton size="sm">
+              <Plus className="h-4 w-4" /> New note
+            </DashButton>
+          }
         />
       ) : (
         <div className="grid gap-4 lg:grid-cols-[320px_1fr]">
@@ -99,7 +105,7 @@ function NotesPage() {
                 />
                 <div className="mt-3 flex justify-end gap-2">
                   <button className="rounded-lg border border-black/5 bg-white px-3 py-1.5 text-xs font-medium hover:bg-black/[0.03]">Discard</button>
-                  <button className="rounded-lg bg-gradient-to-br from-[#2563EB] to-[#7C3AED] px-3 py-1.5 text-xs font-medium text-white">Save note</button>
+                  <DashButton size="sm">Save note</DashButton>
                 </div>
               </>
             ) : (

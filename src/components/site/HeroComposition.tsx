@@ -13,6 +13,7 @@ import {
   Circle,
 } from "lucide-react";
 import type { ReactNode } from "react";
+import { LogoMark } from "@/components/site/Logo";
 
 export function HeroComposition() {
   return (
@@ -53,9 +54,7 @@ function DashboardMock() {
       <div className="grid grid-cols-[180px_1fr]">
         <aside className="border-r border-white/5 p-3">
           <div className="mb-3 flex items-center gap-2 px-2 py-1">
-            <span className="grid h-6 w-6 place-items-center rounded-md bg-gradient-to-br from-[oklch(0.58_0.21_260)] to-[oklch(0.55_0.24_295)]">
-              <Sparkles className="h-3 w-3 text-white" />
-            </span>
+            <LogoMark size={22} />
             <span className="text-[12px] font-semibold">NextOffer</span>
           </div>
           {[

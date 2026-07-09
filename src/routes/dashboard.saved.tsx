@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Bookmark, MapPin, Sparkles } from "lucide-react";
 import { DashCard, PageHeader, Chip, CompanyMark, EmptyState } from "@/components/dashboard/primitives";
+import { DashButtonLink } from "@/components/dashboard/DashButton";
 import { jobs } from "@/lib/dashboard-data";
 
 export const Route = createFileRoute("/dashboard/saved")({
@@ -30,12 +31,9 @@ function SavedPage() {
           title="Nothing saved yet"
           body="Install the extension and hit the bookmark icon on any job posting to send it here."
           cta={
-            <Link
-              to="/features"
-              className="inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-br from-[#2563EB] to-[#7C3AED] px-3 py-2 text-sm font-medium text-white"
-            >
+            <DashButtonLink to="/features">
               Get the extension
-            </Link>
+            </DashButtonLink>
           }
         />
       ) : (
