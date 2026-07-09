@@ -21,6 +21,7 @@ import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as DashboardIndexRouteImport } from './routes/dashboard.index'
 import { Route as DashboardSavedRouteImport } from './routes/dashboard.saved'
+import { Route as DashboardResumesRouteImport } from './routes/dashboard.resumes'
 import { Route as DashboardJobsRouteImport } from './routes/dashboard.jobs'
 import { Route as DashboardApplicationsRouteImport } from './routes/dashboard.applications'
 
@@ -84,6 +85,11 @@ const DashboardSavedRoute = DashboardSavedRouteImport.update({
   path: '/saved',
   getParentRoute: () => DashboardRoute,
 } as any)
+const DashboardResumesRoute = DashboardResumesRouteImport.update({
+  id: '/resumes',
+  path: '/resumes',
+  getParentRoute: () => DashboardRoute,
+} as any)
 const DashboardJobsRoute = DashboardJobsRouteImport.update({
   id: '/jobs',
   path: '/jobs',
@@ -108,6 +114,7 @@ export interface FileRoutesByFullPath {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/dashboard/applications': typeof DashboardApplicationsRoute
   '/dashboard/jobs': typeof DashboardJobsRoute
+  '/dashboard/resumes': typeof DashboardResumesRoute
   '/dashboard/saved': typeof DashboardSavedRoute
   '/dashboard/': typeof DashboardIndexRoute
 }
@@ -123,6 +130,7 @@ export interface FileRoutesByTo {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/dashboard/applications': typeof DashboardApplicationsRoute
   '/dashboard/jobs': typeof DashboardJobsRoute
+  '/dashboard/resumes': typeof DashboardResumesRoute
   '/dashboard/saved': typeof DashboardSavedRoute
   '/dashboard': typeof DashboardIndexRoute
 }
@@ -140,6 +148,7 @@ export interface FileRoutesById {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/dashboard/applications': typeof DashboardApplicationsRoute
   '/dashboard/jobs': typeof DashboardJobsRoute
+  '/dashboard/resumes': typeof DashboardResumesRoute
   '/dashboard/saved': typeof DashboardSavedRoute
   '/dashboard/': typeof DashboardIndexRoute
 }
@@ -158,6 +167,7 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/dashboard/applications'
     | '/dashboard/jobs'
+    | '/dashboard/resumes'
     | '/dashboard/saved'
     | '/dashboard/'
   fileRoutesByTo: FileRoutesByTo
@@ -173,6 +183,7 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/dashboard/applications'
     | '/dashboard/jobs'
+    | '/dashboard/resumes'
     | '/dashboard/saved'
     | '/dashboard'
   id:
@@ -189,6 +200,7 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/dashboard/applications'
     | '/dashboard/jobs'
+    | '/dashboard/resumes'
     | '/dashboard/saved'
     | '/dashboard/'
   fileRoutesById: FileRoutesById
@@ -292,6 +304,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardSavedRouteImport
       parentRoute: typeof DashboardRoute
     }
+    '/dashboard/resumes': {
+      id: '/dashboard/resumes'
+      path: '/resumes'
+      fullPath: '/dashboard/resumes'
+      preLoaderRoute: typeof DashboardResumesRouteImport
+      parentRoute: typeof DashboardRoute
+    }
     '/dashboard/jobs': {
       id: '/dashboard/jobs'
       path: '/jobs'
@@ -312,6 +331,7 @@ declare module '@tanstack/react-router' {
 interface DashboardRouteChildren {
   DashboardApplicationsRoute: typeof DashboardApplicationsRoute
   DashboardJobsRoute: typeof DashboardJobsRoute
+  DashboardResumesRoute: typeof DashboardResumesRoute
   DashboardSavedRoute: typeof DashboardSavedRoute
   DashboardIndexRoute: typeof DashboardIndexRoute
 }
@@ -319,6 +339,7 @@ interface DashboardRouteChildren {
 const DashboardRouteChildren: DashboardRouteChildren = {
   DashboardApplicationsRoute: DashboardApplicationsRoute,
   DashboardJobsRoute: DashboardJobsRoute,
+  DashboardResumesRoute: DashboardResumesRoute,
   DashboardSavedRoute: DashboardSavedRoute,
   DashboardIndexRoute: DashboardIndexRoute,
 }
