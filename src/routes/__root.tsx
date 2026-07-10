@@ -12,6 +12,7 @@ import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
+import { AuthProvider } from "@/context/AuthContext";
 import { SiteNav } from "@/components/site/SiteNav";
 import { SiteFooter } from "@/components/site/SiteFooter";
 
@@ -141,17 +142,19 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      {isApp ? (
-        <Outlet />
-      ) : (
-        <div className="relative flex min-h-screen flex-col">
-          <SiteNav />
-          <main className="flex-1">
-            <Outlet />
-          </main>
-          <SiteFooter />
-        </div>
-      )}
+      <AuthProvider>
+        {isApp ? (
+          <Outlet />
+        ) : (
+          <div className="relative flex min-h-screen flex-col">
+            <SiteNav />
+            <main className="flex-1">
+              <Outlet />
+            </main>
+            <SiteFooter />
+          </div>
+        )}
+      </AuthProvider>
     </QueryClientProvider>
   );
 }
