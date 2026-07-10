@@ -107,6 +107,7 @@ function Pricing() {
     <>
       <Section
         align="center"
+        className="pt-20 md:pt-28"
         eyebrow="Pricing"
         title="Simple, honest pricing."
         description="Free forever for casual browsing. Upgrade when the search gets serious. Cancel any time, no email required."
@@ -233,7 +234,7 @@ function Pricing() {
 
       {/* Student pricing */}
       <Section className="pt-0" align="center" title="Searching on a student budget?">
-        <div className="mx-auto max-w-2xl rounded-3xl border border-white/10 bg-gradient-to-br from-[oklch(0.22_0.06_265)] to-[oklch(0.18_0.08_290)] p-10 text-center md:p-14">
+        <div className="mx-auto max-w-4xl rounded-3xl border border-white/10 bg-gradient-to-br from-[oklch(0.22_0.06_265)] to-[oklch(0.18_0.08_290)] p-10 text-center md:p-14">
           <span className="mx-auto grid h-12 w-12 place-items-center rounded-xl bg-gradient-to-br from-[#2563EB] to-[#7C3AED]">
             <GraduationCap className="h-6 w-6 text-white" />
           </span>
@@ -252,7 +253,7 @@ function Pricing() {
 
       {/* Pricing FAQ */}
       <Section className="pb-32 pt-0" align="center" title="Pricing questions, answered.">
-        <div className="mx-auto max-w-3xl divide-y divide-white/5 rounded-2xl border border-white/8 bg-white/[0.02]">
+        <div className="mx-auto max-w-4xl divide-y divide-white/5 rounded-2xl border border-white/8 bg-white/[0.02]">
           {[
             { q: "Is there a free plan?", a: "Yes — Starter is free forever and includes the Chrome extension, up to 25 saved jobs, and the kanban tracker." },
             { q: "Why upgrade to Pro?", a: "Pro removes the limits that matter during an active search: unlimited saved jobs, unlimited resumes, unlimited AI actions, ATS scoring, cover letters, interview prep, and analytics. Most people upgrade when they're applying to more than a handful of roles at once." },

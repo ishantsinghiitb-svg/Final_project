@@ -24,6 +24,7 @@ function FeaturesPage() {
     <>
       <Section
         align="center"
+        className="pt-20 md:pt-28"
         eyebrow="How it works"
         title={<>One workspace, start to offer.</>}
         description="NextOffer is three things in sequence: a way to capture opportunities, a way to optimize your applications, and a way to stay organized through the whole search."
@@ -58,6 +59,16 @@ function FeaturesPage() {
 
 /* ----------------------------------------------- shared building blocks */
 
+function SectionLabel({ n, label }: { n: string; label: string }) {
+  return (
+    <h2 className="font-display text-5xl font-semibold tracking-tight text-white/10 md:text-6xl">
+      <span className="tabular-nums">{n}</span>
+      <span className="mx-3 text-white/10">—</span>
+      <span className="text-white/20">{label}</span>
+    </h2>
+  );
+}
+
 function Step({ n, label }: { n: number; label: string }) {
   return (
     <div className="mb-4 flex items-center gap-3">
@@ -71,11 +82,9 @@ function Step({ n, label }: { n: number; label: string }) {
 
 function ProblemSolutionOutcome({
   problem,
-  solution,
   outcome,
 }: {
   problem: string;
-  solution: React.ReactNode;
   outcome: string;
 }) {
   return (
@@ -97,8 +106,8 @@ function FeatureRow({
   preview,
   reverse,
   problem,
-  solution,
   outcome,
+  showPSO,
 }: {
   n: number;
   step: string;
@@ -107,9 +116,9 @@ function FeatureRow({
   children?: React.ReactNode;
   preview: React.ReactNode;
   reverse?: boolean;
-  problem: string;
-  solution: React.ReactNode;
-  outcome: string;
+  problem?: string;
+  outcome?: string;
+  showPSO?: boolean;
 }) {
   return (
     <div>
@@ -124,7 +133,9 @@ function FeatureRow({
         </div>
         <div className={reverse ? "order-1 md:order-2" : ""}>{preview}</div>
       </div>
-      <ProblemSolutionOutcome problem={problem} solution={solution} outcome={outcome} />
+      {showPSO && problem && outcome && (
+        <ProblemSolutionOutcome problem={problem} outcome={outcome} />
+      )}
     </div>
   );
 }
@@ -149,30 +160,21 @@ function CaptureSection() {
       title="Save the jobs worth your time."
       description="The best roles are scattered across a dozen sites. NextOffer gives you one way to grab them all — with context attached."
     >
-      <div className="space-y-12">
+      <SectionLabel n="01" label="Capture" />
+
+      <div className="mt-10 space-y-10">
         <FeatureRow
           n={1}
           step="Capture"
           icon={Chrome}
           title="Save any job, from any site, in one click."
           preview={<ExtensionPreview />}
+          showPSO
           problem="You find a great role on LinkedIn, another on Greenhouse, a third on a company's careers page — and by the weekend you've forgotten which was which."
-          solution={
-            <>
-              <p className="mb-4">
-                The NextOffer Chrome extension sits in your browser and reads
-                the page when you click it. Title, company, salary, location,
-                requirements — extracted and saved automatically.
-              </p>
-              <ul className="space-y-2.5">
-                <MiniCheck>Works on LinkedIn, Wellfound, Greenhouse, Lever, Ashby, Naukri</MiniCheck>
-                <MiniCheck>Lands in your job library with a match score</MiniCheck>
-                <MiniCheck>Add it to your pipeline in the column you choose</MiniCheck>
-              </ul>
-            </>
-          }
           outcome="Every role you're considering lives in one searchable library — no more lost tabs."
-        />
+        >
+          The extension reads the page when you click it and extracts title, company, salary, and requirements automatically.
+        </FeatureRow>
 
         <FeatureRow
           n={2}
@@ -181,10 +183,9 @@ function CaptureSection() {
           title="Automatic job data extraction."
           reverse
           preview={<ExtractionPreview />}
-          problem="Copy-pasting job details into a spreadsheet is slow and lossy — you miss the salary band, the tech stack, or the exact title."
-          solution="NextOffer parses the posting for you and fills in the fields. You see a clean card with everything you'd want to compare later."
-          outcome="A job library you actually want to return to, with the details that matter for deciding whether to apply."
-        />
+        >
+          NextOffer parses the posting and fills in the fields — no copy-pasting into a spreadsheet.
+        </FeatureRow>
 
         <FeatureRow
           n={3}
@@ -192,10 +193,9 @@ function CaptureSection() {
           icon={Bookmark}
           title="A job library you'll actually use."
           preview={<LibraryPreview />}
-          problem="Bookmarks and spreadsheets don't filter well — you can't easily find 'remote senior roles above 85% match.'"
-          solution="NextOffer keeps every saved role searchable and filterable: by fit, stage, salary, remote, and seniority."
-          outcome="When you sit down to apply, the right roles are already surfaced — no scrolling through 200 browser tabs."
-        />
+        >
+          Every saved role stays searchable and filterable by fit, stage, salary, remote, and seniority.
+        </FeatureRow>
       </div>
     </Section>
   );
@@ -210,30 +210,21 @@ function OptimizeSection() {
       title="Tailor your resume. Beat the bots. Write the letter."
       description="A generic resume gets filtered out. NextOffer grounds every suggestion in the job you're actually applying to."
     >
-      <div className="space-y-12">
+      <SectionLabel n="02" label="Optimize" />
+
+      <div className="mt-10 space-y-10">
         <FeatureRow
           n={4}
           step="Optimize"
           icon={BrainCircuit}
           title="Resume match, grounded in the JD."
           preview={<MatchPreview />}
+          showPSO
           problem="You have one resume and fifty roles. Which one should you rewrite for, and how much rewriting is enough?"
-          solution={
-            <>
-              <p className="mb-4">
-                Upload your resume once. NextOffer scores it against the actual
-                job description — per skill, keyword, and experience level — and
-                shows you the gaps.
-              </p>
-              <ul className="space-y-2.5">
-                <MiniCheck>Per-role match score, not a generic number</MiniCheck>
-                <MiniCheck>Skills coverage, experience level, keyword density, tone</MiniCheck>
-                <MiniCheck>Suggestions tied to specific JD lines</MiniCheck>
-              </ul>
-            </>
-          }
           outcome="You know which resume to send — and what to change before you send it."
-        />
+        >
+          Upload your resume once. NextOffer scores it against the actual job description — per skill, keyword, and experience level.
+        </FeatureRow>
 
         <FeatureRow
           n={5}
@@ -242,10 +233,9 @@ function OptimizeSection() {
           title="ATS score that reflects reality."
           reverse
           preview={<ATSPreview />}
-          problem="Most resumes are rejected by applicant tracking software before a human reads them."
-          solution="NextOffer checks your resume against modern ATS rules in real time — formatting, parsing, keyword density, section completeness — and shows fixes ranked by impact."
-          outcome="Your resume gets through the bots and in front of a recruiter."
-        />
+        >
+          Real-time checks against modern ATS rules — formatting, parsing, keyword density — with fixes ranked by impact.
+        </FeatureRow>
 
         <FeatureRow
           n={6}
@@ -253,10 +243,9 @@ function OptimizeSection() {
           icon={Wand2}
           title="Skill gap analysis."
           preview={<GapPreview />}
-          problem="You can't fix what you can't see. Job descriptions list skills you may not have — and you don't know which ones matter."
-          solution="NextOffer maps the JD's required skills against your resume and highlights the real gaps, with a short study plan for the ones that come up most."
-          outcome="You walk into the interview knowing the territory — and what to study first."
-        />
+        >
+          NextOffer maps the JD's required skills against your resume and highlights the real gaps, with a short study plan.
+        </FeatureRow>
 
         <FeatureRow
           n={7}
@@ -265,23 +254,12 @@ function OptimizeSection() {
           title="Cover letters in your voice."
           reverse
           preview={<CoverLetterPreview />}
+          showPSO
           problem="Writing a cover letter for every application is the worst kind of homework — and generic templates get ignored."
-          solution={
-            <>
-              <p className="mb-4">
-                NextOffer drafts a cover letter from your resume and the job
-                description — referencing real projects you've shipped, in a
-                tone you can tune.
-              </p>
-              <ul className="space-y-2.5">
-                <MiniCheck>Generated from your resume + the JD, not a template</MiniCheck>
-                <MiniCheck>Editable in place, exportable to PDF</MiniCheck>
-                <MiniCheck>Saved with the application, one per role</MiniCheck>
-              </ul>
-            </>
-          }
           outcome="A cover letter that sounds like you — in seconds, not an hour."
-        />
+        >
+          Drafts a cover letter from your resume and the JD, referencing real projects you've shipped, in a tone you can tune.
+        </FeatureRow>
       </div>
     </Section>
   );
@@ -296,17 +274,18 @@ function OrganizeSection() {
       title="Track every step. Never drop the ball."
       description="A kanban for your search, a tracker for your interviews, a home for your notes, and the numbers that predict outcomes."
     >
-      <div className="space-y-12">
+      <SectionLabel n="03" label="Organize" />
+
+      <div className="mt-10 space-y-10">
         <FeatureRow
           n={8}
           step="Organize"
           icon={Kanban}
           title="A kanban tracker for job search."
           preview={<KanbanPreview />}
-          problem="Spreadsheets don't tell you what's stalled, what's waiting on you, or what needs a nudge."
-          solution="NextOffer's pipeline board shows every application from Interested to Offer — drag between stages, add notes, and get nudged when something goes quiet."
-          outcome="You always know what's next, and nothing slips through the cracks."
-        />
+        >
+          The pipeline board shows every application from Interested to Offer — drag between stages and get nudged when something goes quiet.
+        </FeatureRow>
 
         <FeatureRow
           n={9}
@@ -315,10 +294,9 @@ function OrganizeSection() {
           title="Interview tracker with prep built in."
           reverse
           preview={<InterviewPreview />}
-          problem="Interviews come with rounds, panelists, prep notes, salary questions, and follow-ups — and they all live in your head."
-          solution="NextOffer keeps every interview in one place: the type, the interviewer, the prep, and AI-generated likely questions for that role and round."
-          outcome="The night before is calm. You walk in ready."
-        />
+        >
+          Every interview in one place: type, interviewer, prep notes, and AI-generated likely questions for that role and round.
+        </FeatureRow>
 
         <FeatureRow
           n={10}
@@ -326,10 +304,9 @@ function OrganizeSection() {
           icon={StickyNote}
           title="Personal notes, kept in context."
           preview={<NotesPreview />}
-          problem="Recruiter chats, salary bands, gut feelings — these live in a dozen places and never where you need them."
-          solution="NextOffer attaches notes to the company and role they belong to, with tags for prep, questions, follow-ups, and ideas."
-          outcome="When it's time to decide between two offers, your reasoning is already organized."
-        />
+        >
+          Notes attach to the company and role they belong to, with tags for prep, questions, and follow-ups.
+        </FeatureRow>
 
         <FeatureRow
           n={11}
@@ -338,10 +315,9 @@ function OrganizeSection() {
           title="Analytics that predict outcomes."
           reverse
           preview={<AnalyticsPreview />}
-          problem="You don't know what's working. Are your tailored resumes getting more responses? Is Tuesday actually the best day to apply?"
-          solution="NextOffer shows response rate by resume, average time-to-interview, offer velocity, and where you drop off in the funnel — the signals, not the vanity metrics."
-          outcome="You spend your time on what's actually moving you toward an offer."
-        />
+        >
+          Response rate by resume, average time-to-interview, and where you drop off — the signals, not the vanity metrics.
+        </FeatureRow>
       </div>
     </Section>
   );

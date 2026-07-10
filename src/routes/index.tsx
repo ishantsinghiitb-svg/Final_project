@@ -1,15 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import {
-  ArrowRight,
-  PlayCircle,
-  Chrome,
-  Sparkles,
-  Bookmark,
-  BrainCircuit,
-  Kanban,
-  Trophy,
-  Check,
-} from "lucide-react";
+import { ArrowRight, CirclePlay as PlayCircle, Chromium as Chrome, Sparkles, Bookmark, BrainCircuit, Kanban, Trophy, Check } from "lucide-react";
 import { HeroComposition } from "@/components/site/HeroComposition";
 import { LogoRow } from "@/components/site/LogoRow";
 import { Section } from "@/components/site/Section";
@@ -356,7 +346,7 @@ function TestimonialSection() {
     <Section eyebrow="Trusted by careful job hunters" title="A calmer way to look for your next thing.">
       <div className="grid gap-4 md:grid-cols-3">
         {quotes.map((q) => (
-          <figure key={q.n} className="rounded-2xl border border-white/8 bg-white/[0.02] p-6">
+          <figure key={q.n} className="card-hover rounded-2xl border border-white/8 bg-white/[0.02] p-6">
             <blockquote className="font-display text-lg leading-snug">"{q.q}"</blockquote>
             <figcaption className="mt-5 flex items-center gap-3">
               <div className="h-8 w-8 rounded-full bg-gradient-to-br from-[#2563EB] to-[#7C3AED]" />

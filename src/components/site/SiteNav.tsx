@@ -33,7 +33,7 @@ export function SiteNav() {
     <header className="pointer-events-none fixed inset-x-0 top-0 z-50 flex justify-center px-4 pt-4">
       <div
         className={cn(
-          "pointer-events-auto flex w-full max-w-6xl items-center justify-between rounded-2xl border border-white/10 px-3 py-2 transition-all duration-300",
+          "pointer-events-auto flex w-full max-w-7xl items-center justify-between rounded-2xl border border-white/10 px-3 py-2 transition-all duration-300",
           scrolled
             ? "glass shadow-[0_10px_40px_-20px_rgba(0,0,0,0.6)]"
             : "border-transparent bg-transparent",
@@ -52,7 +52,7 @@ export function SiteNav() {
                 key={l.to}
                 to={l.to}
                 className={cn(
-                  "relative rounded-lg px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground",
+                  "relative rounded-lg px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground link-underline",
                   active && "text-foreground",
                 )}
               >

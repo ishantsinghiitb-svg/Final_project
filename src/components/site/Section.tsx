@@ -17,7 +17,7 @@ export function Section({
   align?: "left" | "center";
 }) {
   return (
-    <section className={cn("mx-auto w-full max-w-6xl px-6 py-12 md:py-16", className)}>
+    <section className={cn("mx-auto w-full max-w-7xl px-6 py-10 md:py-14", className)}>
       {(eyebrow || title || description) && (
         <div
           className={cn(
@@ -37,7 +37,7 @@ export function Section({
             </h2>
           )}
           {description && (
-            <p className="mt-4 text-base text-muted-foreground md:text-lg">
+            <p className="mt-3 text-base text-muted-foreground md:text-lg">
               {description}
             </p>
           )}
@@ -45,6 +45,24 @@ export function Section({
       )}
       {children}
     </section>
+  );
+}
+
+/**
+ * Consistent hero spacing for marketing pages so content
+ * doesn't glue to the sticky navbar.
+ */
+export function PageHero({
+  children,
+  className,
+}: {
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={cn("mx-auto w-full max-w-7xl px-6 pt-20 pb-4 md:pt-28", className)}>
+      {children}
+    </div>
   );
 }
 

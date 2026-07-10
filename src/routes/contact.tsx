@@ -19,7 +19,7 @@ export const Route = createFileRoute("/contact")({
 function Contact() {
   const [sent, setSent] = useState(false);
   return (
-    <Section eyebrow="Contact" title="Say hello." description="A real human on the team replies within one business day." className="pb-32">
+    <Section eyebrow="Contact" title="Say hello." description="A real human on the team replies within one business day." className="pt-20 md:pt-28 pb-16">
       <div className="grid gap-8 md:grid-cols-[1fr_1.2fr]">
         <div className="space-y-4">
           {[

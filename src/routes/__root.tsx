@@ -94,16 +94,18 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
           "Save jobs from anywhere, tailor your resume with AI, track every application, and land your next offer — all in one calm workspace.",
       },
       { property: "og:type", content: "website" },
+      { property: "og:image", content: "/image.png" },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:title", content: "NextOffer — The workspace for your job search" },
+      { name: "twitter:image", content: "/image.png" },
     ],
     links: [
       {
         rel: "stylesheet",
         href: appCss,
       },
-      { rel: "icon", type: "image/svg+xml", href: "/favicon.svg" },
-      { rel: "alternate icon", href: "/favicon.ico", type: "image/x-icon" },
+      { rel: "icon", type: "image/png", href: "/image.png" },
+      { rel: "apple-touch-icon", href: "/image.png" },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       {

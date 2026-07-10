@@ -30,8 +30,8 @@ const cols = [
 
 export function SiteFooter() {
   return (
-    <footer className="relative mt-32 border-t border-white/10 bg-[oklch(0.15_0.02_265)]/60">
-      <div className="mx-auto grid max-w-6xl gap-10 px-6 py-16 md:grid-cols-[1.4fr_1fr_1fr_1fr]">
+    <footer className="relative mt-16 border-t border-white/10 bg-[oklch(0.15_0.02_265)]/60">
+      <div className="mx-auto grid max-w-7xl gap-10 px-6 py-14 md:grid-cols-[1.4fr_1fr_1fr_1fr]">
         <div>
           <Link to="/" className="flex items-center gap-2" aria-label="NextOffer home">
             <Logo size={28} wordmarkClassName="text-[15px]" />

@@ -113,7 +113,7 @@ function FAQ() {
       eyebrow="FAQ"
       title="Answers, before you ask."
       description="Still curious? Reach out — a real human replies within a day."
-      className="pb-32"
+      className="pt-20 md:pt-28 pb-16"
     >
       <div className="mx-auto max-w-3xl space-y-10 text-left">
         {groups.map((g) => (
