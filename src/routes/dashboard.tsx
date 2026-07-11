@@ -1,5 +1,6 @@
 import { createFileRoute, Outlet } from "@tanstack/react-router";
 import { DashboardShell } from "@/components/dashboard/DashboardShell";
+import { ProtectedRoute } from "@/components/auth/RouteGuards";
 
 export const Route = createFileRoute("/dashboard")({
   head: () => ({
@@ -14,8 +15,10 @@ export const Route = createFileRoute("/dashboard")({
 
 function DashboardLayout() {
   return (
-    <DashboardShell>
-      <Outlet />
-    </DashboardShell>
+    <ProtectedRoute>
+      <DashboardShell>
+        <Outlet />
+      </DashboardShell>
+    </ProtectedRoute>
   );
 }

@@ -8,12 +8,14 @@ export type AuthResult =
 export async function signUp(email: string, password: string): Promise<AuthResult> {
   const { data, error } = await supabase.auth.signUp({ email, password });
   if (error) return { user: null, session: null, error: error.message };
+  if (!data.user) return { user: null, session: null, error: "Sign-up failed. Please try again." };
   return { user: data.user, session: data.session, error: null };
 }
 
 export async function signIn(email: string, password: string): Promise<AuthResult> {
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) return { user: null, session: null, error: error.message };
+  if (!data.user) return { user: null, session: null, error: "Sign-in failed. Please try again." };
   return { user: data.user, session: data.session, error: null };
 }
 

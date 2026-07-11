@@ -1,12 +1,14 @@
 import { useEffect, useState, type ReactNode } from "react";
-import { Link, useRouterState } from "@tanstack/react-router";
-import { Activity, Bell, Bookmark, Briefcase, CalendarClock, ChevronRight, Command, FileText, ChartLine as LineChart, Plus, Search, Settings, StickyNote, Target, X, Menu } from "lucide-react";
+import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
+import { Activity, Bell, Bookmark, Briefcase, CalendarClock, ChevronRight, Command, FileText, ChartLine as LineChart, Plus, Search, Settings, StickyNote, Target, X, Menu, LogOut } from "lucide-react";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { CommandPalette } from "./CommandPalette";
 import { notifications } from "@/lib/dashboard-data";
-import { Kbd } from "./primitives";
+import { Kbd, Chip } from "./primitives";
 import { DashButtonLink } from "./DashButton";
 import { Logo } from "@/components/site/Logo";
+import { useAuth } from "@/context/AuthContext";
 
 type NavItem = {
   to: string;
@@ -29,9 +31,28 @@ const nav: NavItem[] = [
 
 export function DashboardShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const navigate = useNavigate();
+  const { user, signOut } = useAuth();
+  const [signingOut, setSigningOut] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const [mobileNav, setMobileNav] = useState(false);
+
+  const displayName = user?.email?.split("@")[0]?.replace(/[._-]/g, " ") ?? "Account";
+  const displayEmail = user?.email ?? "";
+  const initials = (displayName.slice(0, 2)).toUpperCase();
+
+  async function handleSignOut() {
+    setSigningOut(true);
+    const { error } = await signOut();
+    setSigningOut(false);
+    if (error) {
+      toast.error(error);
+      return;
+    }
+    toast.success("Signed out.");
+    navigate({ to: "/" });
+  }
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -140,12 +161,24 @@ export function DashboardShell({ children }: { children: ReactNode }) {
             </Link>
             <div className="mt-3 flex items-center gap-2 rounded-lg px-2 py-2">
               <div className="grid h-8 w-8 place-items-center rounded-full bg-gradient-to-br from-[#2563EB] to-[#7C3AED] text-xs font-semibold text-white">
-                AV
+                {initials}
               </div>
-              <div className="min-w-0">
-                <p className="truncate text-sm font-medium">Ava Chen</p>
-                <p className="truncate text-[11px] text-[oklch(0.5_0.02_265)]">Pro · trial</p>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium">{displayName}</p>
+                <p className="truncate text-[11px] text-[oklch(0.5_0.02_265)]">{displayEmail}</p>
               </div>
+              <button
+                onClick={handleSignOut}
+                disabled={signingOut}
+                aria-label="Log out"
+                className="ml-auto rounded-md p-1.5 text-[oklch(0.5_0.02_265)] transition-colors hover:bg-black/[0.03] hover:text-[oklch(0.2_0.02_265)] disabled:opacity-50"
+              >
+                {signingOut ? (
+                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-black/10 border-t-[#2563EB]" />
+                ) : (
+                  <LogOut className="h-4 w-4" />
+                )}
+              </button>
             </div>
           </div>
         </aside>
