@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/site/PrimaryButton";
 import { Logo } from "@/components/site/Logo";
@@ -93,6 +93,12 @@ export function AuthCard({
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
+  const emailInputRef = useRef<HTMLInputElement>(null);
+
+  function handleContinueWithEmail() {
+    emailInputRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    emailInputRef.current?.focus();
+  }
 
   return (
     <section className="mx-auto flex min-h-[calc(100vh-4rem)] max-w-6xl items-center px-6 py-32">
@@ -113,10 +119,18 @@ export function AuthCard({
           ) : (
             <>
               <div className="mt-6 grid gap-2">
-                <button className="flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2.5 text-sm transition-colors hover:border-white/20 hover:bg-white/[0.05]">
+                <button
+                  disabled
+                  className="flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2.5 text-sm opacity-60"
+                >
                   <GoogleIcon /> Continue with Google
+                  <span className="rounded bg-white/10 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Coming soon</span>
                 </button>
-                <button className="flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2.5 text-sm transition-colors hover:border-white/20 hover:bg-white/[0.05]">
+                <button
+                  type="button"
+                  onClick={handleContinueWithEmail}
+                  className="flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2.5 text-sm transition-colors hover:border-white/20 hover:bg-white/[0.05]"
+                >
                   <span className="text-lg leading-none">•</span> Continue with Email
                 </button>
               </div>
@@ -144,6 +158,7 @@ export function AuthCard({
                 <label className="block">
                   <span className="text-xs uppercase tracking-widest text-muted-foreground">Email</span>
                   <input
+                    ref={emailInputRef}
                     required
                     type="email"
                     value={email}
