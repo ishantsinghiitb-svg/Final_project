@@ -18,9 +18,10 @@ export const Route = createFileRoute("/login")({
 
 function Login() {
   const nav = useNavigate();
-  const { signIn } = useAuth();
+  const { signIn, signInWithGoogle } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [googleLoading, setGoogleLoading] = useState(false);
 
   async function handleLogin(email: string, password: string) {
     setError(null);
@@ -36,6 +37,16 @@ function Login() {
     nav({ to: "/dashboard" });
   }
 
+  async function handleGoogle() {
+    setGoogleLoading(true);
+    const result = await signInWithGoogle();
+    if (result.error) {
+      setGoogleLoading(false);
+      setError(result.error);
+      toast.error(result.error);
+    }
+  }
+
   return (
     <GuestRoute>
       <AuthCard
@@ -43,6 +54,8 @@ function Login() {
         subtitle="Log in to your NextOffer workspace."
         submitLabel="Log in"
         onSubmit={handleLogin}
+        onGoogle={handleGoogle}
+        googleLoading={googleLoading}
         loading={loading}
         error={error}
         showForgotPassword
@@ -74,6 +87,8 @@ export function AuthCard({
   passwordError = null,
   showSuccess = false,
   successMessage = null,
+  onGoogle,
+  googleLoading = false,
 }: {
   title: string;
   subtitle: string;
@@ -89,6 +104,8 @@ export function AuthCard({
   passwordError?: string | null;
   showSuccess?: boolean;
   successMessage?: string | null;
+  onGoogle?: () => void;
+  googleLoading?: boolean;
 }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -113,8 +130,18 @@ export function AuthCard({
           ) : (
             <>
               <div className="mt-6 grid gap-2">
-                <button className="flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2.5 text-sm transition-colors hover:border-white/20 hover:bg-white/[0.05]">
-                  <GoogleIcon /> Continue with Google
+                <button
+                  type="button"
+                  onClick={onGoogle}
+                  disabled={googleLoading || !onGoogle}
+                  className="flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2.5 text-sm transition-colors hover:border-white/20 hover:bg-white/[0.05] disabled:opacity-50"
+                >
+                  {googleLoading ? (
+                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/20 border-t-white/60" />
+                  ) : (
+                    <GoogleIcon />
+                  )}
+                  Continue with Google
                 </button>
               </div>
 

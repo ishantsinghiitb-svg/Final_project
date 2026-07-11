@@ -1,13 +1,14 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import type { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
-import { getCurrentUser, getSession, signIn, signOut, signUp, resetPassword } from "@/lib/auth";
+import { getCurrentUser, getSession, signIn, signInWithGoogle, signOut, signUp, resetPassword } from "@/lib/auth";
 
 type AuthContextValue = {
   user: User | null;
   session: Session | null;
   loading: boolean;
   signIn: typeof signIn;
+  signInWithGoogle: typeof signInWithGoogle;
   signUp: typeof signUp;
   signOut: typeof signOut;
   resetPassword: typeof resetPassword;
@@ -47,7 +48,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo<AuthContextValue>(
-    () => ({ user, session, loading, signIn, signUp, signOut, resetPassword }),
+    () => ({ user, session, loading, signIn, signInWithGoogle, signUp, signOut, resetPassword }),
     [user, session, loading],
   );
 

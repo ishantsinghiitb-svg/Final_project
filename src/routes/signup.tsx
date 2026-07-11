@@ -25,12 +25,13 @@ function validatePassword(pw: string): string | null {
 
 function Signup() {
   const nav = useNavigate();
-  const { signUp } = useAuth();
+  const { signUp, signInWithGoogle } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [confirmValue, setConfirmValue] = useState("");
   const [showSuccess, setShowSuccess] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
 
   async function handleSignup(email: string, password: string, confirm?: string) {
     setError(null);
@@ -65,6 +66,16 @@ function Signup() {
     }
   }
 
+  async function handleGoogle() {
+    setGoogleLoading(true);
+    const result = await signInWithGoogle();
+    if (result.error) {
+      setGoogleLoading(false);
+      setError(result.error);
+      toast.error(result.error);
+    }
+  }
+
   return (
     <GuestRoute>
       <AuthCard
@@ -72,6 +83,8 @@ function Signup() {
         subtitle="Two minutes and you're ready to search."
         submitLabel="Create account"
         onSubmit={handleSignup}
+        onGoogle={handleGoogle}
+        googleLoading={googleLoading}
         loading={loading}
         error={error}
         confirmPassword
