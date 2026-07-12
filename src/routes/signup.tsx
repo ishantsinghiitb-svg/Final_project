@@ -32,6 +32,7 @@ function Signup() {
   const [confirmValue, setConfirmValue] = useState("");
   const [showSuccess, setShowSuccess] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [fullName, setFullName] = useState("");
 
   async function handleSignup(email: string, password: string, confirm?: string) {
     setError(null);
@@ -48,7 +49,7 @@ function Signup() {
     }
 
     setLoading(true);
-    const result = await signUp(email, password);
+    const result = await signUp(email, password, fullName);
     setLoading(false);
 
     if (result.error) {
@@ -97,6 +98,8 @@ function Signup() {
             <span className="text-xs uppercase tracking-widest text-muted-foreground">Full name</span>
             <input
               required
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
               className="mt-1.5 w-full rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2.5 text-sm outline-none focus:border-white/25"
               placeholder="Ada Lovelace"
             />

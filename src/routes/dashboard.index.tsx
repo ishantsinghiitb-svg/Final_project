@@ -3,6 +3,7 @@ import { useState } from "react";
 import { ArrowUpRight, Briefcase, CalendarClock, CircleCheck as CheckCircle2, Circle, FileText, Flame, Plus, Sparkles, Target, TrendingUp } from "lucide-react";
 import { DashCard, PageHeader, SectionTitle, Chip, CompanyMark } from "@/components/dashboard/primitives";
 import { DashButtonLink } from "@/components/dashboard/DashButton";
+import { useAuth } from "@/context/AuthContext";
 import {
   interviews,
   jobs,
@@ -17,6 +18,8 @@ export const Route = createFileRoute("/dashboard/")({
 });
 
 function OverviewPage() {
+  const { profile, user } = useAuth();
+  const firstName = (profile?.full_name || user?.email?.split("@")[0] || "there").split(" ")[0];
   const [onboardingDone, setOnboardingDone] = useState<Set<string>>(new Set(["ob1"]));
   const nextInterview = interviews[0];
   const suggested = jobs.filter((j) => !j.stage).slice(0, 3);
@@ -26,7 +29,7 @@ function OverviewPage() {
     <>
       <PageHeader
         eyebrow="Overview"
-        title="Good afternoon, Ava."
+        title={`Good afternoon, ${firstName}.`}
         subtitle={onboardingComplete ? "You're all set up. Here's what needs your attention today." : "A few setup steps left, then your workspace is fully tuned. Here's what to do next."}
         actions={
           <>

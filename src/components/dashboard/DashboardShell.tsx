@@ -32,15 +32,15 @@ const nav: NavItem[] = [
 export function DashboardShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const navigate = useNavigate();
-  const { user, signOut } = useAuth();
+  const { user, signOut, profile } = useAuth();
   const [signingOut, setSigningOut] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const [mobileNav, setMobileNav] = useState(false);
 
-  const displayName = user?.email?.split("@")[0]?.replace(/[._-]/g, " ") ?? "Account";
+  const displayName = profile?.full_name || user?.email?.split("@")[0]?.replace(/[._-]/g, " ") || "Account";
   const displayEmail = user?.email ?? "";
-  const initials = (displayName.slice(0, 2)).toUpperCase();
+  const initials = displayName.slice(0, 2).toUpperCase();
 
   async function handleSignOut() {
     setSigningOut(true);
@@ -160,8 +160,12 @@ export function DashboardShell({ children }: { children: ReactNode }) {
               <Settings className="h-4 w-4" /> Settings
             </Link>
             <div className="mt-3 flex items-center gap-2 rounded-lg px-2 py-2">
-              <div className="grid h-8 w-8 place-items-center rounded-full bg-gradient-to-br from-[#2563EB] to-[#7C3AED] text-xs font-semibold text-white">
-                {initials}
+              <div className="grid h-8 w-8 place-items-center overflow-hidden rounded-full bg-gradient-to-br from-[#2563EB] to-[#7C3AED] text-xs font-semibold text-white">
+                {profile?.avatar_url ? (
+                  <img src={profile.avatar_url} alt="" className="h-full w-full object-cover" />
+                ) : (
+                  initials
+                )}
               </div>
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium">{displayName}</p>
