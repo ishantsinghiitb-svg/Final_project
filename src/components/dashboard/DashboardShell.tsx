@@ -9,6 +9,7 @@ import { Kbd, Chip } from "./primitives";
 import { DashButtonLink } from "./DashButton";
 import { Logo } from "@/components/site/Logo";
 import { useAuth } from "@/context/AuthContext";
+import { useProfile } from "@/context/ProfileContext";
 
 type NavItem = {
   to: string;
@@ -32,7 +33,8 @@ const nav: NavItem[] = [
 export function DashboardShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const navigate = useNavigate();
-  const { user, signOut, profile } = useAuth();
+  const { user, signOut } = useAuth();
+  const { profile } = useProfile();
   const [signingOut, setSigningOut] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);

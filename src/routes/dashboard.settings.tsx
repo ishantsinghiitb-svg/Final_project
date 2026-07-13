@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { DashCard, PageHeader, SectionTitle, Chip } from "@/components/dashboard/primitives";
 import { DashButton } from "@/components/dashboard/DashButton";
 import { useAuth } from "@/context/AuthContext";
+import { useProfile } from "@/context/ProfileContext";
 
 export const Route = createFileRoute("/dashboard/settings")({
   head: () => ({ meta: [{ title: "Settings — NextOffer" }, { name: "robots", content: "noindex" }] }),
@@ -42,7 +43,8 @@ function SettingsPage() {
 }
 
 function ProfileTab() {
-  const { profile, profileLoading, updateProfileData, uploadProfileAvatar, user } = useAuth();
+  const { profile, loading: profileLoading, update: updateProfileData, uploadAvatar: uploadProfileAvatar } = useProfile();
+  const { user } = useAuth();
   const [fullName, setFullName] = useState("");
   const [location, setLocation] = useState("");
   const [targetRole, setTargetRole] = useState("");

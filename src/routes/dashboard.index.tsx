@@ -4,6 +4,7 @@ import { ArrowUpRight, Briefcase, CalendarClock, CircleCheck as CheckCircle2, Ci
 import { DashCard, PageHeader, SectionTitle, Chip, CompanyMark } from "@/components/dashboard/primitives";
 import { DashButtonLink } from "@/components/dashboard/DashButton";
 import { useAuth } from "@/context/AuthContext";
+import { useProfile } from "@/context/ProfileContext";
 import {
   interviews,
   jobs,
@@ -18,7 +19,8 @@ export const Route = createFileRoute("/dashboard/")({
 });
 
 function OverviewPage() {
-  const { profile, user } = useAuth();
+  const { user } = useAuth();
+  const { profile } = useProfile();
   const firstName = (profile?.full_name || user?.email?.split("@")[0] || "there").split(" ")[0];
   const [onboardingDone, setOnboardingDone] = useState<Set<string>>(new Set(["ob1"]));
   const nextInterview = interviews[0];
