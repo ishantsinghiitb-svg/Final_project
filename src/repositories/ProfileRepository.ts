@@ -1,5 +1,6 @@
 import { supabase } from "@/lib/supabase";
 import type { Profile, ProfileUpdate } from "@/types";
+import type { ProfileInsert } from "@/types/database";
 
 const TABLE = "profiles";
 const COLUMNS =
@@ -16,7 +17,7 @@ export class ProfileRepository {
     return data as Profile | null;
   }
 
-  async create(profile: Partial<Profile>): Promise<Profile | null> {
+  async create(profile: ProfileInsert): Promise<Profile | null> {
     const { data, error } = await supabase
       .from(TABLE)
       .insert(profile)
@@ -37,7 +38,7 @@ export class ProfileRepository {
     return data as Profile | null;
   }
 
-  async upsert(profile: Partial<Profile>): Promise<Profile | null> {
+  async upsert(profile: ProfileInsert): Promise<Profile | null> {
     const { data, error } = await supabase
       .from(TABLE)
       .upsert(profile)

@@ -1,6 +1,6 @@
 import { supabase } from "@/lib/supabase";
 import type { Company } from "@/types";
-import type { CompanyRow } from "@/types/database";
+import type { CompanyRow, CompanyInsert } from "@/types/database";
 
 // ── Column map note ───────────────────────────────────────────────────────────
 // The DB column is `headquarters`; the Company domain type exposes it as
@@ -67,8 +67,13 @@ export class CompanyRepository {
   async upsert(company: Partial<Company>): Promise<Company | null> {
     // Map domain field `location` → DB column `headquarters`
     const { location, ...rest } = company;
-    const payload: Partial<CompanyRow> = {
-      ...rest,
+    const payload: CompanyInsert = {
+      name: rest.name ?? "",     // name is required in CompanyInsert
+      id: rest.id,
+      website: rest.website ?? null,
+      logo_url: rest.logo_url ?? null,
+      industry: rest.industry ?? null,
+      size: rest.size ?? null,
       headquarters: location ?? null,
     };
 
