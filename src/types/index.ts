@@ -267,3 +267,30 @@ export type Reaction = {
   emoji: string;
   created_at: string;
 };
+
+// ── Saved Jobs ──
+export type SavedJob = {
+  id: string;
+  user_id: string;
+  job_id: string;
+  notes: string | null;
+  created_at: string;
+};
+
+// ── Pagination ──
+export type PaginationParams = {
+  /** 1-indexed current page */
+  page: number;
+  /** Number of items per page */
+  pageSize: number;
+};
+
+export type PaginatedResult<T> = {
+  data: T[];
+  /** Total number of records matching the query (before pagination) */
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+};
+

@@ -1,4 +1,12 @@
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 import type { Profile, ProfileUpdate } from "@/types";
 import { profileService } from "@/services/ProfileService";
 import { useAuth } from "@/context/AuthContext";
@@ -41,38 +49,49 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     };
   }, [user]);
 
-  async function refresh() {
+  // ── Stable callbacks — each re-creates only when `user` changes ──────────
+
+  const refresh = useCallback(async () => {
     if (!user) return;
     const p = await profileService.getProfile(user.id);
     setProfile(p);
-  }
+  }, [user]);
 
-  async function update(updates: ProfileUpdate) {
-    if (!user) return { error: "Not authenticated" };
-    try {
-      const updated = await profileService.updateProfile(user.id, updates);
-      if (updated) setProfile(updated);
-      return { error: null };
-    } catch (err) {
-      return { error: getErrorMessage(err) };
-    }
-  }
+  const update = useCallback(
+    async (updates: ProfileUpdate): Promise<{ error: string | null }> => {
+      if (!user) return { error: "Not authenticated" };
+      try {
+        const updated = await profileService.updateProfile(user.id, updates);
+        if (updated) setProfile(updated);
+        return { error: null };
+      } catch (err) {
+        return { error: getErrorMessage(err) };
+      }
+    },
+    [user],
+  );
 
-  async function uploadAvatar(file: File) {
-    if (!user) return { url: null, error: "Not authenticated" };
-    try {
-      const url = await profileService.uploadAvatar(user.id, file);
-      const { error } = await update({ avatar_url: url });
-      if (error) return { url, error };
-      return { url, error: null };
-    } catch (err) {
-      return { url: null, error: getErrorMessage(err) };
-    }
-  }
+  // `uploadAvatar` calls `update` — list it in deps to avoid a stale closure
+  const uploadAvatar = useCallback(
+    async (file: File): Promise<{ url: string | null; error: string | null }> => {
+      if (!user) return { url: null, error: "Not authenticated" };
+      try {
+        const url = await profileService.uploadAvatar(user.id, file);
+        const { error } = await update({ avatar_url: url });
+        if (error) return { url, error };
+        return { url, error: null };
+      } catch (err) {
+        return { url: null, error: getErrorMessage(err) };
+      }
+    },
+    [user, update],
+  );
+
+  // ── Context value — re-computes only when deps actually change ─────────────
 
   const value = useMemo<ProfileContextValue>(
     () => ({ profile, loading, refresh, update, uploadAvatar }),
-    [profile, loading],
+    [profile, loading, refresh, update, uploadAvatar],
   );
 
   return <ProfileContext.Provider value={value}>{children}</ProfileContext.Provider>;

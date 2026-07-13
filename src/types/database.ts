@@ -219,6 +219,7 @@ export type CommunityRow = {
   name: string;
   description: string | null;
   member_count: number;
+  creator_id: string | null; // Added by 20260713200000_fix_community_rls.sql
   created_at: string;
   updated_at: string;
 };

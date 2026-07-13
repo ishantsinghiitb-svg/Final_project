@@ -1,7 +1,18 @@
 import { supabase } from "@/lib/supabase";
 import { STORAGE_BUCKETS, FILE_LIMITS, ACCEPTED_RESUME_TYPES } from "@/constants";
 
+// Signed URL expiry for resume downloads (1 hour).
+// Regenerate on every download rather than storing the URL.
+const RESUME_SIGNED_URL_EXPIRY_SECONDS = 3_600;
+
 export class ResumeStorage {
+  /**
+   * Uploads a resume file to the private resumes bucket.
+   *
+   * Returns the **storage path** (e.g. `<userId>/<resumeId>.pdf`).
+   * Store this path in `resumes.file_url` — NOT a URL.
+   * Call `getSignedUrl(path)` whenever you need a temporary download link.
+   */
   async upload(userId: string, resumeId: string, file: File): Promise<string> {
     if (file.size > FILE_LIMITS.RESUME_MAX_BYTES) {
       throw new Error("Resume must be under 10 MB.");
@@ -19,11 +30,27 @@ export class ResumeStorage {
 
     if (error) throw error;
 
-    const { data } = supabase.storage
-      .from(STORAGE_BUCKETS.RESUMES)
-      .getPublicUrl(path);
+    // Return the path, not a URL.
+    // The resumes bucket is private; generate download links with getSignedUrl().
+    return path;
+  }
 
-    return data.publicUrl;
+  /**
+   * Generates a temporary signed URL for downloading a resume.
+   *
+   * @param path       Storage path as returned by `upload()`.
+   * @param expiresIn  Expiry in seconds (default: 1 hour).
+   */
+  async getSignedUrl(
+    path: string,
+    expiresIn = RESUME_SIGNED_URL_EXPIRY_SECONDS,
+  ): Promise<string> {
+    const { data, error } = await supabase.storage
+      .from(STORAGE_BUCKETS.RESUMES)
+      .createSignedUrl(path, expiresIn);
+
+    if (error) throw error;
+    return data.signedUrl;
   }
 
   async delete(userId: string, resumeId: string): Promise<void> {
@@ -31,7 +58,7 @@ export class ResumeStorage {
       .from(STORAGE_BUCKETS.RESUMES)
       .list(userId);
 
-    if (files) {
+    if (files && files.length > 0) {
       const matches = files.filter((f) => f.name.startsWith(resumeId));
       if (matches.length > 0) {
         const paths = matches.map((f) => `${userId}/${f.name}`);
