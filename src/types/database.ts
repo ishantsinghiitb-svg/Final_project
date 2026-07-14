@@ -125,6 +125,12 @@ export type ApplicationRow = {
   applied_at: string | null;
   next_step: string | null;
   notes: string | null;
+  location: string | null;
+  salary_min: number | null;
+  salary_max: number | null;
+  salary_currency: string | null;
+  source: string | null;
+  url: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -347,6 +353,12 @@ export type ApplicationInsert = {
   applied_at?: string | null;
   next_step?: string | null;
   notes?: string | null;
+  location?: string | null;
+  salary_min?: number | null;
+  salary_max?: number | null;
+  salary_currency?: string | null;
+  source?: string | null;
+  url?: string | null;
   created_at?: string;
   updated_at?: string;
 };

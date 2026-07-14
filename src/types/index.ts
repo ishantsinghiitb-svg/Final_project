@@ -98,20 +98,33 @@ export type GlobalJob = {
 
 // ── Application ──
 export type ApplicationStatus =
-  | "interested"
+  | "wishlist"
   | "applied"
+  | "online_assessment"
   | "interview"
   | "offer"
-  | "rejected";
+  | "rejected"
+  | "withdrawn"
+  | "accepted";
 
 export type Application = {
   id: string;
   user_id: string;
-  job_id: string;
+  /** FK to global_jobs — may be null if the source job was deleted */
+  job_id?: string | null;
+  company_name: string;
+  role: string;
   status: ApplicationStatus;
-  applied_at?: string;
-  next_step?: string;
-  notes?: string;
+  applied_at?: string | null;
+  next_step?: string | null;
+  notes?: string | null;
+  // Inherited from GlobalJob at creation time
+  location?: string | null;
+  salary_min?: number | null;
+  salary_max?: number | null;
+  salary_currency?: string | null;
+  source?: string | null;
+  url?: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -202,12 +215,12 @@ export type Activity = {
   id: string;
   user_id: string;
   kind:
-    | "match"
-    | "interview"
-    | "offer"
-    | "saved"
-    | "resume"
-    | "reject";
+  | "match"
+  | "interview"
+  | "offer"
+  | "saved"
+  | "resume"
+  | "reject";
   text: string;
   when: string;
   created_at: string;
