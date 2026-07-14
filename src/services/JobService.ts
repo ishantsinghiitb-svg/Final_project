@@ -1,6 +1,7 @@
 import type { GlobalJob, SavedJob, Skill, PaginationParams, PaginatedResult } from "@/types";
 import type { JobFilters, JobSort } from "@/features/jobs/types";
 import { DEFAULT_JOB_SORT, DEFAULT_PAGINATION } from "@/features/jobs/constants";
+import { normalizeFilters } from "@/features/jobs/filter-maps";
 import { JobRepository } from "@/repositories/JobRepository";
 
 // Single repository instance — no state, safe to reuse across requests.
@@ -25,21 +26,24 @@ export class JobService {
     sort: JobSort = DEFAULT_JOB_SORT,
     pagination: PaginationParams = DEFAULT_PAGINATION,
   ): Promise<PaginatedResult<GlobalJob>> {
-    // Normalise free-text query so the repository doesn't worry about it
-    const normalisedFilters: JobFilters = {
+    // Step 1: Trim free-text fields so the repository doesn't see padding
+    const trimmed: JobFilters = {
       ...filters,
-      q: filters.q?.trim() || undefined,
-      company: filters.company?.trim() || undefined,
-      role: filters.role?.trim() || undefined,
+      q:        filters.q?.trim()        || undefined,
+      company:  filters.company?.trim()  || undefined,
+      role:     filters.role?.trim()     || undefined,
       location: filters.location?.trim() || undefined,
     };
 
-    // Business rule: `remote: true` implies work_mode should include "remote"
-    // unless the caller has explicitly set a workMode filter already.
-    // (No-op for now; add logic here when the UI sends both simultaneously.)
+    // Step 2: Map URL slugs → exact DB column values.
+    //   The URL stores "full-time", "entry-level", "onsite", etc.
+    //   The DB stores  "Full-Time", "Entry-Level", "Onsite", etc.
+    //   Without this step, Supabase's .in() filter returns zero rows.
+    const normalized = normalizeFilters(trimmed);
 
-    return jobRepo.findAll(normalisedFilters, sort, pagination);
+    return jobRepo.findAll(normalized, sort, pagination);
   }
+
 
   async getJob(id: string): Promise<GlobalJob | null> {
     return jobRepo.findById(id);

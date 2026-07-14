@@ -152,9 +152,9 @@ function SavedPage() {
                       {job.work_mode && (
                         <Chip
                           tone={
-                            job.work_mode === "remote"
+                            job.work_mode === "Remote"
                               ? "green"
-                              : job.work_mode === "hybrid"
+                              : job.work_mode === "Hybrid"
                                 ? "blue"
                                 : "default"
                           }

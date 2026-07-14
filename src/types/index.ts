@@ -58,21 +58,22 @@ export type JobSource =
   | "Manual";
 
 export type EmploymentType =
-  | "full-time"
-  | "part-time"
-  | "contract"
-  | "internship";
+  | "Full-Time"
+  | "Part-Time"
+  | "Contract"
+  | "Internship";
 
-export type WorkMode = "remote" | "hybrid" | "onsite";
+export type WorkMode = "Remote" | "Hybrid" | "Onsite";
 
 export type ExperienceLevel =
-  | "entry"
-  | "junior"
-  | "mid"
-  | "senior"
-  | "lead"
-  | "staff"
-  | "principal";
+  | "Entry-Level"
+  | "Mid-Level"
+  | "Senior-Level"
+  | "Intern"
+  | "Junior"
+  | "Lead"
+  | "Staff"
+  | "Principal";
 
 export type GlobalJob = {
   id: string;

@@ -120,9 +120,9 @@ const JobCard = memo(function JobCard({ job, isSaved, onSave, onUnsave }: JobCar
             {job.work_mode && !job.remote && (
               <Chip
                 tone={
-                  job.work_mode === "remote"
+                  job.work_mode === "Remote"
                     ? "green"
-                    : job.work_mode === "hybrid"
+                    : job.work_mode === "Hybrid"
                       ? "blue"
                       : "default"
                 }

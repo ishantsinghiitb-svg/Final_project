@@ -123,7 +123,7 @@ function SimilarJobCard({ job }: { job: GlobalJob }) {
 
       <div className="mt-2 flex flex-wrap items-center gap-1.5">
         {job.work_mode && (
-          <Chip tone={job.work_mode === "remote" ? "green" : job.work_mode === "hybrid" ? "blue" : "default"}>
+          <Chip tone={job.work_mode === "Remote" ? "green" : job.work_mode === "Hybrid" ? "blue" : "default"}>
             {job.work_mode}
           </Chip>
         )}
@@ -245,7 +245,7 @@ function JobDetailPage() {
               <div className="mt-2 flex flex-wrap items-center gap-2">
                 {job.remote && <Chip tone="green">Remote</Chip>}
                 {job.work_mode && (
-                  <Chip tone={job.work_mode === "remote" ? "green" : job.work_mode === "hybrid" ? "blue" : "default"}>
+                  <Chip tone={job.work_mode === "Remote" ? "green" : job.work_mode === "Hybrid" ? "blue" : "default"}>
                     {job.work_mode}
                   </Chip>
                 )}

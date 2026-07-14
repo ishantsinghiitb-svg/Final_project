@@ -31,26 +31,33 @@ export const DEFAULT_SORT_OPTION: JobSortOption = "newest";
 // ── Filter option arrays ─────────────────────────────────────────────────────
 
 export const WORK_MODE_OPTIONS = [
-  { value: "remote",  label: "Remote"  },
-  { value: "hybrid",  label: "Hybrid"  },
-  { value: "onsite",  label: "On-site" },
+  { value: "remote", label: "Remote"  },
+  { value: "hybrid", label: "Hybrid"  },
+  { value: "onsite", label: "Onsite"  },
 ] as const;
 
 export const EMPLOYMENT_TYPE_OPTIONS = [
-  { value: "full-time",  label: "Full-time"  },
-  { value: "part-time",  label: "Part-time"  },
+  { value: "full-time",  label: "Full-Time"  },
+  { value: "part-time",  label: "Part-Time"  },
   { value: "contract",   label: "Contract"   },
   { value: "internship", label: "Internship" },
 ] as const;
 
+// Experience level URL slugs are mapped to DB values by normalizeFilters().
+// Slug  →  DB value (see filter-maps.ts)
+// entry-level  →  Entry-Level
+// mid-level    →  Mid-Level
+// senior-level →  Senior-Level
+// intern       →  Intern
 export const EXPERIENCE_LEVEL_OPTIONS = [
-  { value: "entry",     label: "Entry"     },
-  { value: "junior",    label: "Junior"    },
-  { value: "mid",       label: "Mid"       },
-  { value: "senior",    label: "Senior"    },
-  { value: "lead",      label: "Lead"      },
-  { value: "staff",     label: "Staff"     },
-  { value: "principal", label: "Principal" },
+  { value: "intern",       label: "Intern"       },
+  { value: "entry-level",  label: "Entry-Level"  },
+  { value: "junior",       label: "Junior"       },
+  { value: "mid-level",    label: "Mid-Level"    },
+  { value: "senior-level", label: "Senior-Level" },
+  { value: "lead",         label: "Lead"         },
+  { value: "staff",        label: "Staff"        },
+  { value: "principal",    label: "Principal"    },
 ] as const;
 
 export const SOURCE_OPTIONS = [

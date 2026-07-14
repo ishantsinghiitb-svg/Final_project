@@ -33,8 +33,6 @@ export class JobRepository {
     sort: JobSort,
     pagination: PaginationParams,
   ): Promise<PaginatedResult<GlobalJob>> {
-      console.log("Repository Filters:", filters);
-
     const { page, pageSize } = pagination;
     const from = (page - 1) * pageSize;
     const to = from + pageSize - 1;
