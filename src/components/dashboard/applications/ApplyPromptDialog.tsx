@@ -121,35 +121,35 @@ export function ApplyPromptDialog({ job, open, onConfirm, onDismiss, isPending }
 
 // ── useApplyPrompt ────────────────────────────────────────────────────────────
 // Hook that manages the "Did you apply?" flow:
-//   1. Opens the job URL in a new tab
-//   2. Listens for the window to regain focus
-//   3. Shows the prompt dialog
+//   1. Opens the job URL in a new tab (handleApplyClick)
+//   2. Sets a ref flag so the focus handler knows to show the prompt
+//   3. Window focus listener (registered unconditionally on mount) detects
+//      when the user returns and shows the dialog
 
 export function useApplyPrompt(job: GlobalJob | null | undefined) {
   const [showPrompt, setShowPrompt] = useState(false);
   const hasOpenedRef = useRef(false);
 
-  const handleApplyClick = () => {
-    if (!job?.url) return;
-
-    // Open the external job page
-    window.open(job.url, "_blank", "noopener,noreferrer");
-    hasOpenedRef.current = true;
-  };
-
+  // Always register the focus listener on mount.
+  // The listener itself checks the ref — this avoids the bug where the
+  // effect runs once with ref=false and never re-registers.
   useEffect(() => {
-    if (!hasOpenedRef.current) return;
-
     const onFocus = () => {
       if (hasOpenedRef.current) {
-        setShowPrompt(true);
         hasOpenedRef.current = false;
+        setShowPrompt(true);
       }
     };
 
     window.addEventListener("focus", onFocus);
     return () => window.removeEventListener("focus", onFocus);
   }, []);
+
+  const handleApplyClick = () => {
+    if (!job?.url) return;
+    hasOpenedRef.current = true;
+    window.open(job.url, "_blank", "noopener,noreferrer");
+  };
 
   const dismissPrompt = () => {
     setShowPrompt(false);
@@ -158,3 +158,4 @@ export function useApplyPrompt(job: GlobalJob | null | undefined) {
 
   return { showPrompt, handleApplyClick, dismissPrompt };
 }
+
