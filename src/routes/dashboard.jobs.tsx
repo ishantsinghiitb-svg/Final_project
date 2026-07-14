@@ -1,9 +1,8 @@
 import { useCallback, useRef, useMemo, memo } from "react";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import {
   ListFilter as Filter,
   MapPin,
-  Plus,
   Search,
   SlidersHorizontal,
   Bookmark,
@@ -16,7 +15,7 @@ import {
   X,
   Briefcase,
   Clock,
-  DollarSign,
+  Banknote,
 } from "lucide-react";
 import {
   DashCard,
@@ -33,8 +32,7 @@ import {
   useUnsaveJob,
 } from "@/features/jobs/hooks";
 import type { JobFilters, JobSort, JobSortOption, JobsSearchParams } from "@/features/jobs/types";
-import type { PaginationParams } from "@/types";
-import type { GlobalJob } from "@/types";
+import type { PaginationParams, GlobalJob } from "@/types";
 import {
   DEFAULT_PAGINATION,
   JOB_PAGE_SIZE_OPTIONS,
@@ -45,9 +43,9 @@ import {
   EXPERIENCE_LEVEL_OPTIONS,
   SOURCE_OPTIONS,
   POSTED_AFTER_OPTIONS,
+  postedAfterToIso,
 } from "@/features/jobs/constants";
 import { formatSalary, formatPostedAt, logoToneForCompany } from "@/features/jobs/utils";
-import { Link } from "@tanstack/react-router";
 
 // ── Route definition with URL search param validation ────────────────────────
 export const Route = createFileRoute("/dashboard/jobs")({
@@ -62,21 +60,33 @@ export const Route = createFileRoute("/dashboard/jobs")({
     company: typeof search.company === "string" ? search.company : undefined,
     location: typeof search.location === "string" ? search.location : undefined,
     remote: search.remote === true || search.remote === "true" ? true : undefined,
-    workMode: typeof search.workMode === "string" ? search.workMode : undefined,
-    employmentType: typeof search.employmentType === "string" ? search.employmentType : undefined,
-    experienceLevel: typeof search.experienceLevel === "string" ? search.experienceLevel : undefined,
+    workMode:
+      typeof search.workMode === "string" ? search.workMode : undefined,
+    employmentType:
+      typeof search.employmentType === "string" ? search.employmentType : undefined,
+    experienceLevel:
+      typeof search.experienceLevel === "string" ? search.experienceLevel : undefined,
     source: typeof search.source === "string" ? search.source : undefined,
-    salaryMin: typeof search.salaryMin === "number" ? search.salaryMin : undefined,
-    salaryMax: typeof search.salaryMax === "number" ? search.salaryMax : undefined,
-    postedAfter: typeof search.postedAfter === "string" ? search.postedAfter : undefined,
-    sort: typeof search.sort === "string" ? (search.sort as JobSortOption) : undefined,
-    page: typeof search.page === "number" && search.page > 0 ? Math.floor(search.page) : undefined,
-    pageSize: typeof search.pageSize === "number" ? Math.floor(search.pageSize) : undefined,
+    salaryMin:
+      typeof search.salaryMin === "number" ? search.salaryMin : undefined,
+    salaryMax:
+      typeof search.salaryMax === "number" ? search.salaryMax : undefined,
+    // postedAfter stored as relative-day string ("1", "7", "30") for stability
+    postedAfter:
+      typeof search.postedAfter === "string" ? search.postedAfter : undefined,
+    sort:
+      typeof search.sort === "string" ? (search.sort as JobSortOption) : undefined,
+    page:
+      typeof search.page === "number" && search.page > 0
+        ? Math.floor(search.page)
+        : undefined,
+    pageSize:
+      typeof search.pageSize === "number" ? Math.floor(search.pageSize) : undefined,
   }),
   component: JobsPage,
 });
 
-// ── Job Card component ────────────────────────────────────────────────────────
+// ── Job Card ─────────────────────────────────────────────────────────────────
 interface JobCardProps {
   job: GlobalJob;
   isSaved: boolean;
@@ -91,6 +101,11 @@ const JobCard = memo(function JobCard({ job, isSaved, onSave, onUnsave }: JobCar
 
   return (
     <li className="group flex items-center gap-4 px-4 py-3.5 hover:bg-[oklch(0.98_0.005_265)] transition-colors">
+      {/*
+       * The entire left region is a <Link> so clicking anywhere on the card
+       * navigates to the detail page. The Save and Apply buttons outside the
+       * <Link> call stopPropagation only on their own events.
+       */}
       <Link
         to="/dashboard/jobs/$jobId"
         params={{ jobId: job.id }}
@@ -100,12 +115,8 @@ const JobCard = memo(function JobCard({ job, isSaved, onSave, onUnsave }: JobCar
 
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 flex-wrap">
-            <p className="truncate font-display text-sm font-semibold">
-              {job.role}
-            </p>
-            {job.remote && (
-              <Chip tone="green" className="shrink-0">Remote</Chip>
-            )}
+            <p className="truncate font-display text-sm font-semibold">{job.role}</p>
+            {job.remote && <Chip tone="green" className="shrink-0">Remote</Chip>}
             {job.work_mode && !job.remote && (
               <Chip
                 tone={
@@ -131,27 +142,29 @@ const JobCard = memo(function JobCard({ job, isSaved, onSave, onUnsave }: JobCar
               {job.location && (
                 <>
                   {" · "}
-                  <MapPin className="inline h-3 w-3" />{" "}
-                  {job.location}
+                  <MapPin className="inline h-3 w-3" /> {job.location}
                 </>
               )}
             </p>
             {job.employment_type && (
               <span className="flex items-center gap-0.5 text-xs text-[oklch(0.5_0.02_265)]">
-                <Briefcase className="h-3 w-3" />
-                {job.employment_type}
+                <Briefcase className="h-3 w-3" /> {job.employment_type}
               </span>
             )}
+            {/*
+             * Salary already contains the currency symbol (e.g. "₹18L–₹30L"
+             * or "$120K–$150K"). Use Banknote icon — never a DollarSign icon
+             * which would produce "$ ₹18L" double-currency.
+             */}
             {salary && (
               <span className="flex items-center gap-0.5 text-xs text-[oklch(0.5_0.02_265)]">
-                <DollarSign className="h-3 w-3" />
-                {salary}
+                <Banknote className="h-3 w-3" /> {salary}
               </span>
             )}
           </div>
         </div>
 
-        {/* Meta: source + time */}
+        {/* Source + time — desktop only */}
         <div className="hidden flex-col items-end gap-0.5 md:flex min-w-[80px]">
           <span className="text-[11px] text-[oklch(0.55_0.02_265)]">{job.source}</span>
           {posted && (
@@ -162,15 +175,12 @@ const JobCard = memo(function JobCard({ job, isSaved, onSave, onUnsave }: JobCar
         </div>
       </Link>
 
-      {/* Actions */}
+      {/* Action buttons — outside the <Link>, stopPropagation not needed as
+          they are siblings, not ancestors, of the <Link> element. */}
       <div className="flex items-center gap-1.5 shrink-0">
         <button
-          onClick={(e) => {
-            e.stopPropagation();
-            if (isSaved) onUnsave();
-            else onSave();
-          }}
-          aria-label={isSaved ? "Unsave" : "Save"}
+          onClick={() => { if (isSaved) onUnsave(); else onSave(); }}
+          aria-label={isSaved ? "Unsave job" : "Save job"}
           className="grid h-8 w-8 place-items-center rounded-lg border border-black/5 bg-white text-[oklch(0.4_0.02_265)] hover:bg-black/[0.03] transition-colors"
         >
           {isSaved ? (
@@ -185,7 +195,6 @@ const JobCard = memo(function JobCard({ job, isSaved, onSave, onUnsave }: JobCar
             href={job.url}
             target="_blank"
             rel="noopener noreferrer"
-            onClick={(e) => e.stopPropagation()}
             className="hidden md:inline-flex items-center gap-1 rounded-lg border border-black/5 bg-white px-2.5 py-1.5 text-xs font-medium text-[oklch(0.25_0.02_265)] hover:bg-black/[0.03] transition-colors"
           >
             Apply <ArrowUpRight className="h-3 w-3" />
@@ -196,14 +205,14 @@ const JobCard = memo(function JobCard({ job, isSaved, onSave, onUnsave }: JobCar
   );
 });
 
-// ── Pagination component ──────────────────────────────────────────────────────
+// ── Pagination ────────────────────────────────────────────────────────────────
 interface PaginationBarProps {
   page: number;
   totalPages: number;
   total: number;
   pageSize: number;
-  onPageChange: (page: number) => void;
-  onPageSizeChange: (size: number) => void;
+  onPageChange: (p: number) => void;
+  onPageSizeChange: (s: number) => void;
 }
 
 function PaginationBar({
@@ -225,7 +234,6 @@ function PaginationBar({
       </p>
 
       <div className="flex items-center gap-2">
-        {/* Page size */}
         <label className="flex items-center gap-1.5 rounded-lg border border-black/5 bg-white px-2.5 py-1.5 text-xs">
           <SlidersHorizontal className="h-3 w-3 text-[oklch(0.5_0.02_265)]" />
           <select
@@ -239,7 +247,6 @@ function PaginationBar({
           </select>
         </label>
 
-        {/* Prev / page indicator / Next */}
         <div className="flex items-center gap-1">
           <button
             onClick={() => onPageChange(page - 1)}
@@ -266,12 +273,12 @@ function PaginationBar({
   );
 }
 
-// ── Main page component ───────────────────────────────────────────────────────
+// ── Main page ─────────────────────────────────────────────────────────────────
 function JobsPage() {
   const navigate = useNavigate({ from: "/dashboard/jobs" });
   const search = Route.useSearch();
 
-  // Derive values from URL params with defaults
+  // Derive values from URL params (defaults applied inline)
   const q = search.q ?? "";
   const sortKey = search.sort ?? DEFAULT_SORT_OPTION;
   const page = search.page ?? 1;
@@ -280,34 +287,53 @@ function JobsPage() {
   const pagination: PaginationParams = { page, pageSize };
   const sort: JobSort = SORT_OPTIONS[sortKey]?.sort ?? SORT_OPTIONS[DEFAULT_SORT_OPTION].sort;
 
-  // Build filter object for React Query
-  const filters: JobFilters = useMemo(() => ({
-    q: q || undefined,
-    company: search.company || undefined,
-    location: search.location || undefined,
-    remote: search.remote ? true : undefined,
-    workMode: search.workMode ? (search.workMode as JobFilters["workMode"]) : undefined,
-    employmentType: search.employmentType ? (search.employmentType as JobFilters["employmentType"]) : undefined,
-    experienceLevel: search.experienceLevel ? (search.experienceLevel as JobFilters["experienceLevel"]) : undefined,
-    source: search.source ? (search.source as JobFilters["source"]) : undefined,
-    salaryMin: search.salaryMin,
-    salaryMax: search.salaryMax,
-    postedAfter: search.postedAfter || undefined,
-  }), [search, q]);
+  // Build filter object for React Query / repository
+  // postedAfterToIso converts the relative-day URL param ("7") to an ISO date
+  const filters: JobFilters = useMemo(
+    () => ({
+      q:               q || undefined,
+      company:         search.company || undefined,
+      location:        search.location || undefined,
+      remote:          search.remote ? true : undefined,
+      workMode:        search.workMode
+        ? (search.workMode as JobFilters["workMode"])
+        : undefined,
+      employmentType:  search.employmentType
+        ? (search.employmentType as JobFilters["employmentType"])
+        : undefined,
+      experienceLevel: search.experienceLevel
+        ? (search.experienceLevel as JobFilters["experienceLevel"])
+        : undefined,
+      source:          search.source
+        ? (search.source as JobFilters["source"])
+        : undefined,
+      salaryMin:       search.salaryMin,
+      salaryMax:       search.salaryMax,
+      // Convert "7" → ISO cutoff date; undefined if "" or absent
+      postedAfter:     postedAfterToIso(search.postedAfter),
+    }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [search],
+  );
 
   // ── Data ─────────────────────────────────────────────────────────────────
-  const { data: result, isLoading, isError, error, isFetching } = useJobs(filters, sort, pagination);
+  const {
+    data: result,
+    isLoading,
+    isError,
+    error,
+    isFetching,
+  } = useJobs(filters, sort, pagination);
   const { data: savedIds = [] } = useSavedJobIds();
-  const saveJob = useSaveJob();
+  const saveJob   = useSaveJob();
   const unsaveJob = useUnsaveJob();
 
-  const jobs = result?.data ?? [];
+  const jobs       = result?.data       ?? [];
   const totalPages = result?.totalPages ?? 1;
-  const total = result?.total ?? 0;
+  const total      = result?.total      ?? 0;
 
-  // ── Debounced search ──────────────────────────────────────────────────────
+  // ── Debounced keyword search ──────────────────────────────────────────────
   const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-
   const handleSearchChange = useCallback(
     (value: string) => {
       clearTimeout(debounceRef.current);
@@ -316,16 +342,18 @@ function JobsPage() {
           search: (prev) => ({ ...prev, q: value || undefined, page: 1 }),
           replace: true,
         });
-      }, 300);
+      }, 350);
     },
     [navigate],
   );
 
-  // ── URL param updaters ────────────────────────────────────────────────────
+  // ── URL param helpers ─────────────────────────────────────────────────────
   const setFilter = useCallback(
     (key: keyof JobsSearchParams, value: string | boolean | number | undefined) => {
+      // Use undefined (not "") so empty values are dropped from the URL
+      const next = value === "" || value === false ? undefined : value;
       void navigate({
-        search: (prev) => ({ ...prev, [key]: value || undefined, page: 1 }),
+        search: (prev) => ({ ...prev, [key]: next, page: 1 }),
         replace: true,
       });
     },
@@ -356,14 +384,13 @@ function JobsPage() {
     void navigate({ search: {}, replace: true });
   }, [navigate]);
 
-  // Determine if any filter is active
+  // Active filter detection
   const isFiltered = Boolean(
     search.q || search.company || search.location || search.remote ||
     search.workMode || search.employmentType || search.experienceLevel ||
     search.source || search.salaryMin || search.salaryMax || search.postedAfter,
   );
 
-  // Active filter count for badge
   const activeFilterCount = [
     search.remote, search.workMode, search.employmentType,
     search.experienceLevel, search.source, search.postedAfter,
@@ -373,28 +400,24 @@ function JobsPage() {
   // ── Render ────────────────────────────────────────────────────────────────
   return (
     <>
+      {/* No "Add Job" button — global jobs are not manually created by users */}
       <PageHeader
         eyebrow="Jobs"
         title="Discover roles worth your time."
-        subtitle="Every job you save from the extension or add manually shows up here — ranked by how well it matches you."
-        actions={
-          <DashButton>
-            <Plus className="h-4 w-4" /> Add job
-          </DashButton>
-        }
+        subtitle="Browse every job in the global board. Use filters to narrow down by role, location, salary and more."
       />
 
       <DashCard padded={false}>
-        {/* ── Filter bar ──────────────────────────────────────────────── */}
+        {/* ── Filter bar ──────────────────────────────────────────────────── */}
         <div className="flex flex-wrap items-center gap-2 border-b border-black/5 p-3">
           {/* Keyword search */}
           <div className="flex flex-1 min-w-[220px] items-center gap-2 rounded-lg border border-black/5 bg-white px-3 py-2 text-sm">
             <Search className="h-4 w-4 shrink-0 text-[oklch(0.5_0.02_265)]" />
             <input
+              key={q} // remount to clear when resetFilters() is called
               defaultValue={q}
-              key={q} // reset when cleared via resetFilters
               onChange={(e) => handleSearchChange(e.target.value)}
-              placeholder="Search company, role, description…"
+              placeholder="Search role, company, description…"
               className="flex-1 bg-transparent outline-none placeholder:text-[oklch(0.55_0.02_265)] text-sm"
             />
             {isFetching && (
@@ -461,7 +484,7 @@ function JobsPage() {
             ))}
           </select>
 
-          {/* Posted date */}
+          {/* Posted date — stores relative-day string in URL */}
           <select
             value={search.postedAfter ?? ""}
             onChange={(e) => setFilter("postedAfter", e.target.value)}
@@ -482,7 +505,7 @@ function JobsPage() {
             Remote only
           </label>
 
-          {/* Reset filters */}
+          {/* Reset */}
           {(isFiltered || activeFilterCount > 0) && (
             <button
               onClick={resetFilters}
@@ -499,7 +522,7 @@ function JobsPage() {
           )}
         </div>
 
-        {/* ── Body ────────────────────────────────────────────────────── */}
+        {/* ── Body ──────────────────────────────────────────────────────────── */}
         {isLoading ? (
           <div className="flex items-center justify-center gap-2 py-16 text-sm text-[oklch(0.5_0.02_265)]">
             <Loader2 className="h-5 w-5 animate-spin" />
@@ -508,9 +531,7 @@ function JobsPage() {
         ) : isError ? (
           <div className="flex flex-col items-center gap-3 py-16 text-center">
             <AlertCircle className="h-8 w-8 text-rose-500" />
-            <p className="font-display text-sm font-semibold">
-              Failed to load jobs
-            </p>
+            <p className="font-display text-sm font-semibold">Failed to load jobs</p>
             <p className="max-w-xs text-xs text-[oklch(0.5_0.02_265)]">
               {error instanceof Error ? error.message : "An unexpected error occurred."}
             </p>
@@ -519,16 +540,16 @@ function JobsPage() {
           <div className="p-5">
             <EmptyState
               icon={Filter}
-              title={isFiltered ? "No jobs match those filters" : "No jobs yet"}
+              title={isFiltered ? "No jobs match your filters" : "No jobs yet"}
               body={
                 isFiltered
-                  ? "Try adjusting your search or clearing the filters."
-                  : "Jobs posted to the global board will appear here."
+                  ? "Try broadening your search or clearing the active filters."
+                  : "Jobs from the global board will appear here once available."
               }
               cta={
                 isFiltered ? (
                   <DashButton variant="ghost" size="sm" onClick={resetFilters}>
-                    Reset filters
+                    Clear filters
                   </DashButton>
                 ) : undefined
               }
@@ -547,8 +568,6 @@ function JobsPage() {
                 />
               ))}
             </ul>
-
-            {/* ── Pagination ─────────────────────────────────────────── */}
             <PaginationBar
               page={page}
               totalPages={totalPages}

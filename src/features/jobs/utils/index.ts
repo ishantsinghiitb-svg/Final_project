@@ -24,21 +24,53 @@ export function logoToneForCompany(name: string): string {
   return LOGO_GRADIENTS[idx];
 }
 
-/** Format a salary range into a human-readable string. */
+/**
+ * Format a single salary number with a currency-specific symbol and scale.
+ *
+ * INR → Indian lakh/crore shorthand (₹18L, ₹1.5Cr)
+ * Others → Intl compact currency (e.g. $120K, €2M)
+ *
+ * The returned string already contains the correct currency symbol —
+ * callers must NOT prepend a generic "$" icon.
+ */
+function formatAmount(n: number, currency: string): string {
+  const c = currency.toUpperCase();
+
+  if (c === "INR") {
+    if (n >= 1_00_00_000) {
+      const cr = n / 1_00_00_000;
+      return `₹${cr % 1 === 0 ? cr.toString() : cr.toFixed(1)}Cr`;
+    }
+    if (n >= 1_00_000) {
+      const l = n / 1_00_000;
+      return `₹${l % 1 === 0 ? l.toString() : l.toFixed(1)}L`;
+    }
+    return `₹${new Intl.NumberFormat("en-IN").format(n)}`;
+  }
+
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: c,
+    maximumFractionDigits: 0,
+    notation: "compact",
+  }).format(n);
+}
+
+/**
+ * Format a salary range into a human-readable string.
+ * Returns "" when no salary data is present.
+ * The string already contains the correct currency symbol — never combine
+ * with a DollarSign icon or any other generic currency glyph.
+ */
 export function formatSalary(job: GlobalJob): string {
   if (!job.salary_min && !job.salary_max) return "";
   const currency = job.salary_currency ?? "USD";
-  const fmt = (n: number) =>
-    new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency,
-      maximumFractionDigits: 0,
-      notation: "compact",
-    }).format(n);
-  if (job.salary_min && job.salary_max)
-    return `${fmt(job.salary_min)}–${fmt(job.salary_max)}`;
-  if (job.salary_min) return `${fmt(job.salary_min)}+`;
-  return `Up to ${fmt(job.salary_max!)}`;
+
+  if (job.salary_min && job.salary_max) {
+    return `${formatAmount(job.salary_min, currency)}–${formatAmount(job.salary_max, currency)}`;
+  }
+  if (job.salary_min) return `${formatAmount(job.salary_min, currency)}+`;
+  return `Up to ${formatAmount(job.salary_max!, currency)}`;
 }
 
 /** Format a posted_at date string relative to now. */

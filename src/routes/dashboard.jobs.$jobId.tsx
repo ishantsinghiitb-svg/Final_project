@@ -8,7 +8,7 @@ import {
   Share2,
   MapPin,
   Briefcase,
-  DollarSign,
+  Banknote,
   Clock,
   Globe,
   Wifi,
@@ -135,7 +135,7 @@ function SimilarJobCard({ job }: { job: GlobalJob }) {
       <div className="mt-2 flex items-center justify-between">
         {salary && (
           <span className="flex items-center gap-0.5 text-xs text-[oklch(0.5_0.02_265)]">
-            <DollarSign className="h-3 w-3" /> {salary}
+            <Banknote className="h-3 w-3" /> {salary}
           </span>
         )}
         {posted && (
@@ -308,7 +308,7 @@ function JobDetailPage() {
 
           {salary && (
             <div className="flex items-start gap-2.5 rounded-xl bg-[oklch(0.97_0.01_265)] p-3">
-              <DollarSign className="mt-0.5 h-4 w-4 shrink-0 text-[#16A34A]" />
+              <Banknote className="mt-0.5 h-4 w-4 shrink-0 text-[#16A34A]" />
               <div>
                 <p className="text-[10px] font-medium uppercase tracking-wide text-[oklch(0.55_0.02_265)]">Salary</p>
                 <p className="mt-0.5 text-sm font-medium">{salary}</p>

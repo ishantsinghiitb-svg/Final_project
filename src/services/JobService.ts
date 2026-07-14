@@ -95,6 +95,20 @@ export class JobService {
   async getSavedJobIds(userId: string): Promise<string[]> {
     return jobRepo.getSavedJobIds(userId);
   }
+
+  // ── Counts (sidebar badges) ───────────────────────────────────────────────
+
+  async countAllJobs(): Promise<number> {
+    return jobRepo.countAll();
+  }
+
+  async countSavedJobs(userId: string): Promise<number> {
+    return jobRepo.countSavedByUser(userId);
+  }
+
+  async countApplications(userId: string): Promise<number> {
+    return jobRepo.countApplicationsByUser(userId);
+  }
 }
 
 // Singleton — import `jobService` everywhere instead of `new JobService()`

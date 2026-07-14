@@ -211,3 +211,36 @@ export function useUnsaveJob() {
     },
   });
 }
+
+// ── useSidebarCounts ─────────────────────────────────────────────────────────
+// Returns live counts for the three sidebar badges: Jobs, Saved, Applications.
+// Uses Supabase head-only count queries (no row data transferred).
+// staleTime = 5 minutes — these don't need to be real-time.
+
+type SidebarCounts = { jobs: number; saved: number; applications: number };
+
+export function useSidebarCounts(): SidebarCounts {
+  const { user } = useAuth();
+
+  const { data: jobsCount = 0 } = useQuery({
+    queryKey: ["sidebar", "jobs-count"],
+    queryFn:  () => jobService.countAllJobs(),
+    staleTime: 5 * 60 * 1_000,
+  });
+
+  const { data: savedCount = 0 } = useQuery({
+    queryKey: ["sidebar", "saved-count", user?.id ?? ""],
+    queryFn:  () => jobService.countSavedJobs(user!.id),
+    enabled:   Boolean(user),
+    staleTime: 5 * 60 * 1_000,
+  });
+
+  const { data: applicationsCount = 0 } = useQuery({
+    queryKey: ["sidebar", "applications-count", user?.id ?? ""],
+    queryFn:  () => jobService.countApplications(user!.id),
+    enabled:   Boolean(user),
+    staleTime: 5 * 60 * 1_000,
+  });
+
+  return { jobs: jobsCount, saved: savedCount, applications: applicationsCount };
+}

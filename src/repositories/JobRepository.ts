@@ -295,4 +295,36 @@ export class JobRepository {
     if (error) throw error;
     return (data ?? []).map((r) => r.job_id as string);
   }
+
+  // ── Counts (sidebar badges) ───────────────────────────────────────────────
+
+  /** Total number of jobs in the global board. */
+  async countAll(): Promise<number> {
+    const { count, error } = await supabase
+      .from("global_jobs")
+      .select("id", { count: "exact", head: true });
+    if (error) throw error;
+    return count ?? 0;
+  }
+
+  /** Number of jobs saved by the given user. */
+  async countSavedByUser(userId: string): Promise<number> {
+    const { count, error } = await supabase
+      .from("saved_jobs")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", userId);
+    if (error) throw error;
+    return count ?? 0;
+  }
+
+  /** Number of applications created by the given user. */
+  async countApplicationsByUser(userId: string): Promise<number> {
+    const { count, error } = await supabase
+      .from("applications")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", userId);
+    if (error) throw error;
+    return count ?? 0;
+  }
 }
+

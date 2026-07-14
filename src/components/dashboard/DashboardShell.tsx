@@ -1,33 +1,34 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
-import { Activity, Bell, Bookmark, Briefcase, CalendarClock, ChevronRight, Command, FileText, ChartLine as LineChart, Plus, Search, Settings, StickyNote, Target, X, Menu, LogOut } from "lucide-react";
+import { Activity, Bell, Bookmark, Briefcase, CalendarClock, ChevronRight, Command, FileText, ChartLine as LineChart, Search, Settings, StickyNote, Target, X, Menu, LogOut } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { CommandPalette } from "./CommandPalette";
 import { notifications } from "@/lib/dashboard-data";
-import { Kbd, Chip } from "./primitives";
-import { DashButtonLink } from "./DashButton";
+import { Kbd } from "./primitives";
 import { Logo } from "@/components/site/Logo";
 import { useAuth } from "@/context/AuthContext";
 import { useProfile } from "@/context/ProfileContext";
+import { useSidebarCounts } from "@/features/jobs/hooks";
 
 type NavItem = {
   to: string;
   label: string;
   icon: React.ComponentType<{ className?: string }>;
   exact?: boolean;
-  badge?: string;
+  /** badge key — looked up dynamically from useSidebarCounts() */
+  badgeKey?: "jobs" | "saved" | "applications";
 };
 
 const nav: NavItem[] = [
-  { to: "/dashboard", label: "Overview", icon: Activity, exact: true },
-  { to: "/dashboard/jobs", label: "Jobs", icon: Briefcase, badge: "12" },
-  { to: "/dashboard/saved", label: "Saved", icon: Bookmark, badge: "7" },
-  { to: "/dashboard/applications", label: "Applications", icon: Target, badge: "24" },
-  { to: "/dashboard/resumes", label: "Resumes", icon: FileText },
-  { to: "/dashboard/interviews", label: "Interviews", icon: CalendarClock, badge: "5" },
-  { to: "/dashboard/notes", label: "Notes", icon: StickyNote },
-  { to: "/dashboard/analytics", label: "Analytics", icon: LineChart },
+  { to: "/dashboard",              label: "Overview",      icon: Activity,      exact: true },
+  { to: "/dashboard/jobs",         label: "Jobs",          icon: Briefcase,     badgeKey: "jobs" },
+  { to: "/dashboard/saved",        label: "Saved",         icon: Bookmark,      badgeKey: "saved" },
+  { to: "/dashboard/applications", label: "Applications",  icon: Target,        badgeKey: "applications" },
+  { to: "/dashboard/resumes",      label: "Resumes",       icon: FileText },
+  { to: "/dashboard/interviews",   label: "Interviews",    icon: CalendarClock },
+  { to: "/dashboard/notes",        label: "Notes",         icon: StickyNote },
+  { to: "/dashboard/analytics",    label: "Analytics",     icon: LineChart },
 ];
 
 export function DashboardShell({ children }: { children: ReactNode }) {
@@ -35,6 +36,7 @@ export function DashboardShell({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
   const { profile } = useProfile();
+  const counts = useSidebarCounts();
   const [signingOut, setSigningOut] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
@@ -105,6 +107,7 @@ export function DashboardShell({ children }: { children: ReactNode }) {
                 const active = n.exact
                   ? pathname === n.to
                   : pathname === n.to || pathname.startsWith(n.to + "/");
+                const badgeValue = n.badgeKey ? counts[n.badgeKey] : undefined;
                 return (
                   <Link
                     key={n.to}
@@ -118,16 +121,16 @@ export function DashboardShell({ children }: { children: ReactNode }) {
                   >
                     <n.icon className={cn("h-4 w-4", active && "text-[#2563EB]")} />
                     <span className="flex-1">{n.label}</span>
-                    {n.badge && (
+                    {badgeValue !== undefined && badgeValue > 0 && (
                       <span
                         className={cn(
-                          "rounded-md px-1.5 py-0.5 text-[10px] font-medium",
+                          "rounded-md px-1.5 py-0.5 text-[10px] font-medium tabular-nums",
                           active
                             ? "bg-white text-[#2563EB]"
                             : "bg-black/[0.05] text-[oklch(0.45_0.02_265)]",
                         )}
                       >
-                        {n.badge}
+                        {badgeValue > 999 ? "999+" : badgeValue}
                       </span>
                     )}
                   </Link>
@@ -268,9 +271,7 @@ export function DashboardShell({ children }: { children: ReactNode }) {
                   </div>
                 )}
               </div>
-              <DashButtonLink to="/dashboard/jobs" size="md" className="hidden sm:inline-flex">
-                <Plus className="h-4 w-4" /> Add job
-              </DashButtonLink>
+              {/* Add Job button removed — global jobs are not user-created */}
             </div>
           </header>
 
