@@ -19,7 +19,6 @@ export const STATUS_META: Record<ApplicationStatus, StatusMeta> = {
     text: "text-slate-600",
     dot: "bg-slate-400",
     tone: "default",
-    kanbanOrder: 0,
   },
   applied: {
     label: "Applied",

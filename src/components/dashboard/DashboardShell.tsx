@@ -21,14 +21,14 @@ type NavItem = {
 };
 
 const nav: NavItem[] = [
-  { to: "/dashboard",                label: "Overview",      icon: Activity,      exact: true },
-  { to: "/dashboard/jobs/",          label: "Jobs",          icon: Briefcase,     badgeKey: "jobs" },
-  { to: "/dashboard/saved",          label: "Saved",         icon: Bookmark,      badgeKey: "saved" },
-  { to: "/dashboard/applications/",  label: "Applications",  icon: Target,        badgeKey: "applications" },
-  { to: "/dashboard/resumes",        label: "Resumes",       icon: FileText },
-  { to: "/dashboard/interviews",     label: "Interviews",    icon: CalendarClock },
-  { to: "/dashboard/notes",          label: "Notes",         icon: StickyNote },
-  { to: "/dashboard/analytics",      label: "Analytics",     icon: LineChart },
+  { to: "/dashboard",               label: "Overview",      icon: Activity,      exact: true },
+  { to: "/dashboard/jobs",          label: "Jobs",          icon: Briefcase,     badgeKey: "jobs" },
+  { to: "/dashboard/saved",         label: "Saved",         icon: Bookmark,      badgeKey: "saved" },
+  { to: "/dashboard/applications",  label: "Applications",  icon: Target,        badgeKey: "applications" },
+  { to: "/dashboard/resumes",       label: "Resumes",       icon: FileText },
+  { to: "/dashboard/interviews",    label: "Interviews",    icon: CalendarClock },
+  { to: "/dashboard/notes",         label: "Notes",         icon: StickyNote },
+  { to: "/dashboard/analytics",     label: "Analytics",     icon: LineChart },
 ];
 
 export function DashboardShell({ children }: { children: ReactNode }) {

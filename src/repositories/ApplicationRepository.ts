@@ -40,16 +40,12 @@ export class ApplicationRepository {
     // ── Keyword search across company, role, notes ──
     if (filters.q) {
       const escaped = filters.q.replace(/[%_]/g, "\\$&");
-      q = q.or(
-        `company_name.ilike.%${escaped}%,role.ilike.%${escaped}%,notes.ilike.%${escaped}%`,
-      );
+      q = q.or(`company_name.ilike.%${escaped}%,role.ilike.%${escaped}%,notes.ilike.%${escaped}%`);
     }
 
     // ── Status filter ──
     if (filters.status !== undefined) {
-      const statuses = Array.isArray(filters.status)
-        ? filters.status
-        : [filters.status];
+      const statuses = Array.isArray(filters.status) ? filters.status : [filters.status];
       q = q.in("status", statuses);
     }
 
@@ -74,13 +70,9 @@ export class ApplicationRepository {
     // ── Sort + paginate ──
     // applied_at can be NULL — push nulls last when sorting descending
     const nullsLast =
-      sort.field === "applied_at" && sort.direction === "desc"
-        ? { nullsFirst: false }
-        : {};
+      sort.field === "applied_at" && sort.direction === "desc" ? { nullsFirst: false } : {};
 
-    q = q
-      .order(sort.field, { ascending: sort.direction === "asc", ...nullsLast })
-      .range(from, to);
+    q = q.order(sort.field, { ascending: sort.direction === "asc", ...nullsLast }).range(from, to);
 
     const { data, error, count } = await q;
     if (error) throw error;
@@ -107,6 +99,19 @@ export class ApplicationRepository {
       .order("updated_at", { ascending: false });
     if (error) throw error;
     return (data ?? []) as unknown as Application[];
+  }
+
+  async findByJobId(userId: string, jobId: string): Promise<Application | null> {
+    const { data, error } = await supabase
+      .from("applications")
+      .select(APP_COLUMNS)
+      .eq("user_id", userId)
+      .eq("job_id", jobId)
+      .maybeSingle();
+
+    if (error) throw error;
+
+    return data as Application | null;
   }
 
   // ── Write ─────────────────────────────────────────────────────────────────
@@ -150,10 +155,7 @@ export class ApplicationRepository {
   }
 
   async delete(id: string): Promise<void> {
-    const { error } = await supabase
-      .from("applications")
-      .delete()
-      .eq("id", id);
+    const { error } = await supabase.from("applications").delete().eq("id", id);
     if (error) throw error;
   }
 

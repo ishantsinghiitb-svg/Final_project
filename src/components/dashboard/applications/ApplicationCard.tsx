@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { MapPin, Banknote, Calendar, Globe, MoreVertical, Trash2 } from "lucide-react";
+import { MapPin, Banknote, Calendar, MoreVertical, Trash2 } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import type { Application, ApplicationStatus } from "@/types";
 import { CompanyMark, Chip } from "@/components/dashboard/primitives";
@@ -73,7 +73,8 @@ export function ApplicationCard({
       onDragStart={draggable && onDragStart ? (e) => onDragStart(e, app.id) : undefined}
       className={cn(
         "group relative rounded-xl border border-black/5 bg-white p-3.5 shadow-[0_1px_3px_rgba(0,0,0,0.04)] transition-all",
-        draggable && "cursor-grab active:cursor-grabbing active:shadow-[0_8px_24px_-6px_rgba(0,0,0,0.15)] active:scale-[1.02]",
+        draggable &&
+          "cursor-grab active:cursor-grabbing active:shadow-[0_8px_24px_-6px_rgba(0,0,0,0.15)] active:scale-[1.02]",
         "hover:border-black/10 hover:shadow-[0_2px_8px_rgba(0,0,0,0.07)]",
       )}
     >
@@ -84,14 +85,15 @@ export function ApplicationCard({
           <p className="truncate text-[13px] font-semibold text-[oklch(0.2_0.02_265)]">
             {app.company_name}
           </p>
-          <p className="mt-0.5 line-clamp-2 text-xs text-[oklch(0.5_0.02_265)]">
-            {app.role}
-          </p>
+          <p className="mt-0.5 line-clamp-2 text-xs text-[oklch(0.5_0.02_265)]">{app.role}</p>
         </div>
         {/* ⋮ menu */}
         <div ref={menuRef} className="relative shrink-0">
           <button
-            onClick={(e) => { e.stopPropagation(); setMenuOpen((o) => !o); }}
+            onClick={(e) => {
+              e.stopPropagation();
+              setMenuOpen((o) => !o);
+            }}
             aria-label="Application options"
             className="grid h-6 w-6 place-items-center rounded-md text-[oklch(0.55_0.02_265)] opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/[0.05]"
           >
@@ -109,7 +111,10 @@ export function ApplicationCard({
                   return (
                     <button
                       key={s}
-                      onClick={() => { onStatusChange(app.id, s); setMenuOpen(false); }}
+                      onClick={() => {
+                        onStatusChange(app.id, s);
+                        setMenuOpen(false);
+                      }}
                       className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-xs hover:bg-black/[0.04]"
                     >
                       <span className={cn("h-1.5 w-1.5 rounded-full", sm.dot)} />
@@ -121,7 +126,10 @@ export function ApplicationCard({
               {/* Delete */}
               <div className="px-2 py-1.5">
                 <button
-                  onClick={() => { onDelete(app.id); setMenuOpen(false); }}
+                  onClick={() => {
+                    onDelete(app.id);
+                    setMenuOpen(false);
+                  }}
                   className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-xs text-rose-600 hover:bg-rose-50"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
@@ -165,12 +173,6 @@ export function ApplicationCard({
           <div className="flex items-center gap-1 text-[11px] text-[oklch(0.55_0.02_265)]">
             <Calendar className="h-3 w-3 shrink-0" />
             <span>Applied {format(parseISO(app.applied_at), "MMM d, yyyy")}</span>
-          </div>
-        )}
-        {app.source && (
-          <div className="flex items-center gap-1 text-[11px] text-[oklch(0.55_0.02_265)]">
-            <Globe className="h-3 w-3 shrink-0" />
-            <span className="truncate">{app.source}</span>
           </div>
         )}
       </div>

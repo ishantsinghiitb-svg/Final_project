@@ -203,7 +203,7 @@ function JobDetailPage() {
           {error instanceof Error ? error.message : "An unexpected error occurred."}
         </p>
         <button
-          onClick={() => navigate({ to: "/dashboard/jobs/" })}
+          onClick={() => navigate({ to: "/dashboard/jobs" })}
           className="mt-2 text-xs text-[#2563EB] hover:underline"
         >
           ← Back to Jobs
@@ -218,10 +218,7 @@ function JobDetailPage() {
       <div className="flex flex-col items-center gap-3 py-24 text-center">
         <AlertCircle className="h-8 w-8 text-amber-500" />
         <p className="font-display text-sm font-semibold">Job not found</p>
-        <Link
-          to="/dashboard/jobs/"
-          className="mt-2 text-xs text-[#2563EB] hover:underline"
-        >
+        <Link to="/dashboard/jobs" className="mt-2 text-xs text-[#2563EB] hover:underline">
           ← Back to Jobs
         </Link>
       </div>
@@ -236,7 +233,7 @@ function JobDetailPage() {
     <div className="space-y-6 max-w-4xl mx-auto">
       {/* Back button */}
       <button
-        onClick={() => navigate({ to: "/dashboard/jobs/" })}
+        onClick={() => navigate({ to: "/dashboard/jobs" })}
         className="inline-flex items-center gap-1.5 text-sm text-[oklch(0.5_0.02_265)] hover:text-[oklch(0.2_0.02_265)] transition-colors"
       >
         <ArrowLeft className="h-4 w-4" /> Back to Jobs
@@ -314,7 +311,7 @@ function JobDetailPage() {
                 onClick={handleApplyClick}
                 className="inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-br from-[#2563EB] to-[#7C3AED] px-4 py-2 text-sm font-medium text-white shadow-[0_4px_14px_-4px_rgba(37,99,235,0.6)] hover:-translate-y-px hover:shadow-[0_6px_20px_-4px_rgba(37,99,235,0.7)] transition-all"
               >
-                Apply Now Test <ArrowUpRight className="h-4 w-4" />
+                Apply Now <ArrowUpRight className="h-4 w-4" />
               </button>
             )}
           </div>
@@ -461,7 +458,7 @@ function JobDetailPage() {
                   onClick={handleApplyClick}
                   className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-gradient-to-br from-[#2563EB] to-[#7C3AED] py-2.5 text-sm font-medium text-white shadow-[0_4px_14px_-4px_rgba(37,99,235,0.5)] hover:-translate-y-px hover:shadow-[0_6px_20px_-4px_rgba(37,99,235,0.7)] transition-all"
                 >
-                  Apply Now Test
+                  Apply Now
                   <ArrowUpRight className="h-4 w-4" />
                 </button>
               ) : (

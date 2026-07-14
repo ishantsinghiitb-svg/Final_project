@@ -1,5 +1,9 @@
-import { useCallback, useRef, useMemo, memo } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo, memo } from "react";
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
+import {
+  TrackApplicationModal,
+  useTrackApplication,
+} from "@/components/dashboard/applications/ApplyPromptDialog";
 import {
   ListFilter as Filter,
   MapPin,
@@ -25,12 +29,7 @@ import {
   EmptyState,
 } from "@/components/dashboard/primitives";
 import { DashButton } from "@/components/dashboard/DashButton";
-import {
-  useJobs,
-  useSavedJobIds,
-  useSaveJob,
-  useUnsaveJob,
-} from "@/features/jobs/hooks";
+import { useJobs, useSavedJobIds, useSaveJob, useUnsaveJob } from "@/features/jobs/hooks";
 import type { JobFilters, JobSort, JobSortOption, JobsSearchParams } from "@/features/jobs/types";
 import type { PaginationParams, GlobalJob } from "@/types";
 import {
@@ -50,38 +49,25 @@ import { formatSalary, formatPostedAt, logoToneForCompany } from "@/features/job
 // ── Route definition with URL search param validation ────────────────────────
 export const Route = createFileRoute("/dashboard/jobs/")({
   head: () => ({
-    meta: [
-      { title: "Jobs — NextOffer" },
-      { name: "robots", content: "noindex" },
-    ],
+    meta: [{ title: "Jobs — NextOffer" }, { name: "robots", content: "noindex" }],
   }),
   validateSearch: (search: Record<string, unknown>): JobsSearchParams => ({
     q: typeof search.q === "string" ? search.q : undefined,
     company: typeof search.company === "string" ? search.company : undefined,
     location: typeof search.location === "string" ? search.location : undefined,
     remote: search.remote === true || search.remote === "true" ? true : undefined,
-    workMode:
-      typeof search.workMode === "string" ? search.workMode : undefined,
-    employmentType:
-      typeof search.employmentType === "string" ? search.employmentType : undefined,
+    workMode: typeof search.workMode === "string" ? search.workMode : undefined,
+    employmentType: typeof search.employmentType === "string" ? search.employmentType : undefined,
     experienceLevel:
       typeof search.experienceLevel === "string" ? search.experienceLevel : undefined,
     source: typeof search.source === "string" ? search.source : undefined,
-    salaryMin:
-      typeof search.salaryMin === "number" ? search.salaryMin : undefined,
-    salaryMax:
-      typeof search.salaryMax === "number" ? search.salaryMax : undefined,
+    salaryMin: typeof search.salaryMin === "number" ? search.salaryMin : undefined,
+    salaryMax: typeof search.salaryMax === "number" ? search.salaryMax : undefined,
     // postedAfter stored as relative-day string ("1", "7", "30") for stability
-    postedAfter:
-      typeof search.postedAfter === "string" ? search.postedAfter : undefined,
-    sort:
-      typeof search.sort === "string" ? (search.sort as JobSortOption) : undefined,
-    page:
-      typeof search.page === "number" && search.page > 0
-        ? Math.floor(search.page)
-        : undefined,
-    pageSize:
-      typeof search.pageSize === "number" ? Math.floor(search.pageSize) : undefined,
+    postedAfter: typeof search.postedAfter === "string" ? search.postedAfter : undefined,
+    sort: typeof search.sort === "string" ? (search.sort as JobSortOption) : undefined,
+    page: typeof search.page === "number" && search.page > 0 ? Math.floor(search.page) : undefined,
+    pageSize: typeof search.pageSize === "number" ? Math.floor(search.pageSize) : undefined,
   }),
   component: JobsPage,
 });
@@ -92,9 +78,10 @@ interface JobCardProps {
   isSaved: boolean;
   onSave: () => void;
   onUnsave: () => void;
+  onApply: (job: GlobalJob) => void;
 }
 
-const JobCard = memo(function JobCard({ job, isSaved, onSave, onUnsave }: JobCardProps) {
+const JobCard = memo(function JobCard({ job, isSaved, onSave, onUnsave, onApply }: JobCardProps) {
   const salary = formatSalary(job);
   const posted = formatPostedAt(job.posted_at);
   const tone = logoToneForCompany(job.company_name);
@@ -116,7 +103,11 @@ const JobCard = memo(function JobCard({ job, isSaved, onSave, onUnsave }: JobCar
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 flex-wrap">
             <p className="truncate font-display text-sm font-semibold">{job.role}</p>
-            {job.remote && <Chip tone="green" className="shrink-0">Remote</Chip>}
+            {job.remote && (
+              <Chip tone="green" className="shrink-0">
+                Remote
+              </Chip>
+            )}
             {job.work_mode && !job.remote && (
               <Chip
                 tone={
@@ -132,7 +123,9 @@ const JobCard = memo(function JobCard({ job, isSaved, onSave, onUnsave }: JobCar
               </Chip>
             )}
             {job.experience_level && (
-              <Chip tone="default" className="shrink-0">{job.experience_level}</Chip>
+              <Chip tone="default" className="shrink-0">
+                {job.experience_level}
+              </Chip>
             )}
           </div>
 
@@ -179,7 +172,10 @@ const JobCard = memo(function JobCard({ job, isSaved, onSave, onUnsave }: JobCar
           they are siblings, not ancestors, of the <Link> element. */}
       <div className="flex items-center gap-1.5 shrink-0">
         <button
-          onClick={() => { if (isSaved) onUnsave(); else onSave(); }}
+          onClick={() => {
+            if (isSaved) onUnsave();
+            else onSave();
+          }}
           aria-label={isSaved ? "Unsave job" : "Save job"}
           className="grid h-8 w-8 place-items-center rounded-lg border border-black/5 bg-white text-[oklch(0.4_0.02_265)] hover:bg-black/[0.03] transition-colors"
         >
@@ -191,14 +187,13 @@ const JobCard = memo(function JobCard({ job, isSaved, onSave, onUnsave }: JobCar
         </button>
 
         {job.url && (
-          <a
-            href={job.url}
-            target="_blank"
-            rel="noopener noreferrer"
+          <button
+            onClick={() => onApply(job)}
             className="hidden md:inline-flex items-center gap-1 rounded-lg border border-black/5 bg-white px-2.5 py-1.5 text-xs font-medium text-[oklch(0.25_0.02_265)] hover:bg-black/[0.03] transition-colors"
           >
-            Apply <ArrowUpRight className="h-3 w-3" />
-          </a>
+            Apply
+            <ArrowUpRight className="h-3 w-3" />
+          </button>
         )}
       </div>
     </li>
@@ -229,8 +224,11 @@ function PaginationBar({
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 border-t border-black/5 px-4 py-3">
       <p className="text-xs text-[oklch(0.5_0.02_265)]">
-        Showing <span className="font-medium">{from}–{to}</span> of{" "}
-        <span className="font-medium">{total}</span> jobs
+        Showing{" "}
+        <span className="font-medium">
+          {from}–{to}
+        </span>{" "}
+        of <span className="font-medium">{total}</span> jobs
       </p>
 
       <div className="flex items-center gap-2">
@@ -242,7 +240,9 @@ function PaginationBar({
             className="bg-transparent outline-none text-xs font-medium"
           >
             {JOB_PAGE_SIZE_OPTIONS.map((n) => (
-              <option key={n} value={n}>{n} / page</option>
+              <option key={n} value={n}>
+                {n} / page
+              </option>
             ))}
           </select>
         </label>
@@ -291,26 +291,22 @@ function JobsPage() {
   // postedAfterToIso converts the relative-day URL param ("7") to an ISO date
   const filters: JobFilters = useMemo(
     () => ({
-      q:               q || undefined,
-      company:         search.company || undefined,
-      location:        search.location || undefined,
-      remote:          search.remote ? true : undefined,
-      workMode:        search.workMode
-        ? (search.workMode as JobFilters["workMode"])
-        : undefined,
-      employmentType:  search.employmentType
+      q: q || undefined,
+      company: search.company || undefined,
+      location: search.location || undefined,
+      remote: search.remote ? true : undefined,
+      workMode: search.workMode ? (search.workMode as JobFilters["workMode"]) : undefined,
+      employmentType: search.employmentType
         ? (search.employmentType as JobFilters["employmentType"])
         : undefined,
       experienceLevel: search.experienceLevel
         ? (search.experienceLevel as JobFilters["experienceLevel"])
         : undefined,
-      source:          search.source
-        ? (search.source as JobFilters["source"])
-        : undefined,
-      salaryMin:       search.salaryMin,
-      salaryMax:       search.salaryMax,
+      source: search.source ? (search.source as JobFilters["source"]) : undefined,
+      salaryMin: search.salaryMin,
+      salaryMax: search.salaryMax,
       // Convert "7" → ISO cutoff date; undefined if "" or absent
-      postedAfter:     postedAfterToIso(search.postedAfter),
+      postedAfter: postedAfterToIso(search.postedAfter),
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [search],
@@ -325,12 +321,30 @@ function JobsPage() {
     isFetching,
   } = useJobs(filters, sort, pagination);
   const { data: savedIds = [] } = useSavedJobIds();
-  const saveJob   = useSaveJob();
+  const saveJob = useSaveJob();
   const unsaveJob = useUnsaveJob();
+  const [selectedJob, setSelectedJob] = useState<GlobalJob | null>(null);
 
-  const jobs       = result?.data       ?? [];
+  const {
+    isOpen: trackModalOpen,
+    handleApplyClick,
+    handleTrackAndContinue,
+    handleContinueWithoutTracking,
+    handleCancel,
+    isPending,
+  } = useTrackApplication(selectedJob, () => {
+    setSelectedJob(null);
+  });
+
+  useEffect(() => {
+    if (selectedJob) {
+      handleApplyClick();
+    }
+  }, [selectedJob, handleApplyClick]);
+
+  const jobs = result?.data ?? [];
   const totalPages = result?.totalPages ?? 1;
-  const total      = result?.total      ?? 0;
+  const total = result?.total ?? 0;
 
   // ── Debounced keyword search ──────────────────────────────────────────────
   const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -386,15 +400,28 @@ function JobsPage() {
 
   // Active filter detection
   const isFiltered = Boolean(
-    search.q || search.company || search.location || search.remote ||
-    search.workMode || search.employmentType || search.experienceLevel ||
-    search.source || search.salaryMin || search.salaryMax || search.postedAfter,
+    search.q ||
+    search.company ||
+    search.location ||
+    search.remote ||
+    search.workMode ||
+    search.employmentType ||
+    search.experienceLevel ||
+    search.source ||
+    search.salaryMin ||
+    search.salaryMax ||
+    search.postedAfter,
   );
 
   const activeFilterCount = [
-    search.remote, search.workMode, search.employmentType,
-    search.experienceLevel, search.source, search.postedAfter,
-    search.company, search.location,
+    search.remote,
+    search.workMode,
+    search.employmentType,
+    search.experienceLevel,
+    search.source,
+    search.postedAfter,
+    search.company,
+    search.location,
   ].filter(Boolean).length;
 
   // ── Render ────────────────────────────────────────────────────────────────
@@ -432,7 +459,9 @@ function JobsPage() {
             className="rounded-lg border border-black/5 bg-white px-3 py-2 text-sm"
           >
             {(Object.keys(SORT_OPTIONS) as JobSortOption[]).map((key) => (
-              <option key={key} value={key}>{SORT_OPTIONS[key].label}</option>
+              <option key={key} value={key}>
+                {SORT_OPTIONS[key].label}
+              </option>
             ))}
           </select>
 
@@ -444,7 +473,9 @@ function JobsPage() {
           >
             <option value="">All modes</option>
             {WORK_MODE_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>{o.label}</option>
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
             ))}
           </select>
 
@@ -456,7 +487,9 @@ function JobsPage() {
           >
             <option value="">All types</option>
             {EMPLOYMENT_TYPE_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>{o.label}</option>
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
             ))}
           </select>
 
@@ -468,7 +501,9 @@ function JobsPage() {
           >
             <option value="">All levels</option>
             {EXPERIENCE_LEVEL_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>{o.label}</option>
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
             ))}
           </select>
 
@@ -480,7 +515,9 @@ function JobsPage() {
           >
             <option value="">All sources</option>
             {SOURCE_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>{o.label}</option>
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
             ))}
           </select>
 
@@ -491,7 +528,9 @@ function JobsPage() {
             className="rounded-lg border border-black/5 bg-white px-3 py-2 text-sm"
           >
             {POSTED_AFTER_OPTIONS.map((o) => (
-              <option key={o.label} value={o.value}>{o.label}</option>
+              <option key={o.label} value={o.value}>
+                {o.label}
+              </option>
             ))}
           </select>
 
@@ -565,6 +604,9 @@ function JobsPage() {
                   isSaved={savedIds.includes(job.id)}
                   onSave={() => saveJob.mutate({ jobId: job.id })}
                   onUnsave={() => unsaveJob.mutate({ jobId: job.id })}
+                  onApply={(job) => {
+                    setSelectedJob(job);
+                  }}
                 />
               ))}
             </ul>
@@ -579,6 +621,17 @@ function JobsPage() {
           </>
         )}
       </DashCard>
+
+      {selectedJob && (
+        <TrackApplicationModal
+          job={selectedJob}
+          open={trackModalOpen}
+          isPending={isPending}
+          onTrackAndContinue={handleTrackAndContinue}
+          onContinueWithoutTracking={handleContinueWithoutTracking}
+          onCancel={handleCancel}
+        />
+      )}
     </>
   );
 }

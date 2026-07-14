@@ -83,9 +83,7 @@ export function TrackApplicationModal({
               <p className="truncate font-display text-sm font-semibold text-[oklch(0.2_0.02_265)]">
                 {job.role}
               </p>
-              <p className="truncate text-xs text-[oklch(0.5_0.02_265)]">
-                {job.company_name}
-              </p>
+              <p className="truncate text-xs text-[oklch(0.5_0.02_265)]">{job.company_name}</p>
             </div>
           </div>
 
@@ -95,11 +93,21 @@ export function TrackApplicationModal({
               id="track-modal-title"
               className="font-display text-base font-semibold text-[oklch(0.2_0.02_265)]"
             >
-              Track this application?
+              Track this application in NextOffer?
             </h2>
-            <p className="mt-1.5 text-sm leading-relaxed text-[oklch(0.5_0.02_265)]">
-              You're about to open the company's application page. Would you
-              like NextOffer to track this application?
+            <p className="mt-2 text-sm text-muted-foreground">
+              We'll automatically add this job to your application tracker so you can:
+            </p>
+
+            <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
+              <li>• Track interview progress</li>
+              <li>• Keep notes and resumes together</li>
+              <li>• Never lose this application</li>
+              <li>• View it on your Kanban board</li>
+            </ul>
+
+            <p className="mt-4 text-sm font-medium">
+              You'll still apply on the company's official website.
             </p>
           </div>
 
@@ -136,16 +144,6 @@ export function TrackApplicationModal({
               <ArrowUpRight className="h-4 w-4" />
               Continue Without Tracking
             </button>
-
-            {/* Tertiary: Cancel */}
-            <button
-              id="track-modal-cancel"
-              onClick={onCancel}
-              disabled={isPending}
-              className="inline-flex w-full items-center justify-center rounded-xl py-2.5 text-sm text-[oklch(0.55_0.02_265)] transition-colors hover:text-[oklch(0.3_0.02_265)] disabled:opacity-50"
-            >
-              Cancel
-            </button>
           </div>
         </div>
       </div>
@@ -157,23 +155,23 @@ export function TrackApplicationModal({
 // Self-contained hook. Manages modal state + application creation + URL opening.
 // No browser events. Fully deterministic.
 
-export function useTrackApplication(job: GlobalJob | null | undefined) {
+export function useTrackApplication(job: GlobalJob | null | undefined, onClose: () => void) {
   const [isOpen, setIsOpen] = useState(false);
   const createApplication = useCreateApplication();
 
   /** Called by both "Apply Now" buttons in the job detail page. */
- const handleApplyClick = () => {
-   console.log("Apply clicked");
-   console.log("Job:", job);
+  const handleApplyClick = () => {
+    console.log("Apply clicked");
+    console.log("Job:", job);
 
-   if (!job?.url) {
-     console.log("No URL found");
-     return;
-   }
+    if (!job?.url) {
+      console.log("No URL found");
+      return;
+    }
 
-   console.log("Opening modal");
-   setIsOpen(true);
- };
+    console.log("Opening modal");
+    setIsOpen(true);
+  };
 
   /** Create application first, then open URL. */
   const handleTrackAndContinue = () => {
@@ -182,17 +180,18 @@ export function useTrackApplication(job: GlobalJob | null | undefined) {
       { job },
       {
         onSuccess: () => {
-          toast.success(
-            `Application tracked for ${job.role} at ${job.company_name}!`,
-          );
-          window.open(job.url!, "_blank", "noopener,noreferrer");
+          toast.success(`Application tracked for ${job.role} at ${job.company_name}!`);
+
           setIsOpen(false);
+          onClose();
+
+          setTimeout(() => {
+            window.open(job.url!, "_blank", "noopener,noreferrer");
+          }, 100);
         },
         onError: (err) => {
           toast.error(
-            err instanceof Error
-              ? err.message
-              : "Failed to create application. Please try again.",
+            err instanceof Error ? err.message : "Failed to create application. Please try again.",
           );
         },
       },
@@ -201,13 +200,20 @@ export function useTrackApplication(job: GlobalJob | null | undefined) {
 
   /** Open URL without creating an application. */
   const handleContinueWithoutTracking = () => {
-    if (job?.url) window.open(job.url, "_blank", "noopener,noreferrer");
     setIsOpen(false);
+    onClose();
+
+    if (job?.url) {
+      setTimeout(() => {
+        window.open(job.url, "_blank", "noopener,noreferrer");
+      }, 100);
+    }
   };
 
   /** Close the modal without any side-effects. */
   const handleCancel = () => {
     setIsOpen(false);
+    onClose();
   };
 
   return {

@@ -32,10 +32,18 @@ function OverviewPage() {
       <PageHeader
         eyebrow="Overview"
         title={`Good afternoon, ${firstName}.`}
-        subtitle={onboardingComplete ? "You're all set up. Here's what needs your attention today." : "A few setup steps left, then your workspace is fully tuned. Here's what to do next."}
+        subtitle={
+          onboardingComplete
+            ? "You're all set up. Here's what needs your attention today."
+            : "A few setup steps left, then your workspace is fully tuned. Here's what to do next."
+        }
         actions={
           <>
-            <DashButtonLink to="/dashboard/interviews" variant="outline" className="hidden sm:inline-flex">
+            <DashButtonLink
+              to="/dashboard/interviews"
+              variant="outline"
+              className="hidden sm:inline-flex"
+            >
               <CalendarClock className="h-4 w-4" /> This week
             </DashButtonLink>
             <DashButtonLink to="/dashboard/jobs/">
@@ -72,7 +80,9 @@ function OverviewPage() {
                     })
                   }
                   className={`flex items-start gap-3 rounded-xl border p-3 text-left transition-colors ${
-                    done ? "border-[#22C55E]/20 bg-[#22C55E]/[0.04]" : "border-black/5 bg-white hover:bg-black/[0.02]"
+                    done
+                      ? "border-[#22C55E]/20 bg-[#22C55E]/[0.04]"
+                      : "border-black/5 bg-white hover:bg-black/[0.02]"
                   }`}
                 >
                   {done ? (
@@ -81,7 +91,9 @@ function OverviewPage() {
                     <Circle className="mt-0.5 h-5 w-5 shrink-0 text-[oklch(0.7_0.02_265)]" />
                   )}
                   <div className="min-w-0 flex-1">
-                    <p className={`text-sm font-medium ${done ? "text-[oklch(0.5_0.02_265)] line-through" : ""}`}>
+                    <p
+                      className={`text-sm font-medium ${done ? "text-[oklch(0.5_0.02_265)] line-through" : ""}`}
+                    >
                       {step.label}
                     </p>
                     <p className="text-xs text-[oklch(0.5_0.02_265)]">{step.detail}</p>
@@ -105,10 +117,34 @@ function OverviewPage() {
       {/* Stats — each answers one question */}
       <div className="grid gap-4 md:grid-cols-4">
         {[
-          { l: "Active applications", v: stats.activeApps, q: "How many am I waiting on?", icon: Target, tone: "text-[#2563EB]" },
-          { l: "Interviews this week", v: stats.interviews, q: "What's coming up?", icon: CalendarClock, tone: "text-[#7C3AED]" },
-          { l: "Avg. match score", v: stats.matchAvg + "%", q: "Am I aiming at the right roles?", icon: Sparkles, tone: "text-[#2563EB]" },
-          { l: "Offers", v: stats.offers, q: "How close am I to landing?", icon: TrendingUp, tone: "text-[#16A34A]" },
+          {
+            l: "Active applications",
+            v: stats.activeApps,
+            q: "How many am I waiting on?",
+            icon: Target,
+            tone: "text-[#2563EB]",
+          },
+          {
+            l: "Interviews this week",
+            v: stats.interviews,
+            q: "What's coming up?",
+            icon: CalendarClock,
+            tone: "text-[#7C3AED]",
+          },
+          {
+            l: "Avg. match score",
+            v: stats.matchAvg + "%",
+            q: "Am I aiming at the right roles?",
+            icon: Sparkles,
+            tone: "text-[#2563EB]",
+          },
+          {
+            l: "Offers",
+            v: stats.offers,
+            q: "How close am I to landing?",
+            icon: TrendingUp,
+            tone: "text-[#16A34A]",
+          },
         ].map((s) => (
           <DashCard key={s.l}>
             <div className="flex items-start justify-between">
@@ -128,7 +164,10 @@ function OverviewPage() {
         <DashCard>
           <SectionTitle
             action={
-              <Link to="/dashboard/interviews" className="text-xs font-medium text-[#2563EB] hover:underline">
+              <Link
+                to="/dashboard/interviews"
+                className="text-xs font-medium text-[#2563EB] hover:underline"
+              >
                 See all →
               </Link>
             }
@@ -137,7 +176,11 @@ function OverviewPage() {
           </SectionTitle>
           {nextInterview && (
             <div className="mt-4 flex items-center gap-4 rounded-xl border border-[#7C3AED]/15 bg-gradient-to-br from-[#7C3AED]/[0.06] to-[#2563EB]/[0.04] p-4">
-              <CompanyMark company={nextInterview.company} tone="from-[#7C3AED] to-[#2563EB]" size={44} />
+              <CompanyMark
+                company={nextInterview.company}
+                tone="from-[#7C3AED] to-[#2563EB]"
+                size={44}
+              />
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
                   <p className="font-display font-semibold">{nextInterview.company}</p>
@@ -148,7 +191,11 @@ function OverviewPage() {
                   {nextInterview.when} · {nextInterview.time} · with {nextInterview.interviewer}
                 </p>
               </div>
-              <DashButtonLink to="/dashboard/interviews" variant="outline" className="hidden md:inline-flex">
+              <DashButtonLink
+                to="/dashboard/interviews"
+                variant="outline"
+                className="hidden md:inline-flex"
+              >
                 Prep with AI <Sparkles className="h-3.5 w-3.5 text-[#7C3AED]" />
               </DashButtonLink>
             </div>
@@ -158,18 +205,29 @@ function OverviewPage() {
             <SectionTitle>Weekly focus</SectionTitle>
             <div className="mt-3 grid gap-3 md:grid-cols-3">
               {[
-                { icon: CheckCircle2, label: "Apply to 8 roles", done: `${stats.weeklyDone}/${stats.weeklyGoal}`, pct: (stats.weeklyDone / stats.weeklyGoal) * 100 },
+                {
+                  icon: CheckCircle2,
+                  label: "Apply to 8 roles",
+                  done: `${stats.weeklyDone}/${stats.weeklyGoal}`,
+                  pct: (stats.weeklyDone / stats.weeklyGoal) * 100,
+                },
                 { icon: Flame, label: "Follow up on stale apps", done: "2 waiting", pct: 40 },
                 { icon: Sparkles, label: "Tailor 3 resumes", done: "2/3", pct: 66 },
               ].map((g) => (
-                <div key={g.label} className="rounded-xl border border-black/5 bg-[oklch(0.98_0.005_265)] p-3">
+                <div
+                  key={g.label}
+                  className="rounded-xl border border-black/5 bg-[oklch(0.98_0.005_265)] p-3"
+                >
                   <div className="flex items-center gap-2 text-sm">
                     <g.icon className="h-4 w-4 text-[#2563EB]" />
                     <span className="font-medium">{g.label}</span>
                   </div>
                   <p className="mt-2 text-xs text-[oklch(0.5_0.02_265)]">{g.done}</p>
                   <div className="mt-2 h-1.5 rounded-full bg-black/5">
-                    <div className="h-full rounded-full bg-gradient-to-r from-[#2563EB] to-[#7C3AED]" style={{ width: `${g.pct}%` }} />
+                    <div
+                      className="h-full rounded-full bg-gradient-to-r from-[#2563EB] to-[#7C3AED]"
+                      style={{ width: `${g.pct}%` }}
+                    />
                   </div>
                 </div>
               ))}
@@ -182,7 +240,10 @@ function OverviewPage() {
       <DashCard>
         <SectionTitle
           action={
-            <Link to="/dashboard/applications/" className="text-xs font-medium text-[#2563EB] hover:underline">
+            <Link
+              to="/dashboard/applications"
+              className="text-xs font-medium text-[#2563EB] hover:underline"
+            >
               Open pipeline →
             </Link>
           }
@@ -194,7 +255,10 @@ function OverviewPage() {
             const list = jobs.filter((j) => j.stage === stage).slice(0, 2);
             const meta = stageMeta[stage];
             return (
-              <div key={stage} className="rounded-xl border border-black/5 bg-[oklch(0.98_0.005_265)] p-3">
+              <div
+                key={stage}
+                className="rounded-xl border border-black/5 bg-[oklch(0.98_0.005_265)] p-3"
+              >
                 <div className="flex items-center justify-between text-xs">
                   <span className="inline-flex items-center gap-1.5 font-semibold">
                     <span className={`h-1.5 w-1.5 rounded-full ${meta.dot}`} />
@@ -211,7 +275,9 @@ function OverviewPage() {
                         <CompanyMark company={it.company} tone={it.logoTone} size={22} />
                         <p className="truncate text-xs font-semibold">{it.company}</p>
                       </div>
-                      <p className="mt-1 truncate text-[11px] text-[oklch(0.5_0.02_265)]">{it.role}</p>
+                      <p className="mt-1 truncate text-[11px] text-[oklch(0.5_0.02_265)]">
+                        {it.role}
+                      </p>
                     </div>
                   ))}
                 </div>
@@ -225,7 +291,10 @@ function OverviewPage() {
       <DashCard>
         <SectionTitle
           action={
-            <Link to="/dashboard/jobs/" className="text-xs font-medium text-[#2563EB] hover:underline">
+            <Link
+              to="/dashboard/jobs"
+              className="text-xs font-medium text-[#2563EB] hover:underline"
+            >
               Browse jobs →
             </Link>
           }
@@ -237,7 +306,10 @@ function OverviewPage() {
         </p>
         <div className="mt-4 grid gap-3 md:grid-cols-3">
           {suggested.map((j) => (
-            <div key={j.id} className="group rounded-xl border border-black/5 bg-white p-4 transition-shadow hover:shadow-md">
+            <div
+              key={j.id}
+              className="group rounded-xl border border-black/5 bg-white p-4 transition-shadow hover:shadow-md"
+            >
               <div className="flex items-start justify-between">
                 <CompanyMark company={j.company} tone={j.logoTone} size={36} />
                 <Chip tone={j.match >= 88 ? "green" : "blue"}>{j.match}% match</Chip>
@@ -248,7 +320,10 @@ function OverviewPage() {
               </p>
               <div className="mt-3 flex items-center justify-between text-xs">
                 <span className="text-[oklch(0.5_0.02_265)]">{j.salary}</span>
-                <Link to="/dashboard/jobs/" className="inline-flex items-center gap-1 font-medium text-[#2563EB]">
+                <Link
+                  to="/dashboard/jobs"
+                  className="inline-flex items-center gap-1 font-medium text-[#2563EB]"
+                >
                   Save <ArrowUpRight className="h-3 w-3" />
                 </Link>
               </div>
@@ -282,9 +357,9 @@ function OverviewPage() {
         <DashCard className="bg-gradient-to-br from-[#2563EB]/[0.06] to-[#7C3AED]/[0.08]">
           <SectionTitle>Your AI coach says</SectionTitle>
           <p className="mt-3 text-sm leading-relaxed">
-            Your average match score is holding at 87%. Two applications have gone
-            quiet for over a week — a short follow-up usually gets them moving
-            again. Linear's interview is today; you're ready.
+            Your average match score is holding at 87%. Two applications have gone quiet for over a
+            week — a short follow-up usually gets them moving again. Linear's interview is today;
+            you're ready.
           </p>
           <div className="mt-4">
             <DashButtonLink to="/dashboard/analytics" variant="outline" size="sm">

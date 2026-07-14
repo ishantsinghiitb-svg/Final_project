@@ -76,8 +76,14 @@ export class ApplicationService {
   async updateStatus(id: string, status: ApplicationStatus): Promise<Application> {
     // Validate status is a known value
     const VALID: ApplicationStatus[] = [
-      "wishlist", "applied", "online_assessment",
-      "interview", "offer", "rejected", "withdrawn", "accepted",
+      "wishlist",
+      "applied",
+      "online_assessment",
+      "interview",
+      "offer",
+      "rejected",
+      "withdrawn",
+      "accepted",
     ];
     if (!VALID.includes(status)) {
       throw new Error(`Invalid application status: ${status}`);
