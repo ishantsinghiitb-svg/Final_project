@@ -44,10 +44,9 @@ import {
 } from "@/features/jobs/utils";
 import type { GlobalJob } from "@/types";
 import {
-  ApplyPromptDialog,
-  useApplyPrompt,
+  TrackApplicationModal,
+  useTrackApplication,
 } from "@/components/dashboard/applications/ApplyPromptDialog";
-import { useCreateApplication } from "@/features/applications/hooks";
 
 // ── Route definition ──────────────────────────────────────────────────────────
 export const Route = createFileRoute("/dashboard/jobs/$jobId")({
@@ -174,27 +173,15 @@ function JobDetailPage() {
     else saveJob.mutate({ jobId: job.id });
   }, [job, isSaved, saveJob, unsaveJob]);
 
-  // ── Apply prompt flow ─────────────────────────────────────────────────────
-  const { showPrompt, handleApplyClick, dismissPrompt } = useApplyPrompt(job);
-  const createApplication = useCreateApplication();
-
-  const handleConfirmApply = useCallback(() => {
-    if (!job) return;
-    createApplication.mutate(
-      { job },
-      {
-        onSuccess: () => {
-          dismissPrompt();
-          toast.success(`Application tracked for ${job.role} at ${job.company_name}!`);
-        },
-        onError: (err) => {
-          toast.error(
-            err instanceof Error ? err.message : "Failed to create application.",
-          );
-        },
-      },
-    );
-  }, [job, createApplication, dismissPrompt]);
+  // ── Track application flow (deterministic modal) ──────────────────────────
+  const {
+    isOpen: trackModalOpen,
+    handleApplyClick,
+    handleTrackAndContinue,
+    handleContinueWithoutTracking,
+    handleCancel: handleTrackCancel,
+    isPending: trackIsPending,
+  } = useTrackApplication(job);
 
   // ── Loading ───────────────────────────────────────────────────────────────
   if (isLoading) {
@@ -255,14 +242,15 @@ function JobDetailPage() {
         <ArrowLeft className="h-4 w-4" /> Back to Jobs
       </button>
 
-      {/* Apply prompt dialog */}
+      {/* Track application modal */}
       {job && (
-        <ApplyPromptDialog
+        <TrackApplicationModal
           job={job}
-          open={showPrompt}
-          onConfirm={handleConfirmApply}
-          onDismiss={dismissPrompt}
-          isPending={createApplication.isPending}
+          open={trackModalOpen}
+          isPending={trackIsPending}
+          onTrackAndContinue={handleTrackAndContinue}
+          onContinueWithoutTracking={handleContinueWithoutTracking}
+          onCancel={handleTrackCancel}
         />
       )}
       {/* ── Header card ────────────────────────────────────────────────── */}
