@@ -30,6 +30,8 @@ import { Route as DashboardJobsRouteImport } from './routes/dashboard.jobs'
 import { Route as DashboardInterviewsRouteImport } from './routes/dashboard.interviews'
 import { Route as DashboardApplicationsRouteImport } from './routes/dashboard.applications'
 import { Route as DashboardAnalyticsRouteImport } from './routes/dashboard.analytics'
+import { Route as DashboardJobsIndexRouteImport } from './routes/dashboard.jobs.index'
+import { Route as DashboardApplicationsIndexRouteImport } from './routes/dashboard.applications.index'
 import { Route as DashboardJobsJobIdRouteImport } from './routes/dashboard.jobs.$jobId'
 import { Route as DashboardApplicationsApplicationIdRouteImport } from './routes/dashboard.applications.$applicationId'
 
@@ -138,6 +140,17 @@ const DashboardAnalyticsRoute = DashboardAnalyticsRouteImport.update({
   path: '/analytics',
   getParentRoute: () => DashboardRoute,
 } as any)
+const DashboardJobsIndexRoute = DashboardJobsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => DashboardJobsRoute,
+} as any)
+const DashboardApplicationsIndexRoute =
+  DashboardApplicationsIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => DashboardApplicationsRoute,
+  } as any)
 const DashboardJobsJobIdRoute = DashboardJobsJobIdRouteImport.update({
   id: '/$jobId',
   path: '/$jobId',
@@ -174,6 +187,8 @@ export interface FileRoutesByFullPath {
   '/dashboard/': typeof DashboardIndexRoute
   '/dashboard/applications/$applicationId': typeof DashboardApplicationsApplicationIdRoute
   '/dashboard/jobs/$jobId': typeof DashboardJobsJobIdRoute
+  '/dashboard/applications/': typeof DashboardApplicationsIndexRoute
+  '/dashboard/jobs/': typeof DashboardJobsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -188,9 +203,7 @@ export interface FileRoutesByTo {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/supabase-status': typeof SupabaseStatusRoute
   '/dashboard/analytics': typeof DashboardAnalyticsRoute
-  '/dashboard/applications': typeof DashboardApplicationsRouteWithChildren
   '/dashboard/interviews': typeof DashboardInterviewsRoute
-  '/dashboard/jobs': typeof DashboardJobsRouteWithChildren
   '/dashboard/notes': typeof DashboardNotesRoute
   '/dashboard/resumes': typeof DashboardResumesRoute
   '/dashboard/saved': typeof DashboardSavedRoute
@@ -198,6 +211,8 @@ export interface FileRoutesByTo {
   '/dashboard': typeof DashboardIndexRoute
   '/dashboard/applications/$applicationId': typeof DashboardApplicationsApplicationIdRoute
   '/dashboard/jobs/$jobId': typeof DashboardJobsJobIdRoute
+  '/dashboard/applications': typeof DashboardApplicationsIndexRoute
+  '/dashboard/jobs': typeof DashboardJobsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -224,6 +239,8 @@ export interface FileRoutesById {
   '/dashboard/': typeof DashboardIndexRoute
   '/dashboard/applications/$applicationId': typeof DashboardApplicationsApplicationIdRoute
   '/dashboard/jobs/$jobId': typeof DashboardJobsJobIdRoute
+  '/dashboard/applications/': typeof DashboardApplicationsIndexRoute
+  '/dashboard/jobs/': typeof DashboardJobsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -251,6 +268,8 @@ export interface FileRouteTypes {
     | '/dashboard/'
     | '/dashboard/applications/$applicationId'
     | '/dashboard/jobs/$jobId'
+    | '/dashboard/applications/'
+    | '/dashboard/jobs/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -265,9 +284,7 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/supabase-status'
     | '/dashboard/analytics'
-    | '/dashboard/applications'
     | '/dashboard/interviews'
-    | '/dashboard/jobs'
     | '/dashboard/notes'
     | '/dashboard/resumes'
     | '/dashboard/saved'
@@ -275,6 +292,8 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/dashboard/applications/$applicationId'
     | '/dashboard/jobs/$jobId'
+    | '/dashboard/applications'
+    | '/dashboard/jobs'
   id:
     | '__root__'
     | '/'
@@ -300,6 +319,8 @@ export interface FileRouteTypes {
     | '/dashboard/'
     | '/dashboard/applications/$applicationId'
     | '/dashboard/jobs/$jobId'
+    | '/dashboard/applications/'
+    | '/dashboard/jobs/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -466,6 +487,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardAnalyticsRouteImport
       parentRoute: typeof DashboardRoute
     }
+    '/dashboard/jobs/': {
+      id: '/dashboard/jobs/'
+      path: '/'
+      fullPath: '/dashboard/jobs/'
+      preLoaderRoute: typeof DashboardJobsIndexRouteImport
+      parentRoute: typeof DashboardJobsRoute
+    }
+    '/dashboard/applications/': {
+      id: '/dashboard/applications/'
+      path: '/'
+      fullPath: '/dashboard/applications/'
+      preLoaderRoute: typeof DashboardApplicationsIndexRouteImport
+      parentRoute: typeof DashboardApplicationsRoute
+    }
     '/dashboard/jobs/$jobId': {
       id: '/dashboard/jobs/$jobId'
       path: '/$jobId'
@@ -485,11 +520,13 @@ declare module '@tanstack/react-router' {
 
 interface DashboardApplicationsRouteChildren {
   DashboardApplicationsApplicationIdRoute: typeof DashboardApplicationsApplicationIdRoute
+  DashboardApplicationsIndexRoute: typeof DashboardApplicationsIndexRoute
 }
 
 const DashboardApplicationsRouteChildren: DashboardApplicationsRouteChildren = {
   DashboardApplicationsApplicationIdRoute:
     DashboardApplicationsApplicationIdRoute,
+  DashboardApplicationsIndexRoute: DashboardApplicationsIndexRoute,
 }
 
 const DashboardApplicationsRouteWithChildren =
@@ -499,10 +536,12 @@ const DashboardApplicationsRouteWithChildren =
 
 interface DashboardJobsRouteChildren {
   DashboardJobsJobIdRoute: typeof DashboardJobsJobIdRoute
+  DashboardJobsIndexRoute: typeof DashboardJobsIndexRoute
 }
 
 const DashboardJobsRouteChildren: DashboardJobsRouteChildren = {
   DashboardJobsJobIdRoute: DashboardJobsJobIdRoute,
+  DashboardJobsIndexRoute: DashboardJobsIndexRoute,
 }
 
 const DashboardJobsRouteWithChildren = DashboardJobsRoute._addFileChildren(

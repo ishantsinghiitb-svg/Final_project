@@ -167,7 +167,7 @@ function ApplicationDetailPage() {
           {error instanceof Error ? error.message : "An unexpected error occurred."}
         </p>
         <Link
-          to="/dashboard/applications"
+          to="/dashboard/applications/"
           className="mt-2 text-xs text-[#2563EB] hover:underline"
         >
           ← Back to Applications
@@ -183,7 +183,7 @@ function ApplicationDetailPage() {
         <AlertCircle className="h-8 w-8 text-amber-500" />
         <p className="font-display text-sm font-semibold">Application not found</p>
         <Link
-          to="/dashboard/applications"
+          to="/dashboard/applications/"
           className="mt-2 text-xs text-[#2563EB] hover:underline"
         >
           ← Back to Applications
@@ -216,7 +216,7 @@ function ApplicationDetailPage() {
     <div className="mx-auto max-w-3xl space-y-6">
       {/* Back button */}
       <Link
-        to="/dashboard/applications"
+        to="/dashboard/applications/"
         className="inline-flex items-center gap-1.5 text-sm text-[oklch(0.5_0.02_265)] hover:text-[oklch(0.2_0.02_265)] transition-colors"
       >
         <ArrowLeft className="h-4 w-4" />

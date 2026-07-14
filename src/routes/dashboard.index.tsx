@@ -38,7 +38,7 @@ function OverviewPage() {
             <DashButtonLink to="/dashboard/interviews" variant="outline" className="hidden sm:inline-flex">
               <CalendarClock className="h-4 w-4" /> This week
             </DashButtonLink>
-            <DashButtonLink to="/dashboard/jobs">
+            <DashButtonLink to="/dashboard/jobs/">
               <Plus className="h-4 w-4" /> Add job
             </DashButtonLink>
           </>
@@ -182,7 +182,7 @@ function OverviewPage() {
       <DashCard>
         <SectionTitle
           action={
-            <Link to="/dashboard/applications" className="text-xs font-medium text-[#2563EB] hover:underline">
+            <Link to="/dashboard/applications/" className="text-xs font-medium text-[#2563EB] hover:underline">
               Open pipeline →
             </Link>
           }
@@ -225,7 +225,7 @@ function OverviewPage() {
       <DashCard>
         <SectionTitle
           action={
-            <Link to="/dashboard/jobs" className="text-xs font-medium text-[#2563EB] hover:underline">
+            <Link to="/dashboard/jobs/" className="text-xs font-medium text-[#2563EB] hover:underline">
               Browse jobs →
             </Link>
           }
@@ -248,7 +248,7 @@ function OverviewPage() {
               </p>
               <div className="mt-3 flex items-center justify-between text-xs">
                 <span className="text-[oklch(0.5_0.02_265)]">{j.salary}</span>
-                <Link to="/dashboard/jobs" className="inline-flex items-center gap-1 font-medium text-[#2563EB]">
+                <Link to="/dashboard/jobs/" className="inline-flex items-center gap-1 font-medium text-[#2563EB]">
                   Save <ArrowUpRight className="h-3 w-3" />
                 </Link>
               </div>

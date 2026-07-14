@@ -162,10 +162,18 @@ export function useTrackApplication(job: GlobalJob | null | undefined) {
   const createApplication = useCreateApplication();
 
   /** Called by both "Apply Now" buttons in the job detail page. */
-  const handleApplyClick = () => {
-    if (!job?.url) return;
-    setIsOpen(true);
-  };
+ const handleApplyClick = () => {
+   console.log("Apply clicked");
+   console.log("Job:", job);
+
+   if (!job?.url) {
+     console.log("No URL found");
+     return;
+   }
+
+   console.log("Opening modal");
+   setIsOpen(true);
+ };
 
   /** Create application first, then open URL. */
   const handleTrackAndContinue = () => {

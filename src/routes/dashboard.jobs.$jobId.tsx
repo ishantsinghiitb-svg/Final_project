@@ -203,7 +203,7 @@ function JobDetailPage() {
           {error instanceof Error ? error.message : "An unexpected error occurred."}
         </p>
         <button
-          onClick={() => navigate({ to: "/dashboard/jobs" })}
+          onClick={() => navigate({ to: "/dashboard/jobs/" })}
           className="mt-2 text-xs text-[#2563EB] hover:underline"
         >
           ← Back to Jobs
@@ -219,7 +219,7 @@ function JobDetailPage() {
         <AlertCircle className="h-8 w-8 text-amber-500" />
         <p className="font-display text-sm font-semibold">Job not found</p>
         <Link
-          to="/dashboard/jobs"
+          to="/dashboard/jobs/"
           className="mt-2 text-xs text-[#2563EB] hover:underline"
         >
           ← Back to Jobs
@@ -236,7 +236,7 @@ function JobDetailPage() {
     <div className="space-y-6 max-w-4xl mx-auto">
       {/* Back button */}
       <button
-        onClick={() => navigate({ to: "/dashboard/jobs" })}
+        onClick={() => navigate({ to: "/dashboard/jobs/" })}
         className="inline-flex items-center gap-1.5 text-sm text-[oklch(0.5_0.02_265)] hover:text-[oklch(0.2_0.02_265)] transition-colors"
       >
         <ArrowLeft className="h-4 w-4" /> Back to Jobs
@@ -263,24 +263,26 @@ function JobDetailPage() {
               <h1 className="font-display text-xl font-semibold tracking-tight text-[oklch(0.2_0.02_265)]">
                 {job.role}
               </h1>
-              <p className="mt-0.5 text-sm text-[oklch(0.5_0.02_265)]">
-                {job.company_name}
-              </p>
+              <p className="mt-0.5 text-sm text-[oklch(0.5_0.02_265)]">{job.company_name}</p>
 
               {/* Meta chips */}
               <div className="mt-2 flex flex-wrap items-center gap-2">
                 {job.remote && <Chip tone="green">Remote</Chip>}
                 {job.work_mode && (
-                  <Chip tone={job.work_mode === "Remote" ? "green" : job.work_mode === "Hybrid" ? "blue" : "default"}>
+                  <Chip
+                    tone={
+                      job.work_mode === "Remote"
+                        ? "green"
+                        : job.work_mode === "Hybrid"
+                          ? "blue"
+                          : "default"
+                    }
+                  >
                     {job.work_mode}
                   </Chip>
                 )}
-                {job.employment_type && (
-                  <Chip tone="default">{job.employment_type}</Chip>
-                )}
-                {job.experience_level && (
-                  <Chip tone="purple">{job.experience_level}</Chip>
-                )}
+                {job.employment_type && <Chip tone="default">{job.employment_type}</Chip>}
+                {job.experience_level && <Chip tone="purple">{job.experience_level}</Chip>}
               </div>
             </div>
           </div>
@@ -312,7 +314,7 @@ function JobDetailPage() {
                 onClick={handleApplyClick}
                 className="inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-br from-[#2563EB] to-[#7C3AED] px-4 py-2 text-sm font-medium text-white shadow-[0_4px_14px_-4px_rgba(37,99,235,0.6)] hover:-translate-y-px hover:shadow-[0_6px_20px_-4px_rgba(37,99,235,0.7)] transition-all"
               >
-                Apply Now <ArrowUpRight className="h-4 w-4" />
+                Apply Now Test <ArrowUpRight className="h-4 w-4" />
               </button>
             )}
           </div>
@@ -324,7 +326,9 @@ function JobDetailPage() {
             <div className="flex items-start gap-2.5 rounded-xl bg-[oklch(0.97_0.01_265)] p-3">
               <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-[#2563EB]" />
               <div>
-                <p className="text-[10px] font-medium uppercase tracking-wide text-[oklch(0.55_0.02_265)]">Location</p>
+                <p className="text-[10px] font-medium uppercase tracking-wide text-[oklch(0.55_0.02_265)]">
+                  Location
+                </p>
                 <p className="mt-0.5 text-sm font-medium">{job.location}</p>
               </div>
             </div>
@@ -334,7 +338,9 @@ function JobDetailPage() {
             <div className="flex items-start gap-2.5 rounded-xl bg-[oklch(0.97_0.01_265)] p-3">
               <Banknote className="mt-0.5 h-4 w-4 shrink-0 text-[#16A34A]" />
               <div>
-                <p className="text-[10px] font-medium uppercase tracking-wide text-[oklch(0.55_0.02_265)]">Salary</p>
+                <p className="text-[10px] font-medium uppercase tracking-wide text-[oklch(0.55_0.02_265)]">
+                  Salary
+                </p>
                 <p className="mt-0.5 text-sm font-medium">{salary}</p>
               </div>
             </div>
@@ -344,7 +350,9 @@ function JobDetailPage() {
             <div className="flex items-start gap-2.5 rounded-xl bg-[oklch(0.97_0.01_265)] p-3">
               <Briefcase className="mt-0.5 h-4 w-4 shrink-0 text-[#7C3AED]" />
               <div>
-                <p className="text-[10px] font-medium uppercase tracking-wide text-[oklch(0.55_0.02_265)]">Type</p>
+                <p className="text-[10px] font-medium uppercase tracking-wide text-[oklch(0.55_0.02_265)]">
+                  Type
+                </p>
                 <p className="mt-0.5 text-sm font-medium capitalize">{job.employment_type}</p>
               </div>
             </div>
@@ -354,7 +362,9 @@ function JobDetailPage() {
             <div className="flex items-start gap-2.5 rounded-xl bg-[oklch(0.97_0.01_265)] p-3">
               <Wifi className="mt-0.5 h-4 w-4 shrink-0 text-[#0EA5E9]" />
               <div>
-                <p className="text-[10px] font-medium uppercase tracking-wide text-[oklch(0.55_0.02_265)]">Work mode</p>
+                <p className="text-[10px] font-medium uppercase tracking-wide text-[oklch(0.55_0.02_265)]">
+                  Work mode
+                </p>
                 <p className="mt-0.5 text-sm font-medium capitalize">{job.work_mode}</p>
               </div>
             </div>
@@ -364,7 +374,9 @@ function JobDetailPage() {
             <div className="flex items-start gap-2.5 rounded-xl bg-[oklch(0.97_0.01_265)] p-3">
               <Building2 className="mt-0.5 h-4 w-4 shrink-0 text-[#F59E0B]" />
               <div>
-                <p className="text-[10px] font-medium uppercase tracking-wide text-[oklch(0.55_0.02_265)]">Experience</p>
+                <p className="text-[10px] font-medium uppercase tracking-wide text-[oklch(0.55_0.02_265)]">
+                  Experience
+                </p>
                 <p className="mt-0.5 text-sm font-medium capitalize">{job.experience_level}</p>
               </div>
             </div>
@@ -374,7 +386,9 @@ function JobDetailPage() {
             <div className="flex items-start gap-2.5 rounded-xl bg-[oklch(0.97_0.01_265)] p-3">
               <Clock className="mt-0.5 h-4 w-4 shrink-0 text-[oklch(0.5_0.02_265)]" />
               <div>
-                <p className="text-[10px] font-medium uppercase tracking-wide text-[oklch(0.55_0.02_265)]">Posted</p>
+                <p className="text-[10px] font-medium uppercase tracking-wide text-[oklch(0.55_0.02_265)]">
+                  Posted
+                </p>
                 <p className="mt-0.5 text-sm font-medium">{formatPostedAtFull(job.posted_at)}</p>
               </div>
             </div>
@@ -384,7 +398,9 @@ function JobDetailPage() {
             <div className="flex items-start gap-2.5 rounded-xl bg-[oklch(0.97_0.01_265)] p-3">
               <Globe className="mt-0.5 h-4 w-4 shrink-0 text-[oklch(0.5_0.02_265)]" />
               <div>
-                <p className="text-[10px] font-medium uppercase tracking-wide text-[oklch(0.55_0.02_265)]">Source</p>
+                <p className="text-[10px] font-medium uppercase tracking-wide text-[oklch(0.55_0.02_265)]">
+                  Source
+                </p>
                 <p className="mt-0.5 text-sm font-medium">{job.source}</p>
               </div>
             </div>
@@ -402,7 +418,10 @@ function JobDetailPage() {
               <div className="mt-4 prose prose-sm max-w-none text-[oklch(0.3_0.02_265)]">
                 {/* Render description as pre-formatted text with line breaks */}
                 {job.description.split("\n").map((line, i) => (
-                  <p key={i} className={line.trim() === "" ? "h-3" : "mb-2 text-sm leading-relaxed"}>
+                  <p
+                    key={i}
+                    className={line.trim() === "" ? "h-3" : "mb-2 text-sm leading-relaxed"}
+                  >
                     {line}
                   </p>
                 ))}
@@ -442,10 +461,13 @@ function JobDetailPage() {
                   onClick={handleApplyClick}
                   className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-gradient-to-br from-[#2563EB] to-[#7C3AED] py-2.5 text-sm font-medium text-white shadow-[0_4px_14px_-4px_rgba(37,99,235,0.5)] hover:-translate-y-px hover:shadow-[0_6px_20px_-4px_rgba(37,99,235,0.7)] transition-all"
                 >
-                  Apply Now <ArrowUpRight className="h-4 w-4" />
+                  Apply Now Test
+                  <ArrowUpRight className="h-4 w-4" />
                 </button>
               ) : (
-                <p className="text-xs text-[oklch(0.5_0.02_265)] italic">No direct link available.</p>
+                <p className="text-xs text-[oklch(0.5_0.02_265)] italic">
+                  No direct link available.
+                </p>
               )}
 
               <button
