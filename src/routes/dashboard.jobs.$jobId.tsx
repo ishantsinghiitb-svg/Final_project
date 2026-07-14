@@ -20,6 +20,7 @@ import {
   Building2,
 } from "lucide-react";
 import { useState } from "react";
+import { toast } from "sonner";
 import {
   DashCard,
   Chip,
@@ -42,6 +43,11 @@ import {
   logoToneForCompany,
 } from "@/features/jobs/utils";
 import type { GlobalJob } from "@/types";
+import {
+  ApplyPromptDialog,
+  useApplyPrompt,
+} from "@/components/dashboard/applications/ApplyPromptDialog";
+import { useCreateApplication } from "@/features/applications/hooks";
 
 // ── Route definition ──────────────────────────────────────────────────────────
 export const Route = createFileRoute("/dashboard/jobs/$jobId")({
@@ -168,6 +174,28 @@ function JobDetailPage() {
     else saveJob.mutate({ jobId: job.id });
   }, [job, isSaved, saveJob, unsaveJob]);
 
+  // ── Apply prompt flow ─────────────────────────────────────────────────────
+  const { showPrompt, handleApplyClick, dismissPrompt } = useApplyPrompt(job);
+  const createApplication = useCreateApplication();
+
+  const handleConfirmApply = useCallback(() => {
+    if (!job) return;
+    createApplication.mutate(
+      { job },
+      {
+        onSuccess: () => {
+          dismissPrompt();
+          toast.success(`Application tracked for ${job.role} at ${job.company_name}!`);
+        },
+        onError: (err) => {
+          toast.error(
+            err instanceof Error ? err.message : "Failed to create application.",
+          );
+        },
+      },
+    );
+  }, [job, createApplication, dismissPrompt]);
+
   // ── Loading ───────────────────────────────────────────────────────────────
   if (isLoading) {
     return (
@@ -227,6 +255,16 @@ function JobDetailPage() {
         <ArrowLeft className="h-4 w-4" /> Back to Jobs
       </button>
 
+      {/* Apply prompt dialog */}
+      {job && (
+        <ApplyPromptDialog
+          job={job}
+          open={showPrompt}
+          onConfirm={handleConfirmApply}
+          onDismiss={dismissPrompt}
+          isPending={createApplication.isPending}
+        />
+      )}
       {/* ── Header card ────────────────────────────────────────────────── */}
       <DashCard>
         <div className="flex flex-wrap items-start justify-between gap-4">
@@ -282,14 +320,12 @@ function JobDetailPage() {
             </button>
 
             {job.url && (
-              <a
-                href={job.url}
-                target="_blank"
-                rel="noopener noreferrer"
+              <button
+                onClick={handleApplyClick}
                 className="inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-br from-[#2563EB] to-[#7C3AED] px-4 py-2 text-sm font-medium text-white shadow-[0_4px_14px_-4px_rgba(37,99,235,0.6)] hover:-translate-y-px hover:shadow-[0_6px_20px_-4px_rgba(37,99,235,0.7)] transition-all"
               >
                 Apply Now <ArrowUpRight className="h-4 w-4" />
-              </a>
+              </button>
             )}
           </div>
         </div>
@@ -414,14 +450,12 @@ function JobDetailPage() {
             </p>
             <div className="mt-4 flex flex-col gap-2">
               {job.url ? (
-                <a
-                  href={job.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                <button
+                  onClick={handleApplyClick}
                   className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-gradient-to-br from-[#2563EB] to-[#7C3AED] py-2.5 text-sm font-medium text-white shadow-[0_4px_14px_-4px_rgba(37,99,235,0.5)] hover:-translate-y-px hover:shadow-[0_6px_20px_-4px_rgba(37,99,235,0.7)] transition-all"
                 >
                   Apply Now <ArrowUpRight className="h-4 w-4" />
-                </a>
+                </button>
               ) : (
                 <p className="text-xs text-[oklch(0.5_0.02_265)] italic">No direct link available.</p>
               )}
