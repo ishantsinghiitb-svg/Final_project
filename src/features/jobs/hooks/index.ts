@@ -7,12 +7,11 @@ import {
 import { useAuth } from "@/context/AuthContext";
 import { jobService } from "@/services/JobService";
 import type { JobFilters, JobSort } from "@/features/jobs/types";
-import type { PaginationParams } from "@/types";
+import type { GlobalJob, PaginationParams } from "@/types";
 import { DEFAULT_JOB_SORT, DEFAULT_PAGINATION } from "@/features/jobs/constants";
 
 // ── Query key factory ────────────────────────────────────────────────────────
 // Centralised here so any component can match or invalidate the exact same key.
-// Add new key shapes here when Sprint 2+ features introduce new query patterns.
 
 export const jobKeys = {
   all: ["jobs"] as const,
@@ -23,6 +22,9 @@ export const jobKeys = {
 
   details: () => [...jobKeys.all, "detail"] as const,
   detail: (id: string) => [...jobKeys.details(), id] as const,
+
+  skills: (jobId: string) => [...jobKeys.detail(jobId), "skills"] as const,
+  similar: (jobId: string) => [...jobKeys.detail(jobId), "similar"] as const,
 
   /** Parent key for all saved-job queries for a given user */
   saved: (userId: string) => [...jobKeys.all, "saved", userId] as const,
@@ -35,8 +37,7 @@ export const jobKeys = {
 // ── useJobs ──────────────────────────────────────────────────────────────────
 // Fetches a paginated, filtered, sorted page of global jobs.
 // - Caches for 5 minutes before going stale.
-// - keepPreviousData keeps the last result visible while the next page loads
-//   (ready for infinite scroll without any interface changes).
+// - keepPreviousData keeps the last result visible while the next page loads.
 
 export function useJobs(
   filters: JobFilters = {},
@@ -62,6 +63,32 @@ export function useJob(id: string | undefined) {
     queryFn: () => jobService.getJob(id!),
     enabled: Boolean(id),
     staleTime: 10 * 60 * 1_000, // 10 minutes
+  });
+}
+
+// ── useJobSkills ─────────────────────────────────────────────────────────────
+// Fetches skills for a single job via the job_skills junction table.
+// Returns [] gracefully if no skills are stored.
+
+export function useJobSkills(jobId: string | undefined) {
+  return useQuery({
+    queryKey: jobKeys.skills(jobId ?? ""),
+    queryFn: () => jobService.getJobSkills(jobId!),
+    enabled: Boolean(jobId),
+    staleTime: 10 * 60 * 1_000,
+  });
+}
+
+// ── useSimilarJobs ───────────────────────────────────────────────────────────
+// Fetches 4-6 similar jobs based on role and location.
+// Only fires when the reference job is loaded.
+
+export function useSimilarJobs(jobId: string | undefined, job: GlobalJob | null | undefined) {
+  return useQuery({
+    queryKey: jobKeys.similar(jobId ?? ""),
+    queryFn: () => jobService.getSimilarJobs(jobId!, job!.role, job!.location, 6),
+    enabled: Boolean(jobId) && Boolean(job),
+    staleTime: 5 * 60 * 1_000,
   });
 }
 

@@ -1,4 +1,4 @@
-import type { GlobalJob, SavedJob, PaginationParams, PaginatedResult } from "@/types";
+import type { GlobalJob, SavedJob, Skill, PaginationParams, PaginatedResult } from "@/types";
 import type { JobFilters, JobSort } from "@/features/jobs/types";
 import { DEFAULT_JOB_SORT, DEFAULT_PAGINATION } from "@/features/jobs/constants";
 import { JobRepository } from "@/repositories/JobRepository";
@@ -30,6 +30,7 @@ export class JobService {
       ...filters,
       q: filters.q?.trim() || undefined,
       company: filters.company?.trim() || undefined,
+      role: filters.role?.trim() || undefined,
       location: filters.location?.trim() || undefined,
     };
 
@@ -42,6 +43,27 @@ export class JobService {
 
   async getJob(id: string): Promise<GlobalJob | null> {
     return jobRepo.findById(id);
+  }
+
+  /**
+   * Returns similar jobs to a reference job.
+   * Similar = same role (fuzzy) OR same location, excluding the reference job.
+   */
+  async getSimilarJobs(
+    jobId: string,
+    role: string,
+    location: string | undefined,
+    limit: number = 6,
+  ): Promise<GlobalJob[]> {
+    return jobRepo.findSimilarJobs(jobId, role, location, limit);
+  }
+
+  /**
+   * Returns skills associated with a job via job_skills junction.
+   * Returns [] gracefully if no skills are stored.
+   */
+  async getJobSkills(jobId: string): Promise<Skill[]> {
+    return jobRepo.findSkillsForJob(jobId);
   }
 
   // ── Saved jobs ────────────────────────────────────────────────────────────

@@ -6,14 +6,14 @@ import type {
 } from "@/types";
 
 // ── Filter shape ─────────────────────────────────────────────────────────────
-// Add more filter fields here as Sprint 2+ requirements emerge.
-// The repository's buildFilteredQuery helper will pick them up automatically.
 
 export type JobFilters = {
   /** Free-text keyword — matched against role, company_name, description */
   q?: string;
   /** Exact or partial company name */
   company?: string;
+  /** Partial role string match */
+  role?: string;
   /** Partial location string match */
   location?: string;
   /** Remote-only toggle */
@@ -40,11 +40,44 @@ export type JobSortField =
   | "posted_at"
   | "created_at"
   | "salary_min"
-  | "salary_max";
+  | "salary_max"
+  | "company_name";
 
 export type SortDirection = "asc" | "desc";
 
 export type JobSort = {
   field: JobSortField;
   direction: SortDirection;
+};
+
+/**
+ * Named sort option keys used in the UI sort selector.
+ * Each maps to a concrete JobSort object via SORT_OPTIONS in constants.
+ */
+export type JobSortOption =
+  | "newest"
+  | "oldest"
+  | "salary_high"
+  | "salary_low"
+  | "company_az"
+  | "company_za";
+
+// ── URL Search params shape ──────────────────────────────────────────────────
+// Used by TanStack Router's validateSearch to type the URL search params.
+
+export type JobsSearchParams = {
+  q?: string;
+  company?: string;
+  location?: string;
+  remote?: boolean;
+  workMode?: string;
+  employmentType?: string;
+  experienceLevel?: string;
+  source?: string;
+  salaryMin?: number;
+  salaryMax?: number;
+  postedAfter?: string;
+  sort?: JobSortOption;
+  page?: number;
+  pageSize?: number;
 };

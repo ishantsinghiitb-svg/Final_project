@@ -1,5 +1,5 @@
 import { supabase } from "@/lib/supabase";
-import type { GlobalJob, SavedJob, PaginationParams, PaginatedResult } from "@/types";
+import type { GlobalJob, SavedJob, Skill, PaginationParams, PaginatedResult } from "@/types";
 import type { JobFilters, JobSort } from "@/features/jobs/types";
 
 // Select all columns that map to the GlobalJob domain type.
@@ -55,6 +55,11 @@ export class JobRepository {
     // ── Company name ──
     if (filters.company) {
       q = q.ilike("company_name", `%${filters.company}%`);
+    }
+
+    // ── Role ──
+    if (filters.role) {
+      q = q.ilike("role", `%${filters.role}%`);
     }
 
     // ── Location ──
@@ -128,6 +133,67 @@ export class JobRepository {
       pageSize,
       totalPages: Math.ceil(total / pageSize),
     };
+  }
+
+  /**
+   * Returns similar jobs based on role and/or location similarity.
+   * Excludes the reference job itself.
+   * Uses two OR conditions: same role (ilike) OR same location (ilike).
+   */
+  async findSimilarJobs(
+    jobId: string,
+    role: string,
+    location: string | undefined,
+    limit: number = 6,
+  ): Promise<GlobalJob[]> {
+    const escapedRole = role.replace(/[%_]/g, "\\$&");
+
+    let orClause = `role.ilike.%${escapedRole}%`;
+    if (location) {
+      const escapedLocation = location.replace(/[%_]/g, "\\$&");
+      orClause += `,location.ilike.%${escapedLocation}%`;
+    }
+
+    const { data, error } = await supabase
+      .from("global_jobs")
+      .select(JOB_COLUMNS)
+      .neq("id", jobId)
+      .or(orClause)
+      .order("posted_at", { ascending: false })
+      .limit(limit);
+
+    if (error) throw error;
+    return (data ?? []) as unknown as GlobalJob[];
+  }
+
+  /**
+   * Returns all skills associated with a job via the job_skills junction table.
+   * Returns an empty array gracefully if the table has no rows for this job.
+   */
+  async findSkillsForJob(jobId: string): Promise<Skill[]> {
+    // Use a raw select with explicit typing — Supabase's cross-table join
+    // inference can resolve to `never` without full generated types.
+    const { data, error } = await supabase
+      .from("job_skills")
+      .select("skill_id, skills:skills(id, name, category)")
+      .eq("job_id", jobId);
+
+    if (error) throw error;
+
+    type SkillJoinRow = {
+      skill_id: string;
+      skills: { id: string; name: string; category: string | null } | null;
+    };
+
+    const rows = (data ?? []) as unknown as SkillJoinRow[];
+
+    return rows
+      .map((row): Skill | null => {
+        const s = row.skills;
+        if (!s) return null;
+        return { id: s.id, name: s.name, category: s.category ?? undefined };
+      })
+      .filter((s): s is Skill => s !== null);
   }
 
   // ── Save / Unsave ─────────────────────────────────────────────────────────

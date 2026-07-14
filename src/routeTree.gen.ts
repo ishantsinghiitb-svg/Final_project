@@ -30,6 +30,7 @@ import { Route as DashboardJobsRouteImport } from './routes/dashboard.jobs'
 import { Route as DashboardInterviewsRouteImport } from './routes/dashboard.interviews'
 import { Route as DashboardApplicationsRouteImport } from './routes/dashboard.applications'
 import { Route as DashboardAnalyticsRouteImport } from './routes/dashboard.analytics'
+import { Route as DashboardJobsJobIdRouteImport } from './routes/dashboard.jobs.$jobId'
 
 const SupabaseStatusRoute = SupabaseStatusRouteImport.update({
   id: '/supabase-status',
@@ -136,6 +137,11 @@ const DashboardAnalyticsRoute = DashboardAnalyticsRouteImport.update({
   path: '/analytics',
   getParentRoute: () => DashboardRoute,
 } as any)
+const DashboardJobsJobIdRoute = DashboardJobsJobIdRouteImport.update({
+  id: '/$jobId',
+  path: '/$jobId',
+  getParentRoute: () => DashboardJobsRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -153,12 +159,13 @@ export interface FileRoutesByFullPath {
   '/dashboard/analytics': typeof DashboardAnalyticsRoute
   '/dashboard/applications': typeof DashboardApplicationsRoute
   '/dashboard/interviews': typeof DashboardInterviewsRoute
-  '/dashboard/jobs': typeof DashboardJobsRoute
+  '/dashboard/jobs': typeof DashboardJobsRouteWithChildren
   '/dashboard/notes': typeof DashboardNotesRoute
   '/dashboard/resumes': typeof DashboardResumesRoute
   '/dashboard/saved': typeof DashboardSavedRoute
   '/dashboard/settings': typeof DashboardSettingsRoute
   '/dashboard/': typeof DashboardIndexRoute
+  '/dashboard/jobs/$jobId': typeof DashboardJobsJobIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -175,12 +182,13 @@ export interface FileRoutesByTo {
   '/dashboard/analytics': typeof DashboardAnalyticsRoute
   '/dashboard/applications': typeof DashboardApplicationsRoute
   '/dashboard/interviews': typeof DashboardInterviewsRoute
-  '/dashboard/jobs': typeof DashboardJobsRoute
+  '/dashboard/jobs': typeof DashboardJobsRouteWithChildren
   '/dashboard/notes': typeof DashboardNotesRoute
   '/dashboard/resumes': typeof DashboardResumesRoute
   '/dashboard/saved': typeof DashboardSavedRoute
   '/dashboard/settings': typeof DashboardSettingsRoute
   '/dashboard': typeof DashboardIndexRoute
+  '/dashboard/jobs/$jobId': typeof DashboardJobsJobIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -199,12 +207,13 @@ export interface FileRoutesById {
   '/dashboard/analytics': typeof DashboardAnalyticsRoute
   '/dashboard/applications': typeof DashboardApplicationsRoute
   '/dashboard/interviews': typeof DashboardInterviewsRoute
-  '/dashboard/jobs': typeof DashboardJobsRoute
+  '/dashboard/jobs': typeof DashboardJobsRouteWithChildren
   '/dashboard/notes': typeof DashboardNotesRoute
   '/dashboard/resumes': typeof DashboardResumesRoute
   '/dashboard/saved': typeof DashboardSavedRoute
   '/dashboard/settings': typeof DashboardSettingsRoute
   '/dashboard/': typeof DashboardIndexRoute
+  '/dashboard/jobs/$jobId': typeof DashboardJobsJobIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -230,6 +239,7 @@ export interface FileRouteTypes {
     | '/dashboard/saved'
     | '/dashboard/settings'
     | '/dashboard/'
+    | '/dashboard/jobs/$jobId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -252,6 +262,7 @@ export interface FileRouteTypes {
     | '/dashboard/saved'
     | '/dashboard/settings'
     | '/dashboard'
+    | '/dashboard/jobs/$jobId'
   id:
     | '__root__'
     | '/'
@@ -275,6 +286,7 @@ export interface FileRouteTypes {
     | '/dashboard/saved'
     | '/dashboard/settings'
     | '/dashboard/'
+    | '/dashboard/jobs/$jobId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -441,14 +453,33 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardAnalyticsRouteImport
       parentRoute: typeof DashboardRoute
     }
+    '/dashboard/jobs/$jobId': {
+      id: '/dashboard/jobs/$jobId'
+      path: '/$jobId'
+      fullPath: '/dashboard/jobs/$jobId'
+      preLoaderRoute: typeof DashboardJobsJobIdRouteImport
+      parentRoute: typeof DashboardJobsRoute
+    }
   }
 }
+
+interface DashboardJobsRouteChildren {
+  DashboardJobsJobIdRoute: typeof DashboardJobsJobIdRoute
+}
+
+const DashboardJobsRouteChildren: DashboardJobsRouteChildren = {
+  DashboardJobsJobIdRoute: DashboardJobsJobIdRoute,
+}
+
+const DashboardJobsRouteWithChildren = DashboardJobsRoute._addFileChildren(
+  DashboardJobsRouteChildren,
+)
 
 interface DashboardRouteChildren {
   DashboardAnalyticsRoute: typeof DashboardAnalyticsRoute
   DashboardApplicationsRoute: typeof DashboardApplicationsRoute
   DashboardInterviewsRoute: typeof DashboardInterviewsRoute
-  DashboardJobsRoute: typeof DashboardJobsRoute
+  DashboardJobsRoute: typeof DashboardJobsRouteWithChildren
   DashboardNotesRoute: typeof DashboardNotesRoute
   DashboardResumesRoute: typeof DashboardResumesRoute
   DashboardSavedRoute: typeof DashboardSavedRoute
@@ -460,7 +491,7 @@ const DashboardRouteChildren: DashboardRouteChildren = {
   DashboardAnalyticsRoute: DashboardAnalyticsRoute,
   DashboardApplicationsRoute: DashboardApplicationsRoute,
   DashboardInterviewsRoute: DashboardInterviewsRoute,
-  DashboardJobsRoute: DashboardJobsRoute,
+  DashboardJobsRoute: DashboardJobsRouteWithChildren,
   DashboardNotesRoute: DashboardNotesRoute,
   DashboardResumesRoute: DashboardResumesRoute,
   DashboardSavedRoute: DashboardSavedRoute,
