@@ -28,6 +28,9 @@ export const applicationKeys = {
   detail: (id: string) => [...applicationKeys.details(), id] as const,
 
   statusCounts: (userId: string) => [...applicationKeys.all, "status-counts", userId] as const,
+
+  /** Existing application (if any) for a given user + job pair. */
+  byJob: (userId: string, jobId: string) => [...applicationKeys.all, "by-job", userId, jobId] as const,
 };
 
 // ── useAllApplications ───────────────────────────────────────────────────────
@@ -70,6 +73,20 @@ export function useApplication(id: string | undefined) {
     queryFn: () => applicationService.getApplication(id!),
     enabled: Boolean(id),
     staleTime: 2 * 60 * 1_000,
+  });
+}
+
+// ── useApplicationForJob ─────────────────────────────────────────────────────
+// Looks up whether the current user already has an application tracked for a
+// given job — used to detect duplicates before creating a new one.
+
+export function useApplicationForJob(jobId: string | undefined) {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: applicationKeys.byJob(user?.id ?? "", jobId ?? ""),
+    queryFn: () => applicationService.findApplicationByJob(user!.id, jobId!),
+    enabled: Boolean(user) && Boolean(jobId),
+    staleTime: 60 * 1_000,
   });
 }
 

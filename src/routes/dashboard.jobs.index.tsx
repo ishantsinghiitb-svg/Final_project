@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef, useMemo, memo } from "react";
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import {
   TrackApplicationModal,
+  AlreadyTrackingModal,
   useTrackApplication,
 } from "@/components/dashboard/applications/ApplyPromptDialog";
 import {
@@ -332,6 +333,12 @@ function JobsPage() {
     handleContinueWithoutTracking,
     handleCancel,
     isPending,
+    alreadyTrackedApplication,
+    handleViewApplication,
+    handleOpenJobPage,
+    handleRemoveTracking,
+    handleCloseAlreadyTracking,
+    isRemovingTracking,
   } = useTrackApplication(selectedJob, () => {
     setSelectedJob(null);
   });
@@ -630,6 +637,18 @@ function JobsPage() {
           onTrackAndContinue={handleTrackAndContinue}
           onContinueWithoutTracking={handleContinueWithoutTracking}
           onCancel={handleCancel}
+        />
+      )}
+
+      {alreadyTrackedApplication && (
+        <AlreadyTrackingModal
+          application={alreadyTrackedApplication}
+          open={Boolean(alreadyTrackedApplication)}
+          isPending={isRemovingTracking}
+          onViewApplication={handleViewApplication}
+          onOpenJobPage={handleOpenJobPage}
+          onRemoveTracking={handleRemoveTracking}
+          onClose={handleCloseAlreadyTracking}
         />
       )}
     </>

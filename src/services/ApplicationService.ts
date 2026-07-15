@@ -71,6 +71,11 @@ export class ApplicationService {
     return appRepo.findById(id);
   }
 
+  /** Returns the user's existing application for a job, if one was already tracked. */
+  async findApplicationByJob(userId: string, jobId: string): Promise<Application | null> {
+    return appRepo.findByJobId(userId, jobId);
+  }
+
   // ── Update ────────────────────────────────────────────────────────────────
 
   async updateStatus(id: string, status: ApplicationStatus): Promise<Application> {

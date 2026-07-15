@@ -45,6 +45,7 @@ import {
 import type { GlobalJob } from "@/types";
 import {
   TrackApplicationModal,
+  AlreadyTrackingModal,
   useTrackApplication,
 } from "@/components/dashboard/applications/ApplyPromptDialog";
 
@@ -181,6 +182,12 @@ function JobDetailPage() {
     handleContinueWithoutTracking,
     handleCancel: handleTrackCancel,
     isPending: trackIsPending,
+    alreadyTrackedApplication,
+    handleViewApplication,
+    handleOpenJobPage,
+    handleRemoveTracking,
+    handleCloseAlreadyTracking,
+    isRemovingTracking,
   } = useTrackApplication(job);
 
   // ── Loading ───────────────────────────────────────────────────────────────
@@ -248,6 +255,19 @@ function JobDetailPage() {
           onTrackAndContinue={handleTrackAndContinue}
           onContinueWithoutTracking={handleContinueWithoutTracking}
           onCancel={handleTrackCancel}
+        />
+      )}
+
+      {/* Already tracking dialog */}
+      {alreadyTrackedApplication && (
+        <AlreadyTrackingModal
+          application={alreadyTrackedApplication}
+          open={Boolean(alreadyTrackedApplication)}
+          isPending={isRemovingTracking}
+          onViewApplication={handleViewApplication}
+          onOpenJobPage={handleOpenJobPage}
+          onRemoveTracking={handleRemoveTracking}
+          onClose={handleCloseAlreadyTracking}
         />
       )}
       {/* ── Header card ────────────────────────────────────────────────── */}
