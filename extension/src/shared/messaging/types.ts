@@ -14,6 +14,7 @@ export const MessageType = {
   SYNC_GLOBAL_JOB: "SYNC_GLOBAL_JOB",
   SAVE_JOB: "SAVE_JOB",
   TRACK_APPLICATION: "TRACK_APPLICATION",
+  APPLY_AND_TRACK: "APPLY_AND_TRACK",
   SESSION_UPDATED: "SESSION_UPDATED",
 } as const;
 
@@ -73,6 +74,18 @@ export type TrackApplicationResult = {
   alreadyTracked: boolean;
 };
 
+/**
+ * The combined "Apply & Track" action — saves the job (idempotent) and
+ * tracks it (idempotent via `TRACK_APPLICATION`'s existing dedup) in one
+ * round trip. Same result shape as `TRACK_APPLICATION`; the content script
+ * already holds the job's apply URL from its own parsed data, so the
+ * response doesn't need to carry one.
+ */
+export type ApplyAndTrackMessage = {
+  type: typeof MessageType.APPLY_AND_TRACK;
+  payload: { globalJobId: string };
+};
+
 /** Internal: sent by the auth-bridge content script to the background worker. `null` = signed out / no session found. */
 export type SessionUpdatedMessage = {
   type: typeof MessageType.SESSION_UPDATED;
@@ -85,6 +98,7 @@ export type ExtensionMessage =
   | SyncGlobalJobMessage
   | SaveJobMessage
   | TrackApplicationMessage
+  | ApplyAndTrackMessage
   | SessionUpdatedMessage;
 
 export type ExtensionResponse<TData = unknown> =

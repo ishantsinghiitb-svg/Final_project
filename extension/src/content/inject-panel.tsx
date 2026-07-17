@@ -1,6 +1,11 @@
 import { createRoot, type Root } from "react-dom/client";
 
-import { FloatingPanel, type PanelActions, type PanelViewState } from "../panel/FloatingPanel";
+import {
+  FloatingPanel,
+  type PanelActions,
+  type PanelViewState,
+  type PendingAction,
+} from "../panel/FloatingPanel";
 import { panelStyles } from "../panel/panelStyles";
 
 const HOST_ID = "nextoffer-panel-host";
@@ -15,7 +20,7 @@ export class PanelController {
   private host: HTMLDivElement | null = null;
   private root: Root | null = null;
 
-  update(state: PanelViewState, actions: PanelActions): void {
+  update(state: PanelViewState, actions: PanelActions, pending: PendingAction): void {
     if (!this.root) {
       this.host = document.createElement("div");
       this.host.id = HOST_ID;
@@ -32,7 +37,7 @@ export class PanelController {
       this.root = createRoot(container);
     }
 
-    this.root.render(<FloatingPanel state={state} actions={actions} />);
+    this.root.render(<FloatingPanel state={state} actions={actions} pending={pending} />);
   }
 
   destroy(): void {

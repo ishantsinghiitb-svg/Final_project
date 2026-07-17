@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   Bookmark,
   MapPin,
@@ -8,6 +8,7 @@ import {
   Loader2,
   AlertCircle,
   BookmarkCheck,
+  ArrowUpRight,
 } from "lucide-react";
 import {
   DashCard,
@@ -140,9 +141,14 @@ function SavedPage() {
               const salary = formatSalary(job);
               const tone = logoToneForCompany(job.company_name);
 
+              const applyUrl = job.source_url ?? job.url;
+
               return (
-                <DashCard key={job.id} className="hover:shadow-md">
-                  <div className="flex items-start justify-between">
+                <DashCard
+                  key={job.id}
+                  className="hover:shadow-md hover:-translate-y-0.5 transition-[box-shadow,transform] duration-200"
+                >
+                  <div className="flex items-start justify-between gap-2">
                     <CompanyMark
                       company={job.company_name}
                       tone={tone}
@@ -175,7 +181,7 @@ function SavedPage() {
                           }
                         }}
                         aria-label={isSaved ? "Unsave" : "Save"}
-                        className="grid h-7 w-7 place-items-center rounded-lg border border-black/5 bg-white text-[oklch(0.4_0.02_265)] hover:bg-black/[0.03]"
+                        className="grid h-7 w-7 shrink-0 place-items-center rounded-lg border border-black/5 bg-white text-[oklch(0.4_0.02_265)] transition-colors hover:bg-black/[0.03]"
                       >
                         {isSaved ? (
                           <BookmarkCheck className="h-3.5 w-3.5 text-[#2563EB]" />
@@ -186,10 +192,16 @@ function SavedPage() {
                     </div>
                   </div>
 
-                  <p className="mt-3 font-display font-semibold">{job.role}</p>
-                  <p className="text-xs text-[oklch(0.5_0.02_265)]">
-                    {job.company_name}
-                  </p>
+                  <Link
+                    to="/dashboard/jobs/$jobId"
+                    params={{ jobId: job.id }}
+                    className="group mt-3 block"
+                  >
+                    <p className="font-display font-semibold transition-colors group-hover:text-[#2563EB]">
+                      {job.role}
+                    </p>
+                    <p className="text-xs text-[oklch(0.5_0.02_265)]">{job.company_name}</p>
+                  </Link>
 
                   {(job.location || salary) && (
                     <p className="mt-2 flex items-center gap-1 text-xs text-[oklch(0.5_0.02_265)]">
@@ -210,6 +222,27 @@ function SavedPage() {
                       </span>
                     </div>
                   )}
+
+                  {/* CTA row */}
+                  <div className="mt-3 flex items-center gap-2 border-t border-black/5 pt-3">
+                    {applyUrl && (
+                      <a
+                        href={applyUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex flex-1 items-center justify-center gap-1 rounded-lg bg-gradient-to-br from-[#2563EB] to-[#7C3AED] px-3 py-1.5 text-xs font-medium text-white shadow-[0_2px_8px_-2px_rgba(37,99,235,0.5)] transition-transform hover:-translate-y-px"
+                      >
+                        Apply <ArrowUpRight className="h-3 w-3" />
+                      </a>
+                    )}
+                    <Link
+                      to="/dashboard/jobs/$jobId"
+                      params={{ jobId: job.id }}
+                      className="inline-flex flex-1 items-center justify-center gap-1 rounded-lg border border-black/5 bg-white px-3 py-1.5 text-xs font-medium text-[oklch(0.35_0.02_265)] transition-colors hover:bg-black/[0.03]"
+                    >
+                      View Job
+                    </Link>
+                  </div>
                 </DashCard>
               );
             })}

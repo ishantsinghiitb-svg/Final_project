@@ -50,6 +50,16 @@ async function handleMessage(message: ExtensionMessage): Promise<unknown> {
       return trackApplication(message.payload.globalJobId, auth.user);
     }
 
+    case MessageType.APPLY_AND_TRACK: {
+      const auth = await requireAuth();
+      // Reuses the existing Save and Track logic exactly (not reimplemented)
+      // so both actions' dedup guarantees carry over: saveJob is idempotent
+      // on (user_id, job_id), and trackApplication checks for an existing
+      // application before creating one.
+      await saveGlobalJob(message.payload.globalJobId, auth.user);
+      return trackApplication(message.payload.globalJobId, auth.user);
+    }
+
     default: {
       const exhaustive: never = message;
       throw new Error(`Unhandled message type: ${JSON.stringify(exhaustive)}`);

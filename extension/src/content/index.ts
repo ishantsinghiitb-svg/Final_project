@@ -11,7 +11,7 @@ import { MessageType } from "../shared/messaging/types";
 import type { AuthState, GlobalJobSyncResult } from "../shared/messaging/types";
 import { debounceWithMaxWait } from "./util/debounce";
 import { PanelController } from "./inject-panel";
-import type { PanelActions, PanelJob, PanelViewState } from "../panel/FloatingPanel";
+import type { PanelActions, PanelJob, PanelViewState, PendingAction } from "../panel/FloatingPanel";
 
 /**
  * Orchestration only, per the Module 2D spec: detect the site, ask the
@@ -28,18 +28,18 @@ if (parser) {
   let lastSyncResult: GlobalJobSyncResult | null = null;
   let lastSyncedKey: string | null = null;
   let lastSyncedAt = 0;
+  let pending: PendingAction = null;
 
   const actions: PanelActions = {
-    onSave: () => void handleSave(),
-    onTrack: () => void handleTrack(),
-    onViewSaved: () => {
-      if (currentGlobalJobId)
-        window.open(`${env.appUrl}/dashboard/jobs/${currentGlobalJobId}`, "_blank");
-    },
-    onViewApplication: () => {
+    onApplyAndTrack: () => void handleApplyAndTrack(),
+    onSaveForLater: () => void handleSaveForLater(),
+    onViewInNextOffer: () => {
       const applicationId = lastSyncResult?.application?.id;
-      if (applicationId)
+      if (applicationId) {
         window.open(`${env.appUrl}/dashboard/applications/${applicationId}`, "_blank");
+      } else if (currentGlobalJobId) {
+        window.open(`${env.appUrl}/dashboard/jobs/${currentGlobalJobId}`, "_blank");
+      }
     },
     onOpenInNextOffer: () => window.open(env.appUrl, "_blank"),
   };
@@ -67,11 +67,11 @@ if (parser) {
 
     const authResponse = await sendMessage<AuthState>({ type: MessageType.GET_AUTH_STATE });
     if (!authResponse.ok || !authResponse.data.authenticated) {
-      panel.update({ kind: "not-logged-in" }, actions);
+      panel.update({ kind: "not-logged-in" }, actions, null);
       return;
     }
 
-    panel.update({ kind: "loading" }, actions);
+    panel.update({ kind: "loading" }, actions, null);
 
     const dedupKey = job.sourceJobId ?? `${job.title}|${job.companyName}|${job.location ?? ""}`;
     const now = Date.now();
@@ -107,43 +107,63 @@ if (parser) {
     const panelJob: PanelJob = {
       title: job.title,
       companyName: job.companyName,
+      companyLogoUrl: job.companyLogoUrl,
+      location: job.location,
+      workMode: job.workMode,
+      employmentType: job.employmentType,
       isClosed: result.isClosed,
     };
     const state: PanelViewState = result.application
-      ? { kind: "tracking", job: panelJob }
+      ? { kind: "tracked", job: panelJob }
       : result.isSaved
         ? { kind: "saved", job: panelJob }
         : { kind: "ready", job: panelJob };
 
-    panel.update(state, actions);
+    panel.update(state, actions, pending);
   }
 
-  async function handleSave(): Promise<void> {
-    if (!currentGlobalJobId || !currentJob) return;
-    panel.update({ kind: "loading" }, actions);
+  /** Secondary CTA for the `ready` state only — bookmark without applying. */
+  async function handleSaveForLater(): Promise<void> {
+    if (!currentGlobalJobId || !currentJob || pending) return;
+    pending = "save";
+    renderFromSync(currentJob, lastSyncResult!);
 
     const response = await sendMessage({
       type: MessageType.SAVE_JOB,
       payload: { globalJobId: currentGlobalJobId },
     });
+
+    pending = null;
     if (!response.ok || !lastSyncResult) return;
 
     lastSyncResult = { ...lastSyncResult, isSaved: true };
     renderFromSync(currentJob, lastSyncResult);
   }
 
-  async function handleTrack(): Promise<void> {
-    if (!currentGlobalJobId || !currentJob) return;
-    panel.update({ kind: "loading" }, actions);
+  /**
+   * Primary CTA for both `ready` and `saved` — reuses the existing Save and
+   * Track messages' server-side idempotency (never a duplicate save or
+   * application) rather than reimplementing dedup on the client, then opens
+   * the job's own apply URL in a new tab on success.
+   */
+  async function handleApplyAndTrack(): Promise<void> {
+    if (!currentGlobalJobId || !currentJob || pending) return;
+    pending = "applyAndTrack";
+    renderFromSync(currentJob, lastSyncResult!);
 
     const response = await sendMessage<{ application: { id: string; status: string } }>({
-      type: MessageType.TRACK_APPLICATION,
+      type: MessageType.APPLY_AND_TRACK,
       payload: { globalJobId: currentGlobalJobId },
     });
+
+    pending = null;
     if (!response.ok || !lastSyncResult) return;
 
-    lastSyncResult = { ...lastSyncResult, application: response.data.application };
+    lastSyncResult = { ...lastSyncResult, isSaved: true, application: response.data.application };
     renderFromSync(currentJob, lastSyncResult);
+
+    const applyUrl = currentJob.applyUrl ?? currentJob.sourceUrl;
+    window.open(applyUrl, "_blank");
   }
 }
 

@@ -32,9 +32,9 @@ type ModalProps = {
  * job page. Deterministic: no browser events, no focus detection.
  *
  * Three actions:
- *   Track & Continue          → create application + open URL + close
- *   Continue Without Tracking → open URL + close
- *   Cancel                    → close only
+ *   Apply & Track          → create application + open URL + close
+ *   Apply Without Tracking → open URL + close
+ *   Cancel                 → close only
  */
 export function TrackApplicationModal({
   job,
@@ -94,10 +94,10 @@ export function TrackApplicationModal({
               id="track-modal-title"
               className="font-display text-base font-semibold text-[oklch(0.2_0.02_265)]"
             >
-              Track this application in NextOffer?
+              Ready to apply?
             </h2>
             <p className="mt-2 text-sm text-muted-foreground">
-              We'll automatically add this job to your application tracker so you can:
+              Track this application in NextOffer so you can:
             </p>
 
             <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
@@ -114,7 +114,7 @@ export function TrackApplicationModal({
 
           {/* Actions */}
           <div className="mt-5 flex flex-col gap-2">
-            {/* Primary: Track & Continue */}
+            {/* Primary: Apply & Track */}
             <button
               id="track-modal-track"
               onClick={onTrackAndContinue}
@@ -124,18 +124,18 @@ export function TrackApplicationModal({
               {isPending ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  Creating application…
+                  Applying…
                 </>
               ) : (
                 <>
                   <CheckCircle2 className="h-4 w-4" />
-                  Track &amp; Continue
+                  Apply &amp; Track
                   <ExternalLink className="ml-0.5 h-3.5 w-3.5 opacity-70" />
                 </>
               )}
             </button>
 
-            {/* Secondary: Continue without tracking */}
+            {/* Secondary: Apply without tracking */}
             <button
               id="track-modal-skip"
               onClick={onContinueWithoutTracking}
@@ -143,7 +143,7 @@ export function TrackApplicationModal({
               className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-black/5 bg-white py-3 text-sm font-medium text-[oklch(0.4_0.02_265)] transition-colors hover:bg-black/[0.03] disabled:opacity-50"
             >
               <ArrowUpRight className="h-4 w-4" />
-              Continue Without Tracking
+              Apply Without Tracking
             </button>
           </div>
         </div>
