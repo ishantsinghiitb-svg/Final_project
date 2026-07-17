@@ -18,6 +18,11 @@ import {
   AlertCircle,
   Tag,
   Building2,
+  Users,
+  Zap,
+  Megaphone,
+  RotateCcw,
+  ExternalLink,
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -237,7 +242,7 @@ function JobDetailPage() {
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <div className="space-y-6 max-w-4xl mx-auto">
+    <div className="space-y-6 max-w-6xl mx-auto">
       {/* Back button */}
       <button
         onClick={() => navigate({ to: "/dashboard/jobs" })}
@@ -300,6 +305,26 @@ function JobDetailPage() {
                 )}
                 {job.employment_type && <Chip tone="default">{job.employment_type}</Chip>}
                 {job.experience_level && <Chip tone="purple">{job.experience_level}</Chip>}
+                {job.easy_apply && (
+                  <Chip tone="blue">
+                    <Zap className="h-3 w-3" /> Easy Apply
+                  </Chip>
+                )}
+                {job.promoted && (
+                  <Chip tone="amber">
+                    <Megaphone className="h-3 w-3" /> Promoted
+                  </Chip>
+                )}
+                {job.reposted && (
+                  <Chip tone="default">
+                    <RotateCcw className="h-3 w-3" /> Reposted
+                  </Chip>
+                )}
+                {job.responses_managed && (
+                  <Chip tone="default">
+                    <ExternalLink className="h-3 w-3" /> Responses managed off LinkedIn
+                  </Chip>
+                )}
               </div>
             </div>
           </div>
@@ -399,14 +424,28 @@ function JobDetailPage() {
             </div>
           )}
 
-          {job.posted_at && (
+          {(job.posted_ago || job.posted_at) && (
             <div className="flex items-start gap-2.5 rounded-xl bg-[oklch(0.97_0.01_265)] p-3">
               <Clock className="mt-0.5 h-4 w-4 shrink-0 text-[oklch(0.5_0.02_265)]" />
               <div>
                 <p className="text-[10px] font-medium uppercase tracking-wide text-[oklch(0.55_0.02_265)]">
                   Posted
                 </p>
-                <p className="mt-0.5 text-sm font-medium">{formatPostedAtFull(job.posted_at)}</p>
+                <p className="mt-0.5 text-sm font-medium">
+                  {job.posted_ago ?? formatPostedAtFull(job.posted_at)}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {typeof job.applicant_count === "number" && (
+            <div className="flex items-start gap-2.5 rounded-xl bg-[oklch(0.97_0.01_265)] p-3">
+              <Users className="mt-0.5 h-4 w-4 shrink-0 text-[#2563EB]" />
+              <div>
+                <p className="text-[10px] font-medium uppercase tracking-wide text-[oklch(0.55_0.02_265)]">
+                  Applicants
+                </p>
+                <p className="mt-0.5 text-sm font-medium">{job.applicant_count}</p>
               </div>
             </div>
           )}
@@ -429,20 +468,31 @@ function JobDetailPage() {
         {/* ── Left: Description + Skills ──────────────────────────────── */}
         <div className="space-y-6">
           {/* Job description */}
-          {job.description && (
+          {(job.description_html || job.description) && (
             <DashCard>
               <SectionTitle>Job Description</SectionTitle>
-              <div className="mt-4 prose prose-sm max-w-none text-[oklch(0.3_0.02_265)]">
-                {/* Render description as pre-formatted text with line breaks */}
-                {job.description.split("\n").map((line, i) => (
-                  <p
-                    key={i}
-                    className={line.trim() === "" ? "h-3" : "mb-2 text-sm leading-relaxed"}
-                  >
-                    {line}
-                  </p>
-                ))}
-              </div>
+              {job.description_html ? (
+                // Sanitized to a structural-tag allowlist at parse time (see
+                // extension/src/core/parsers/linkedin/sanitize.ts) — the only
+                // write path is the SECURITY DEFINER upsert RPC, never raw
+                // user input, so this is safe to render directly.
+                <div
+                  className="mt-4 max-w-none text-sm leading-relaxed text-[oklch(0.3_0.02_265)] [&_h1]:mt-4 [&_h1]:mb-2 [&_h1]:text-base [&_h1]:font-semibold [&_h2]:mt-4 [&_h2]:mb-2 [&_h2]:text-base [&_h2]:font-semibold [&_h3]:mt-3 [&_h3]:mb-1.5 [&_h3]:text-sm [&_h3]:font-semibold [&_h4]:mt-3 [&_h4]:mb-1 [&_h4]:text-sm [&_h4]:font-semibold [&_p]:mb-3 [&_p:last-child]:mb-0 [&_strong]:font-semibold [&_ul]:my-2 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:my-2 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:mb-1"
+                  dangerouslySetInnerHTML={{ __html: job.description_html }}
+                />
+              ) : (
+                <div className="mt-4 max-w-none text-[oklch(0.3_0.02_265)]">
+                  {/* Manual-source jobs with no captured HTML — render as pre-formatted lines */}
+                  {job.description!.split("\n").map((line, i) => (
+                    <p
+                      key={i}
+                      className={line.trim() === "" ? "h-3" : "mb-2 text-sm leading-relaxed"}
+                    >
+                      {line}
+                    </p>
+                  ))}
+                </div>
+              )}
             </DashCard>
           )}
 

@@ -148,20 +148,23 @@ function SavedPage() {
                       tone={tone}
                       size={38}
                     />
-                    <div className="flex items-center gap-2">
-                      {job.work_mode && (
-                        <Chip
-                          tone={
-                            job.work_mode === "Remote"
-                              ? "green"
-                              : job.work_mode === "Hybrid"
-                                ? "blue"
-                                : "default"
-                          }
-                        >
-                          {job.work_mode}
-                        </Chip>
-                      )}
+                    <div className="flex items-center gap-1.5">
+                      <div className="flex flex-wrap items-center justify-end gap-1.5">
+                        {job.work_mode && (
+                          <Chip
+                            tone={
+                              job.work_mode === "Remote"
+                                ? "green"
+                                : job.work_mode === "Hybrid"
+                                  ? "blue"
+                                  : "default"
+                            }
+                          >
+                            {job.work_mode}
+                          </Chip>
+                        )}
+                        {job.experience_level && <Chip tone="purple">{job.experience_level}</Chip>}
+                      </div>
                       {/* Unsave button */}
                       <button
                         onClick={() => {

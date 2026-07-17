@@ -309,15 +309,7 @@ export function useTrackApplication(job: GlobalJob | null | undefined, onClose?:
 
   /** Called by both "Apply Now" buttons in the job detail page. */
   const handleApplyClick = () => {
-    console.log("Apply clicked");
-    console.log("Job:", job);
-
-    if (!job?.url) {
-      console.log("No URL found");
-      return;
-    }
-
-    console.log("Opening modal");
+    if (!job?.url) return;
     setIsOpen(true);
   };
 

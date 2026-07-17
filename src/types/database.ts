@@ -72,6 +72,25 @@ export type GlobalJobRow = {
   url: string | null;
   source: string;
   posted_at: string | null;
+  source_job_id: string | null;
+  fingerprint: string | null;
+  company_logo_url: string | null;
+  is_closed: boolean;
+  source_url: string | null;
+  company_url: string | null;
+  city: string | null;
+  country: string | null;
+  posted_ago: string | null;
+  applicant_count: number | null;
+  hiring_insights: string[] | null;
+  easy_apply: boolean;
+  promoted: boolean;
+  reposted: boolean;
+  responses_managed: boolean;
+  industry: string | null;
+  job_function: string | null;
+  benefits: string[] | null;
+  description_html: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -300,6 +319,25 @@ export type GlobalJobInsert = {
   url?: string | null;
   source?: string;            // NOT NULL DEFAULT 'Manual'
   posted_at?: string | null;
+  source_job_id?: string | null;
+  fingerprint?: string | null;
+  company_logo_url?: string | null;
+  is_closed?: boolean;
+  source_url?: string | null;
+  company_url?: string | null;
+  city?: string | null;
+  country?: string | null;
+  posted_ago?: string | null;
+  applicant_count?: number | null;
+  hiring_insights?: string[] | null;
+  easy_apply?: boolean;
+  promoted?: boolean;
+  reposted?: boolean;
+  responses_managed?: boolean;
+  industry?: string | null;
+  job_function?: string | null;
+  benefits?: string[] | null;
+  description_html?: string | null;
   created_at?: string;
   updated_at?: string;
 };
@@ -623,7 +661,13 @@ export type Database = {
     };
     // This project has no DB Views — satisfies GenericSchema.Views constraint
     Views: Record<string, never>;
-    // This project has no DB Functions — satisfies GenericSchema.Functions constraint
-    Functions: Record<string, never>;
+    Functions: {
+      // Find-or-create/update by (source, source_job_id) then fingerprint —
+      // the only write path for global_jobs (see supabase/migrations/20260716000001_*).
+      upsert_global_job: {
+        Args: { payload: Json };
+        Returns: GlobalJobRow;
+      };
+    };
   };
 };

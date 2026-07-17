@@ -61,7 +61,9 @@ export type EmploymentType =
   | "Full-Time"
   | "Part-Time"
   | "Contract"
-  | "Internship";
+  | "Internship"
+  | "Temporary"
+  | "Freelance";
 
 export type WorkMode = "Remote" | "Hybrid" | "Onsite";
 
@@ -92,6 +94,31 @@ export type GlobalJob = {
   url?: string;
   source: JobSource;
   posted_at?: string;
+  /** External job-board ID (e.g. LinkedIn job ID) — dedup key alongside `fingerprint`. */
+  source_job_id?: string | null;
+  /** Deterministic hash of title+company+location — fallback dedup key when no `source_job_id`. */
+  fingerprint?: string | null;
+  company_logo_url?: string | null;
+  is_closed?: boolean;
+  /** Canonical job-posting page URL (e.g. the LinkedIn job page) — distinct from `url`, the apply-action link. */
+  source_url?: string | null;
+  company_url?: string | null;
+  city?: string | null;
+  country?: string | null;
+  /** Human "time ago" string captured verbatim from the source (e.g. "2 weeks ago"). */
+  posted_ago?: string | null;
+  applicant_count?: number | null;
+  hiring_insights?: string[] | null;
+  easy_apply?: boolean;
+  promoted?: boolean;
+  reposted?: boolean;
+  /** True when applications route through an external ATS rather than LinkedIn's own inbox. */
+  responses_managed?: boolean;
+  industry?: string | null;
+  job_function?: string | null;
+  benefits?: string[] | null;
+  /** Sanitized HTML (structural tags only, no attributes) for rich rendering — falls back to `description` when absent. */
+  description_html?: string | null;
   created_at: string;
   updated_at: string;
 };

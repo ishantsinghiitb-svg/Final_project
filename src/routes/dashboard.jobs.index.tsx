@@ -354,6 +354,18 @@ function JobsPage() {
   const total = result?.total ?? 0;
 
   // ── Debounced keyword search ──────────────────────────────────────────────
+  // The input stays uncontrolled (never remounted) so typing never loses
+  // focus; this effect only pushes `q` into the DOM when it changes from
+  // outside the input itself (Reset button, browser back/forward). When the
+  // input's own debounced `onChange` is what caused `q` to change, the DOM
+  // value already matches `q` by the time this runs, so the guard skips it.
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
+  useEffect(() => {
+    if (searchInputRef.current && searchInputRef.current.value !== q) {
+      searchInputRef.current.value = q;
+    }
+  }, [q]);
+
   const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const handleSearchChange = useCallback(
     (value: string) => {
@@ -448,10 +460,10 @@ function JobsPage() {
           <div className="flex flex-1 min-w-[220px] items-center gap-2 rounded-lg border border-black/5 bg-white px-3 py-2 text-sm">
             <Search className="h-4 w-4 shrink-0 text-[oklch(0.5_0.02_265)]" />
             <input
-              key={q} // remount to clear when resetFilters() is called
+              ref={searchInputRef}
               defaultValue={q}
               onChange={(e) => handleSearchChange(e.target.value)}
-              placeholder="Search role, company, description…"
+              placeholder="Search role, company, description, skills…"
               className="flex-1 bg-transparent outline-none placeholder:text-[oklch(0.55_0.02_265)] text-sm"
             />
             {isFetching && (

@@ -6,7 +6,7 @@ import type { JobFilters, JobSort } from "@/features/jobs/types";
 // `role_id` and `location_id` are DB-only FK references and are excluded
 // intentionally — they are not part of the GlobalJob domain model.
 const JOB_COLUMNS =
-  "id, company_id, company_name, role, location, remote, work_mode, employment_type, experience_level, salary_min, salary_max, salary_currency, description, url, source, posted_at, created_at, updated_at";
+  "id, company_id, company_name, role, location, remote, work_mode, employment_type, experience_level, salary_min, salary_max, salary_currency, description, url, source, posted_at, source_job_id, fingerprint, company_logo_url, is_closed, source_url, company_url, city, country, posted_ago, applicant_count, hiring_insights, easy_apply, promoted, reposted, responses_managed, industry, job_function, benefits, description_html, created_at, updated_at";
 
 const SAVED_JOB_COLUMNS = "id, user_id, job_id, notes, created_at";
 
@@ -44,12 +44,31 @@ export class JobRepository {
       .select(JOB_COLUMNS, { count: "exact" });
 
     // ── Keyword search ──
-    // Uses OR across three text fields — extend here if more fields are needed
+    // Matches against role, company, description, job function, and industry
+    // directly, plus skills — which live in a join table, so matching job IDs
+    // are resolved separately and folded into the same `.or()` as `id.in.(...)`.
     if (filters.q) {
       const escaped = filters.q.replace(/[%_]/g, "\\$&");
-      q = q.or(
-        `role.ilike.%${escaped}%,company_name.ilike.%${escaped}%,description.ilike.%${escaped}%`,
-      );
+      const orParts = [
+        `role.ilike.%${escaped}%`,
+        `company_name.ilike.%${escaped}%`,
+        `description.ilike.%${escaped}%`,
+        `job_function.ilike.%${escaped}%`,
+        `industry.ilike.%${escaped}%`,
+      ];
+
+      const { data: skillMatches, error: skillError } = await supabase
+        .from("job_skills")
+        .select("job_id, skills!inner(name)")
+        .ilike("skills.name", `%${escaped}%`);
+      if (skillError) throw skillError;
+
+      const skillJobIds = Array.from(new Set((skillMatches ?? []).map((r) => r.job_id as string)));
+      if (skillJobIds.length > 0) {
+        orParts.push(`id.in.(${skillJobIds.join(",")})`);
+      }
+
+      q = q.or(orParts.join(","));
     }
 
     // ── Company name ──
