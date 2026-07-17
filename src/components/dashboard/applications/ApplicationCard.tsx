@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { MapPin, Banknote, Calendar, MoreVertical, Trash2 } from "lucide-react";
+import { MapPin, Banknote, Calendar, MoreVertical, Trash2, Archive } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import type { Application, ApplicationStatus } from "@/types";
 import { CompanyMark, Chip } from "@/components/dashboard/primitives";
@@ -12,6 +12,7 @@ type Props = {
   application: Application;
   onStatusChange: (id: string, status: ApplicationStatus) => void;
   onDelete: (id: string) => void;
+  onArchive?: (id: string) => void;
   /** Used when rendering inside Kanban — enables native drag */
   draggable?: boolean;
   onDragStart?: (e: React.DragEvent, id: string) => void;
@@ -46,6 +47,7 @@ export function ApplicationCard({
   application: app,
   onStatusChange,
   onDelete,
+  onArchive,
   draggable = false,
   onDragStart,
 }: Props) {
@@ -123,8 +125,20 @@ export function ApplicationCard({
                   );
                 })}
               </div>
-              {/* Delete */}
+              {/* Archive + Delete */}
               <div className="px-2 py-1.5">
+                {onArchive && (
+                  <button
+                    onClick={() => {
+                      onArchive(app.id);
+                      setMenuOpen(false);
+                    }}
+                    className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-xs text-[oklch(0.4_0.02_265)] hover:bg-black/[0.04]"
+                  >
+                    <Archive className="h-3.5 w-3.5" />
+                    Archive application
+                  </button>
+                )}
                 <button
                   onClick={() => {
                     onDelete(app.id);

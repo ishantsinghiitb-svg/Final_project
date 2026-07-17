@@ -1,10 +1,12 @@
 import { supabase } from "@/lib/supabase";
-import type { Application, ApplicationStatus } from "@/types";
+import type { Application, ApplicationStatus, ApplicationTimelineEvent } from "@/types";
 import type { ApplicationFilters, ApplicationSort } from "@/features/applications/types";
 import type { PaginationParams, PaginatedResult } from "@/types";
 
 const APP_COLUMNS =
-  "id, user_id, job_id, company_name, role, status, applied_at, next_step, notes, location, salary_min, salary_max, salary_currency, source, url, created_at, updated_at";
+  "id, user_id, job_id, company_name, role, status, applied_at, next_step, notes, location, salary_min, salary_max, salary_currency, source, url, archived, archived_at, created_via, metadata, created_at, updated_at";
+
+const TIMELINE_COLUMNS = "id, application_id, user_id, kind, text, previous_value, new_value, metadata, created_at";
 
 export class ApplicationRepository {
   // ── Read ──────────────────────────────────────────────────────────────────
@@ -35,7 +37,8 @@ export class ApplicationRepository {
     let q = supabase
       .from("applications")
       .select(APP_COLUMNS, { count: "exact" })
-      .eq("user_id", userId);
+      .eq("user_id", userId)
+      .eq("archived", filters.archived ?? false);
 
     // ── Keyword search across company, role, notes ──
     if (filters.q) {
@@ -90,12 +93,14 @@ export class ApplicationRepository {
   /**
    * Returns ALL applications for a user, grouped by status.
    * Used by the Kanban board (no pagination needed — boards typically show all cards).
+   * `archived` toggles between the active board (default) and the archive view.
    */
-  async findAllByUser(userId: string): Promise<Application[]> {
+  async findAllByUser(userId: string, archived = false): Promise<Application[]> {
     const { data, error } = await supabase
       .from("applications")
       .select(APP_COLUMNS)
       .eq("user_id", userId)
+      .eq("archived", archived)
       .order("updated_at", { ascending: false });
     if (error) throw error;
     return (data ?? []) as unknown as Application[];
@@ -112,6 +117,31 @@ export class ApplicationRepository {
     if (error) throw error;
 
     return data as Application | null;
+  }
+
+  /**
+   * Returns the timeline for an application, newest first. Rows are written
+   * automatically by the `applications_log_timeline_event` DB trigger — see
+   * supabase/migrations/20260717000001_module3a_application_management.sql.
+   */
+  async findTimeline(applicationId: string): Promise<ApplicationTimelineEvent[]> {
+    const { data, error } = await supabase
+      .from("application_activity")
+      .select(TIMELINE_COLUMNS)
+      .eq("application_id", applicationId)
+      .order("created_at", { ascending: false });
+    if (error) throw error;
+    return (data ?? []).map((row) => ({
+      id: row.id,
+      application_id: row.application_id,
+      user_id: row.user_id,
+      event_type: row.kind as ApplicationTimelineEvent["event_type"],
+      text: row.text,
+      previous_value: row.previous_value,
+      new_value: row.new_value,
+      metadata: row.metadata,
+      created_at: row.created_at,
+    }));
   }
 
   // ── Write ─────────────────────────────────────────────────────────────────

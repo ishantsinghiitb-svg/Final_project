@@ -8,12 +8,13 @@ type Props = {
   applications: Application[];
   onStatusChange: (id: string, status: ApplicationStatus) => void;
   onDelete: (id: string) => void;
+  onArchive?: (id: string) => void;
 };
 
 /**
  * KanbanBoard
  *
- * Trello / Linear-style Kanban with 6 columns (Wishlist → Rejected).
+ * Trello / Linear-style Kanban (Applied → Rejected).
  * Uses native HTML5 Drag & Drop API — no additional packages required.
  *
  * Drag behaviour:
@@ -21,7 +22,7 @@ type Props = {
  *   - onDragOver: sets the column as the drop target (visual cue)
  *   - onDrop: calls onStatusChange → optimistic update → Supabase
  */
-export function KanbanBoard({ applications, onStatusChange, onDelete }: Props) {
+export function KanbanBoard({ applications, onStatusChange, onDelete, onArchive }: Props) {
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [overColumn, setOverColumn] = useState<ApplicationStatus | null>(null);
 
@@ -128,6 +129,7 @@ export function KanbanBoard({ applications, onStatusChange, onDelete }: Props) {
                   application={app}
                   onStatusChange={onStatusChange}
                   onDelete={onDelete}
+                  onArchive={onArchive}
                   draggable
                   onDragStart={handleDragStart}
                 />

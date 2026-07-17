@@ -8,7 +8,14 @@ import {
   ExternalLink,
   Loader2,
   AlertCircle,
+  Building,
   Building2,
+  UserRound,
+  Tag,
+  Briefcase,
+  Wifi,
+  Users,
+  Landmark,
   CheckCircle2,
   ChevronDown,
 } from "lucide-react";
@@ -17,7 +24,10 @@ import { toast } from "sonner";
 import { DashCard, SectionTitle, Chip } from "@/components/dashboard/primitives";
 import { CompanyMark } from "@/components/dashboard/primitives";
 import { StatusBadge } from "@/components/dashboard/applications/ApplicationCard";
+import { ApplicationTimeline } from "@/components/dashboard/applications/ApplicationTimeline";
 import { useApplication, useUpdateApplicationStatus, useDeleteApplication } from "@/features/applications/hooks";
+import { useJob } from "@/features/jobs/hooks";
+import { useCompany } from "@/features/companies/hooks";
 import { STATUS_META, ALL_STATUSES } from "@/features/applications/constants";
 import { logoToneForCompany } from "@/features/jobs/utils";
 import type { ApplicationStatus } from "@/types";
@@ -124,6 +134,11 @@ function ApplicationDetailPage() {
   const updateStatus = useUpdateApplicationStatus();
   const deleteApp = useDeleteApplication();
 
+  // Best-effort enrichment from the linked GlobalJob — never renders the
+  // description, only structural fields the Application itself doesn't store.
+  const { data: job } = useJob(app?.job_id ?? undefined);
+  const { data: company } = useCompany(job?.company_id ?? undefined);
+
   const handleStatusChange = (status: ApplicationStatus) => {
     updateStatus.mutate(
       { id: applicationId, status },
@@ -213,7 +228,7 @@ function ApplicationDetailPage() {
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
+    <div className="space-y-6 max-w-6xl mx-auto">
       {/* Back button */}
       <Link
         to="/dashboard/applications"
@@ -263,77 +278,101 @@ function ApplicationDetailPage() {
             </button>
           </div>
         </div>
-
-        {/* ── Detail grid ──────────────────────────────────────────────── */}
-        <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3">
-          <DetailTile
-            icon={Building2}
-            label="Status"
-            value={STATUS_META[app.status].label}
-            iconColor="text-[#7C3AED]"
-          />
-          {app.applied_at && (
-            <DetailTile
-              icon={Calendar}
-              label="Applied"
-              value={format(parseISO(app.applied_at), "MMM d, yyyy")}
-            />
-          )}
-          {app.location && (
-            <DetailTile
-              icon={MapPin}
-              label="Location"
-              value={app.location}
-            />
-          )}
-          {salary && (
-            <DetailTile
-              icon={Banknote}
-              label="Salary"
-              value={salary}
-              iconColor="text-[#16A34A]"
-            />
-          )}
-          {app.source && (
-            <DetailTile
-              icon={Globe}
-              label="Source"
-              value={app.source}
-              iconColor="text-[oklch(0.5_0.02_265)]"
-            />
-          )}
-        </div>
       </DashCard>
 
-      {/* ── Links ──────────────────────────────────────────────────────── */}
-      {(app.url || app.job_id) && (
-        <DashCard>
-          <SectionTitle>Links</SectionTitle>
-          <div className="mt-4 flex flex-wrap gap-2">
-            {app.url && (
-              <a
-                href={app.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 rounded-lg border border-black/5 bg-white px-3 py-2 text-sm font-medium text-[oklch(0.4_0.02_265)] hover:bg-black/[0.03] transition-colors"
-              >
-                <ExternalLink className="h-4 w-4 text-[#2563EB]" />
-                Job listing
-              </a>
-            )}
-            {app.job_id && (
-              <Link
-                to="/dashboard/jobs/$jobId"
-                params={{ jobId: app.job_id }}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-black/5 bg-white px-3 py-2 text-sm font-medium text-[oklch(0.4_0.02_265)] hover:bg-black/[0.03] transition-colors"
-              >
-                <Building2 className="h-4 w-4 text-[#7C3AED]" />
-                Global Job Board entry
-              </Link>
-            )}
-          </div>
-        </DashCard>
-      )}
+      <div className="grid gap-6 lg:grid-cols-[1fr_280px]">
+        {/* ── Left: Application Summary + Timeline ────────────────────── */}
+        <div className="space-y-6">
+          {/* Application summary */}
+          <DashCard>
+            <SectionTitle>Application Summary</SectionTitle>
+            <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
+              <DetailTile icon={Building} label="Company" value={app.company_name} />
+              <DetailTile icon={UserRound} label="Role" value={app.role} iconColor="text-[#7C3AED]" />
+              <DetailTile
+                icon={Tag}
+                label="Current Status"
+                value={STATUS_META[app.status].label}
+                iconColor="text-[#F59E0B]"
+              />
+              {app.applied_at && (
+                <DetailTile
+                  icon={Calendar}
+                  label="Applied Date"
+                  value={format(parseISO(app.applied_at), "MMM d, yyyy")}
+                />
+              )}
+              {app.location && (
+                <DetailTile icon={MapPin} label="Location" value={app.location} />
+              )}
+              {salary && (
+                <DetailTile icon={Banknote} label="Salary" value={salary} iconColor="text-[#16A34A]" />
+              )}
+              {app.source && (
+                <DetailTile icon={Globe} label="Source" value={app.source} iconColor="text-[oklch(0.5_0.02_265)]" />
+              )}
+              {job?.employment_type && (
+                <DetailTile icon={Briefcase} label="Employment Type" value={job.employment_type} />
+              )}
+              {job?.work_mode && (
+                <DetailTile icon={Wifi} label="Work Mode" value={job.work_mode} iconColor="text-[#0EA5E9]" />
+              )}
+              {job?.experience_level && (
+                <DetailTile
+                  icon={Building2}
+                  label="Experience Level"
+                  value={job.experience_level}
+                  iconColor="text-[#F59E0B]"
+                />
+              )}
+              {company?.size && (
+                <DetailTile icon={Landmark} label="Company Size" value={company.size} />
+              )}
+              {typeof job?.applicant_count === "number" && (
+                <DetailTile icon={Users} label="Applicants" value={String(job.applicant_count)} />
+              )}
+            </div>
+          </DashCard>
+
+          {/* Timeline */}
+          <DashCard>
+            <SectionTitle>Timeline</SectionTitle>
+            <ApplicationTimeline applicationId={app.id} />
+          </DashCard>
+        </div>
+
+        {/* ── Right: Links ─────────────────────────────────────────────── */}
+        <div className="space-y-4">
+          {(app.url || app.job_id) && (
+            <DashCard>
+              <SectionTitle>Links</SectionTitle>
+              <div className="mt-4 flex flex-col gap-2">
+                {app.url && (
+                  <a
+                    href={app.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-black/5 bg-white px-3 py-2 text-sm font-medium text-[oklch(0.4_0.02_265)] hover:bg-black/[0.03] transition-colors"
+                  >
+                    <ExternalLink className="h-4 w-4 text-[#2563EB]" />
+                    Job Listing
+                  </a>
+                )}
+                {app.job_id && (
+                  <Link
+                    to="/dashboard/jobs/$jobId"
+                    params={{ jobId: app.job_id }}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-black/5 bg-white px-3 py-2 text-sm font-medium text-[oklch(0.4_0.02_265)] hover:bg-black/[0.03] transition-colors"
+                  >
+                    <Building2 className="h-4 w-4 text-[#7C3AED]" />
+                    View Job
+                  </Link>
+                )}
+              </div>
+            </DashCard>
+          )}
+        </div>
+      </div>
 
       {/* ── Dates metadata ─────────────────────────────────────────────── */}
       <div className="flex flex-wrap gap-4 text-[11px] text-[oklch(0.55_0.02_265)]">

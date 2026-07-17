@@ -3,7 +3,7 @@ import type { Application, ApplicationStatus } from "@/types";
 import { CompanyMark } from "@/components/dashboard/primitives";
 import { StatusBadge } from "./ApplicationCard";
 import { logoToneForCompany } from "@/features/jobs/utils";
-import { Calendar, MapPin, Banknote, Globe, Trash2, ArrowUpRight } from "lucide-react";
+import { Calendar, MapPin, Banknote, Globe, Trash2, Archive, ArrowUpRight } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { cn } from "@/lib/utils";
 
@@ -11,6 +11,7 @@ type Props = {
   applications: Application[];
   onStatusChange: (id: string, status: ApplicationStatus) => void;
   onDelete: (id: string) => void;
+  onArchive?: (id: string) => void;
 };
 
 /**
@@ -19,7 +20,7 @@ type Props = {
  * Tabular list view of applications — shows company, role, status,
  * applied date, location, salary, and source. Rows link to the detail page.
  */
-export function ApplicationListView({ applications, onDelete }: Props) {
+export function ApplicationListView({ applications, onDelete, onArchive }: Props) {
   if (applications.length === 0) {
     return (
       <div className="flex flex-col items-center gap-2 py-16 text-center">
@@ -124,6 +125,15 @@ export function ApplicationListView({ applications, onDelete }: Props) {
                     >
                       <ArrowUpRight className="h-3.5 w-3.5" />
                     </Link>
+                    {onArchive && (
+                      <button
+                        onClick={() => onArchive(app.id)}
+                        aria-label="Archive application"
+                        className="grid h-7 w-7 place-items-center rounded-lg text-[oklch(0.5_0.02_265)] hover:bg-black/[0.05] hover:text-[oklch(0.2_0.02_265)] transition-colors"
+                      >
+                        <Archive className="h-3.5 w-3.5" />
+                      </button>
+                    )}
                     <button
                       onClick={() => onDelete(app.id)}
                       aria-label="Delete application"

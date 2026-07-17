@@ -150,6 +150,12 @@ export type ApplicationRow = {
   salary_currency: string | null;
   source: string | null;
   url: string | null;
+  archived: boolean;
+  archived_at: string | null;
+  /** How this row was created — 'apply_flow' (via a GlobalJob) or 'manual'. */
+  created_via: string;
+  /** Free-form extension point (recruiter, hiring manager, referral, reminder, etc.) — see Module 3A schema notes. */
+  metadata: Json;
   created_at: string;
   updated_at: string;
 };
@@ -158,8 +164,13 @@ export type ApplicationActivityRow = {
   id: string;
   application_id: string;
   user_id: string;
+  /** Event type, e.g. 'application_created' | 'manual_application_created' | 'status_changed' | 'archived' | 'restored'. */
   kind: string;
+  /** Rendered human-readable summary. */
   text: string;
+  previous_value: string | null;
+  new_value: string | null;
+  metadata: Json;
   created_at: string;
 };
 
@@ -397,6 +408,10 @@ export type ApplicationInsert = {
   salary_currency?: string | null;
   source?: string | null;
   url?: string | null;
+  archived?: boolean;
+  archived_at?: string | null;
+  created_via?: string;
+  metadata?: Json;
   created_at?: string;
   updated_at?: string;
 };
@@ -407,6 +422,9 @@ export type ApplicationActivityInsert = {
   user_id: string;
   kind: string;
   text: string;
+  previous_value?: string | null;
+  new_value?: string | null;
+  metadata?: Json;
   created_at?: string;
 };
 

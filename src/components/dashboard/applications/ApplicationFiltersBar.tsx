@@ -1,14 +1,30 @@
 import { useState, useCallback } from "react";
 import { Search, X, ChevronDown, SlidersHorizontal } from "lucide-react";
 import type { ApplicationStatus } from "@/types";
-import type { ApplicationFilters, ApplicationSortOption } from "@/features/applications/types";
+import type {
+  AppliedDatePreset,
+  ApplicationFilters,
+  ApplicationSortOption,
+  RoleCategory,
+} from "@/features/applications/types";
 import {
   STATUS_META,
   ALL_STATUSES,
   SORT_LABELS,
   DEFAULT_APPLICATION_SORT_OPTION,
+  ROLE_CATEGORY_LABELS,
+  ROLE_CATEGORY_OPTIONS,
+  APPLIED_DATE_PRESET_LABELS,
+  APPLIED_DATE_PRESET_OPTIONS,
 } from "@/features/applications/constants";
+import { dateRangeForPreset } from "@/features/applications/utils";
 import { cn } from "@/lib/utils";
+
+const selectClass =
+  "h-9 rounded-lg border border-black/5 bg-white px-2.5 text-sm text-[oklch(0.4_0.02_265)] hover:border-black/10 focus:border-[#2563EB]/40 focus:outline-none focus:ring-2 focus:ring-[#2563EB]/10 transition-colors";
+
+const dateInputClass =
+  "h-9 rounded-lg border border-black/5 bg-white px-2.5 text-sm text-[oklch(0.4_0.02_265)] hover:border-black/10 focus:border-[#2563EB]/40 focus:outline-none focus:ring-2 focus:ring-[#2563EB]/10 transition-colors";
 
 type Props = {
   filters: ApplicationFilters;
@@ -62,7 +78,48 @@ export function ApplicationFiltersBar({
     ? [filters.status]
     : [];
 
-  const hasFilters = Boolean(filters.q || activeStatuses.length > 0 || filters.source);
+  const setRole = useCallback(
+    (role: string) =>
+      onFiltersChange({ ...filters, role: (role || undefined) as RoleCategory | undefined }),
+    [filters, onFiltersChange],
+  );
+
+  const setDatePreset = useCallback(
+    (preset: string) => {
+      if (!preset) {
+        const { appliedDatePreset, appliedAfter, appliedBefore, ...rest } = filters;
+        onFiltersChange(rest);
+        return;
+      }
+      const p = preset as AppliedDatePreset;
+      if (p === "custom") {
+        onFiltersChange({ ...filters, appliedDatePreset: p });
+        return;
+      }
+      const { after, before } = dateRangeForPreset(p);
+      onFiltersChange({ ...filters, appliedDatePreset: p, appliedAfter: after, appliedBefore: before });
+    },
+    [filters, onFiltersChange],
+  );
+
+  const setCustomRange = useCallback(
+    (key: "appliedAfter" | "appliedBefore", value: string) => {
+      onFiltersChange({
+        ...filters,
+        appliedDatePreset: "custom",
+        [key]: value ? new Date(value).toISOString() : undefined,
+      });
+    },
+    [filters, onFiltersChange],
+  );
+
+  const hasFilters = Boolean(
+    filters.q ||
+      activeStatuses.length > 0 ||
+      filters.source ||
+      filters.role ||
+      filters.appliedDatePreset,
+  );
 
   const clearFilters = () =>
     onFiltersChange({});
@@ -113,6 +170,58 @@ export function ApplicationFiltersBar({
             </div>
           )}
         </div>
+
+        {/* Role filter */}
+        <select
+          id="app-role-filter"
+          value={filters.role ?? ""}
+          onChange={(e) => setRole(e.target.value)}
+          className={selectClass}
+        >
+          <option value="">All roles</option>
+          {ROLE_CATEGORY_OPTIONS.map((r) => (
+            <option key={r} value={r}>
+              {ROLE_CATEGORY_LABELS[r]}
+            </option>
+          ))}
+        </select>
+
+        {/* Applied date filter */}
+        <select
+          id="app-date-filter"
+          value={filters.appliedDatePreset ?? ""}
+          onChange={(e) => setDatePreset(e.target.value)}
+          className={selectClass}
+        >
+          <option value="">Any time applied</option>
+          {APPLIED_DATE_PRESET_OPTIONS.map((p) => (
+            <option key={p} value={p}>
+              {APPLIED_DATE_PRESET_LABELS[p]}
+            </option>
+          ))}
+        </select>
+
+        {/* Custom range inputs — only shown once "Custom Range" is selected */}
+        {filters.appliedDatePreset === "custom" && (
+          <>
+            <input
+              id="app-date-after"
+              type="date"
+              aria-label="Applied after"
+              value={filters.appliedAfter?.slice(0, 10) ?? ""}
+              onChange={(e) => setCustomRange("appliedAfter", e.target.value)}
+              className={dateInputClass}
+            />
+            <input
+              id="app-date-before"
+              type="date"
+              aria-label="Applied before"
+              value={filters.appliedBefore?.slice(0, 10) ?? ""}
+              onChange={(e) => setCustomRange("appliedBefore", e.target.value)}
+              className={dateInputClass}
+            />
+          </>
+        )}
 
         {/* Count + clear */}
         <div className="ml-auto flex items-center gap-2">

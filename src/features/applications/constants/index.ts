@@ -1,5 +1,6 @@
 import type { ApplicationStatus } from "@/types";
-import type { ApplicationSort, ApplicationSortOption } from "../types";
+import type { AppliedDatePreset, ApplicationSort, ApplicationSortOption } from "../types";
+export { ROLE_CATEGORY_LABELS, ROLE_CATEGORY_OPTIONS } from "@/features/jobs/constants";
 
 // ── Status metadata ──────────────────────────────────────────────────────────
 
@@ -13,13 +14,6 @@ export type StatusMeta = {
 };
 
 export const STATUS_META: Record<ApplicationStatus, StatusMeta> = {
-  wishlist: {
-    label: "Wishlist",
-    bg: "bg-slate-100",
-    text: "text-slate-600",
-    dot: "bg-slate-400",
-    tone: "default",
-  },
   applied: {
     label: "Applied",
     bg: "bg-blue-50",
@@ -84,7 +78,6 @@ export const KANBAN_COLUMNS: ApplicationStatus[] = (
   .map(([status]) => status);
 
 export const ALL_STATUSES: ApplicationStatus[] = [
-  "wishlist",
   "applied",
   "online_assessment",
   "interview",
@@ -119,3 +112,23 @@ export const DEFAULT_APPLICATION_SORT: ApplicationSort = {
 
 export const DEFAULT_APPLICATION_SORT_OPTION: ApplicationSortOption =
   "recently_updated";
+
+// ── Applied-date filter ──────────────────────────────────────────────────────
+
+export const APPLIED_DATE_PRESET_LABELS: Record<AppliedDatePreset, string> = {
+  today: "Today",
+  last_7_days: "Last 7 Days",
+  last_30_days: "Last 30 Days",
+  last_90_days: "Last 90 Days",
+  this_year: "This Year",
+  custom: "Custom Range",
+};
+
+export const APPLIED_DATE_PRESET_OPTIONS: AppliedDatePreset[] = [
+  "today",
+  "last_7_days",
+  "last_30_days",
+  "last_90_days",
+  "this_year",
+  "custom",
+];

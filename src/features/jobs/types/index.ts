@@ -5,6 +5,27 @@ import type {
   JobSource,
 } from "@/types";
 
+// ── Role category ────────────────────────────────────────────────────────────
+// Derived from a job's free-text `role` field — see
+// features/jobs/utils.ts#categorizeRole. Not stored in the DB. Shared with the
+// Applications feature (applications inherit their role text from a job).
+
+export type RoleCategory =
+  | "product"
+  | "frontend"
+  | "backend"
+  | "full_stack"
+  | "mobile"
+  | "data"
+  | "ml_ai"
+  | "devops"
+  | "design"
+  | "marketing"
+  | "sales"
+  | "finance"
+  | "operations"
+  | "other";
+
 // ── Filter shape ─────────────────────────────────────────────────────────────
 
 export type JobFilters = {
@@ -14,6 +35,8 @@ export type JobFilters = {
   company?: string;
   /** Partial role string match */
   role?: string;
+  /** Role category, derived from the free-text role field */
+  roleCategory?: RoleCategory;
   /** Partial location string match */
   location?: string;
   /** Remote-only toggle */
@@ -73,6 +96,7 @@ export type JobsSearchParams = {
   workMode?: string;
   employmentType?: string;
   experienceLevel?: string;
+  roleCategory?: string;
   source?: string;
   salaryMin?: number;
   salaryMax?: number;

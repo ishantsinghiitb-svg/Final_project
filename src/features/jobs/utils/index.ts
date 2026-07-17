@@ -1,4 +1,5 @@
 import type { GlobalJob } from "@/types";
+import type { RoleCategory } from "@/features/jobs/types";
 
 // ── Stable gradient palette for company initials ──────────────────────────
 // Deterministic from the first character of the company name so the colour
@@ -99,4 +100,35 @@ export function formatPostedAtFull(iso: string | null | undefined): string {
     day: "numeric",
     year: "numeric",
   });
+}
+
+// ── Role categorization ──────────────────────────────────────────────────────
+// A job/application's `role` is free text (e.g. "Senior Frontend Engineer").
+// The Role filter (Jobs + Applications) buckets it into a fixed taxonomy via
+// keyword matching — order matters, most specific/least ambiguous categories
+// are checked first. This is the single source of truth for that mapping;
+// both features import it rather than re-implementing the classification.
+
+const ROLE_PATTERNS: [RoleCategory, RegExp][] = [
+  ["ml_ai", /machine learning|artificial intelligence|deep learning|\bnlp\b|computer vision|\bllm\b|\bml\b|\bai\b/i],
+  ["data", /data (scientist|engineer|analyst)|analytics|business intelligence|\bbi\b/i],
+  ["devops", /devops|site reliability|\bsre\b|infrastructure|platform engineer|cloud engineer/i],
+  ["mobile", /\bios\b|\bandroid\b|mobile|flutter|react native/i],
+  ["full_stack", /full[\s-]?stack/i],
+  ["frontend", /front[\s-]?end|ui engineer|react developer/i],
+  ["backend", /back[\s-]?end|server[\s-]?side/i],
+  ["design", /designer|\bux\b|ui\/ux|product design/i],
+  ["product", /product manager|product owner|\bpm\b/i],
+  ["marketing", /marketing|growth|\bseo\b|content strategist/i],
+  ["sales", /sales|account executive|business development|\bbdr\b|\bsdr\b/i],
+  ["finance", /finance|accounting|financial analyst/i],
+  ["operations", /operations|\bops\b|program manager|project manager|people ops|\bhr\b|human resources/i],
+];
+
+export function categorizeRole(role: string | null | undefined): RoleCategory {
+  if (!role) return "other";
+  for (const [category, pattern] of ROLE_PATTERNS) {
+    if (pattern.test(role)) return category;
+  }
+  return "other";
 }

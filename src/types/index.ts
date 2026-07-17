@@ -1,3 +1,5 @@
+import type { Json } from "@/types/database";
+
 // ── Auth ──
 export type AuthProvider = "email" | "google";
 
@@ -125,14 +127,13 @@ export type GlobalJob = {
 
 // ── Application ──
 export type ApplicationStatus =
-  | "wishlist"
   | "applied"
   | "online_assessment"
   | "interview"
   | "offer"
+  | "accepted"
   | "rejected"
-  | "withdrawn"
-  | "accepted";
+  | "withdrawn";
 
 export type Application = {
   id: string;
@@ -152,8 +153,39 @@ export type Application = {
   salary_currency?: string | null;
   source?: string | null;
   url?: string | null;
+  /** Soft-archive state — archived applications are hidden from the active board. */
+  archived?: boolean;
+  archived_at?: string | null;
+  /** How this application was created. */
+  created_via?: "apply_flow" | "manual";
+  /** Free-form extension point (recruiter, hiring manager, referral, reminder, etc.). */
+  metadata?: Json;
   created_at: string;
   updated_at: string;
+};
+
+// ── Application Timeline ──
+// Backed by `application_activity`, populated automatically by a DB trigger
+// (see supabase/migrations/20260717000001_module3a_application_management.sql).
+// Module 3B renders this directly — no schema changes should be required.
+export type ApplicationTimelineEventType =
+  | "application_created"
+  | "manual_application_created"
+  | "status_changed"
+  | "archived"
+  | "restored";
+
+export type ApplicationTimelineEvent = {
+  id: string;
+  application_id: string;
+  user_id: string;
+  event_type: ApplicationTimelineEventType;
+  /** Rendered human-readable summary. */
+  text: string;
+  previous_value: string | null;
+  new_value: string | null;
+  metadata: Json;
+  created_at: string;
 };
 
 // ── Resume ──

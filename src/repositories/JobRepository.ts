@@ -1,6 +1,7 @@
 import { supabase } from "@/lib/supabase";
 import type { GlobalJob, SavedJob, Skill, PaginationParams, PaginatedResult } from "@/types";
-import type { JobFilters, JobSort } from "@/features/jobs/types";
+import type { JobFilters, JobSort, RoleCategory } from "@/features/jobs/types";
+import { categorizeRole } from "@/features/jobs/utils";
 
 // Select all columns that map to the GlobalJob domain type.
 // `role_id` and `location_id` are DB-only FK references and are excluded
@@ -81,6 +82,18 @@ export class JobRepository {
       q = q.ilike("role", `%${filters.role}%`);
     }
 
+    // ── Role category ──
+    // Not a DB column — resolved to matching IDs first (via the same
+    // categorizeRole used by the Applications Role filter) so pagination and
+    // the total count stay accurate.
+    if (filters.roleCategory) {
+      const ids = await this.findJobIdsByRoleCategory(filters.roleCategory);
+      if (ids.length === 0) {
+        return { data: [], total: 0, page, pageSize, totalPages: 0 };
+      }
+      q = q.in("id", ids);
+    }
+
     // ── Location ──
     if (filters.location) {
       q = q.ilike("location", `%${filters.location}%`);
@@ -152,6 +165,49 @@ export class JobRepository {
       pageSize,
       totalPages: Math.ceil(total / pageSize),
     };
+  }
+
+  /**
+   * Resolves the IDs of jobs whose role falls into the given category.
+   * `role_category` isn't a DB column — classification runs client-side via
+   * categorizeRole() over a lightweight (id, role) projection, so this stays
+   * in sync with the Applications Role filter without duplicating the
+   * matching logic in SQL.
+   */
+  async findJobIdsByRoleCategory(category: RoleCategory): Promise<string[]> {
+    const { data, error } = await supabase.from("global_jobs").select("id, role");
+    if (error) throw error;
+    return (data ?? [])
+      .filter((row) => categorizeRole(row.role as string) === category)
+      .map((row) => row.id as string);
+  }
+
+  /**
+   * Looks for an existing global_jobs row matching a company + role (and,
+   * if given, location) exactly (case-insensitive). Used when creating a
+   * manual application so it can reuse the GlobalJob instead of never
+   * linking one — see ApplicationService.createManual.
+   */
+  async findMatchingJob(
+    companyName: string,
+    role: string,
+    location?: string,
+  ): Promise<GlobalJob | null> {
+    const escape = (s: string) => s.trim().replace(/[%_]/g, "\\$&");
+
+    let q = supabase
+      .from("global_jobs")
+      .select(JOB_COLUMNS)
+      .ilike("company_name", escape(companyName))
+      .ilike("role", escape(role));
+
+    if (location?.trim()) {
+      q = q.ilike("location", escape(location));
+    }
+
+    const { data, error } = await q.limit(1).maybeSingle();
+    if (error) throw error;
+    return data as GlobalJob | null;
   }
 
   /**

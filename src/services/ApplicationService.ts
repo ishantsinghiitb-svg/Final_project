@@ -1,7 +1,8 @@
 import type { Application, ApplicationStatus, GlobalJob, PaginationParams, PaginatedResult } from "@/types";
-import type { ApplicationFilters, ApplicationSort } from "@/features/applications/types";
-import { DEFAULT_APPLICATION_SORT } from "@/features/applications/constants";
+import type { ApplicationFilters, ApplicationSort, ManualApplicationInput } from "@/features/applications/types";
+import { ALL_STATUSES, DEFAULT_APPLICATION_SORT } from "@/features/applications/constants";
 import { ApplicationRepository } from "@/repositories/ApplicationRepository";
+import { jobService } from "@/services/JobService";
 
 const DEFAULT_PAGINATION: PaginationParams = { page: 1, pageSize: 50 };
 
@@ -42,6 +43,36 @@ export class ApplicationService {
     });
   }
 
+  /**
+   * Called from "+ Add Application". Looks for an existing GlobalJob that
+   * matches the entered company + role (+ location) and reuses it instead of
+   * creating a duplicate; falls back to a job-less application otherwise.
+   * `source` reflects the matched job's origin when reused, or "Manual" when not.
+   */
+  async createManual(userId: string, input: ManualApplicationInput): Promise<Application> {
+    const company = input.company_name.trim();
+    const role = input.role.trim();
+    const location = input.location?.trim() || undefined;
+
+    const matched = await jobService.findMatchingJob(company, role, location);
+
+    return appRepo.create(userId, {
+      job_id: matched?.id ?? null,
+      company_name: company,
+      role,
+      status: input.status,
+      applied_at: new Date().toISOString(),
+      location: location ?? matched?.location ?? null,
+      salary_min: input.salary ?? matched?.salary_min ?? null,
+      salary_max: matched?.salary_max ?? null,
+      salary_currency: matched?.salary_currency ?? "USD",
+      source: matched?.source ?? "Manual",
+      url: input.url?.trim() || matched?.url || null,
+      notes: input.notes?.trim() || null,
+      created_via: "manual",
+    });
+  }
+
   // ── Read ──────────────────────────────────────────────────────────────────
 
   async getApplications(
@@ -61,10 +92,11 @@ export class ApplicationService {
   /**
    * Returns ALL applications for a user — used by the Kanban board.
    * Applies search filter client-side after fetching so the Kanban doesn't
-   * need pagination complexity.
+   * need pagination complexity. `archived` toggles the active board (default)
+   * vs. the archive view.
    */
-  async getAllApplications(userId: string): Promise<Application[]> {
-    return appRepo.findAllByUser(userId);
+  async getAllApplications(userId: string, archived = false): Promise<Application[]> {
+    return appRepo.findAllByUser(userId, archived);
   }
 
   async getApplication(id: string): Promise<Application | null> {
@@ -76,21 +108,15 @@ export class ApplicationService {
     return appRepo.findByJobId(userId, jobId);
   }
 
+  /** Returns the application's timeline, newest first — see ApplicationRepository.findTimeline. */
+  async getTimeline(applicationId: string) {
+    return appRepo.findTimeline(applicationId);
+  }
+
   // ── Update ────────────────────────────────────────────────────────────────
 
   async updateStatus(id: string, status: ApplicationStatus): Promise<Application> {
-    // Validate status is a known value
-    const VALID: ApplicationStatus[] = [
-      "wishlist",
-      "applied",
-      "online_assessment",
-      "interview",
-      "offer",
-      "rejected",
-      "withdrawn",
-      "accepted",
-    ];
-    if (!VALID.includes(status)) {
+    if (!ALL_STATUSES.includes(status)) {
       throw new Error(`Invalid application status: ${status}`);
     }
     return appRepo.updateStatus(id, status);
@@ -101,6 +127,18 @@ export class ApplicationService {
     updates: Partial<Omit<Application, "id" | "user_id" | "created_at" | "updated_at">>,
   ): Promise<Application> {
     return appRepo.update(id, updates);
+  }
+
+  // ── Archive ───────────────────────────────────────────────────────────────
+  // Timeline events for these transitions are logged automatically by a DB
+  // trigger (see supabase/migrations/20260717000001_module3a_application_management.sql).
+
+  async archiveApplication(id: string): Promise<Application> {
+    return appRepo.update(id, { archived: true, archived_at: new Date().toISOString() });
+  }
+
+  async restoreApplication(id: string): Promise<Application> {
+    return appRepo.update(id, { archived: false, archived_at: null });
   }
 
   // ── Delete ────────────────────────────────────────────────────────────────

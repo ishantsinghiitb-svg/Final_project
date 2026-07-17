@@ -1,4 +1,17 @@
 import type { ApplicationStatus } from "@/types";
+import type { RoleCategory } from "@/features/jobs/types";
+
+export type { RoleCategory };
+
+// ── Applied-date filter preset ───────────────────────────────────────────────
+
+export type AppliedDatePreset =
+  | "today"
+  | "last_7_days"
+  | "last_30_days"
+  | "last_90_days"
+  | "this_year"
+  | "custom";
 
 // ── Application filter shape ─────────────────────────────────────────────────
 
@@ -9,12 +22,18 @@ export type ApplicationFilters = {
   status?: ApplicationStatus | ApplicationStatus[];
   /** Partial company name */
   company?: string;
+  /** Role category, derived from the free-text role field */
+  role?: RoleCategory;
   /** ISO date string — only include applications on or after this date */
   appliedAfter?: string;
   /** ISO date string — only include applications on or before this date */
   appliedBefore?: string;
+  /** UI-only: which preset produced appliedAfter/appliedBefore (drives the filter bar's selected option) */
+  appliedDatePreset?: AppliedDatePreset;
   /** Job source (LinkedIn, Greenhouse, etc.) */
   source?: string;
+  /** false (default) = active board only, true = archived only */
+  archived?: boolean;
 };
 
 // ── Sort shape ───────────────────────────────────────────────────────────────
@@ -51,4 +70,17 @@ export type ApplicationsSearchParams = {
   appliedBefore?: string;
   sort?: ApplicationSortOption;
   view?: "board" | "list";
+};
+
+// ── Manual application creation ──────────────────────────────────────────────
+
+export type ManualApplicationInput = {
+  company_name: string;
+  role: string;
+  status: ApplicationStatus;
+  location?: string;
+  url?: string;
+  /** Single optional figure — stored as salary_min; salary_max is left unset. */
+  salary?: number;
+  notes?: string;
 };

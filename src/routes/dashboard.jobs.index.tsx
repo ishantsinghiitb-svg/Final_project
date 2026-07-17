@@ -44,6 +44,8 @@ import {
   SOURCE_OPTIONS,
   POSTED_AFTER_OPTIONS,
   postedAfterToIso,
+  ROLE_CATEGORY_LABELS,
+  ROLE_CATEGORY_OPTIONS,
 } from "@/features/jobs/constants";
 import { formatSalary, formatPostedAt, logoToneForCompany } from "@/features/jobs/utils";
 
@@ -61,6 +63,7 @@ export const Route = createFileRoute("/dashboard/jobs/")({
     employmentType: typeof search.employmentType === "string" ? search.employmentType : undefined,
     experienceLevel:
       typeof search.experienceLevel === "string" ? search.experienceLevel : undefined,
+    roleCategory: typeof search.roleCategory === "string" ? search.roleCategory : undefined,
     source: typeof search.source === "string" ? search.source : undefined,
     salaryMin: typeof search.salaryMin === "number" ? search.salaryMin : undefined,
     salaryMax: typeof search.salaryMax === "number" ? search.salaryMax : undefined,
@@ -303,6 +306,9 @@ function JobsPage() {
       experienceLevel: search.experienceLevel
         ? (search.experienceLevel as JobFilters["experienceLevel"])
         : undefined,
+      roleCategory: search.roleCategory
+        ? (search.roleCategory as JobFilters["roleCategory"])
+        : undefined,
       source: search.source ? (search.source as JobFilters["source"]) : undefined,
       salaryMin: search.salaryMin,
       salaryMax: search.salaryMax,
@@ -426,6 +432,7 @@ function JobsPage() {
     search.workMode ||
     search.employmentType ||
     search.experienceLevel ||
+    search.roleCategory ||
     search.source ||
     search.salaryMin ||
     search.salaryMax ||
@@ -437,6 +444,7 @@ function JobsPage() {
     search.workMode,
     search.employmentType,
     search.experienceLevel,
+    search.roleCategory,
     search.source,
     search.postedAfter,
     search.company,
@@ -522,6 +530,20 @@ function JobsPage() {
             {EXPERIENCE_LEVEL_OPTIONS.map((o) => (
               <option key={o.value} value={o.value}>
                 {o.label}
+              </option>
+            ))}
+          </select>
+
+          {/* Role category */}
+          <select
+            value={search.roleCategory ?? ""}
+            onChange={(e) => setFilter("roleCategory", e.target.value)}
+            className="rounded-lg border border-black/5 bg-white px-3 py-2 text-sm"
+          >
+            <option value="">All roles</option>
+            {ROLE_CATEGORY_OPTIONS.map((r) => (
+              <option key={r} value={r}>
+                {ROLE_CATEGORY_LABELS[r]}
               </option>
             ))}
           </select>

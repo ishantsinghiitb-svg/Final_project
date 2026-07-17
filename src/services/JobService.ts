@@ -50,6 +50,20 @@ export class JobService {
   }
 
   /**
+   * Finds an existing GlobalJob matching a company + role (+ optional
+   * location), so manual application creation can reuse it instead of
+   * duplicating job data. Returns null if no match is found.
+   */
+  async findMatchingJob(
+    companyName: string,
+    role: string,
+    location?: string,
+  ): Promise<GlobalJob | null> {
+    if (!companyName.trim() || !role.trim()) return null;
+    return jobRepo.findMatchingJob(companyName, role, location);
+  }
+
+  /**
    * Returns similar jobs to a reference job.
    * Similar = same role (fuzzy) OR same location, excluding the reference job.
    */

@@ -1,4 +1,4 @@
-import type { JobSort, JobSortOption } from "@/features/jobs/types";
+import type { JobSort, JobSortOption, RoleCategory } from "@/features/jobs/types";
 import type { PaginationParams } from "@/types";
 
 // ── Defaults ─────────────────────────────────────────────────────────────────
@@ -100,3 +100,40 @@ export function postedAfterToIso(days: string | undefined): string | undefined {
   if (!Number.isFinite(n) || n <= 0) return undefined;
   return new Date(Date.now() - n * 24 * 60 * 60 * 1_000).toISOString();
 }
+
+// ── Role category filter ─────────────────────────────────────────────────────
+// Shared with the Applications feature — see features/jobs/utils.ts#categorizeRole.
+
+export const ROLE_CATEGORY_LABELS: Record<RoleCategory, string> = {
+  product: "Product",
+  frontend: "Frontend",
+  backend: "Backend",
+  full_stack: "Full Stack",
+  mobile: "Mobile",
+  data: "Data",
+  ml_ai: "ML / AI",
+  devops: "DevOps",
+  design: "Design",
+  marketing: "Marketing",
+  sales: "Sales",
+  finance: "Finance",
+  operations: "Operations",
+  other: "Other",
+};
+
+export const ROLE_CATEGORY_OPTIONS: RoleCategory[] = [
+  "product",
+  "frontend",
+  "backend",
+  "full_stack",
+  "mobile",
+  "data",
+  "ml_ai",
+  "devops",
+  "design",
+  "marketing",
+  "sales",
+  "finance",
+  "operations",
+  "other",
+];

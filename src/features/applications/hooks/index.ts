@@ -6,7 +6,7 @@ import {
 import { useAuth } from "@/context/AuthContext";
 import { applicationService } from "@/services/ApplicationService";
 import type { Application, ApplicationStatus, GlobalJob } from "@/types";
-import type { ApplicationFilters, ApplicationSort } from "@/features/applications/types";
+import type { ApplicationFilters, ApplicationSort, ManualApplicationInput } from "@/features/applications/types";
 import type { PaginationParams } from "@/types";
 import {
   DEFAULT_APPLICATION_SORT,
@@ -17,8 +17,9 @@ import {
 export const applicationKeys = {
   all: ["applications"] as const,
 
-  /** All applications for a user (Kanban — no pagination) */
-  allByUser: (userId: string) => [...applicationKeys.all, "all", userId] as const,
+  /** All applications for a user (Kanban — no pagination). `archived` splits the active board from the archive view. */
+  allByUser: (userId: string, archived = false) =>
+    [...applicationKeys.all, "all", userId, archived] as const,
 
   lists: () => [...applicationKeys.all, "list"] as const,
   list: (userId: string, filters: ApplicationFilters, sort: ApplicationSort, pagination: PaginationParams) =>
@@ -27,6 +28,8 @@ export const applicationKeys = {
   details: () => [...applicationKeys.all, "detail"] as const,
   detail: (id: string) => [...applicationKeys.details(), id] as const,
 
+  timeline: (id: string) => [...applicationKeys.all, "timeline", id] as const,
+
   statusCounts: (userId: string) => [...applicationKeys.all, "status-counts", userId] as const,
 
   /** Existing application (if any) for a given user + job pair. */
@@ -34,16 +37,26 @@ export const applicationKeys = {
 };
 
 // ── useAllApplications ───────────────────────────────────────────────────────
-// Fetches ALL applications for the current user — used by the Kanban board.
+// Fetches ALL applications for the current user — used by the Kanban/List views.
+// `archived = false` (default) returns the active board; `true` returns the
+// archive view — see useArchivedApplications below.
 
-export function useAllApplications() {
+export function useAllApplications(archived = false) {
   const { user } = useAuth();
   return useQuery({
-    queryKey: applicationKeys.allByUser(user?.id ?? ""),
-    queryFn: () => applicationService.getAllApplications(user!.id),
+    queryKey: applicationKeys.allByUser(user?.id ?? "", archived),
+    queryFn: () => applicationService.getAllApplications(user!.id, archived),
     enabled: Boolean(user),
     staleTime: 60 * 1_000, // 1 minute
   });
+}
+
+// ── useArchivedApplications ──────────────────────────────────────────────────
+// Thin wrapper for the Archived Applications panel — reuses useAllApplications
+// so there's a single query implementation for both board states.
+
+export function useArchivedApplications() {
+  return useAllApplications(true);
 }
 
 // ── useApplications ──────────────────────────────────────────────────────────
@@ -73,6 +86,20 @@ export function useApplication(id: string | undefined) {
     queryFn: () => applicationService.getApplication(id!),
     enabled: Boolean(id),
     staleTime: 2 * 60 * 1_000,
+  });
+}
+
+// ── useApplicationTimeline ────────────────────────────────────────────────────
+// Read-only timeline for the detail page — rows are written automatically by
+// a DB trigger (see ApplicationRepository.findTimeline). Invalidated whenever
+// any application mutation settles, since those all invalidate applicationKeys.all.
+
+export function useApplicationTimeline(applicationId: string | undefined) {
+  return useQuery({
+    queryKey: applicationKeys.timeline(applicationId ?? ""),
+    queryFn: () => applicationService.getTimeline(applicationId!),
+    enabled: Boolean(applicationId),
+    staleTime: 30 * 1_000,
   });
 }
 
@@ -256,6 +283,145 @@ export function useDeleteApplication() {
     onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: applicationKeys.all });
       void queryClient.invalidateQueries({ queryKey: ["sidebar", "applications-count", userId] });
+    },
+  });
+}
+
+// ── useCreateManualApplication ───────────────────────────────────────────────
+// Creates an application from the "+ Add Application" form. Reuses a matching
+// GlobalJob when one exists (resolved server-side) — see ApplicationService.createManual.
+
+export function useCreateManualApplication() {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const userId = user?.id ?? "";
+
+  return useMutation({
+    mutationFn: (input: ManualApplicationInput) => {
+      if (!user) throw new Error("Not authenticated");
+      return applicationService.createManual(user.id, input);
+    },
+
+    onMutate: async (input) => {
+      await queryClient.cancelQueries({ queryKey: applicationKeys.allByUser(userId) });
+
+      const previous = queryClient.getQueryData<Application[]>(
+        applicationKeys.allByUser(userId),
+      );
+
+      const optimistic: Application = {
+        id: `optimistic-${Date.now()}`,
+        user_id: userId,
+        job_id: null,
+        company_name: input.company_name.trim(),
+        role: input.role.trim(),
+        status: input.status,
+        applied_at: new Date().toISOString(),
+        location: input.location?.trim() || null,
+        salary_min: input.salary ?? null,
+        salary_max: null,
+        salary_currency: "USD",
+        source: "Manual",
+        url: input.url?.trim() || null,
+        notes: input.notes?.trim() || null,
+        created_via: "manual",
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+
+      queryClient.setQueryData<Application[]>(
+        applicationKeys.allByUser(userId),
+        (old) => [optimistic, ...(old ?? [])],
+      );
+
+      return { previous };
+    },
+
+    onError: (_err, _vars, context) => {
+      if (context?.previous !== undefined) {
+        queryClient.setQueryData(applicationKeys.allByUser(userId), context.previous);
+      }
+    },
+
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: applicationKeys.all });
+      void queryClient.invalidateQueries({ queryKey: ["sidebar", "applications-count", userId] });
+    },
+  });
+}
+
+// ── useArchiveApplication ────────────────────────────────────────────────────
+// Removes an application from the active board (optimistically) and hands it
+// to the archive view. Restoring is the inverse — see useRestoreApplication.
+
+export function useArchiveApplication() {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const userId = user?.id ?? "";
+
+  return useMutation({
+    mutationFn: ({ id }: { id: string }) => applicationService.archiveApplication(id),
+
+    onMutate: async ({ id }) => {
+      await queryClient.cancelQueries({ queryKey: applicationKeys.allByUser(userId, false) });
+
+      const previous = queryClient.getQueryData<Application[]>(
+        applicationKeys.allByUser(userId, false),
+      );
+
+      queryClient.setQueryData<Application[]>(
+        applicationKeys.allByUser(userId, false),
+        (old) => (old ?? []).filter((app) => app.id !== id),
+      );
+
+      return { previous };
+    },
+
+    onError: (_err, _vars, context) => {
+      if (context?.previous !== undefined) {
+        queryClient.setQueryData(applicationKeys.allByUser(userId, false), context.previous);
+      }
+    },
+
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: applicationKeys.all });
+    },
+  });
+}
+
+// ── useRestoreApplication ────────────────────────────────────────────────────
+
+export function useRestoreApplication() {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const userId = user?.id ?? "";
+
+  return useMutation({
+    mutationFn: ({ id }: { id: string }) => applicationService.restoreApplication(id),
+
+    onMutate: async ({ id }) => {
+      await queryClient.cancelQueries({ queryKey: applicationKeys.allByUser(userId, true) });
+
+      const previous = queryClient.getQueryData<Application[]>(
+        applicationKeys.allByUser(userId, true),
+      );
+
+      queryClient.setQueryData<Application[]>(
+        applicationKeys.allByUser(userId, true),
+        (old) => (old ?? []).filter((app) => app.id !== id),
+      );
+
+      return { previous };
+    },
+
+    onError: (_err, _vars, context) => {
+      if (context?.previous !== undefined) {
+        queryClient.setQueryData(applicationKeys.allByUser(userId, true), context.previous);
+      }
+    },
+
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: applicationKeys.all });
     },
   });
 }
