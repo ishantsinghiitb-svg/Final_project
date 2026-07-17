@@ -22,14 +22,19 @@ export const linkedInSelectors = {
     "a[data-tracking-control-name='public_jobs_topcard-org-name']",
     ".topcard__org-name-link",
   ],
+  /**
+   * Deliberately scoped to the top-card's own logo link/container — never a
+   * bare tag-name/utility-class selector (e.g. `.display-flex.align-items-center
+   * img`, unscoped `img.artdeco-entity-image`) that LinkedIn also reuses for
+   * the hirer/poster's profile photo elsewhere on the page. See
+   * `isLikelyPersonImage` in `structuredFields.ts` for the second line of
+   * defense applied on top of this scoping.
+   */
   companyLogo: [
     ".job-details-jobs-unified-top-card__company-logo img",
-    ".display-flex.align-items-center img",
     ".jobs-unified-top-card__company-logo img",
     "a.jobs-unified-top-card__company-name-link img",
     ".job-details-jobs-unified-top-card__container--two-pane img.artdeco-entity-image",
-    "img.artdeco-entity-image",
-    "img.EntityPhoto-square-3",
     "img[alt$='logo' i]",
     "a[href*='/company/'] img",
   ],

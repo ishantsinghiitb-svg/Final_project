@@ -8,12 +8,17 @@ type CtaRowProps = {
 };
 
 /**
- * The panel's CTA state machine — three states, not five: `ready` (nothing
- * done yet), `saved` (bookmarked but not applied), `tracked` (application on
- * file). "Apply & Track" is the primary action for both `ready` and `saved`
- * — saving is idempotent, so reusing it for an already-saved job is safe and
- * avoids a fourth state. Buttons disable while their own action is pending
- * so a slow response can't be triggered twice.
+ * The panel's CTA state machine — three states, each with its own primary/
+ * secondary pair, determined entirely from existing backend state (never a
+ * separately tracked client flag):
+ *
+ *  - `ready`   (not saved):        primary "Apply & Track"      / secondary "Save for Later"
+ *  - `saved`   (saved, untracked): primary "Track Application"  / secondary "View in NextOffer"
+ *  - `tracked` (application on file): primary disabled success state / secondary "View in NextOffer"
+ *
+ * Buttons disable while their own action is pending so a slow response can't
+ * be triggered twice, and neither primary action ever navigates the user
+ * away from the current page — both only save/track in the background.
  */
 export function CtaRow({ kind, isClosed, pending, actions }: CtaRowProps) {
   const busy = pending !== null;
@@ -21,8 +26,32 @@ export function CtaRow({ kind, isClosed, pending, actions }: CtaRowProps) {
   if (kind === "tracked") {
     return (
       <div className="nextoffer-panel__cta-row">
-        <div className="nextoffer-panel__tracked-badge">✅ Application Tracked</div>
+        <button className="nextoffer-panel__btn--tracked" disabled aria-live="polite">
+          ✓ Application Tracked
+        </button>
         <button className="nextoffer-panel__btn--secondary" onClick={actions.onViewInNextOffer}>
+          View in NextOffer
+        </button>
+      </div>
+    );
+  }
+
+  if (kind === "saved") {
+    return (
+      <div className="nextoffer-panel__cta-row">
+        <button
+          className="nextoffer-panel__btn--primary"
+          onClick={actions.onTrackApplication}
+          disabled={isClosed || busy}
+          title={isClosed ? "This job is closed" : undefined}
+        >
+          {pending === "track" ? "Tracking…" : "Track Application"}
+        </button>
+        <button
+          className="nextoffer-panel__btn--secondary"
+          onClick={actions.onViewInNextOffer}
+          disabled={busy}
+        >
           View in NextOffer
         </button>
       </div>
@@ -39,24 +68,13 @@ export function CtaRow({ kind, isClosed, pending, actions }: CtaRowProps) {
       >
         {pending === "applyAndTrack" ? "Applying…" : "Apply & Track"}
       </button>
-
-      {kind === "ready" ? (
-        <button
-          className="nextoffer-panel__btn--secondary"
-          onClick={actions.onSaveForLater}
-          disabled={busy}
-        >
-          {pending === "save" ? "Saving…" : "Save for Later"}
-        </button>
-      ) : (
-        <button
-          className="nextoffer-panel__btn--secondary"
-          onClick={actions.onViewInNextOffer}
-          disabled={busy}
-        >
-          View in NextOffer
-        </button>
-      )}
+      <button
+        className="nextoffer-panel__btn--secondary"
+        onClick={actions.onSaveForLater}
+        disabled={busy}
+      >
+        {pending === "save" ? "Saving…" : "Save for Later"}
+      </button>
     </div>
   );
 }

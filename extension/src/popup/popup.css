@@ -17,6 +17,11 @@ body {
   text-align: center;
 }
 
+.popup__logo {
+  display: block;
+  margin: 0 auto 8px;
+}
+
 .popup__title {
   margin: 0 0 4px;
   font-size: 18px;

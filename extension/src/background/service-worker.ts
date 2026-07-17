@@ -1,9 +1,46 @@
+import { JOB_BOARD_MATCH_PATTERNS } from "../shared/constants";
 import type { ExtensionMessage, ExtensionResponse } from "../shared/messaging/types";
 import { MessageType } from "../shared/messaging/types";
 import { setStoredSession } from "../shared/supabase/session-store";
 import { trackApplication } from "./handlers/applications";
 import { getAuthState } from "./handlers/auth";
 import { saveGlobalJob, syncGlobalJob } from "./handlers/jobs";
+
+/**
+ * Chrome only auto-injects content scripts into tabs that navigate *after*
+ * the extension's content-script registration is in place — a tab that was
+ * already open (browser startup restoring a session, or a dev/prod reload
+ * of the extension) never gets the script until it reloads. This
+ * proactively injects the job-board content script into any already-open
+ * matching tab so the floating panel appears without a manual refresh.
+ * `content/index.ts` guards against running twice in a tab Chrome already
+ * injected normally.
+ */
+async function injectIntoExistingJobBoardTabs(): Promise<void> {
+  const jobBoardScript = chrome.runtime
+    .getManifest()
+    .content_scripts?.find((entry) => entry.matches?.some((m) => m.includes("linkedin.com")));
+  if (!jobBoardScript?.js?.length) return;
+
+  const tabs = await chrome.tabs.query({ url: [...JOB_BOARD_MATCH_PATTERNS] });
+
+  await Promise.all(
+    tabs
+      .filter((tab): tab is chrome.tabs.Tab & { id: number } => typeof tab.id === "number")
+      .map((tab) =>
+        chrome.scripting
+          .executeScript({ target: { tabId: tab.id }, files: jobBoardScript.js! })
+          .catch(() => {
+            // Restricted page (chrome://, the Chrome Web Store, a PDF viewer,
+            // etc.) or a tab the script is somehow already running in —
+            // safe to skip either way.
+          }),
+      ),
+  );
+}
+
+chrome.runtime.onInstalled.addListener(() => void injectIntoExistingJobBoardTabs());
+chrome.runtime.onStartup.addListener(() => void injectIntoExistingJobBoardTabs());
 
 /**
  * Wires the message bus (extension/src/shared/messaging) to the handler

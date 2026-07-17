@@ -138,6 +138,32 @@ export function isPlaceholderImageUrl(url: string): boolean {
   return url.startsWith("data:") || PLACEHOLDER_IMAGE_PATTERN.test(url);
 }
 
+/**
+ * DOM regions that show a *person's* photo (the hiring manager/poster card),
+ * not the company's. LinkedIn reuses the same generic "entity image"/"entity
+ * lockup" component classes for both, so a company-logo selector can end up
+ * matching a recruiter's headshot here unless it's explicitly excluded.
+ */
+const PERSON_IMAGE_CONTEXT_SELECTOR =
+  ".job-details-jobs-unified-top-card__hirer-highlight, .jobs-poster, .hirer-card";
+
+/**
+ * Second line of defense on top of selector scoping: rejects an otherwise-
+ * matched "logo" element if it's actually a person's photo — either because
+ * it sits inside a hirer/poster card, or because it carries LinkedIn's
+ * circular avatar shape class (profile photos render circular; company
+ * logos in the top card render as squares/rounded squares). A logo that
+ * fails this check is treated the same as "not found" so the caller falls
+ * through to the next source instead of ever showing a random headshot.
+ */
+export function isLikelyPersonImage(el: Element): boolean {
+  if (el.closest(PERSON_IMAGE_CONTEXT_SELECTOR)) return true;
+  const classAttr = (el.getAttribute("class") ?? "").toLowerCase();
+  if (classAttr.includes("circle")) return true;
+  const alt = (el.getAttribute("alt") ?? "").toLowerCase();
+  return /profile photo|’s photo|'s photo|\bavatar\b/.test(alt);
+}
+
 export type FitLevelPreferences = {
   workMode: WorkMode | null;
   employmentType: EmploymentType | null;
@@ -181,14 +207,18 @@ export function parseFitLevelPreferences(document: Document): FitLevelPreference
  * handling LinkedIn's lazy-loaded `<img>` pattern where the real URL lives in
  * `src`, then `data-src`, then other lazy-load attributes, then `srcset` —
  * checked in that order — rather than just `src`. Skips placeholder/ghost
- * images so one is never persisted as if it were a real logo.
+ * images so one is never persisted as if it were a real logo, and skips any
+ * element that looks like a person's photo (see `isLikelyPersonImage`) so a
+ * generic selector can never surface a recruiter's headshot as the "company
+ * logo" — a match failing that check is treated as no match for that
+ * selector, falling through to the next one rather than accepting it.
  */
 export function firstImageUrl(root: ParentNode, selectors: readonly string[]): string | null {
   const candidateAttrs = ["src", "data-src", "data-delayed-url", "data-ghost-url", "data-lazy-src"];
 
   for (const selector of selectors) {
     const el = root.querySelector(selector);
-    if (!el) continue;
+    if (!el || isLikelyPersonImage(el)) continue;
 
     for (const attr of candidateAttrs) {
       const value = el.getAttribute(attr)?.trim();

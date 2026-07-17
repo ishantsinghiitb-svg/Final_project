@@ -1,10 +1,15 @@
 import { defineManifest } from "@crxjs/vite-plugin";
 
 import { version } from "./package.json";
-import { EXTENSION_DESCRIPTION, EXTENSION_NAME } from "./src/shared/constants";
+import {
+  EXTENSION_DESCRIPTION,
+  EXTENSION_NAME,
+  JOB_BOARD_MATCH_PATTERNS,
+} from "./src/shared/constants";
 
 const icons = {
   16: "src/assets/icons/icon-16.png",
+  32: "src/assets/icons/icon-32.png",
   48: "src/assets/icons/icon-48.png",
   128: "src/assets/icons/icon-128.png",
 };
@@ -29,17 +34,17 @@ export default defineManifest({
     service_worker: "src/background/service-worker.ts",
     type: "module",
   },
-  permissions: ["storage"],
+  // "scripting" + host_permissions let the background worker re-inject the
+  // job-board content script into tabs that were already open before the
+  // extension finished loading (browser startup, install, or a dev reload)
+  // — see service-worker.ts. Chrome only auto-injects into tabs that
+  // navigate *after* the content script registration is active, so without
+  // this, those already-open tabs would need a manual refresh.
+  permissions: ["storage", "scripting"],
+  host_permissions: [...JOB_BOARD_MATCH_PATTERNS],
   content_scripts: [
     {
-      matches: [
-        "*://*.linkedin.com/*",
-        "*://wellfound.com/*",
-        "*://*.wellfound.com/*",
-        "*://boards.greenhouse.io/*",
-        "*://jobs.lever.co/*",
-        "*://jobs.ashbyhq.com/*",
-      ],
+      matches: [...JOB_BOARD_MATCH_PATTERNS],
       js: ["src/content/index.ts"],
       run_at: "document_idle",
     },

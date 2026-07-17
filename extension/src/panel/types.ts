@@ -27,13 +27,19 @@ export type PanelViewState =
   | { kind: "tracked"; job: PanelJob };
 
 /** Which in-flight action should disable buttons and swap in a loading label. */
-export type PendingAction = "save" | "applyAndTrack" | null;
+export type PendingAction = "save" | "applyAndTrack" | "track" | null;
 
 export type PanelActions = {
-  /** Primary CTA for `ready`/`saved` — saves (if needed) + tracks + opens the apply URL. */
+  /**
+   * Primary CTA for `ready` — saves (if needed) + tracks the application.
+   * Never redirects the user off the current page; LinkedIn's own "Apply"
+   * button remains how the user actually submits the application.
+   */
   onApplyAndTrack: () => void;
   /** Secondary CTA for `ready` only — bookmarks without applying. */
   onSaveForLater: () => void;
+  /** Primary CTA for `saved` — the job is already saved, so this only creates the tracked application. */
+  onTrackApplication: () => void;
   /** Secondary CTA for `saved`/`tracked` — deep-links to the job/application in the dashboard. */
   onViewInNextOffer: () => void;
   /** `not-logged-in` only — opens the NextOffer app root. */

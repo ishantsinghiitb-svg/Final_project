@@ -8,10 +8,28 @@ import {
 import { env } from "../shared/env";
 import { sendMessage } from "../shared/messaging/bus";
 import { MessageType } from "../shared/messaging/types";
-import type { AuthState, GlobalJobSyncResult } from "../shared/messaging/types";
+import type {
+  AuthState,
+  ExtensionMessage,
+  ExtensionResponse,
+  GlobalJobSyncResult,
+} from "../shared/messaging/types";
 import { debounceWithMaxWait } from "./util/debounce";
 import { PanelController } from "./inject-panel";
 import type { PanelActions, PanelJob, PanelViewState, PendingAction } from "../panel/FloatingPanel";
+
+declare global {
+  interface Window {
+    /**
+     * Guards against running twice in the same tab — the background worker
+     * can proactively re-inject this script into a tab that was already
+     * open before the extension loaded (see `service-worker.ts`), which
+     * would otherwise race Chrome's own normal injection for that same
+     * navigation and produce duplicate MutationObservers/panels.
+     */
+    __nextofferContentScriptActive?: boolean;
+  }
+}
 
 /**
  * Orchestration only, per the Module 2D spec: detect the site, ask the
@@ -20,7 +38,8 @@ import type { PanelActions, PanelJob, PanelViewState, PendingAction } from "../p
  */
 const parser = ParserFactory.getParser(location.hostname);
 
-if (parser) {
+if (parser && !window.__nextofferContentScriptActive) {
+  window.__nextofferContentScriptActive = true;
   const panel = new PanelController();
 
   let currentJob: NormalizedJob | null = null;
@@ -33,6 +52,7 @@ if (parser) {
   const actions: PanelActions = {
     onApplyAndTrack: () => void handleApplyAndTrack(),
     onSaveForLater: () => void handleSaveForLater(),
+    onTrackApplication: () => void handleTrackApplication(),
     onViewInNextOffer: () => {
       const applicationId = lastSyncResult?.application?.id;
       if (applicationId) {
@@ -65,7 +85,16 @@ if (parser) {
 
     currentJob = job;
 
-    const authResponse = await sendMessage<AuthState>({ type: MessageType.GET_AUTH_STATE });
+    let authResponse: ExtensionResponse<AuthState>;
+    try {
+      authResponse = await sendMessageWithRetry<AuthState>({ type: MessageType.GET_AUTH_STATE });
+    } catch {
+      // Service worker never came up within the retry window — nothing
+      // more to do this run; the next SPA navigation or mutation will
+      // trigger another attempt.
+      return;
+    }
+
     if (!authResponse.ok || !authResponse.data.authenticated) {
       panel.update({ kind: "not-logged-in" }, actions, null);
       return;
@@ -85,10 +114,15 @@ if (parser) {
       return;
     }
 
-    const syncResponse = await sendMessage<GlobalJobSyncResult>({
-      type: MessageType.SYNC_GLOBAL_JOB,
-      payload: job,
-    });
+    let syncResponse: ExtensionResponse<GlobalJobSyncResult>;
+    try {
+      syncResponse = await sendMessageWithRetry<GlobalJobSyncResult>({
+        type: MessageType.SYNC_GLOBAL_JOB,
+        payload: job,
+      });
+    } catch {
+      return;
+    }
 
     if (!syncResponse.ok) {
       // Invalid job (missing required fields, etc.) — nothing to show.
@@ -141,10 +175,12 @@ if (parser) {
   }
 
   /**
-   * Primary CTA for both `ready` and `saved` — reuses the existing Save and
-   * Track messages' server-side idempotency (never a duplicate save or
-   * application) rather than reimplementing dedup on the client, then opens
-   * the job's own apply URL in a new tab on success.
+   * Primary CTA for the `ready` state — reuses the existing Save and Track
+   * messages' server-side idempotency (never a duplicate save or
+   * application) rather than reimplementing dedup on the client. Per the
+   * Module 2 spec, this only prepares the job inside NextOffer — it never
+   * redirects the user off the LinkedIn page; LinkedIn's own "Apply" button
+   * remains the way the user actually submits the application.
    */
   async function handleApplyAndTrack(): Promise<void> {
     if (!currentGlobalJobId || !currentJob || pending) return;
@@ -161,9 +197,56 @@ if (parser) {
 
     lastSyncResult = { ...lastSyncResult, isSaved: true, application: response.data.application };
     renderFromSync(currentJob, lastSyncResult);
+  }
 
-    const applyUrl = currentJob.applyUrl ?? currentJob.sourceUrl;
-    window.open(applyUrl, "_blank");
+  /** Primary CTA for the `saved` state — the job is already saved, so this only creates the tracked application. */
+  async function handleTrackApplication(): Promise<void> {
+    if (!currentGlobalJobId || !currentJob || pending) return;
+    pending = "track";
+    renderFromSync(currentJob, lastSyncResult!);
+
+    const response = await sendMessage<{ application: { id: string; status: string } }>({
+      type: MessageType.TRACK_APPLICATION,
+      payload: { globalJobId: currentGlobalJobId },
+    });
+
+    pending = null;
+    if (!response.ok || !lastSyncResult) return;
+
+    lastSyncResult = { ...lastSyncResult, application: response.data.application };
+    renderFromSync(currentJob, lastSyncResult);
+  }
+}
+
+/**
+ * The MV3 background service worker is event-driven and can still be
+ * finishing its own startup (evaluating its top-level module code and
+ * registering its `onMessage` listener) at the exact moment the pipeline's
+ * very first message goes out — this can happen within milliseconds of the
+ * content script loading, since LinkedIn job pages embed JSON-LD job data
+ * server-side, so `tryParse` can succeed on the very first `run()` call
+ * before any DOM mutation even occurs. In that narrow window,
+ * `chrome.runtime.sendMessage` rejects with "Receiving end does not exist"
+ * rather than queuing the message. Only the pipeline's own automatic
+ * startup messages (`GET_AUTH_STATE`, `SYNC_GLOBAL_JOB`) can land in that
+ * window — user-triggered CTA messages fire long after the worker is
+ * already warm — so this retry is scoped to those two call sites rather
+ * than the shared message bus. A short, error-driven, bounded retry rides
+ * out that one-time race without an arbitrary upfront delay; once the
+ * worker is warm, delivery is reliable for the rest of the session.
+ */
+async function sendMessageWithRetry<TData>(
+  message: ExtensionMessage,
+  attempts = 5,
+  delayMs = 200,
+): Promise<ExtensionResponse<TData>> {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return await sendMessage<TData>(message);
+    } catch (error) {
+      if (attempt >= attempts) throw error;
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+    }
   }
 }
 

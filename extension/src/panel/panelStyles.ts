@@ -42,8 +42,8 @@ export const panelStyles = `
 
 /* ── Collapsed launcher ── */
 .nextoffer-shell--collapsed {
-  width: 50px;
-  max-height: 50px;
+  width: 70px;
+  max-height: 70px;
   border-radius: 999px;
   box-shadow: 0 6px 18px -4px rgba(10, 102, 194, 0.45);
 }
@@ -53,12 +53,11 @@ export const panelStyles = `
 }
 
 .nextoffer-launcher-btn {
-  width: 50px;
-  height: 50px;
-  border: none;
+  width: 60px;
+  height: 60px;
+  border: 1.5px solid #a8ccf0;
   border-radius: 999px;
-  background: linear-gradient(135deg, #0a66c2, #2563eb);
-  color: #ffffff;
+  background: #ffffff;
   display: grid;
   place-items: center;
   cursor: pointer;
@@ -103,6 +102,12 @@ export const panelStyles = `
   flex-shrink: 0;
 }
 
+.nextoffer-panel__brand {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
 .nextoffer-panel__collapse-btn {
   appearance: none;
   border: none;
@@ -135,30 +140,6 @@ export const panelStyles = `
 
 /* ── Job identity ── */
 .nextoffer-panel__identity {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-}
-
-.nextoffer-panel__logo {
-  width: 38px;
-  height: 38px;
-  border-radius: 9px;
-  flex-shrink: 0;
-  object-fit: cover;
-  background: #f0f2f5;
-}
-
-.nextoffer-panel__logo--initials {
-  display: grid;
-  place-items: center;
-  background: linear-gradient(135deg, #0a66c2, #2563eb);
-  color: #ffffff;
-  font-weight: 700;
-  font-size: 15px;
-}
-
-.nextoffer-panel__identity-text {
   min-width: 0;
 }
 
@@ -206,12 +187,14 @@ export const panelStyles = `
   gap: 8px;
 }
 
-.nextoffer-panel__tracked-badge {
+.nextoffer-panel__btn--tracked {
+  background: #e6f6ec;
   color: #0a7d3f;
-  font-weight: 600;
-  text-align: center;
-  padding: 5px 0;
-  font-size: 13px;
+}
+
+.nextoffer-shell--expanded button.nextoffer-panel__btn--tracked:disabled {
+  opacity: 1;
+  cursor: default;
 }
 
 /* Excludes the header's collapse button — it has its own compact sizing above. */

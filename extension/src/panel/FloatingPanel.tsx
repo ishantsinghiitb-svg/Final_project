@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
+import { PANEL_EXPANDED_STORAGE_KEY } from "../shared/constants";
 import { CollapsedLauncher } from "./CollapsedLauncher";
 import { CtaRow } from "./sections/CtaRow";
 import { JobIdentity } from "./sections/JobIdentity";
@@ -24,20 +25,27 @@ export function FloatingPanel({
   actions: PanelActions;
   pending: PendingAction;
 }) {
-  const [expanded, setExpanded] = useState(false);
+  // Defaults open — matches the "first visit" requirement — until the
+  // persisted preference (if any) loads and overrides it. The preference is
+  // per-installation, not per-job, so it deliberately survives job changes
+  // and LinkedIn SPA navigations instead of resetting.
+  const [expanded, setExpanded] = useState(true);
 
-  // Each newly-detected job starts collapsed again — an expanded state left
-  // over from a previous job on the same LinkedIn SPA session would be
-  // showing stale content otherwise. A CTA-state change on the *same* job
-  // (ready -> saved -> tracked) must NOT collapse it back.
-  const jobSignature = "job" in state ? `${state.job.title}|${state.job.companyName}` : null;
-  const lastSignature = useRef<string | null>(null);
   useEffect(() => {
-    if (jobSignature !== null && jobSignature !== lastSignature.current) {
-      setExpanded(false);
-    }
-    lastSignature.current = jobSignature;
-  }, [jobSignature]);
+    let cancelled = false;
+    chrome.storage.local.get(PANEL_EXPANDED_STORAGE_KEY).then((result) => {
+      const stored = result[PANEL_EXPANDED_STORAGE_KEY];
+      if (!cancelled && typeof stored === "boolean") setExpanded(stored);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  function setExpandedAndPersist(value: boolean): void {
+    setExpanded(value);
+    void chrome.storage.local.set({ [PANEL_EXPANDED_STORAGE_KEY]: value });
+  }
 
   return (
     <div
@@ -45,11 +53,11 @@ export function FloatingPanel({
     >
       {expanded ? (
         <>
-          <PanelHeader onCollapse={() => setExpanded(false)} />
+          <PanelHeader onCollapse={() => setExpandedAndPersist(false)} />
           <PanelBody state={state} actions={actions} pending={pending} />
         </>
       ) : (
-        <CollapsedLauncher onExpand={() => setExpanded(true)} />
+        <CollapsedLauncher onExpand={() => setExpandedAndPersist(true)} />
       )}
     </div>
   );
