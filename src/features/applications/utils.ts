@@ -1,7 +1,7 @@
 import { startOfDay, startOfYear, subDays } from "date-fns";
 import type { AppliedDatePreset } from "./types";
 
-// Role categorization now lives in features/jobs/utils.ts#categorizeRole —
+// Role matching now lives in features/jobs/utils.ts#roleMatchesAnyCategory —
 // shared with the Global Jobs Role filter. Import it from there.
 
 // ── Applied-date presets ─────────────────────────────────────────────────────

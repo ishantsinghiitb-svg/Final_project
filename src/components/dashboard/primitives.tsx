@@ -1,4 +1,5 @@
-import { type ReactNode } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
+import { ChevronDown, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export function DashCard({
@@ -15,6 +16,27 @@ export function DashCard({
       className={cn(
         "rounded-2xl border border-black/5 bg-white shadow-[0_1px_2px_rgba(0,0,0,0.03)]",
         padded && "p-5",
+        className,
+      )}
+    >
+      {children}
+    </div>
+  );
+}
+
+/**
+ * StickyPageHeader
+ *
+ * Wraps a page's PageHeader (and, where present, its filter/sort/view-switcher
+ * bar) so it stays pinned right below the app-level header while the page's
+ * content scrolls underneath. Not for individual cards — only page-level
+ * navigation/header controls should use this.
+ */
+export function StickyPageHeader({ children, className }: { children: ReactNode; className?: string }) {
+  return (
+    <div
+      className={cn(
+        "sticky top-15 z-10 space-y-4 bg-[oklch(0.98_0.005_250)]/95 pb-4 backdrop-blur-sm",
         className,
       )}
     >
@@ -157,6 +179,103 @@ export function IconButton({
     >
       {children}
     </button>
+  );
+}
+
+export type MultiSelectOption = { value: string; label: string };
+
+/**
+ * MultiSelectDropdown
+ *
+ * Checkbox-panel dropdown for filters with more than one selectable value at
+ * once — same trigger-button styling as a native filter `<select>`, so it
+ * drops into existing filter bars without changing their layout.
+ */
+export function MultiSelectDropdown({
+  label,
+  options,
+  selected,
+  onChange,
+  className,
+}: {
+  label: string;
+  options: readonly MultiSelectOption[];
+  selected: string[];
+  onChange: (next: string[]) => void;
+  className?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (rootRef.current && !rootRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  const toggleValue = (value: string) => {
+    onChange(selected.includes(value) ? selected.filter((v) => v !== value) : [...selected, value]);
+  };
+
+  const buttonLabel =
+    selected.length === 0
+      ? label
+      : selected.length === 1
+        ? (options.find((o) => o.value === selected[0])?.label ?? label)
+        : `${label} (${selected.length})`;
+
+  return (
+    <div ref={rootRef} className={cn("relative", className)}>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className={cn(
+          "flex h-9 items-center gap-1.5 rounded-lg border bg-white px-3 text-sm transition-colors",
+          selected.length > 0
+            ? "border-[#2563EB]/30 text-[#2563EB]"
+            : "border-black/5 text-[oklch(0.4_0.02_265)] hover:border-black/10",
+        )}
+      >
+        {buttonLabel}
+        <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", open && "rotate-180")} />
+      </button>
+
+      {open && (
+        <div className="absolute left-0 top-10 z-20 max-h-72 w-52 overflow-y-auto rounded-xl border border-black/5 bg-white shadow-[0_12px_40px_-8px_rgba(0,0,0,0.18)]">
+          {options.map((o) => {
+            const checked = selected.includes(o.value);
+            return (
+              <label
+                key={o.value}
+                className="flex cursor-pointer items-center gap-2.5 px-3 py-2 text-sm text-[oklch(0.35_0.02_265)] transition-colors hover:bg-black/[0.03]"
+              >
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  onChange={() => toggleValue(o.value)}
+                  className="h-3.5 w-3.5 rounded border-black/20 text-[#2563EB] focus:ring-[#2563EB]/30"
+                />
+                {o.label}
+              </label>
+            );
+          })}
+          {selected.length > 0 && (
+            <button
+              type="button"
+              onClick={() => onChange([])}
+              className="flex w-full items-center gap-1.5 border-t border-black/5 px-3 py-2 text-xs text-[oklch(0.5_0.02_265)] hover:bg-black/[0.03] transition-colors"
+            >
+              <X className="h-3 w-3" /> Clear
+            </button>
+          )}
+        </div>
+      )}
+    </div>
   );
 }
 

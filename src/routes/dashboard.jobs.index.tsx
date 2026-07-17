@@ -28,6 +28,8 @@ import {
   Chip,
   CompanyMark,
   EmptyState,
+  MultiSelectDropdown,
+  StickyPageHeader,
 } from "@/components/dashboard/primitives";
 import { DashButton } from "@/components/dashboard/DashButton";
 import { useJobs, useSavedJobIds, useSaveJob, useUnsaveJob } from "@/features/jobs/hooks";
@@ -48,6 +50,21 @@ import {
   ROLE_CATEGORY_OPTIONS,
 } from "@/features/jobs/constants";
 import { formatSalary, formatPostedAt, logoToneForCompany } from "@/features/jobs/utils";
+
+// Multi-select filters store their selected values as a comma-joined string
+// in the URL (e.g. "remote,hybrid") rather than relying on the router's
+// array search-param serialization, so the URL stays simple and predictable.
+// Returns undefined (not []) when empty — an empty array would make the
+// repository's `.in(column, [])` match zero rows instead of "no filter".
+function parseMulti(value: string | undefined): string[] | undefined {
+  const parts = value ? value.split(",").filter(Boolean) : [];
+  return parts.length > 0 ? parts : undefined;
+}
+
+/** Same as parseMulti but always returns an array — for controlled UI selection state. */
+function parseMultiOrEmpty(value: string | undefined): string[] {
+  return parseMulti(value) ?? [];
+}
 
 // ── Route definition with URL search param validation ────────────────────────
 export const Route = createFileRoute("/dashboard/jobs/")({
@@ -299,17 +316,11 @@ function JobsPage() {
       company: search.company || undefined,
       location: search.location || undefined,
       remote: search.remote ? true : undefined,
-      workMode: search.workMode ? (search.workMode as JobFilters["workMode"]) : undefined,
-      employmentType: search.employmentType
-        ? (search.employmentType as JobFilters["employmentType"])
-        : undefined,
-      experienceLevel: search.experienceLevel
-        ? (search.experienceLevel as JobFilters["experienceLevel"])
-        : undefined,
-      roleCategory: search.roleCategory
-        ? (search.roleCategory as JobFilters["roleCategory"])
-        : undefined,
-      source: search.source ? (search.source as JobFilters["source"]) : undefined,
+      workMode: parseMulti(search.workMode) as JobFilters["workMode"],
+      employmentType: parseMulti(search.employmentType) as JobFilters["employmentType"],
+      experienceLevel: parseMulti(search.experienceLevel) as JobFilters["experienceLevel"],
+      roleCategory: parseMulti(search.roleCategory) as JobFilters["roleCategory"],
+      source: parseMulti(search.source) as JobFilters["source"],
       salaryMin: search.salaryMin,
       salaryMax: search.salaryMax,
       // Convert "7" → ISO cutoff date; undefined if "" or absent
@@ -399,6 +410,16 @@ function JobsPage() {
     [navigate],
   );
 
+  const setMultiFilter = useCallback(
+    (key: keyof JobsSearchParams, values: string[]) => {
+      void navigate({
+        search: (prev) => ({ ...prev, [key]: values.length > 0 ? values.join(",") : undefined, page: 1 }),
+        replace: true,
+      });
+    },
+    [navigate],
+  );
+
   const setPage = useCallback(
     (newPage: number) => {
       void navigate({
@@ -454,6 +475,7 @@ function JobsPage() {
   // ── Render ────────────────────────────────────────────────────────────────
   return (
     <>
+      <StickyPageHeader>
       {/* No "Add Job" button — global jobs are not manually created by users */}
       <PageHeader
         eyebrow="Jobs"
@@ -463,7 +485,7 @@ function JobsPage() {
 
       <DashCard padded={false}>
         {/* ── Filter bar ──────────────────────────────────────────────────── */}
-        <div className="flex flex-wrap items-center gap-2 border-b border-black/5 p-3">
+        <div className="flex flex-wrap items-center gap-2 p-3">
           {/* Keyword search */}
           <div className="flex flex-1 min-w-[220px] items-center gap-2 rounded-lg border border-black/5 bg-white px-3 py-2 text-sm">
             <Search className="h-4 w-4 shrink-0 text-[oklch(0.5_0.02_265)]" />
@@ -493,74 +515,44 @@ function JobsPage() {
           </select>
 
           {/* Work mode */}
-          <select
-            value={search.workMode ?? ""}
-            onChange={(e) => setFilter("workMode", e.target.value)}
-            className="rounded-lg border border-black/5 bg-white px-3 py-2 text-sm"
-          >
-            <option value="">All modes</option>
-            {WORK_MODE_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>
-                {o.label}
-              </option>
-            ))}
-          </select>
+          <MultiSelectDropdown
+            label="Work mode"
+            options={WORK_MODE_OPTIONS}
+            selected={parseMultiOrEmpty(search.workMode)}
+            onChange={(v) => setMultiFilter("workMode", v)}
+          />
 
           {/* Employment type */}
-          <select
-            value={search.employmentType ?? ""}
-            onChange={(e) => setFilter("employmentType", e.target.value)}
-            className="rounded-lg border border-black/5 bg-white px-3 py-2 text-sm"
-          >
-            <option value="">All types</option>
-            {EMPLOYMENT_TYPE_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>
-                {o.label}
-              </option>
-            ))}
-          </select>
+          <MultiSelectDropdown
+            label="Employment type"
+            options={EMPLOYMENT_TYPE_OPTIONS}
+            selected={parseMultiOrEmpty(search.employmentType)}
+            onChange={(v) => setMultiFilter("employmentType", v)}
+          />
 
           {/* Experience level */}
-          <select
-            value={search.experienceLevel ?? ""}
-            onChange={(e) => setFilter("experienceLevel", e.target.value)}
-            className="rounded-lg border border-black/5 bg-white px-3 py-2 text-sm"
-          >
-            <option value="">All levels</option>
-            {EXPERIENCE_LEVEL_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>
-                {o.label}
-              </option>
-            ))}
-          </select>
+          <MultiSelectDropdown
+            label="Experience level"
+            options={EXPERIENCE_LEVEL_OPTIONS}
+            selected={parseMultiOrEmpty(search.experienceLevel)}
+            onChange={(v) => setMultiFilter("experienceLevel", v)}
+          />
 
           {/* Role category */}
-          <select
-            value={search.roleCategory ?? ""}
-            onChange={(e) => setFilter("roleCategory", e.target.value)}
-            className="rounded-lg border border-black/5 bg-white px-3 py-2 text-sm"
-          >
-            <option value="">All roles</option>
-            {ROLE_CATEGORY_OPTIONS.map((r) => (
-              <option key={r} value={r}>
-                {ROLE_CATEGORY_LABELS[r]}
-              </option>
-            ))}
-          </select>
+          <MultiSelectDropdown
+            label="Role"
+            options={ROLE_CATEGORY_OPTIONS.map((r) => ({ value: r, label: ROLE_CATEGORY_LABELS[r] }))}
+            selected={parseMultiOrEmpty(search.roleCategory)}
+            onChange={(v) => setMultiFilter("roleCategory", v)}
+          />
 
           {/* Source */}
-          <select
-            value={search.source ?? ""}
-            onChange={(e) => setFilter("source", e.target.value)}
-            className="rounded-lg border border-black/5 bg-white px-3 py-2 text-sm"
-          >
-            <option value="">All sources</option>
-            {SOURCE_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>
-                {o.label}
-              </option>
-            ))}
-          </select>
+          <MultiSelectDropdown
+            label="Source"
+            options={SOURCE_OPTIONS}
+            selected={parseMultiOrEmpty(search.source)}
+            onChange={(v) => setMultiFilter("source", v)}
+          />
 
           {/* Posted date — stores relative-day string in URL */}
           <select
@@ -601,7 +593,10 @@ function JobsPage() {
             </button>
           )}
         </div>
+      </DashCard>
+      </StickyPageHeader>
 
+      <DashCard padded={false}>
         {/* ── Body ──────────────────────────────────────────────────────────── */}
         {isLoading ? (
           <div className="flex items-center justify-center gap-2 py-16 text-sm text-[oklch(0.5_0.02_265)]">

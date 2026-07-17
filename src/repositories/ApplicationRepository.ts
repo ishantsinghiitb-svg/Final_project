@@ -4,7 +4,7 @@ import type { ApplicationFilters, ApplicationSort } from "@/features/application
 import type { PaginationParams, PaginatedResult } from "@/types";
 
 const APP_COLUMNS =
-  "id, user_id, job_id, company_name, role, status, applied_at, next_step, notes, location, salary_min, salary_max, salary_currency, source, url, archived, archived_at, created_via, metadata, created_at, updated_at";
+  "id, user_id, job_id, company_name, role, status, applied_at, next_step, notes, location, salary_min, salary_max, salary_currency, source, url, archived, archived_at, created_via, metadata, notes_updated_at, priority, resume_id, cover_letter_id, created_at, updated_at";
 
 const TIMELINE_COLUMNS = "id, application_id, user_id, kind, text, previous_value, new_value, metadata, created_at";
 

@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
+import { useQueryClient } from "@tanstack/react-query";
 import { Activity, Bell, Bookmark, Briefcase, CalendarClock, ChevronRight, Command, FileText, ChartLine as LineChart, Search, Settings, StickyNote, Target, X, Menu, LogOut } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -34,6 +35,7 @@ const nav: NavItem[] = [
 export function DashboardShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { user, signOut } = useAuth();
   const { profile } = useProfile();
   const counts = useSidebarCounts();
@@ -81,7 +83,7 @@ export function DashboardShell({ children }: { children: ReactNode }) {
       <div className="grid min-h-screen lg:grid-cols-[240px_1fr]">
         <aside
           className={cn(
-            "fixed inset-y-0 left-0 z-40 w-[240px] border-r border-black/5 bg-white/80 p-4 backdrop-blur transition-transform lg:static lg:translate-x-0",
+            "fixed inset-y-0 left-0 z-40 w-[240px] overflow-y-auto border-r border-black/5 bg-white/80 p-4 backdrop-blur transition-transform lg:sticky lg:top-0 lg:h-screen lg:translate-x-0",
             mobileNav ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
           )}
         >
@@ -115,6 +117,15 @@ export function DashboardShell({ children }: { children: ReactNode }) {
                   <Link
                     key={n.to}
                     to={n.to}
+                    onClick={(e) => {
+                      // Clicking the already-active item re-runs its queries
+                      // instead of navigating (same route = no-op for the
+                      // router) — refreshes the page's data in place.
+                      if (active) {
+                        e.preventDefault();
+                        void queryClient.invalidateQueries();
+                      }
+                    }}
                     className={cn(
                       "group flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm transition-colors",
                       active
@@ -158,6 +169,12 @@ export function DashboardShell({ children }: { children: ReactNode }) {
           <div className="mt-4 border-t border-black/5 pt-3">
             <Link
               to="/dashboard/settings"
+              onClick={(e) => {
+                if (pathname.startsWith("/dashboard/settings")) {
+                  e.preventDefault();
+                  void queryClient.invalidateQueries();
+                }
+              }}
               className={cn(
                 "flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm transition-colors",
                 pathname.startsWith("/dashboard/settings")
@@ -203,7 +220,7 @@ export function DashboardShell({ children }: { children: ReactNode }) {
         )}
 
         <div className="flex min-w-0 flex-col">
-          <header className="sticky top-0 z-20 flex items-center justify-between gap-3 border-b border-black/5 bg-white/80 px-4 py-3 backdrop-blur md:px-6">
+          <header className="sticky top-0 z-20 flex h-15 items-center justify-between gap-3 border-b border-black/5 bg-white/80 px-4 py-3 backdrop-blur md:px-6">
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setMobileNav(true)}

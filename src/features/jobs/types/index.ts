@@ -6,9 +6,9 @@ import type {
 } from "@/types";
 
 // ── Role category ────────────────────────────────────────────────────────────
-// Derived from a job's free-text `role` field — see
-// features/jobs/utils.ts#categorizeRole. Not stored in the DB. Shared with the
-// Applications feature (applications inherit their role text from a job).
+// Matched against a job's free-text `role` field — see
+// features/jobs/utils.ts#roleMatchesCategory. Not stored in the DB. Shared
+// with the Applications feature (applications inherit their role text from a job).
 
 export type RoleCategory =
   | "product"
@@ -35,8 +35,8 @@ export type JobFilters = {
   company?: string;
   /** Partial role string match */
   role?: string;
-  /** Role category, derived from the free-text role field */
-  roleCategory?: RoleCategory;
+  /** One or more role categories, derived from the free-text role field */
+  roleCategory?: RoleCategory | RoleCategory[];
   /** Partial location string match */
   location?: string;
   /** Remote-only toggle */

@@ -141,6 +141,27 @@ export class ApplicationService {
     return appRepo.update(id, { archived: false, archived_at: null });
   }
 
+  // ── Workspace (Module 3B) ────────────────────────────────────────────────
+  // notes/priority/resume/cover-letter changes all log a timeline event
+  // automatically via the DB trigger — see
+  // supabase/migrations/20260718000001_module3b_application_workspace.sql.
+
+  async updateNotes(id: string, notes: string): Promise<Application> {
+    return appRepo.update(id, { notes, notes_updated_at: new Date().toISOString() });
+  }
+
+  async updatePriority(id: string, priority: Application["priority"]): Promise<Application> {
+    return appRepo.update(id, { priority });
+  }
+
+  async setResume(id: string, resumeId: string | null): Promise<Application> {
+    return appRepo.update(id, { resume_id: resumeId });
+  }
+
+  async setCoverLetter(id: string, coverLetterId: string | null): Promise<Application> {
+    return appRepo.update(id, { cover_letter_id: coverLetterId });
+  }
+
   // ── Delete ────────────────────────────────────────────────────────────────
 
   async deleteApplication(id: string): Promise<void> {

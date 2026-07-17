@@ -22,8 +22,8 @@ export type ApplicationFilters = {
   status?: ApplicationStatus | ApplicationStatus[];
   /** Partial company name */
   company?: string;
-  /** Role category, derived from the free-text role field */
-  role?: RoleCategory;
+  /** One or more role categories, derived from the free-text role field */
+  role?: RoleCategory | RoleCategory[];
   /** ISO date string — only include applications on or after this date */
   appliedAfter?: string;
   /** ISO date string — only include applications on or before this date */

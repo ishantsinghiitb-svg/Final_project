@@ -1,7 +1,7 @@
 import { useRef, useState, useEffect } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { toast } from "sonner";
-import { DashCard, PageHeader, SectionTitle, Chip } from "@/components/dashboard/primitives";
+import { DashCard, PageHeader, SectionTitle, Chip, StickyPageHeader } from "@/components/dashboard/primitives";
 import { DashButton } from "@/components/dashboard/DashButton";
 import { useAuth } from "@/context/AuthContext";
 import { useProfile } from "@/context/ProfileContext";
@@ -18,7 +18,9 @@ function SettingsPage() {
 
   return (
     <>
+      <StickyPageHeader>
       <PageHeader eyebrow="Settings" title="Make NextOffer yours." subtitle="Tune preferences, notifications, and integrations." />
+      </StickyPageHeader>
 
       <div className="flex flex-wrap gap-1 rounded-xl border border-black/5 bg-white p-1">
         {tabs.map((t) => (

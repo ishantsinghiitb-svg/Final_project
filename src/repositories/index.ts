@@ -2,3 +2,8 @@ export { ProfileRepository } from "./ProfileRepository";
 export { JobRepository } from "./JobRepository";
 export { CompanyRepository } from "./CompanyRepository";
 export { ApplicationRepository } from "./ApplicationRepository";
+export { ResumeRepository } from "./ResumeRepository";
+export { CoverLetterRepository } from "./CoverLetterRepository";
+export { ContactRepository } from "./ContactRepository";
+export { ReminderRepository } from "./ReminderRepository";
+export { AttachmentRepository } from "./AttachmentRepository";

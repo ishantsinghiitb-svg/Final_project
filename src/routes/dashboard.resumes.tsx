@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { FileText, Plus, Sparkles, Download, Copy, Wand as Wand2 } from "lucide-react";
-import { DashCard, PageHeader, Chip, SectionTitle } from "@/components/dashboard/primitives";
+import { DashCard, PageHeader, Chip, SectionTitle, StickyPageHeader } from "@/components/dashboard/primitives";
 import { DashButton } from "@/components/dashboard/DashButton";
 import { resumes } from "@/lib/dashboard-data";
 
@@ -12,6 +12,7 @@ export const Route = createFileRoute("/dashboard/resumes")({
 function ResumesPage() {
   return (
     <>
+      <StickyPageHeader>
       <PageHeader
         eyebrow="Resumes"
         title="Tailor your resume for every role, in seconds."
@@ -27,6 +28,7 @@ function ResumesPage() {
           </>
         }
       />
+      </StickyPageHeader>
 
       <div className="grid gap-4 lg:grid-cols-[1fr_1.2fr]">
         <div className="space-y-3">

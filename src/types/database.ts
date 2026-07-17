@@ -156,6 +156,10 @@ export type ApplicationRow = {
   created_via: string;
   /** Free-form extension point (recruiter, hiring manager, referral, reminder, etc.) — see Module 3A schema notes. */
   metadata: Json;
+  notes_updated_at: string | null;
+  priority: string | null;
+  resume_id: string | null;
+  cover_letter_id: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -164,7 +168,7 @@ export type ApplicationActivityRow = {
   id: string;
   application_id: string;
   user_id: string;
-  /** Event type, e.g. 'application_created' | 'manual_application_created' | 'status_changed' | 'archived' | 'restored'. */
+  /** Event type — see ApplicationTimelineEventType in src/types/index.ts for the full set. */
   kind: string;
   /** Rendered human-readable summary. */
   text: string;
@@ -412,6 +416,10 @@ export type ApplicationInsert = {
   archived_at?: string | null;
   created_via?: string;
   metadata?: Json;
+  notes_updated_at?: string | null;
+  priority?: string | null;
+  resume_id?: string | null;
+  cover_letter_id?: string | null;
   created_at?: string;
   updated_at?: string;
 };
@@ -425,6 +433,113 @@ export type ApplicationActivityInsert = {
   previous_value?: string | null;
   new_value?: string | null;
   metadata?: Json;
+  created_at?: string;
+};
+
+// ── Module 3B: Application Workspace ──
+
+export type CoverLetterRow = {
+  id: string;
+  user_id: string;
+  name: string;
+  version_number: number;
+  file_url: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type CoverLetterInsert = {
+  id?: string;
+  user_id: string;
+  name: string;
+  version_number?: number;
+  file_url?: string | null;
+  created_at?: string;
+  updated_at?: string;
+};
+
+export type ApplicationContactRow = {
+  id: string;
+  application_id: string;
+  user_id: string;
+  /** 'recruiter' | 'hiring_manager' | 'referral' */
+  type: string;
+  name: string;
+  email: string | null;
+  linkedin_url: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type ApplicationContactInsert = {
+  id?: string;
+  application_id: string;
+  user_id: string;
+  type: string;
+  name: string;
+  email?: string | null;
+  linkedin_url?: string | null;
+  notes?: string | null;
+  created_at?: string;
+  updated_at?: string;
+};
+
+export type ApplicationReminderRow = {
+  id: string;
+  application_id: string;
+  user_id: string;
+  /** 'follow_up' | 'interview' | 'oa_deadline' | 'offer_expiry' | 'custom' */
+  type: string;
+  title: string;
+  remind_at: string;
+  note: string | null;
+  completed: boolean;
+  completed_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type ApplicationReminderInsert = {
+  id?: string;
+  application_id: string;
+  user_id: string;
+  type: string;
+  title: string;
+  remind_at: string;
+  note?: string | null;
+  completed?: boolean;
+  completed_at?: string | null;
+  created_at?: string;
+  updated_at?: string;
+};
+
+export type ApplicationAttachmentRow = {
+  id: string;
+  application_id: string;
+  user_id: string;
+  /** 'offer_letter' | 'assignment' | 'pdf' | 'other' */
+  kind: string;
+  name: string;
+  /** Storage path within the private `documents` bucket — not a URL. */
+  file_path: string;
+  size_bytes: number | null;
+  mime_type: string | null;
+  /** Optional link to application_reminders — NULL means a general application attachment. */
+  reminder_id: string | null;
+  created_at: string;
+};
+
+export type ApplicationAttachmentInsert = {
+  id?: string;
+  application_id: string;
+  user_id: string;
+  kind?: string;
+  name: string;
+  file_path: string;
+  size_bytes?: number | null;
+  mime_type?: string | null;
+  reminder_id?: string | null;
   created_at?: string;
 };
 
@@ -608,6 +723,30 @@ export type Database = {
         Row: ApplicationActivityRow;
         Insert: ApplicationActivityInsert;
         Update: Partial<ApplicationActivityRow>;
+        Relationships: TableRelationship[];
+      };
+      cover_letters: {
+        Row: CoverLetterRow;
+        Insert: CoverLetterInsert;
+        Update: Partial<CoverLetterRow>;
+        Relationships: TableRelationship[];
+      };
+      application_contacts: {
+        Row: ApplicationContactRow;
+        Insert: ApplicationContactInsert;
+        Update: Partial<ApplicationContactRow>;
+        Relationships: TableRelationship[];
+      };
+      application_reminders: {
+        Row: ApplicationReminderRow;
+        Insert: ApplicationReminderInsert;
+        Update: Partial<ApplicationReminderRow>;
+        Relationships: TableRelationship[];
+      };
+      application_attachments: {
+        Row: ApplicationAttachmentRow;
+        Insert: ApplicationAttachmentInsert;
+        Update: Partial<ApplicationAttachmentRow>;
         Relationships: TableRelationship[];
       };
       resumes: {

@@ -1,7 +1,18 @@
 import { supabase } from "@/lib/supabase";
 import { STORAGE_BUCKETS, FILE_LIMITS } from "@/constants";
 
+// Signed URL expiry for document downloads (1 hour). Regenerate on every
+// download rather than storing the URL — mirrors ResumeStorage.
+const DOCUMENT_SIGNED_URL_EXPIRY_SECONDS = 3_600;
+
 export class DocumentStorage {
+  /**
+   * Uploads a file to the private `documents` bucket.
+   *
+   * Returns the **storage path** (e.g. `<userId>/<docId>.pdf`) — the bucket
+   * is private, so a `getPublicUrl()` result would 403. Store this path and
+   * call `getSignedUrl(path)` whenever a download link is needed.
+   */
   async upload(userId: string, docId: string, file: File): Promise<string> {
     if (file.size > FILE_LIMITS.DOCUMENT_MAX_BYTES) {
       throw new Error("Document must be under 20 MB.");
@@ -16,11 +27,20 @@ export class DocumentStorage {
 
     if (error) throw error;
 
-    const { data } = supabase.storage
-      .from(STORAGE_BUCKETS.DOCUMENTS)
-      .getPublicUrl(path);
+    return path;
+  }
 
-    return data.publicUrl;
+  /** Generates a temporary signed URL for downloading a document. */
+  async getSignedUrl(
+    path: string,
+    expiresIn = DOCUMENT_SIGNED_URL_EXPIRY_SECONDS,
+  ): Promise<string> {
+    const { data, error } = await supabase.storage
+      .from(STORAGE_BUCKETS.DOCUMENTS)
+      .createSignedUrl(path, expiresIn);
+
+    if (error) throw error;
+    return data.signedUrl;
   }
 
   async delete(userId: string, docId: string): Promise<void> {

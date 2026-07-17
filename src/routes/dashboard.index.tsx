@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { ArrowUpRight, Briefcase, CalendarClock, CircleCheck as CheckCircle2, Circle, FileText, Flame, Plus, Sparkles, Target, TrendingUp } from "lucide-react";
-import { DashCard, PageHeader, SectionTitle, Chip, CompanyMark } from "@/components/dashboard/primitives";
+import { DashCard, PageHeader, SectionTitle, Chip, CompanyMark, StickyPageHeader } from "@/components/dashboard/primitives";
 import { DashButtonLink } from "@/components/dashboard/DashButton";
 import { useAuth } from "@/context/AuthContext";
 import { useProfile } from "@/context/ProfileContext";
@@ -29,6 +29,7 @@ function OverviewPage() {
 
   return (
     <>
+      <StickyPageHeader>
       <PageHeader
         eyebrow="Overview"
         title={`Good afternoon, ${firstName}.`}
@@ -52,6 +53,7 @@ function OverviewPage() {
           </>
         }
       />
+      </StickyPageHeader>
 
       {/* Onboarding checklist — only while incomplete */}
       {!onboardingComplete && (

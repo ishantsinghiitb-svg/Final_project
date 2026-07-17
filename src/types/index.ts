@@ -160,20 +160,35 @@ export type Application = {
   created_via?: "apply_flow" | "manual";
   /** Free-form extension point (recruiter, hiring manager, referral, reminder, etc.). */
   metadata?: Json;
+  /** Set alongside `notes` whenever it's saved — see ApplicationService.updateNotes. */
+  notes_updated_at?: string | null;
+  priority?: ApplicationPriority | null;
+  /** FK to resumes — which resume was used for this application. */
+  resume_id?: string | null;
+  /** FK to cover_letters. */
+  cover_letter_id?: string | null;
   created_at: string;
   updated_at: string;
 };
 
+export type ApplicationPriority = "low" | "medium" | "high" | "urgent";
+
 // ── Application Timeline ──
-// Backed by `application_activity`, populated automatically by a DB trigger
-// (see supabase/migrations/20260717000001_module3a_application_management.sql).
-// Module 3B renders this directly — no schema changes should be required.
+// Backed by `application_activity`, populated automatically by DB triggers
+// (see supabase/migrations/20260717000001_module3a_application_management.sql
+// and 20260718000001_module3b_application_workspace.sql). Read-only from the UI.
 export type ApplicationTimelineEventType =
   | "application_created"
   | "manual_application_created"
   | "status_changed"
   | "archived"
-  | "restored";
+  | "restored"
+  | "notes_updated"
+  | "priority_changed"
+  | "resume_changed"
+  | "contact_added"
+  | "reminder_created"
+  | "reminder_completed";
 
 export type ApplicationTimelineEvent = {
   id: string;
@@ -186,6 +201,76 @@ export type ApplicationTimelineEvent = {
   new_value: string | null;
   metadata: Json;
   created_at: string;
+};
+
+// ── Application Contacts (Recruiter / Hiring Manager / Referral) ──
+export type ApplicationContactType = "recruiter" | "hiring_manager" | "referral";
+
+export type ApplicationContact = {
+  id: string;
+  application_id: string;
+  user_id: string;
+  type: ApplicationContactType;
+  name: string;
+  email?: string | null;
+  linkedin_url?: string | null;
+  notes?: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+// ── Application Reminders ──
+export type ApplicationReminderType =
+  | "follow_up"
+  | "interview"
+  | "oa_deadline"
+  | "offer_expiry"
+  | "custom";
+
+export type ApplicationReminder = {
+  id: string;
+  application_id: string;
+  user_id: string;
+  type: ApplicationReminderType;
+  title: string;
+  remind_at: string;
+  note?: string | null;
+  completed: boolean;
+  completed_at?: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+// ── Application Attachments ──
+// Metadata only — file bytes live in the existing private `documents` storage
+// bucket (see src/services/storage/DocumentStorage.ts).
+export type ApplicationAttachmentKind = "offer_letter" | "assignment" | "pdf" | "other";
+
+export type ApplicationAttachment = {
+  id: string;
+  application_id: string;
+  user_id: string;
+  kind: ApplicationAttachmentKind;
+  name: string;
+  file_path: string;
+  size_bytes?: number | null;
+  mime_type?: string | null;
+  /** Optional link to a reminder — NULL means a general application attachment. */
+  reminder_id?: string | null;
+  created_at: string;
+};
+
+// ── Cover Letter ──
+// Deliberately minimal — no separate versions table like Resume has, since
+// nothing produces cover-letter content today. One row per version.
+export type CoverLetter = {
+  id: string;
+  user_id: string;
+  name: string;
+  version_number: number;
+  file_url?: string | null;
+  created_at: string;
+  updated_at: string;
 };
 
 // ── Resume ──

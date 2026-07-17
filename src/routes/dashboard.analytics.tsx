@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { DashCard, PageHeader, SectionTitle, Chip } from "@/components/dashboard/primitives";
+import { DashCard, PageHeader, SectionTitle, Chip, StickyPageHeader } from "@/components/dashboard/primitives";
 
 export const Route = createFileRoute("/dashboard/analytics")({
   head: () => ({ meta: [{ title: "Analytics — NextOffer" }, { name: "robots", content: "noindex" }] }),
@@ -20,11 +20,13 @@ const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "
 function AnalyticsPage() {
   return (
     <>
+      <StickyPageHeader>
       <PageHeader
         eyebrow="Analytics"
         title="Signal, not vanity metrics."
         subtitle="See what's actually moving the needle — where you're getting traction and where things are stalling."
       />
+      </StickyPageHeader>
 
       <div className="grid gap-4 md:grid-cols-4">
         {[

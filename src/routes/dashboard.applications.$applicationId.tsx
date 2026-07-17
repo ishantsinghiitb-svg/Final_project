@@ -3,34 +3,42 @@ import {
   ArrowLeft,
   MapPin,
   Banknote,
-  Globe,
   Calendar,
   ExternalLink,
   Loader2,
   AlertCircle,
-  Building,
   Building2,
-  UserRound,
-  Tag,
   Briefcase,
   Wifi,
   Users,
   Landmark,
   CheckCircle2,
   ChevronDown,
+  Flag,
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { DashCard, SectionTitle, Chip } from "@/components/dashboard/primitives";
 import { CompanyMark } from "@/components/dashboard/primitives";
-import { StatusBadge } from "@/components/dashboard/applications/ApplicationCard";
 import { ApplicationTimeline } from "@/components/dashboard/applications/ApplicationTimeline";
-import { useApplication, useUpdateApplicationStatus, useDeleteApplication } from "@/features/applications/hooks";
+import { ApplicationNotes } from "@/components/dashboard/applications/ApplicationNotes";
+import { ApplicationContacts } from "@/components/dashboard/applications/ApplicationContacts";
+import { ApplicationReminders } from "@/components/dashboard/applications/ApplicationReminders";
+import { ApplicationAttachments } from "@/components/dashboard/applications/ApplicationAttachments";
+import { ApplicationResumeCard } from "@/components/dashboard/applications/ApplicationResumeCard";
+import { ApplicationCoverLetterCard } from "@/components/dashboard/applications/ApplicationCoverLetterCard";
+import { PrioritySelector } from "@/components/dashboard/applications/PrioritySelector";
+import {
+  useApplication,
+  useUpdateApplicationStatus,
+  useDeleteApplication,
+  useUpdatePriority,
+} from "@/features/applications/hooks";
 import { useJob } from "@/features/jobs/hooks";
 import { useCompany } from "@/features/companies/hooks";
-import { STATUS_META, ALL_STATUSES } from "@/features/applications/constants";
+import { STATUS_META, ALL_STATUSES, PRIORITY_META } from "@/features/applications/constants";
 import { logoToneForCompany } from "@/features/jobs/utils";
-import type { ApplicationStatus } from "@/types";
+import type { ApplicationPriority, ApplicationStatus } from "@/types";
 import { cn } from "@/lib/utils";
 import { format, parseISO } from "date-fns";
 
@@ -133,6 +141,7 @@ function ApplicationDetailPage() {
   const { data: app, isLoading, isError, error } = useApplication(applicationId);
   const updateStatus = useUpdateApplicationStatus();
   const deleteApp = useDeleteApplication();
+  const updatePriority = useUpdatePriority(applicationId);
 
   // Best-effort enrichment from the linked GlobalJob — never renders the
   // description, only structural fields the Application itself doesn't store.
@@ -146,6 +155,12 @@ function ApplicationDetailPage() {
         onError: () => toast.error("Failed to update status."),
       },
     );
+  };
+
+  const handlePriorityChange = (priority: ApplicationPriority | null) => {
+    updatePriority.mutate(priority, {
+      onError: () => toast.error("Failed to update priority."),
+    });
   };
 
   const handleDelete = () => {
@@ -262,12 +277,17 @@ function ApplicationDetailPage() {
             </div>
           </div>
 
-          {/* Status selector + delete */}
+          {/* Status + priority selectors + delete */}
           <div className="flex flex-wrap items-center gap-2">
             <StatusSelector
               current={app.status}
               onChange={handleStatusChange}
               isPending={updateStatus.isPending}
+            />
+            <PrioritySelector
+              value={app.priority}
+              onChange={handlePriorityChange}
+              isPending={updatePriority.isPending}
             />
             <button
               onClick={handleDelete}
@@ -287,14 +307,6 @@ function ApplicationDetailPage() {
           <DashCard>
             <SectionTitle>Application Summary</SectionTitle>
             <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
-              <DetailTile icon={Building} label="Company" value={app.company_name} />
-              <DetailTile icon={UserRound} label="Role" value={app.role} iconColor="text-[#7C3AED]" />
-              <DetailTile
-                icon={Tag}
-                label="Current Status"
-                value={STATUS_META[app.status].label}
-                iconColor="text-[#F59E0B]"
-              />
               {app.applied_at && (
                 <DetailTile
                   icon={Calendar}
@@ -302,14 +314,19 @@ function ApplicationDetailPage() {
                   value={format(parseISO(app.applied_at), "MMM d, yyyy")}
                 />
               )}
+              {app.priority && (
+                <DetailTile
+                  icon={Flag}
+                  label="Priority"
+                  value={PRIORITY_META[app.priority].label}
+                  iconColor="text-[#F59E0B]"
+                />
+              )}
               {app.location && (
                 <DetailTile icon={MapPin} label="Location" value={app.location} />
               )}
               {salary && (
                 <DetailTile icon={Banknote} label="Salary" value={salary} iconColor="text-[#16A34A]" />
-              )}
-              {app.source && (
-                <DetailTile icon={Globe} label="Source" value={app.source} iconColor="text-[oklch(0.5_0.02_265)]" />
               )}
               {job?.employment_type && (
                 <DetailTile icon={Briefcase} label="Employment Type" value={job.employment_type} />
@@ -334,6 +351,30 @@ function ApplicationDetailPage() {
             </div>
           </DashCard>
 
+          {/* Notes */}
+          <DashCard>
+            <SectionTitle>Notes</SectionTitle>
+            <div className="mt-4">
+              <ApplicationNotes application={app} />
+            </div>
+          </DashCard>
+
+          {/* Contacts */}
+          <DashCard>
+            <SectionTitle>Contacts</SectionTitle>
+            <div className="mt-3">
+              <ApplicationContacts applicationId={app.id} />
+            </div>
+          </DashCard>
+
+          {/* Reminders */}
+          <DashCard>
+            <SectionTitle>Reminders</SectionTitle>
+            <div className="mt-3">
+              <ApplicationReminders applicationId={app.id} />
+            </div>
+          </DashCard>
+
           {/* Timeline */}
           <DashCard>
             <SectionTitle>Timeline</SectionTitle>
@@ -341,7 +382,7 @@ function ApplicationDetailPage() {
           </DashCard>
         </div>
 
-        {/* ── Right: Links ─────────────────────────────────────────────── */}
+        {/* ── Right: Links + Resume + Cover Letter + Attachments ────────── */}
         <div className="space-y-4">
           {(app.url || app.job_id) && (
             <DashCard>
@@ -371,6 +412,27 @@ function ApplicationDetailPage() {
               </div>
             </DashCard>
           )}
+
+          <DashCard>
+            <SectionTitle>Resume</SectionTitle>
+            <div className="mt-3">
+              <ApplicationResumeCard applicationId={app.id} resumeId={app.resume_id} />
+            </div>
+          </DashCard>
+
+          <DashCard>
+            <SectionTitle>Cover Letter</SectionTitle>
+            <div className="mt-3">
+              <ApplicationCoverLetterCard applicationId={app.id} coverLetterId={app.cover_letter_id} />
+            </div>
+          </DashCard>
+
+          <DashCard>
+            <SectionTitle>Attachments</SectionTitle>
+            <div className="mt-3">
+              <ApplicationAttachments applicationId={app.id} />
+            </div>
+          </DashCard>
         </div>
       </div>
 

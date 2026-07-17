@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { LayoutGrid, List, Briefcase, Loader2, AlertCircle, Archive, Plus } from "lucide-react";
 import { useState, useCallback, useMemo } from "react";
 import { toast } from "sonner";
-import { PageHeader, EmptyState } from "@/components/dashboard/primitives";
+import { PageHeader, EmptyState, StickyPageHeader } from "@/components/dashboard/primitives";
 import { KanbanBoard } from "@/components/dashboard/applications/KanbanBoard";
 import { ApplicationListView } from "@/components/dashboard/applications/ApplicationListView";
 import { ApplicationFiltersBar } from "@/components/dashboard/applications/ApplicationFiltersBar";
@@ -20,7 +20,7 @@ import {
   SORT_OPTIONS,
   DEFAULT_APPLICATION_SORT_OPTION,
 } from "@/features/applications/constants";
-import { categorizeRole } from "@/features/jobs/utils";
+import { roleMatchesAnyCategory } from "@/features/jobs/utils";
 import type { ApplicationFilters, ApplicationSortOption } from "@/features/applications/types";
 import type { ApplicationStatus } from "@/types";
 import { cn } from "@/lib/utils";
@@ -87,9 +87,11 @@ function AppsPage() {
       apps = apps.filter((a) => a.source === filters.source);
     }
 
-    // Role filter — categorizes the free-text role into a fixed taxonomy
+    // Role filter — matches like Search: does the role text contain any of
+    // the selected categories' keywords (OR across a multi-select)?
     if (filters.role) {
-      apps = apps.filter((a) => categorizeRole(a.role) === filters.role);
+      const roles = Array.isArray(filters.role) ? filters.role : [filters.role];
+      apps = apps.filter((a) => roleMatchesAnyCategory(a.role, roles));
     }
 
     // Applied date filter
@@ -190,6 +192,7 @@ function AppsPage() {
 
   return (
     <>
+      <StickyPageHeader>
       <PageHeader
         eyebrow="Applications"
         title="Track every step, without losing the thread."
@@ -234,9 +237,6 @@ function AppsPage() {
         }
       />
 
-      {/* Metrics — always reflect the full active pipeline, unaffected by filters below */}
-      <ApplicationMetricsRow applications={applications} />
-
       {/* Filters bar */}
       <ApplicationFiltersBar
         filters={filters}
@@ -245,6 +245,10 @@ function AppsPage() {
         onSortChange={setSortOption}
         totalCount={filtered.length}
       />
+      </StickyPageHeader>
+
+      {/* Metrics — always reflect the full active pipeline, unaffected by filters below */}
+      <ApplicationMetricsRow applications={applications} />
 
       {/* Empty state */}
       {applications.length === 0 && (

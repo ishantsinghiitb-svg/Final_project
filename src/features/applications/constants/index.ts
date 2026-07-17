@@ -1,4 +1,4 @@
-import type { ApplicationStatus } from "@/types";
+import type { ApplicationPriority, ApplicationStatus } from "@/types";
 import type { AppliedDatePreset, ApplicationSort, ApplicationSortOption } from "../types";
 export { ROLE_CATEGORY_LABELS, ROLE_CATEGORY_OPTIONS } from "@/features/jobs/constants";
 
@@ -86,6 +86,19 @@ export const ALL_STATUSES: ApplicationStatus[] = [
   "rejected",
   "withdrawn",
 ];
+
+// ── Priority ──────────────────────────────────────────────────────────────────
+
+export type PriorityMeta = { label: string; bg: string; text: string; dot: string };
+
+export const PRIORITY_META: Record<ApplicationPriority, PriorityMeta> = {
+  low: { label: "Low", bg: "bg-slate-100", text: "text-slate-600", dot: "bg-slate-400" },
+  medium: { label: "Medium", bg: "bg-blue-50", text: "text-blue-600", dot: "bg-blue-500" },
+  high: { label: "High", bg: "bg-amber-50", text: "text-amber-700", dot: "bg-amber-500" },
+  urgent: { label: "Urgent", bg: "bg-rose-50", text: "text-rose-600", dot: "bg-rose-500" },
+};
+
+export const ALL_PRIORITIES: ApplicationPriority[] = ["low", "medium", "high", "urgent"];
 
 // ── Sort options ─────────────────────────────────────────────────────────────
 

@@ -1,7 +1,7 @@
 import { supabase } from "@/lib/supabase";
 import type { GlobalJob, SavedJob, Skill, PaginationParams, PaginatedResult } from "@/types";
 import type { JobFilters, JobSort, RoleCategory } from "@/features/jobs/types";
-import { categorizeRole } from "@/features/jobs/utils";
+import { roleMatchesAnyCategory } from "@/features/jobs/utils";
 
 // Select all columns that map to the GlobalJob domain type.
 // `role_id` and `location_id` are DB-only FK references and are excluded
@@ -84,8 +84,8 @@ export class JobRepository {
 
     // ── Role category ──
     // Not a DB column — resolved to matching IDs first (via the same
-    // categorizeRole used by the Applications Role filter) so pagination and
-    // the total count stay accurate.
+    // roleMatchesAnyCategory used by the Applications Role filter) so
+    // pagination and the total count stay accurate.
     if (filters.roleCategory) {
       const ids = await this.findJobIdsByRoleCategory(filters.roleCategory);
       if (ids.length === 0) {
@@ -168,17 +168,18 @@ export class JobRepository {
   }
 
   /**
-   * Resolves the IDs of jobs whose role falls into the given category.
-   * `role_category` isn't a DB column — classification runs client-side via
-   * categorizeRole() over a lightweight (id, role) projection, so this stays
-   * in sync with the Applications Role filter without duplicating the
-   * matching logic in SQL.
+   * Resolves the IDs of jobs whose role matches any of the given categories
+   * (OR). `role_category` isn't a DB column — matching runs client-side via
+   * roleMatchesAnyCategory() over a lightweight (id, role) projection, so
+   * this stays in sync with the Applications Role filter without
+   * duplicating the matching logic in SQL.
    */
-  async findJobIdsByRoleCategory(category: RoleCategory): Promise<string[]> {
+  async findJobIdsByRoleCategory(categories: RoleCategory | RoleCategory[]): Promise<string[]> {
+    const wanted = Array.isArray(categories) ? categories : [categories];
     const { data, error } = await supabase.from("global_jobs").select("id, role");
     if (error) throw error;
     return (data ?? [])
-      .filter((row) => categorizeRole(row.role as string) === category)
+      .filter((row) => roleMatchesAnyCategory(row.role as string, wanted))
       .map((row) => row.id as string);
   }
 

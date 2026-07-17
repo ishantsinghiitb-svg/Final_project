@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { CalendarClock, Video, Sparkles, Clock, User } from "lucide-react";
-import { DashCard, PageHeader, Chip, CompanyMark, SectionTitle } from "@/components/dashboard/primitives";
+import { DashCard, PageHeader, Chip, CompanyMark, SectionTitle, StickyPageHeader } from "@/components/dashboard/primitives";
 import { DashButton } from "@/components/dashboard/DashButton";
 import { interviews } from "@/lib/dashboard-data";
 
@@ -23,11 +23,13 @@ function InterviewsPage() {
 
   return (
     <>
+      <StickyPageHeader>
       <PageHeader
         eyebrow="Interviews"
         title="Walk in prepared, walk out confident."
         subtitle="Every interview lives here with AI-generated prep, likely questions, and space for your notes afterward."
       />
+      </StickyPageHeader>
 
       {next && (
         <DashCard className="border-[#7C3AED]/15 bg-gradient-to-br from-[#7C3AED]/[0.06] to-[#2563EB]/[0.04]">

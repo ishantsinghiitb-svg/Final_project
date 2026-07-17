@@ -18,6 +18,7 @@ import {
   APPLIED_DATE_PRESET_OPTIONS,
 } from "@/features/applications/constants";
 import { dateRangeForPreset } from "@/features/applications/utils";
+import { MultiSelectDropdown } from "@/components/dashboard/primitives";
 import { cn } from "@/lib/utils";
 
 const selectClass =
@@ -78,9 +79,18 @@ export function ApplicationFiltersBar({
     ? [filters.status]
     : [];
 
-  const setRole = useCallback(
-    (role: string) =>
-      onFiltersChange({ ...filters, role: (role || undefined) as RoleCategory | undefined }),
+  const activeRoles = Array.isArray(filters.role)
+    ? filters.role
+    : filters.role
+    ? [filters.role]
+    : [];
+
+  const setRoles = useCallback(
+    (roles: string[]) =>
+      onFiltersChange({
+        ...filters,
+        role: roles.length === 0 ? undefined : (roles as RoleCategory[]),
+      }),
     [filters, onFiltersChange],
   );
 
@@ -117,7 +127,7 @@ export function ApplicationFiltersBar({
     filters.q ||
       activeStatuses.length > 0 ||
       filters.source ||
-      filters.role ||
+      activeRoles.length > 0 ||
       filters.appliedDatePreset,
   );
 
@@ -171,20 +181,13 @@ export function ApplicationFiltersBar({
           )}
         </div>
 
-        {/* Role filter */}
-        <select
-          id="app-role-filter"
-          value={filters.role ?? ""}
-          onChange={(e) => setRole(e.target.value)}
-          className={selectClass}
-        >
-          <option value="">All roles</option>
-          {ROLE_CATEGORY_OPTIONS.map((r) => (
-            <option key={r} value={r}>
-              {ROLE_CATEGORY_LABELS[r]}
-            </option>
-          ))}
-        </select>
+        {/* Role filter — multi-select */}
+        <MultiSelectDropdown
+          label="Role"
+          options={ROLE_CATEGORY_OPTIONS.map((r) => ({ value: r, label: ROLE_CATEGORY_LABELS[r] }))}
+          selected={activeRoles}
+          onChange={setRoles}
+        />
 
         {/* Applied date filter */}
         <select

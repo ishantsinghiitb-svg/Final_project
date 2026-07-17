@@ -425,3 +425,93 @@ export function useRestoreApplication() {
     },
   });
 }
+
+// ── useUpdateNotes ────────────────────────────────────────────────────────────
+// Powers the auto-saving Notes section — the caller (ApplicationNotes) owns
+// the debounce; this hook just exposes a plain mutation with an optimistic
+// update to the detail cache so the "last edited" timestamp reflects
+// immediately without waiting on the round trip.
+
+export function useUpdateNotes(id: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (notes: string) => applicationService.updateNotes(id, notes),
+
+    onMutate: async (notes) => {
+      await queryClient.cancelQueries({ queryKey: applicationKeys.detail(id) });
+      const previous = queryClient.getQueryData<Application>(applicationKeys.detail(id));
+      queryClient.setQueryData<Application>(applicationKeys.detail(id), (old) =>
+        old ? { ...old, notes, notes_updated_at: new Date().toISOString() } : old,
+      );
+      return { previous };
+    },
+
+    onError: (_err, _vars, context) => {
+      if (context?.previous !== undefined) {
+        queryClient.setQueryData(applicationKeys.detail(id), context.previous);
+      }
+    },
+
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: applicationKeys.detail(id) });
+      void queryClient.invalidateQueries({ queryKey: applicationKeys.timeline(id) });
+    },
+  });
+}
+
+// ── useUpdatePriority ─────────────────────────────────────────────────────────
+
+export function useUpdatePriority(id: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (priority: Application["priority"]) =>
+      applicationService.updatePriority(id, priority),
+
+    onMutate: async (priority) => {
+      await queryClient.cancelQueries({ queryKey: applicationKeys.detail(id) });
+      const previous = queryClient.getQueryData<Application>(applicationKeys.detail(id));
+      queryClient.setQueryData<Application>(applicationKeys.detail(id), (old) =>
+        old ? { ...old, priority } : old,
+      );
+      return { previous };
+    },
+
+    onError: (_err, _vars, context) => {
+      if (context?.previous !== undefined) {
+        queryClient.setQueryData(applicationKeys.detail(id), context.previous);
+      }
+    },
+
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: applicationKeys.detail(id) });
+      void queryClient.invalidateQueries({ queryKey: applicationKeys.timeline(id) });
+    },
+  });
+}
+
+// ── useSetResume / useSetCoverLetter ─────────────────────────────────────────
+// Association changes also log a timeline event (resume_changed) via the DB
+// trigger — no client-side logging needed.
+
+export function useSetResume(id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (resumeId: string | null) => applicationService.setResume(id, resumeId),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: applicationKeys.detail(id) });
+      void queryClient.invalidateQueries({ queryKey: applicationKeys.timeline(id) });
+    },
+  });
+}
+
+export function useSetCoverLetter(id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (coverLetterId: string | null) => applicationService.setCoverLetter(id, coverLetterId),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: applicationKeys.detail(id) });
+    },
+  });
+}

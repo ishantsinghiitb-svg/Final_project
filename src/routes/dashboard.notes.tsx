@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { Plus, Search, StickyNote } from "lucide-react";
-import { DashCard, PageHeader, Chip, EmptyState } from "@/components/dashboard/primitives";
+import { DashCard, PageHeader, Chip, EmptyState, StickyPageHeader } from "@/components/dashboard/primitives";
 import { DashButton } from "@/components/dashboard/DashButton";
 import { notes, type Note } from "@/lib/dashboard-data";
 
@@ -27,6 +27,7 @@ function NotesPage() {
 
   return (
     <>
+      <StickyPageHeader>
       <PageHeader
         eyebrow="Notes"
         title="Everything worth remembering."
@@ -37,6 +38,7 @@ function NotesPage() {
           </DashButton>
         }
       />
+      </StickyPageHeader>
 
       {notes.length === 0 ? (
         <EmptyState

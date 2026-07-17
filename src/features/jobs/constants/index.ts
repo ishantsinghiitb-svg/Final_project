@@ -102,7 +102,7 @@ export function postedAfterToIso(days: string | undefined): string | undefined {
 }
 
 // ── Role category filter ─────────────────────────────────────────────────────
-// Shared with the Applications feature — see features/jobs/utils.ts#categorizeRole.
+// Shared with the Applications feature — see features/jobs/utils.ts#roleMatchesAnyCategory.
 
 export const ROLE_CATEGORY_LABELS: Record<RoleCategory, string> = {
   product: "Product",

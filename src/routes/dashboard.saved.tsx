@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   Bookmark,
@@ -16,8 +16,14 @@ import {
   Chip,
   CompanyMark,
   EmptyState,
+  StickyPageHeader,
 } from "@/components/dashboard/primitives";
 import { DashButtonLink } from "@/components/dashboard/DashButton";
+import {
+  TrackApplicationModal,
+  AlreadyTrackingModal,
+  useTrackApplication,
+} from "@/components/dashboard/applications/ApplyPromptDialog";
 import {
   useSavedJobs,
   useSavedJobIds,
@@ -95,8 +101,35 @@ function SavedPage() {
   const total = result?.total ?? 0;
   const totalPages = result?.totalPages ?? 1;
 
+  // Apply flow — same TrackApplicationModal/AlreadyTrackingModal used on the
+  // Jobs board and Job Detail page, so "Apply" behaves identically everywhere.
+  const [selectedJob, setSelectedJob] = useState<GlobalJob | null>(null);
+  const {
+    isOpen: trackModalOpen,
+    handleApplyClick,
+    handleTrackAndContinue,
+    handleContinueWithoutTracking,
+    handleCancel,
+    isPending,
+    alreadyTrackedApplication,
+    handleViewApplication,
+    handleOpenJobPage,
+    handleRemoveTracking,
+    handleCloseAlreadyTracking,
+    isRemovingTracking,
+  } = useTrackApplication(selectedJob, () => {
+    setSelectedJob(null);
+  });
+
+  useEffect(() => {
+    if (selectedJob) {
+      handleApplyClick();
+    }
+  }, [selectedJob, handleApplyClick]);
+
   return (
     <>
+      <StickyPageHeader>
       <PageHeader
         eyebrow="Saved"
         title="Everything you bookmarked, in one place."
@@ -107,6 +140,7 @@ function SavedPage() {
           ) : undefined
         }
       />
+      </StickyPageHeader>
 
       {isLoading ? (
         <div className="flex items-center justify-center gap-2 py-16 text-sm text-[oklch(0.5_0.02_265)]">
@@ -140,8 +174,6 @@ function SavedPage() {
               const isSaved = savedIds.includes(job.id);
               const salary = formatSalary(job);
               const tone = logoToneForCompany(job.company_name);
-
-              const applyUrl = job.source_url ?? job.url;
 
               return (
                 <DashCard
@@ -225,15 +257,13 @@ function SavedPage() {
 
                   {/* CTA row */}
                   <div className="mt-3 flex items-center gap-2 border-t border-black/5 pt-3">
-                    {applyUrl && (
-                      <a
-                        href={applyUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
+                    {job.url && (
+                      <button
+                        onClick={() => setSelectedJob(job)}
                         className="inline-flex flex-1 items-center justify-center gap-1 rounded-lg bg-gradient-to-br from-[#2563EB] to-[#7C3AED] px-3 py-1.5 text-xs font-medium text-white shadow-[0_2px_8px_-2px_rgba(37,99,235,0.5)] transition-transform hover:-translate-y-px"
                       >
                         Apply <ArrowUpRight className="h-3 w-3" />
-                      </a>
+                      </button>
                     )}
                     <Link
                       to="/dashboard/jobs/$jobId"
@@ -285,6 +315,29 @@ function SavedPage() {
             </div>
           )}
         </div>
+      )}
+
+      {selectedJob && (
+        <TrackApplicationModal
+          job={selectedJob}
+          open={trackModalOpen}
+          isPending={isPending}
+          onTrackAndContinue={handleTrackAndContinue}
+          onContinueWithoutTracking={handleContinueWithoutTracking}
+          onCancel={handleCancel}
+        />
+      )}
+
+      {alreadyTrackedApplication && (
+        <AlreadyTrackingModal
+          application={alreadyTrackedApplication}
+          open={Boolean(alreadyTrackedApplication)}
+          isPending={isRemovingTracking}
+          onViewApplication={handleViewApplication}
+          onOpenJobPage={handleOpenJobPage}
+          onRemoveTracking={handleRemoveTracking}
+          onClose={handleCloseAlreadyTracking}
+        />
       )}
     </>
   );

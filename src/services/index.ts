@@ -3,3 +3,8 @@ export { AuthService } from "./AuthService";
 export { JobService, jobService } from "./JobService";
 export { ApplicationService, applicationService } from "./ApplicationService";
 export { CompanyService, companyService } from "./CompanyService";
+export { ResumeService, resumeService } from "./ResumeService";
+export { CoverLetterService, coverLetterService } from "./CoverLetterService";
+export { ContactService, contactService } from "./ContactService";
+export { ReminderService, reminderService } from "./ReminderService";
+export { AttachmentService, attachmentService } from "./AttachmentService";

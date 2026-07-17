@@ -104,31 +104,68 @@ export function formatPostedAtFull(iso: string | null | undefined): string {
 
 // ── Role categorization ──────────────────────────────────────────────────────
 // A job/application's `role` is free text (e.g. "Senior Frontend Engineer").
-// The Role filter (Jobs + Applications) buckets it into a fixed taxonomy via
-// keyword matching — order matters, most specific/least ambiguous categories
-// are checked first. This is the single source of truth for that mapping;
-// both features import it rather than re-implementing the classification.
+// The Role filter (Jobs + Applications) matches it against a category the
+// same way the free-text Search box matches a query — "does this keyword
+// appear anywhere in the role text" — rather than trying to classify each
+// role into exactly one bucket. That exclusivity was the bug: a role like
+// "Product Analyst" or "Product Lead" was tested against a narrow phrase
+// ("product manager" | "product owner" | standalone "pm") and, on missing
+// it, fell through to every later category too, landing in "other". A role
+// can legitimately match more than one category (e.g. "Product Designer"
+// matches both Product and Design) — that's correct, not a bug, since a
+// multi-select filter is an OR over categories, exactly like Search is an
+// OR-free single substring match.
+//
+// This is the single source of truth for the mapping; both the Jobs and
+// Applications Role filters import it rather than re-implementing matching.
 
-const ROLE_PATTERNS: [RoleCategory, RegExp][] = [
-  ["ml_ai", /machine learning|artificial intelligence|deep learning|\bnlp\b|computer vision|\bllm\b|\bml\b|\bai\b/i],
-  ["data", /data (scientist|engineer|analyst)|analytics|business intelligence|\bbi\b/i],
-  ["devops", /devops|site reliability|\bsre\b|infrastructure|platform engineer|cloud engineer/i],
-  ["mobile", /\bios\b|\bandroid\b|mobile|flutter|react native/i],
-  ["full_stack", /full[\s-]?stack/i],
-  ["frontend", /front[\s-]?end|ui engineer|react developer/i],
-  ["backend", /back[\s-]?end|server[\s-]?side/i],
-  ["design", /designer|\bux\b|ui\/ux|product design/i],
-  ["product", /product manager|product owner|\bpm\b/i],
-  ["marketing", /marketing|growth|\bseo\b|content strategist/i],
-  ["sales", /sales|account executive|business development|\bbdr\b|\bsdr\b/i],
-  ["finance", /finance|accounting|financial analyst/i],
-  ["operations", /operations|\bops\b|program manager|project manager|people ops|\bhr\b|human resources/i],
-];
+const CATEGORY_KEYWORDS: Record<RoleCategory, string[]> = {
+  product: ["product"],
+  frontend: ["frontend", "front end", "front-end", "react developer", "ui engineer"],
+  backend: ["backend", "back end", "back-end", "server-side", "server side"],
+  full_stack: ["full stack", "full-stack", "fullstack"],
+  mobile: ["mobile", "ios", "android", "flutter", "react native"],
+  data: ["data", "analytics", "business intelligence"],
+  ml_ai: ["machine learning", "artificial intelligence", "deep learning", "computer vision", "nlp", "llm", "ai", "ml"],
+  devops: ["devops", "site reliability", "infrastructure", "platform engineer", "cloud engineer", "sre"],
+  design: ["design", "ux", "ui/ux"],
+  marketing: ["marketing", "growth", "seo", "content strategist"],
+  sales: ["sales", "account executive", "business development", "bdr", "sdr"],
+  finance: ["finance", "accounting", "financial analyst"],
+  operations: ["operations", "program manager", "project manager", "people ops", "hr", "human resources", "ops"],
+  other: [],
+};
 
-export function categorizeRole(role: string | null | undefined): RoleCategory {
-  if (!role) return "other";
-  for (const [category, pattern] of ROLE_PATTERNS) {
-    if (pattern.test(role)) return category;
+const REAL_CATEGORIES = (Object.keys(CATEGORY_KEYWORDS) as RoleCategory[]).filter(
+  (c) => c !== "other",
+);
+
+// Short, ambiguous keywords need a word-boundary check — a plain substring
+// test would false-positive "ai" inside "Maintenance" or "ops" inside "Shops".
+const WORD_BOUNDARY_KEYWORDS = new Set([
+  "ai", "ml", "ux", "hr", "sre", "seo", "bdr", "sdr", "ops", "nlp", "llm",
+]);
+
+function keywordInRole(role: string, keyword: string): boolean {
+  if (WORD_BOUNDARY_KEYWORDS.has(keyword)) {
+    return new RegExp(`\\b${keyword}\\b`, "i").test(role);
   }
-  return "other";
+  return role.toLowerCase().includes(keyword);
+}
+
+/** Does this role belong to the given category? A role can match more than one. */
+export function roleMatchesCategory(role: string | null | undefined, category: RoleCategory): boolean {
+  if (!role) return category === "other";
+  if (category === "other") {
+    return !REAL_CATEGORIES.some((c) => roleMatchesCategory(role, c));
+  }
+  return CATEGORY_KEYWORDS[category].some((kw) => keywordInRole(role, kw));
+}
+
+/** Does this role match ANY of the given categories (OR — for multi-select filters)? */
+export function roleMatchesAnyCategory(
+  role: string | null | undefined,
+  categories: RoleCategory[],
+): boolean {
+  return categories.some((c) => roleMatchesCategory(role, c));
 }
