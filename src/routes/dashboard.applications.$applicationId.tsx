@@ -37,7 +37,7 @@ import {
 import { useJob } from "@/features/jobs/hooks";
 import { useCompany } from "@/features/companies/hooks";
 import { STATUS_META, ALL_STATUSES, PRIORITY_META } from "@/features/applications/constants";
-import { logoToneForCompany } from "@/features/jobs/utils";
+import { logoToneForCompany, getJobBadges, formatSourceLabel } from "@/features/jobs/utils";
 import type { ApplicationPriority, ApplicationStatus } from "@/types";
 import { cn } from "@/lib/utils";
 import { format, parseISO } from "date-fns";
@@ -268,11 +268,17 @@ function ApplicationDetailPage() {
               </p>
               <div className="mt-2 flex flex-wrap items-center gap-2">
                 {app.source && (
-                  <Chip tone="default">{app.source}</Chip>
+                  <Chip tone="default">{formatSourceLabel(app.source)}</Chip>
                 )}
                 {app.location && (
                   <Chip tone="default">{app.location}</Chip>
                 )}
+                {job &&
+                  getJobBadges(job).map((badge) => (
+                    <Chip key={badge.key} tone={badge.tone}>
+                      {badge.label}
+                    </Chip>
+                  ))}
               </div>
             </div>
           </div>

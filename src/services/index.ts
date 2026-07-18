@@ -8,3 +8,4 @@ export { CoverLetterService, coverLetterService } from "./CoverLetterService";
 export { ContactService, contactService } from "./ContactService";
 export { ReminderService, reminderService } from "./ReminderService";
 export { AttachmentService, attachmentService } from "./AttachmentService";
+export { ManualImportService, manualImportService } from "./ManualImportService";

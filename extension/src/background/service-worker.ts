@@ -4,7 +4,12 @@ import { MessageType } from "../shared/messaging/types";
 import { setStoredSession } from "../shared/supabase/session-store";
 import { trackApplication } from "./handlers/applications";
 import { getAuthState } from "./handlers/auth";
-import { saveGlobalJob, syncGlobalJob } from "./handlers/jobs";
+import {
+  clearCurrentJobForTab,
+  getCurrentJobForTab,
+  setCurrentJobForTab,
+} from "./handlers/currentJob";
+import { importJobFromUrl, saveGlobalJob, syncGlobalJob } from "./handlers/jobs";
 
 /**
  * Chrome only auto-injects content scripts into tabs that navigate *after*
@@ -42,12 +47,15 @@ async function injectIntoExistingJobBoardTabs(): Promise<void> {
 chrome.runtime.onInstalled.addListener(() => void injectIntoExistingJobBoardTabs());
 chrome.runtime.onStartup.addListener(() => void injectIntoExistingJobBoardTabs());
 
+/** Drops a closed tab's stored current-job state so it never leaks/goes stale. */
+chrome.tabs.onRemoved.addListener((tabId) => void clearCurrentJobForTab(tabId));
+
 /**
  * Wires the message bus (extension/src/shared/messaging) to the handler
  * modules. Business logic lives in ./handlers/* — this file only dispatches.
  */
-chrome.runtime.onMessage.addListener((message: ExtensionMessage, _sender, sendResponse) => {
-  handleMessage(message)
+chrome.runtime.onMessage.addListener((message: ExtensionMessage, sender, sendResponse) => {
+  handleMessage(message, sender)
     .then((data) => {
       sendResponse({ ok: true, data } satisfies ExtensionResponse);
     })
@@ -59,7 +67,10 @@ chrome.runtime.onMessage.addListener((message: ExtensionMessage, _sender, sendRe
   return true; // keep the message channel open for the async response
 });
 
-async function handleMessage(message: ExtensionMessage): Promise<unknown> {
+async function handleMessage(
+  message: ExtensionMessage,
+  sender: chrome.runtime.MessageSender,
+): Promise<unknown> {
   switch (message.type) {
     case MessageType.PING:
       return { pong: true };
@@ -74,6 +85,26 @@ async function handleMessage(message: ExtensionMessage): Promise<unknown> {
     case MessageType.SYNC_GLOBAL_JOB: {
       const auth = await requireAuth();
       return syncGlobalJob(message.payload, auth.user);
+    }
+
+    case MessageType.IMPORT_JOB_URL: {
+      await requireAuth();
+      return importJobFromUrl(message.payload);
+    }
+
+    case MessageType.CURRENT_JOB_UPDATED: {
+      // Sent by the content script, keyed by its own tab — no auth/response
+      // data needed, just persist it for the popup to read later.
+      if (typeof sender.tab?.id === "number") {
+        await setCurrentJobForTab(sender.tab.id, message.payload);
+      }
+      return { acknowledged: true };
+    }
+
+    case MessageType.GET_CURRENT_JOB: {
+      // The popup resolved its own tab id (see popup/App.tsx) — just read
+      // what the content script last published for it.
+      return getCurrentJobForTab(message.payload.tabId);
     }
 
     case MessageType.SAVE_JOB: {

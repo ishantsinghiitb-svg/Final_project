@@ -141,11 +141,38 @@ export function CompanyMark({
   company,
   tone,
   size = 32,
+  logoUrl,
 }: {
   company: string;
   tone: string;
   size?: number;
+  logoUrl?: string | null;
 }) {
+  // Render the stored company_logo_url when present; fall back to the tinted
+  // initials only when there's no logo, or the image fails to load (LinkedIn's
+  // media.licdn.com URLs can be signed/time-limited and expire over time).
+  const [imgFailed, setImgFailed] = useState(false);
+  // Reset the failure flag if the URL changes (this component can be reused
+  // for a different company without remounting).
+  useEffect(() => {
+    setImgFailed(false);
+  }, [logoUrl]);
+
+  if (logoUrl && !imgFailed) {
+    return (
+      <img
+        src={logoUrl}
+        alt={`${company} logo`}
+        width={size}
+        height={size}
+        loading="lazy"
+        onError={() => setImgFailed(true)}
+        className="shrink-0 rounded-lg bg-white object-contain"
+        style={{ width: size, height: size }}
+      />
+    );
+  }
+
   return (
     <div
       className={cn("grid place-items-center rounded-lg bg-gradient-to-br text-white font-semibold", tone)}

@@ -89,6 +89,21 @@ export function useApplication(id: string | undefined) {
   });
 }
 
+// ── useTrackedJobIds ─────────────────────────────────────────────────────────
+// All job IDs the user has a tracked (non-archived) application for — no
+// pagination. Mirrors useSavedJobIds's shape: lets the UI render a "Tracked"
+// badge per card without a query per card (see Saved Jobs page).
+
+export function useTrackedJobIds() {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: [...applicationKeys.all, "tracked-job-ids", user?.id ?? ""],
+    queryFn: () => applicationService.getTrackedJobIds(user!.id),
+    enabled: Boolean(user),
+    staleTime: 2 * 60 * 1_000,
+  });
+}
+
 // ── useApplicationTimeline ────────────────────────────────────────────────────
 // Read-only timeline for the detail page — rows are written automatically by
 // a DB trigger (see ApplicationRepository.findTimeline). Invalidated whenever

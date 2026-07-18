@@ -49,7 +49,7 @@ import {
   ROLE_CATEGORY_LABELS,
   ROLE_CATEGORY_OPTIONS,
 } from "@/features/jobs/constants";
-import { formatSalary, formatPostedAt, logoToneForCompany } from "@/features/jobs/utils";
+import { formatSalary, formatPostedTime, formatSourceLabel, logoToneForCompany } from "@/features/jobs/utils";
 
 // Multi-select filters store their selected values as a comma-joined string
 // in the URL (e.g. "remote,hybrid") rather than relying on the router's
@@ -104,7 +104,7 @@ interface JobCardProps {
 
 const JobCard = memo(function JobCard({ job, isSaved, onSave, onUnsave, onApply }: JobCardProps) {
   const salary = formatSalary(job);
-  const posted = formatPostedAt(job.posted_at);
+  const posted = formatPostedTime(job);
   const tone = logoToneForCompany(job.company_name);
 
   return (
@@ -119,7 +119,7 @@ const JobCard = memo(function JobCard({ job, isSaved, onSave, onUnsave, onApply 
         params={{ jobId: job.id }}
         className="flex flex-1 min-w-0 items-center gap-4"
       >
-        <CompanyMark company={job.company_name} tone={tone} size={40} />
+        <CompanyMark company={job.company_name} tone={tone} size={40} logoUrl={job.company_logo_url} />
 
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 flex-wrap">
@@ -180,7 +180,7 @@ const JobCard = memo(function JobCard({ job, isSaved, onSave, onUnsave, onApply 
 
         {/* Source + time — desktop only */}
         <div className="hidden flex-col items-end gap-0.5 md:flex min-w-[80px]">
-          <span className="text-[11px] text-[oklch(0.55_0.02_265)]">{job.source}</span>
+          <span className="text-[11px] text-[oklch(0.55_0.02_265)]">{formatSourceLabel(job.source)}</span>
           {posted && (
             <span className="flex items-center gap-1 text-[11px] text-[oklch(0.55_0.02_265)]">
               <Clock className="h-3 w-3" /> {posted}
@@ -476,7 +476,12 @@ function JobsPage() {
   return (
     <>
       <StickyPageHeader>
-      {/* No "Add Job" button — global jobs are not manually created by users */}
+      {/*
+        No "Import job" button here for now — the manual-URL import feature
+        (ManualImportService, JobRepository.upsertGlobalJob, the RPC, and the
+        ImportJobDialog component) stays intact but disconnected from the UI
+        per QA sign-off; it may be re-wired later.
+      */}
       <PageHeader
         eyebrow="Jobs"
         title="Discover roles worth your time."

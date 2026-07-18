@@ -1,5 +1,6 @@
 import { supabase } from "@/lib/supabase";
 import type { GlobalJob, SavedJob, Skill, PaginationParams, PaginatedResult } from "@/types";
+import type { Json } from "@/types/database";
 import type { JobFilters, JobSort, RoleCategory } from "@/features/jobs/types";
 import { roleMatchesAnyCategory } from "@/features/jobs/utils";
 
@@ -7,9 +8,21 @@ import { roleMatchesAnyCategory } from "@/features/jobs/utils";
 // `role_id` and `location_id` are DB-only FK references and are excluded
 // intentionally — they are not part of the GlobalJob domain model.
 const JOB_COLUMNS =
-  "id, company_id, company_name, role, location, remote, work_mode, employment_type, experience_level, salary_min, salary_max, salary_currency, description, url, source, posted_at, source_job_id, fingerprint, company_logo_url, is_closed, source_url, company_url, city, country, posted_ago, applicant_count, hiring_insights, easy_apply, promoted, reposted, responses_managed, industry, job_function, benefits, description_html, created_at, updated_at";
+  "id, company_id, company_name, role, location, remote, work_mode, employment_type, experience_level, salary_min, salary_max, salary_currency, description, url, source, posted_at, source_job_id, fingerprint, company_logo_url, is_closed, source_url, company_url, city, country, posted_ago, applicant_count, hiring_insights, easy_apply, promoted, reposted, responses_managed, industry, job_function, benefits, description_html, state, department, company_career_url, salary_period, salary_text, responsibilities, requirements, preferred_qualifications, technologies, languages, expiry_date, hiring_team, recruiter_name, recruiter_profile, company_size, parser_version, parser_confidence, extraction_warnings, is_manual_import, created_at, updated_at";
 
 const SAVED_JOB_COLUMNS = "id, user_id, job_id, notes, created_at";
+
+/**
+ * Minimal structural view of the two chainable Supabase filter-builder methods
+ * the discovery-feed rule needs. The builder's full generic type differs
+ * between the list `select` (all columns, rows returned) and the head-only
+ * count `select` (`head: true`), so `applyDiscoveryVisibility` narrows to this
+ * to stay reusable across both call sites without re-implementing the rule.
+ */
+type DiscoveryFilterable = {
+  eq(column: string, value: boolean): DiscoveryFilterable;
+  or(filters: string): DiscoveryFilterable;
+};
 
 export class JobRepository {
   // ── Read ──────────────────────────────────────────────────────────────────
@@ -22,6 +35,55 @@ export class JobRepository {
       .maybeSingle();
     if (error) throw error;
     return data as GlobalJob | null;
+  }
+
+  // ── Write (manual import) ───────────────────────────────────────────────────
+
+  /**
+   * The single write path for global_jobs — the SECURITY DEFINER
+   * `upsert_global_job` RPC (see supabase/migrations/20260716000001_* and
+   * 20260720000001_*). Resolves by (source, source_job_id) then fingerprint and
+   * creates or updates in place, so callers never insert a duplicate. Shared by
+   * the manual URL importer; the Chrome extension calls the same RPC from its
+   * own bundle.
+   */
+  async upsertGlobalJob(payload: Json): Promise<GlobalJob> {
+    const { data, error } = await supabase.rpc("upsert_global_job", { payload });
+    if (error) throw error;
+    return data as unknown as GlobalJob;
+  }
+
+  // ── Discovery-feed visibility (single source of truth) ──────────────────────
+
+  /**
+   * Applies the Global Jobs *discovery-feed* visibility rule to a query
+   * builder. This is the ONE canonical definition of "which rows the discovery
+   * feed shows"; both the list (`findAll`, with its exact `count`) and the
+   * sidebar badge (`countDiscoverable`) run their query through here, so the
+   * two can never disagree. Mirrors features/jobs/utils#isJobExpired /
+   * getJobBadges so a job hidden here shows the matching badge wherever it
+   * still appears (Applications, Saved Jobs, direct job-detail links).
+   *
+   * A row is hidden ONLY if it is a manual import, is closed, or carries an
+   * explicit `expiry_date` that has already passed. Freshness is deliberately
+   * NOT judged by `posted_at` age: LinkedIn's structured `posted_at` (JSON-LD
+   * `datePosted`) is the ORIGINAL post date, so a still-open, freshly captured
+   * *reposted* listing legitimately carries a `posted_at` months old — a hard
+   * age ceiling on that column silently dropped those valid, newly-parsed rows
+   * from the feed even though they were open and not expired (they still
+   * appeared under Applications / Saved / Job Detail, which don't apply this
+   * filter — exactly the reported regression). Expiry is instead driven by the
+   * reliable signals: `is_closed` (LinkedIn's own "no longer accepting" / past
+   * `validThrough` — see LinkedInParser.readIsClosed) and an explicit past
+   * `expiry_date`. `is_closed` / `is_manual_import` are both `NOT NULL DEFAULT
+   * false`, so `.eq(…, false)` can never wrongly drop a valid row on a NULL.
+   */
+  private applyDiscoveryVisibility<T>(query: T): T {
+    const nowIso = new Date().toISOString();
+    return (query as unknown as DiscoveryFilterable)
+      .eq("is_manual_import", false)
+      .eq("is_closed", false)
+      .or(`expiry_date.is.null,expiry_date.gte.${nowIso}`) as unknown as T;
   }
 
   /**
@@ -43,6 +105,16 @@ export class JobRepository {
     let q = supabase
       .from("global_jobs")
       .select(JOB_COLUMNS, { count: "exact" });
+
+    // ── Discovery-feed visibility ──
+    // The Jobs page is a discovery feed, not a dump of every global_jobs row.
+    // Manually-imported, closed, and expired jobs stay in the table
+    // (Applications, Saved Jobs, and direct job-detail links still show them)
+    // but are excluded here. Applied as a WHERE clause (not a client-side
+    // filter after fetching) so the `count` and pagination stay accurate — the
+    // SAME helper backs the sidebar badge (countDiscoverable), so the two can
+    // never disagree. See applyDiscoveryVisibility for the exact rule.
+    q = this.applyDiscoveryVisibility(q);
 
     // ── Keyword search ──
     // Matches against role, company, description, job function, and industry
@@ -150,8 +222,14 @@ export class JobRepository {
     }
 
     // ── Sort and paginate ──
+    // A unique `id` tiebreaker after the caller's sort column keeps ordering
+    // deterministic across page requests. Without it, rows sharing the same
+    // sort value (e.g. the many jobs with an equal or NULL `posted_at`) can be
+    // returned in a different relative order on each query, letting a row slip
+    // across a page boundary and appear to "vanish" from the paginated feed.
     q = q
       .order(sort.field, { ascending: sort.direction === "asc" })
+      .order("id", { ascending: true })
       .range(from, to);
 
     const { data, error, count } = await q;
@@ -374,11 +452,19 @@ export class JobRepository {
 
   // ── Counts (sidebar badges) ───────────────────────────────────────────────
 
-  /** Total number of jobs in the global board. */
-  async countAll(): Promise<number> {
-    const { count, error } = await supabase
+  /**
+   * Number of jobs visible in the Global Jobs *discovery feed* — the value
+   * behind the sidebar "Jobs" badge. Applies the EXACT same visibility rule as
+   * `findAll` (via the shared applyDiscoveryVisibility), so the badge always
+   * equals the number of jobs the Jobs page actually lists. (A raw, unfiltered
+   * `count(*)` was the count/list mismatch: it also counted manually-imported,
+   * closed, expired, and >90-day-old rows that the list correctly hides.)
+   */
+  async countDiscoverable(): Promise<number> {
+    const base = supabase
       .from("global_jobs")
       .select("id", { count: "exact", head: true });
+    const { count, error } = await this.applyDiscoveryVisibility(base);
     if (error) throw error;
     return count ?? 0;
   }

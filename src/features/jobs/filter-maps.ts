@@ -21,8 +21,11 @@
  *
  * SOURCE FILTER
  * ─────────────
- * Source values ("LinkedIn", "Wellfound", …) are already stored in the DB
- * with the same casing as the URL param — no mapping needed.
+ * Source values ("linkedin", "naukri", "Manual", …) are defined once in
+ * SOURCE_OPTIONS (features/jobs/constants) using the EXACT casing
+ * `global_jobs.source` stores — no mapping needed here. Don't reintroduce a
+ * title-cased option list; that previously broke the filter silently (see
+ * SOURCE_OPTIONS's comment).
  */
 
 import type { JobFilters } from "@/features/jobs/types";

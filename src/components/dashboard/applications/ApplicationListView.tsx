@@ -2,7 +2,7 @@ import { Link } from "@tanstack/react-router";
 import type { Application, ApplicationStatus } from "@/types";
 import { CompanyMark } from "@/components/dashboard/primitives";
 import { StatusBadge } from "./ApplicationCard";
-import { logoToneForCompany } from "@/features/jobs/utils";
+import { logoToneForCompany, formatSourceLabel } from "@/features/jobs/utils";
 import { Calendar, MapPin, Banknote, Globe, Trash2, Archive, ArrowUpRight } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -107,7 +107,7 @@ export function ApplicationListView({ applications, onDelete, onArchive }: Props
                   {app.source ? (
                     <span className="flex items-center gap-1">
                       <Globe className="h-3 w-3 shrink-0" />
-                      {app.source}
+                      {formatSourceLabel(app.source)}
                     </span>
                   ) : (
                     <span className="text-[oklch(0.7_0.01_265)]">—</span>

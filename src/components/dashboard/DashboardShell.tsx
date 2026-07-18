@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { Activity, Bell, Bookmark, Briefcase, CalendarClock, ChevronRight, Command, FileText, ChartLine as LineChart, Search, Settings, StickyNote, Target, X, Menu, LogOut } from "lucide-react";
@@ -78,6 +78,28 @@ export function DashboardShell({ children }: { children: ReactNode }) {
 
   const unread = notifications.filter((n) => n.unread).length;
 
+  /**
+   * Clicking a sidebar item that's already the CURRENT page refreshes it in
+   * place (invalidate + refetch + scroll to top) instead of letting the
+   * router perform a no-op navigation to the same URL. Deliberately an exact
+   * match on `to`/`basePath` — not "active" in the broader sense used for nav
+   * highlighting, which also lights up while on a child route (e.g. a job
+   * detail page). Clicking "Jobs" from a job detail page must still navigate
+   * back to the list, not silently refresh the detail page instead.
+   */
+  const handleNavClick = useCallback(
+    (e: React.MouseEvent, to: string) => {
+      const basePath = to.replace(/\/$/, "");
+      const isCurrentPage = pathname === to || pathname === basePath;
+      if (!isCurrentPage) return;
+
+      e.preventDefault();
+      void queryClient.invalidateQueries();
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    },
+    [pathname, queryClient],
+  );
+
   return (
     <div className="min-h-screen bg-[oklch(0.98_0.005_250)] text-[oklch(0.2_0.02_265)]">
       <div className="grid min-h-screen lg:grid-cols-[240px_1fr]">
@@ -117,15 +139,7 @@ export function DashboardShell({ children }: { children: ReactNode }) {
                   <Link
                     key={n.to}
                     to={n.to}
-                    onClick={(e) => {
-                      // Clicking the already-active item re-runs its queries
-                      // instead of navigating (same route = no-op for the
-                      // router) — refreshes the page's data in place.
-                      if (active) {
-                        e.preventDefault();
-                        void queryClient.invalidateQueries();
-                      }
-                    }}
+                    onClick={(e) => handleNavClick(e, n.to)}
                     className={cn(
                       "group flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm transition-colors",
                       active
@@ -169,12 +183,7 @@ export function DashboardShell({ children }: { children: ReactNode }) {
           <div className="mt-4 border-t border-black/5 pt-3">
             <Link
               to="/dashboard/settings"
-              onClick={(e) => {
-                if (pathname.startsWith("/dashboard/settings")) {
-                  e.preventDefault();
-                  void queryClient.invalidateQueries();
-                }
-              }}
+              onClick={(e) => handleNavClick(e, "/dashboard/settings")}
               className={cn(
                 "flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm transition-colors",
                 pathname.startsWith("/dashboard/settings")

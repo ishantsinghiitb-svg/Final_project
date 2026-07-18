@@ -108,6 +108,11 @@ export class ApplicationService {
     return appRepo.findByJobId(userId, jobId);
   }
 
+  /** All job IDs the user has a tracked (non-archived) application for — drives the "Tracked" badge. */
+  async getTrackedJobIds(userId: string): Promise<string[]> {
+    return appRepo.findTrackedJobIds(userId);
+  }
+
   /** Returns the application's timeline, newest first — see ApplicationRepository.findTimeline. */
   async getTimeline(applicationId: string) {
     return appRepo.findTimeline(applicationId);

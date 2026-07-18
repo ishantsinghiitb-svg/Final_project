@@ -43,9 +43,10 @@ import {
 } from "@/features/jobs/hooks";
 import {
   formatSalary,
-  formatPostedAt,
-  formatPostedAtFull,
+  formatPostedTime,
+  formatSourceLabel,
   logoToneForCompany,
+  getJobBadges,
 } from "@/features/jobs/utils";
 import type { GlobalJob } from "@/types";
 import {
@@ -114,7 +115,7 @@ function ShareButton({ jobId, role, company }: { jobId: string; role: string; co
 function SimilarJobCard({ job }: { job: GlobalJob }) {
   const tone = logoToneForCompany(job.company_name);
   const salary = formatSalary(job);
-  const posted = formatPostedAt(job.posted_at);
+  const posted = formatPostedTime(job);
 
   return (
     <Link
@@ -123,7 +124,7 @@ function SimilarJobCard({ job }: { job: GlobalJob }) {
       className="block rounded-xl border border-black/5 bg-white p-4 hover:shadow-md transition-shadow group"
     >
       <div className="flex items-start gap-3">
-        <CompanyMark company={job.company_name} tone={tone} size={36} />
+        <CompanyMark company={job.company_name} tone={tone} size={36} logoUrl={job.company_logo_url} />
         <div className="min-w-0 flex-1">
           <p className="text-sm font-semibold font-display truncate group-hover:text-[#2563EB] transition-colors">
             {job.role}
@@ -239,6 +240,7 @@ function JobDetailPage() {
 
   const salary = formatSalary(job);
   const tone = logoToneForCompany(job.company_name);
+  const postedTime = formatPostedTime(job);
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
@@ -280,7 +282,7 @@ function JobDetailPage() {
         <div className="flex flex-wrap items-start justify-between gap-4">
           {/* Company mark + title */}
           <div className="flex items-start gap-4">
-            <CompanyMark company={job.company_name} tone={tone} size={56} />
+            <CompanyMark company={job.company_name} tone={tone} size={56} logoUrl={job.company_logo_url} />
             <div>
               <h1 className="font-display text-xl font-semibold tracking-tight text-[oklch(0.2_0.02_265)]">
                 {job.role}
@@ -325,6 +327,11 @@ function JobDetailPage() {
                     <ExternalLink className="h-3 w-3" /> Responses managed off LinkedIn
                   </Chip>
                 )}
+                {getJobBadges(job).map((badge) => (
+                  <Chip key={badge.key} tone={badge.tone}>
+                    {badge.label}
+                  </Chip>
+                ))}
               </div>
             </div>
           </div>
@@ -424,16 +431,14 @@ function JobDetailPage() {
             </div>
           )}
 
-          {(job.posted_ago || job.posted_at) && (
+          {postedTime && (
             <div className="flex items-start gap-2.5 rounded-xl bg-[oklch(0.97_0.01_265)] p-3">
               <Clock className="mt-0.5 h-4 w-4 shrink-0 text-[oklch(0.5_0.02_265)]" />
               <div>
                 <p className="text-[10px] font-medium uppercase tracking-wide text-[oklch(0.55_0.02_265)]">
                   Posted
                 </p>
-                <p className="mt-0.5 text-sm font-medium">
-                  {job.posted_ago ?? formatPostedAtFull(job.posted_at)}
-                </p>
+                <p className="mt-0.5 text-sm font-medium">{postedTime}</p>
               </div>
             </div>
           )}
@@ -457,7 +462,7 @@ function JobDetailPage() {
                 <p className="text-[10px] font-medium uppercase tracking-wide text-[oklch(0.55_0.02_265)]">
                   Source
                 </p>
-                <p className="mt-0.5 text-sm font-medium">{job.source}</p>
+                <p className="mt-0.5 text-sm font-medium">{formatSourceLabel(job.source)}</p>
               </div>
             </div>
           )}

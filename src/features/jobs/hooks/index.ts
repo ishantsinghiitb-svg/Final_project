@@ -6,6 +6,7 @@ import {
 } from "@tanstack/react-query";
 import { useAuth } from "@/context/AuthContext";
 import { jobService } from "@/services/JobService";
+import { manualImportService, type ManualImportInput } from "@/services/ManualImportService";
 import type { JobFilters, JobSort } from "@/features/jobs/types";
 import type { GlobalJob, PaginationParams } from "@/types";
 import { DEFAULT_JOB_SORT, DEFAULT_PAGINATION } from "@/features/jobs/constants";
@@ -212,6 +213,23 @@ export function useUnsaveJob() {
   });
 }
 
+// ── useImportJob ─────────────────────────────────────────────────────────────
+// Manual URL import (dashboard). Runs through ManualImportService → the shared
+// `upsert_global_job` RPC (same write path + dedup as the extension), then
+// invalidates the job list and the sidebar count so the imported job appears.
+
+export function useImportJob() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (input: ManualImportInput) => manualImportService.importFromUrl(input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: jobKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: ["sidebar", "jobs-count"] });
+    },
+  });
+}
+
 // ── useSidebarCounts ─────────────────────────────────────────────────────────
 // Returns live counts for the three sidebar badges: Jobs, Saved, Applications.
 // Uses Supabase head-only count queries (no row data transferred).
@@ -224,7 +242,7 @@ export function useSidebarCounts(): SidebarCounts {
 
   const { data: jobsCount = 0 } = useQuery({
     queryKey: ["sidebar", "jobs-count"],
-    queryFn:  () => jobService.countAllJobs(),
+    queryFn:  () => jobService.countDiscoverableJobs(),
     staleTime: 5 * 60 * 1_000,
   });
 

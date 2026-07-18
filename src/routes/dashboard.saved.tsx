@@ -30,6 +30,8 @@ import {
   useSaveJob,
   useUnsaveJob,
 } from "@/features/jobs/hooks";
+import { useTrackedJobIds } from "@/features/applications/hooks";
+import { getJobBadges } from "@/features/jobs/utils";
 import type { PaginationParams } from "@/types";
 import { DEFAULT_PAGINATION } from "@/features/jobs/constants";
 import type { GlobalJob } from "@/types";
@@ -94,6 +96,7 @@ function SavedPage() {
   } = useSavedJobs(pagination);
 
   const { data: savedIds = [] } = useSavedJobIds();
+  const { data: trackedIds = [] } = useTrackedJobIds();
   const unsaveJob = useUnsaveJob();
   const saveJob = useSaveJob();
 
@@ -185,6 +188,7 @@ function SavedPage() {
                       company={job.company_name}
                       tone={tone}
                       size={38}
+                      logoUrl={job.company_logo_url}
                     />
                     <div className="flex items-center gap-1.5">
                       <div className="flex flex-wrap items-center justify-end gap-1.5">
@@ -234,6 +238,17 @@ function SavedPage() {
                     </p>
                     <p className="text-xs text-[oklch(0.5_0.02_265)]">{job.company_name}</p>
                   </Link>
+
+                  {(getJobBadges(job).length > 0 || trackedIds.includes(job.id)) && (
+                    <div className="mt-1.5 flex flex-wrap items-center gap-1">
+                      {getJobBadges(job).map((badge) => (
+                        <Chip key={badge.key} tone={badge.tone}>
+                          {badge.label}
+                        </Chip>
+                      ))}
+                      {trackedIds.includes(job.id) && <Chip tone="green">Tracked</Chip>}
+                    </div>
+                  )}
 
                   {(job.location || salary) && (
                     <p className="mt-2 flex items-center gap-1 text-xs text-[oklch(0.5_0.02_265)]">

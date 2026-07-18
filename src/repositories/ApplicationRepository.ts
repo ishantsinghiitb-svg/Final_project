@@ -120,6 +120,23 @@ export class ApplicationRepository {
   }
 
   /**
+   * Returns ALL job IDs the user has a (non-archived) application for — no
+   * pagination. Mirrors JobRepository.getSavedJobIds's shape: used by the UI
+   * to render a "Tracked" badge per card without one query per card.
+   */
+  async findTrackedJobIds(userId: string): Promise<string[]> {
+    const { data, error } = await supabase
+      .from("applications")
+      .select("job_id")
+      .eq("user_id", userId)
+      .eq("archived", false)
+      .not("job_id", "is", null);
+
+    if (error) throw error;
+    return (data ?? []).map((r) => r.job_id as string);
+  }
+
+  /**
    * Returns the timeline for an application, newest first. Rows are written
    * automatically by the `applications_log_timeline_event` DB trigger — see
    * supabase/migrations/20260717000001_module3a_application_management.sql.

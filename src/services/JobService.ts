@@ -116,8 +116,13 @@ export class JobService {
 
   // ── Counts (sidebar badges) ───────────────────────────────────────────────
 
-  async countAllJobs(): Promise<number> {
-    return jobRepo.countAll();
+  /**
+   * Count behind the sidebar "Jobs" badge. Must equal the number of jobs the
+   * Jobs page lists, so it uses the SAME discovery-feed filter as the list
+   * (countDiscoverable) rather than a raw table count — see JobRepository.
+   */
+  async countDiscoverableJobs(): Promise<number> {
+    return jobRepo.countDiscoverable();
   }
 
   async countSavedJobs(userId: string): Promise<number> {

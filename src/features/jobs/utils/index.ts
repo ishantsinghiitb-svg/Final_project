@@ -74,8 +74,13 @@ export function formatSalary(job: GlobalJob): string {
   return `Up to ${formatAmount(job.salary_max!, currency)}`;
 }
 
-/** Format a posted_at date string relative to now. */
-export function formatPostedAt(iso: string | null | undefined): string {
+/**
+ * Relative time computed from the parsed `posted_at` ISO timestamp.
+ * INTERNAL fallback only — used by `formatPostedTime()` when a job has no
+ * verbatim captured string (e.g. a manually-imported job). Every UI surface
+ * must call `formatPostedTime()`, never this directly.
+ */
+function computeRelativePostedTime(iso: string | null | undefined): string {
   if (!iso) return "";
   const diff = Date.now() - new Date(iso).getTime();
   const hours = Math.floor(diff / 3_600_000);
@@ -92,14 +97,109 @@ export function formatPostedAt(iso: string | null | undefined): string {
   });
 }
 
-/** Format a posted_at date into a full human-readable string for the detail page. */
-export function formatPostedAtFull(iso: string | null | undefined): string {
-  if (!iso) return "Unknown";
-  return new Date(iso).toLocaleDateString("en-US", {
-    month: "long",
-    day: "numeric",
-    year: "numeric",
-  });
+/**
+ * THE single canonical "posted X ago" display for a job. Every surface
+ * (Jobs List, Job Detail, Saved Jobs, Applications, and any future one) must
+ * call this — never independently recompute a relative-time string from
+ * `posted_at`.
+ *
+ * Prefers `posted_ago`, the verbatim string captured ONCE at extraction time
+ * (e.g. LinkedIn's own "4 weeks ago"). That capture is the only value
+ * guaranteed to match what the source platform itself displayed —
+ * `posted_at` (the separately-parsed ISO date) can legitimately disagree
+ * with it (a reposted/bumped LinkedIn listing's structured `datePosted`
+ * sometimes reflects a different moment than its own visible "time ago"
+ * text). Recomputing from `posted_at` independently on every page is exactly
+ * what previously showed two different numbers for the same job depending on
+ * which page you were on. Falls back to computing from `posted_at` only when
+ * no verbatim string was ever captured.
+ */
+export function formatPostedTime(
+  job: Pick<GlobalJob, "posted_ago" | "posted_at">,
+): string {
+  return job.posted_ago || computeRelativePostedTime(job.posted_at);
+}
+
+// ── Source label formatting ──────────────────────────────────────────────────
+// `global_jobs.source` / `applications.source` stay lowercase board tags
+// ("linkedin", "greenhouse", …) or "Manual" — see
+// features/jobs/source-detection.ts and SOURCE_OPTIONS in
+// features/jobs/constants, which filters MUST keep using verbatim. This is a
+// presentation-only helper — never use its output to build a filter value or
+// write back to the database.
+
+const SOURCE_LABELS: Record<string, string> = {
+  linkedin: "LinkedIn",
+  internshala: "Internshala",
+  naukri: "Naukri",
+  indeed: "Indeed",
+  unstop: "Unstop",
+  greenhouse: "Greenhouse",
+  lever: "Lever",
+  ashby: "Ashby",
+  wellfound: "Wellfound",
+  workday: "Workday",
+  careers: "Careers",
+  manual: "Manual",
+};
+
+/** Display label for a stored `source` value, e.g. "linkedin" → "LinkedIn". Presentation only. */
+export function formatSourceLabel(source: string | null | undefined): string {
+  if (!source) return "";
+  const known = SOURCE_LABELS[source.toLowerCase()];
+  if (known) return known;
+  // Unrecognized/future source not yet in the map — best-effort capitalize
+  // rather than showing nothing or a broken label.
+  return source.charAt(0).toUpperCase() + source.slice(1);
+}
+
+// ── Status badges (Imported / Expired / Closed) ─────────────────────────────
+// Mirrors the EXACT rule JobRepository.applyDiscoveryVisibility uses to hide
+// expired jobs from the Global Jobs discovery feed, so a job hidden from that
+// feed shows the exact same badge wherever it still appears (Applications,
+// Saved Jobs, direct job-detail links). Do not duplicate/fork this logic
+// elsewhere — extend it here and in JobRepository together.
+
+/**
+ * A job is expired ONLY when it carries an explicit `expiry_date` that has
+ * already passed. `posted_at` age is deliberately NOT used: LinkedIn's
+ * structured `posted_at` (JSON-LD `datePosted`) is the ORIGINAL post date, so
+ * a freshly captured, still-open *reposted* job can legitimately be months old
+ * — treating that as "expired" wrongly hid valid jobs from the feed. A closed
+ * posting is surfaced separately via `is_closed` (see getJobBadges).
+ */
+export function isJobExpired(job: Pick<GlobalJob, "expiry_date">): boolean {
+  return Boolean(job.expiry_date && new Date(job.expiry_date).getTime() < Date.now());
+}
+
+export type JobStatusBadge = {
+  key: "closed" | "expired" | "imported";
+  label: string;
+  tone: "rose" | "amber" | "default";
+};
+
+/**
+ * Small, non-dominant status chips for a job that may be hidden from the
+ * Global Jobs discovery feed. "Closed" (an explicit source signal) takes
+ * precedence over "Expired" (an explicit `expiry_date`) — showing both would
+ * be redundant. "Imported" is independent and can appear alongside either.
+ */
+export function getJobBadges(
+  job: Pick<GlobalJob, "is_closed" | "expiry_date" | "is_manual_import">,
+): JobStatusBadge[] {
+  const badges: JobStatusBadge[] = [];
+
+  if (job.is_closed) {
+    badges.push({ key: "closed", label: "Closed", tone: "rose" });
+  } else if (isJobExpired(job)) {
+    badges.push({ key: "expired", label: "Expired", tone: "amber" });
+  }
+
+  if (job.is_manual_import) {
+    badges.push({ key: "imported", label: "Imported", tone: "default" });
+  }
+
+  return badges;
 }
 
 // ── Role categorization ──────────────────────────────────────────────────────

@@ -1,5 +1,7 @@
+import { DuplicateResolver } from "../core/dedup/DuplicateResolver";
+import { JobNormalizer } from "../core/normalization/JobNormalizer";
 import { ParserFactory } from "../core/parsers/ParserFactory";
-import type { NormalizedJob } from "../core/parsers/types";
+import type { UniversalJob } from "../core/parsers/types";
 import {
   JOB_CHANGE_DEBOUNCE_MS,
   JOB_CHANGE_MAX_WAIT_MS,
@@ -10,6 +12,7 @@ import { sendMessage } from "../shared/messaging/bus";
 import { MessageType } from "../shared/messaging/types";
 import type {
   AuthState,
+  CurrentJobState,
   ExtensionMessage,
   ExtensionResponse,
   GlobalJobSyncResult,
@@ -42,7 +45,7 @@ if (parser && !window.__nextofferContentScriptActive) {
   window.__nextofferContentScriptActive = true;
   const panel = new PanelController();
 
-  let currentJob: NormalizedJob | null = null;
+  let currentJob: UniversalJob | null = null;
   let currentGlobalJobId: string | null = null;
   let lastSyncResult: GlobalJobSyncResult | null = null;
   let lastSyncedKey: string | null = null;
@@ -74,15 +77,19 @@ if (parser && !window.__nextofferContentScriptActive) {
   watchForNavigation(run);
 
   async function runPipeline(): Promise<void> {
-    const job = parser!.tryParse({ document, url: location.href });
+    // Website → Parser (extraction only) → Normalizer. Validation, dedup
+    // resolution and persistence happen in the background handler.
+    const raw = parser!.tryParse({ document, url: location.href });
 
-    if (!job) {
+    if (!raw) {
       currentJob = null;
       currentGlobalJobId = null;
       panel.destroy();
+      publishCurrentJob(null);
       return;
     }
 
+    const job = JobNormalizer.normalize(raw);
     currentJob = job;
 
     let authResponse: ExtensionResponse<AuthState>;
@@ -97,12 +104,13 @@ if (parser && !window.__nextofferContentScriptActive) {
 
     if (!authResponse.ok || !authResponse.data.authenticated) {
       panel.update({ kind: "not-logged-in" }, actions, null);
+      publishCurrentJob(null);
       return;
     }
 
     panel.update({ kind: "loading" }, actions, null);
 
-    const dedupKey = job.sourceJobId ?? `${job.title}|${job.companyName}|${job.location ?? ""}`;
+    const dedupKey = DuplicateResolver.dedupKey(job);
     const now = Date.now();
     const canReuseLastSync =
       dedupKey === lastSyncedKey &&
@@ -137,7 +145,7 @@ if (parser && !window.__nextofferContentScriptActive) {
     renderFromSync(job, syncResponse.data);
   }
 
-  function renderFromSync(job: NormalizedJob, result: GlobalJobSyncResult): void {
+  function renderFromSync(job: UniversalJob, result: GlobalJobSyncResult): void {
     const panelJob: PanelJob = {
       title: job.title,
       companyName: job.companyName,
@@ -147,13 +155,29 @@ if (parser && !window.__nextofferContentScriptActive) {
       employmentType: job.employmentType,
       isClosed: result.isClosed,
     };
-    const state: PanelViewState = result.application
-      ? { kind: "tracked", job: panelJob }
+    const kind: "ready" | "saved" | "tracked" = result.application
+      ? "tracked"
       : result.isSaved
-        ? { kind: "saved", job: panelJob }
-        : { kind: "ready", job: panelJob };
+        ? "saved"
+        : "ready";
+    const state: PanelViewState = { kind, job: panelJob };
 
     panel.update(state, actions, pending);
+    // Same state the floating panel just rendered — republished on every
+    // sync and every CTA response so the popup (which has no direct channel
+    // to this content script) always reflects it too. See background/
+    // handlers/currentJob.ts.
+    publishCurrentJob({
+      job: panelJob,
+      state: kind,
+      globalJobId: result.globalJobId,
+      applicationId: result.application?.id ?? null,
+    });
+  }
+
+  /** Fire-and-forget: the popup polls this on open, so a lost message just means a stale/empty popup, never a broken page. */
+  function publishCurrentJob(state: CurrentJobState | null): void {
+    void sendMessage({ type: MessageType.CURRENT_JOB_UPDATED, payload: state }).catch(() => {});
   }
 
   /** Secondary CTA for the `ready` state only — bookmark without applying. */

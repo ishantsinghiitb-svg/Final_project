@@ -1,4 +1,4 @@
-import type { NormalizedJob } from "../../core/parsers/types";
+import type { UniversalJob } from "../../core/parsers/types";
 import type { ApplicationSummary } from "../messaging/types";
 import { getSupabaseClient } from "./client";
 
@@ -30,7 +30,7 @@ export type GlobalJobRecord = {
  * duplicate for a job identity that already exists (see
  * supabase/migrations/20260716150000_expand_global_job_metadata.sql).
  */
-export async function upsertGlobalJob(job: NormalizedJob): Promise<GlobalJobRecord> {
+export async function upsertGlobalJob(job: UniversalJob): Promise<GlobalJobRecord> {
   const { data, error } = await getSupabaseClient().rpc("upsert_global_job", {
     payload: {
       source: job.source,
@@ -40,23 +40,36 @@ export async function upsertGlobalJob(job: NormalizedJob): Promise<GlobalJobReco
       role: job.title,
       location: job.location,
       city: job.city,
+      state: job.state,
       country: job.country,
       remote: job.remote,
       work_mode: job.workMode,
       employment_type: job.employmentType,
       experience_level: job.experienceLevel,
+      department: job.department,
       salary_min: job.salaryMin,
       salary_max: job.salaryMax,
       salary_currency: job.salaryCurrency,
+      salary_period: job.salaryPeriod,
+      salary_text: job.salaryText,
       description: job.description,
       description_html: job.descriptionHtml,
+      responsibilities: job.responsibilities,
+      requirements: job.requirements,
+      preferred_qualifications: job.preferredQualifications,
       url: job.applyUrl ?? job.sourceUrl,
       source_url: job.sourceUrl,
       company_url: job.companyUrl,
+      company_career_url: job.companyCareerUrl,
       posted_at: job.postedAt,
       posted_ago: job.postedAgo,
+      expiry_date: job.expiryDate,
       applicant_count: job.applicantCount,
       hiring_insights: job.hiringInsights,
+      hiring_team: job.hiringTeam,
+      recruiter_name: job.recruiterName,
+      recruiter_profile: job.recruiterProfile,
+      company_size: job.companySize,
       easy_apply: job.easyApply,
       promoted: job.promoted,
       reposted: job.reposted,
@@ -66,7 +79,16 @@ export async function upsertGlobalJob(job: NormalizedJob): Promise<GlobalJobReco
       benefits: job.benefits,
       company_logo_url: job.companyLogoUrl,
       is_closed: job.isClosed,
+      // Always sent explicitly (never omitted) — a real capture must always
+      // assert `false` here so a previously manual-only row gets promoted
+      // back to visible. See upsert_global_job's promotion semantics.
+      is_manual_import: job.isManualImport,
       skills: job.skills,
+      technologies: job.technologies,
+      languages: job.languages,
+      parser_version: job.parserVersion,
+      parser_confidence: job.parserConfidence,
+      extraction_warnings: job.extractionWarnings,
     },
   });
 

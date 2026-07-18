@@ -50,14 +50,14 @@ export type Company = {
 };
 
 // ── Job ──
-export type JobSource =
-  | "LinkedIn"
-  | "Wellfound"
-  | "Greenhouse"
-  | "Lever"
-  | "Ashby"
-  | "Careers"
-  | "Manual";
+// Matches exactly what's written to `global_jobs.source` — the extension's
+// `SupportedSite` tags (lowercase) for board captures, or "Manual" for the
+// manual-URL importer/default. Previously this listed title-cased board names
+// ("LinkedIn", "Wellfound", …) that were never actually written anywhere,
+// which silently broke the Jobs page source filter (`.in("source", [...])`
+// never matched real lowercase rows) — see SOURCE_OPTIONS in
+// features/jobs/constants and ManualImport's source detection.
+export type JobSource = "linkedin" | "internshala" | "naukri" | "indeed" | "unstop" | "Manual";
 
 export type EmploymentType =
   | "Full-Time"
@@ -78,6 +78,15 @@ export type ExperienceLevel =
   | "Lead"
   | "Staff"
   | "Principal";
+
+export type SalaryPeriod = "Hourly" | "Daily" | "Weekly" | "Monthly" | "Yearly";
+
+/** One member of a job's hiring team — stored in `global_jobs.hiring_team` (jsonb). */
+export type HiringTeamMember = {
+  name: string;
+  profileUrl: string | null;
+  role: string | null;
+};
 
 export type GlobalJob = {
   id: string;
@@ -121,6 +130,39 @@ export type GlobalJob = {
   benefits?: string[] | null;
   /** Sanitized HTML (structural tags only, no attributes) for rich rendering — falls back to `description` when absent. */
   description_html?: string | null;
+  // ── Module 4A: Universal Job Model additions (all optional / nullable) ──
+  /** Region/state, alongside the existing `city`/`country`. */
+  state?: string | null;
+  department?: string | null;
+  /** The company's own careers/ATS page — distinct from `company_url` (its profile page). */
+  company_career_url?: string | null;
+  salary_period?: SalaryPeriod | string | null;
+  /** Verbatim salary display string; synthesized from the numeric range when a source gives none. */
+  salary_text?: string | null;
+  responsibilities?: string[] | null;
+  requirements?: string[] | null;
+  preferred_qualifications?: string[] | null;
+  /** Distinct from `skills` — concrete tools/frameworks. */
+  technologies?: string[] | null;
+  languages?: string[] | null;
+  expiry_date?: string | null;
+  hiring_team?: HiringTeamMember[] | null;
+  recruiter_name?: string | null;
+  recruiter_profile?: string | null;
+  company_size?: string | null;
+  /** Which parser + version produced the row (e.g. "linkedin-1", "manual-1"). */
+  parser_version?: string | null;
+  /** Extraction completeness in [0, 1], computed by the Normalizer. */
+  parser_confidence?: number | null;
+  extraction_warnings?: string[] | null;
+  /**
+   * True only for jobs created via the manual-URL importer. Hidden from the
+   * Global Jobs discovery feed (see JobRepository.findAll) but never deleted —
+   * still visible via Applications, Saved Jobs, or a direct job-detail link.
+   * Flips back to `false` permanently once a real parser captures the same
+   * job identity (see `upsert_global_job`).
+   */
+  is_manual_import?: boolean;
   created_at: string;
   updated_at: string;
 };

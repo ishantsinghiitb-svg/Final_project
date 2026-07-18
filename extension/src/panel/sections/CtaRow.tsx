@@ -5,6 +5,14 @@ type CtaRowProps = {
   isClosed: boolean;
   pending: PendingAction;
   actions: PanelActions;
+  /**
+   * Wording overrides for the `ready` state only — the floating panel and the
+   * popup surface the same `onApplyAndTrack`/`onSaveForLater` actions under
+   * different copy ("Apply & Track"/"Save for Later" vs. "Track Application"/
+   * "Save Job"). `saved`/`tracked` already read the same either way, so they
+   * aren't parameterized. Defaults match the floating panel's existing copy.
+   */
+  readyLabels?: { primary?: string; primaryPending?: string; secondary?: string; secondaryPending?: string };
 };
 
 /**
@@ -20,7 +28,7 @@ type CtaRowProps = {
  * be triggered twice, and neither primary action ever navigates the user
  * away from the current page — both only save/track in the background.
  */
-export function CtaRow({ kind, isClosed, pending, actions }: CtaRowProps) {
+export function CtaRow({ kind, isClosed, pending, actions, readyLabels }: CtaRowProps) {
   const busy = pending !== null;
 
   if (kind === "tracked") {
@@ -66,14 +74,18 @@ export function CtaRow({ kind, isClosed, pending, actions }: CtaRowProps) {
         disabled={isClosed || busy}
         title={isClosed ? "This job is closed" : undefined}
       >
-        {pending === "applyAndTrack" ? "Applying…" : "Apply & Track"}
+        {pending === "applyAndTrack"
+          ? (readyLabels?.primaryPending ?? "Applying…")
+          : (readyLabels?.primary ?? "Apply & Track")}
       </button>
       <button
         className="nextoffer-panel__btn--secondary"
         onClick={actions.onSaveForLater}
         disabled={busy}
       >
-        {pending === "save" ? "Saving…" : "Save for Later"}
+        {pending === "save"
+          ? (readyLabels?.secondaryPending ?? "Saving…")
+          : (readyLabels?.secondary ?? "Save for Later")}
       </button>
     </div>
   );

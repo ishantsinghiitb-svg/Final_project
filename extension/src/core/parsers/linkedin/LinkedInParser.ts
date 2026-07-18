@@ -1,6 +1,15 @@
 import { SupportedSite } from "../../site-detection/types";
 import { BaseParser } from "../BaseParser";
-import type { EmploymentType, NormalizedJob, ParserContext, WorkMode } from "../types";
+import { createUniversalJob } from "../types";
+import type {
+  EmploymentType,
+  HiringTeamMember,
+  ParserContext,
+  SalaryPeriod,
+  UniversalJob,
+  WorkMode,
+} from "../types";
+import { extractLinkedInJobIdFromUrl } from "./externalId";
 import { CLOSED_JOB_PHRASES, linkedInSelectors } from "./linkedin.selectors";
 import { EMPLOYMENT_TYPE_PATTERNS, WORK_MODE_KEYWORDS } from "./patterns";
 import { sanitizeDescriptionHtml } from "./sanitize";
@@ -17,6 +26,17 @@ import {
 
 type JsonLdJobPosting = Record<string, unknown>;
 
+/** Bumped when this parser's extraction logic changes materially. */
+const LINKEDIN_PARSER_VERSION = "linkedin-1";
+
+const SALARY_UNIT_MAP: Record<string, SalaryPeriod> = {
+  HOUR: "Hourly",
+  DAY: "Daily",
+  WEEK: "Weekly",
+  MONTH: "Monthly",
+  YEAR: "Yearly",
+};
+
 const EMPLOYMENT_TYPE_MAP: Record<string, EmploymentType> = {
   FULL_TIME: "Full-Time",
   PART_TIME: "Part-Time",
@@ -29,6 +49,7 @@ const EMPLOYMENT_TYPE_MAP: Record<string, EmploymentType> = {
 type LocationParts = {
   location: string | null;
   city: string | null;
+  state: string | null;
   country: string | null;
 };
 
@@ -49,7 +70,7 @@ type DescriptionParts = {
  * future LinkedIn surface that renders the same job-details panel.
  */
 export class LinkedInParser extends BaseParser {
-  tryParse(context: ParserContext): NormalizedJob | null {
+  tryParse(context: ParserContext): UniversalJob | null {
     const { document, url } = context;
     const jsonLd = this.findJsonLdByType(document, "JobPosting");
 
@@ -81,18 +102,23 @@ export class LinkedInParser extends BaseParser {
 
     const workMode = this.readWorkMode(fitPreferences, criteriaMap, insightSegments, criteriaText);
 
-    return {
+    // Extraction only — `remote`, the salary display string, parser confidence
+    // and warnings are all derived later by JobNormalizer. Fields LinkedIn
+    // doesn't expose (department, career URL, responsibilities/requirements,
+    // technologies, languages) are left at their `null`/`[]` defaults, never
+    // fabricated.
+    return createUniversalJob({
       source: SupportedSite.LinkedIn,
+      parserVersion: LINKEDIN_PARSER_VERSION,
       sourceJobId,
-      fingerprint: null,
       title,
       companyName,
-      companyLogoUrl: this.readCompanyLogo(document, jsonLd, companyUrl),
+      companyLogoUrl: this.readCompanyLogo(document, jsonLd),
       companyUrl,
       location,
       city: locationParts.city,
+      state: locationParts.state,
       country: locationParts.country,
-      remote: workMode === "Remote",
       workMode,
       employmentType: this.readEmploymentType(
         jsonLd,
@@ -105,10 +131,14 @@ export class LinkedInParser extends BaseParser {
       salaryMin: this.readSalary(jsonLd, "minValue"),
       salaryMax: this.readSalary(jsonLd, "maxValue"),
       salaryCurrency: this.readSalaryCurrency(jsonLd),
+      salaryPeriod: this.readSalaryPeriod(jsonLd),
       skills: this.readSkills(document),
       postedAt: this.readPostedAt(document, jsonLd),
       postedAgo: primarySegments.postedAgo,
+      expiryDate: this.readExpiryDate(jsonLd),
       applicantCount: primarySegments.applicantCount,
+      hiringTeam: this.readHiringTeam(document),
+      companySize: this.readCompanySize(document),
       hiringInsights: this.readHiringInsights(document),
       easyApply: this.readEasyApply(document),
       promoted: this.readPromoted(document),
@@ -122,7 +152,7 @@ export class LinkedInParser extends BaseParser {
       applyUrl: this.readApplyUrl(document) ?? sourceUrl,
       sourceUrl,
       isClosed: this.readIsClosed(document, jsonLd),
-    };
+    });
   }
 
   private readTitle(document: Document, jsonLd: JsonLdJobPosting | null): string | null {
@@ -136,27 +166,53 @@ export class LinkedInParser extends BaseParser {
     return fromJsonLd || this.firstText(document, [...linkedInSelectors.companyName]);
   }
 
+  /**
+   * DOM first here — deliberately the opposite priority from most other
+   * fields on this parser. The visible top-card's own company-name anchor is
+   * read fresh from the CURRENT page on every parse, so it's always
+   * this specific job's own company link. `hiringOrganization.sameAs` in
+   * LinkedIn's JobPosting JSON-LD turned out to be an unreliable signal for
+   * this one field — often generic or repeated across postings even though
+   * `hiringOrganization.name` (a different field, used for the company NAME)
+   * stayed correct — which was silently storing the same company URL (and,
+   * via the favicon fallback in readCompanyLogo, the same wrong logo) for
+   * nearly every job regardless of which company actually posted it. `sameAs`
+   * is now only a fallback for when the DOM has no link at all.
+   */
   private readCompanyUrl(document: Document, jsonLd: JsonLdJobPosting | null): string | null {
+    const domUrl = this.firstAttr(document, [...linkedInSelectors.companyName], "href");
+    if (domUrl) return domUrl;
+
     const org = jsonLd?.hiringOrganization as Record<string, unknown> | undefined;
     if (typeof org?.sameAs === "string" && org.sameAs.trim()) return org.sameAs;
-    return this.firstAttr(document, [...linkedInSelectors.companyName], "href");
+
+    return null;
   }
 
   /**
-   * Fallback order: the top-card's own logo image (`src` → `data-src` →
-   * other lazy-load attrs → `srcset`, placeholder/ghost images skipped) →
-   * JSON-LD `hiringOrganization.logo` → OpenGraph image → a secondary
-   * company-info DOM region → a favicon guess from the company URL's
-   * origin. A generated-initials avatar is a display concern and stays in
-   * the dashboard (`CompanyMark`) — this only needs to try hard before
-   * giving up and returning `null`.
+   * The company logo is read straight from the CURRENT job's top-card `<img>`
+   * in the live DOM. LinkedIn serves it from media.licdn.com (…/company-logo_…)
+   * and re-renders it for the selected job on every split-pane navigation, so
+   * each parse captures THAT company's own `img.src` (via `src` → `data-src` →
+   * other lazy-load attrs → `srcset`; placeholder/ghost images skipped). The
+   * search is scoped to the `topCard` container so it can never pick up a
+   * left-list item's logo, the global nav logo, or a previously-viewed job's
+   * image — the reuse the previous fixes kept missing.
+   *
+   * Deliberately NO derived or page-level sources: `og:image` (a single stale
+   * SPA `<meta>` tag), a favicon guessed from the company URL, and any
+   * generated/fallback mark are all excluded — each produced the SAME image
+   * for many companies. JSON-LD `hiringOrganization.logo` (a real per-company
+   * URL, usually the same media.licdn.com asset) and the company-info panel
+   * are the only non-top-card sources, tried only when the top card has no
+   * logo `<img>` at all. Otherwise this returns `null` and the dashboard shows
+   * a per-company initials avatar.
    */
-  private readCompanyLogo(
-    document: Document,
-    jsonLd: JsonLdJobPosting | null,
-    companyUrl: string | null,
-  ): string | null {
-    const domLogo = firstImageUrl(document, linkedInSelectors.companyLogo);
+  private readCompanyLogo(document: Document, jsonLd: JsonLdJobPosting | null): string | null {
+    const topCard = document.querySelector(linkedInSelectors.topCard.join(", "));
+    const domLogo =
+      (topCard ? firstImageUrl(topCard, linkedInSelectors.companyLogo) : null) ??
+      firstImageUrl(document, linkedInSelectors.companyLogoStrict);
     if (domLogo) return domLogo;
 
     const org = jsonLd?.hiringOrganization as Record<string, unknown> | undefined;
@@ -171,19 +227,8 @@ export class LinkedInParser extends BaseParser {
       return (logo as Record<string, unknown>).url as string;
     }
 
-    const ogImage = document.querySelector('meta[property="og:image"]')?.getAttribute("content");
-    if (ogImage && !isPlaceholderImageUrl(ogImage)) return ogImage;
-
     const companyPageLogo = firstImageUrl(document, linkedInSelectors.companyPageLogo);
     if (companyPageLogo) return companyPageLogo;
-
-    if (companyUrl) {
-      try {
-        return `${new URL(companyUrl).origin}/favicon.ico`;
-      } catch {
-        // Not a parseable URL — no favicon fallback available.
-      }
-    }
 
     return null;
   }
@@ -191,7 +236,7 @@ export class LinkedInParser extends BaseParser {
   private readLocationParts(jsonLd: JsonLdJobPosting | null): LocationParts {
     const place = jsonLd?.jobLocation as Record<string, unknown> | undefined;
     const address = place?.address as Record<string, unknown> | undefined;
-    if (!address) return { location: null, city: null, country: null };
+    if (!address) return { location: null, city: null, state: null, country: null };
 
     const city =
       typeof address.addressLocality === "string"
@@ -209,7 +254,64 @@ export class LinkedInParser extends BaseParser {
     const parts = [city, region, country].filter((p): p is string => p !== null);
     const location = parts.length > 0 ? parts.join(", ") : null;
 
-    return { location, city, country };
+    return { location, city, state: region, country };
+  }
+
+  private readSalaryPeriod(jsonLd: JsonLdJobPosting | null): SalaryPeriod | null {
+    const salary = jsonLd?.baseSalary as Record<string, unknown> | undefined;
+    const value = salary?.value as Record<string, unknown> | undefined;
+    const unit = value?.unitText;
+    if (typeof unit !== "string") return null;
+    return SALARY_UNIT_MAP[unit.toUpperCase()] ?? null;
+  }
+
+  private readExpiryDate(jsonLd: JsonLdJobPosting | null): string | null {
+    const validThrough = jsonLd?.validThrough;
+    if (typeof validThrough === "string") {
+      const parsed = new Date(validThrough);
+      if (!Number.isNaN(parsed.getTime())) return parsed.toISOString();
+    }
+    return null;
+  }
+
+  /**
+   * "Meet the hiring team" cards, when present. Scoped to the hirer/poster
+   * cards (not any `/in/` link on the page) and de-duplicated by name. Often
+   * empty — LinkedIn only shows this to signed-in users on some layouts.
+   */
+  private readHiringTeam(document: Document): HiringTeamMember[] {
+    const cards = Array.from(
+      document.querySelectorAll(linkedInSelectors.hiringTeamCards.join(", ")),
+    );
+    const members: HiringTeamMember[] = [];
+    const seen = new Set<string>();
+
+    for (const card of cards) {
+      const link = card.querySelector<HTMLAnchorElement>("a[href*='/in/']");
+      const name =
+        (link ? this.cleanText(link.textContent ?? "") : "") ||
+        this.firstText(card, [...linkedInSelectors.hiringTeamName]) ||
+        "";
+      if (!name) continue;
+
+      const key = name.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+
+      members.push({ name, profileUrl: link?.getAttribute("href") ?? null, role: null });
+    }
+
+    return members;
+  }
+
+  /** Extracts a "…employees" company-size phrase from the About-the-company region. */
+  private readCompanySize(document: Document): string | null {
+    for (const selector of linkedInSelectors.companyInfo) {
+      const text = document.querySelector(selector)?.textContent ?? "";
+      const match = /([\d,]+(?:\s*[-–]\s*[\d,]+)?\+?\s*employees)/i.exec(text);
+      if (match) return this.cleanText(match[1]);
+    }
+    return null;
   }
 
   /**
@@ -415,16 +517,8 @@ export class LinkedInParser extends BaseParser {
     url: string,
     jsonLd: JsonLdJobPosting | null,
   ): string | null {
-    const fromPath = /\/jobs\/view\/(\d+)/.exec(url);
-    if (fromPath) return fromPath[1];
-
-    try {
-      const parsed = new URL(url);
-      const currentJobId = parsed.searchParams.get("currentJobId");
-      if (currentJobId && /^\d+$/.test(currentJobId)) return currentJobId;
-    } catch {
-      // Not a parseable URL — fall through to other strategies.
-    }
+    const fromUrl = extractLinkedInJobIdFromUrl(url);
+    if (fromUrl) return fromUrl;
 
     const identifier = jsonLd?.identifier as Record<string, unknown> | undefined;
     if (typeof identifier?.value === "string" && /^\d+$/.test(identifier.value)) {

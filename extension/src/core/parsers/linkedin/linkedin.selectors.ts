@@ -23,22 +23,45 @@ export const linkedInSelectors = {
     ".topcard__org-name-link",
   ],
   /**
-   * Deliberately scoped to the top-card's own logo link/container — never a
-   * bare tag-name/utility-class selector (e.g. `.display-flex.align-items-center
-   * img`, unscoped `img.artdeco-entity-image`) that LinkedIn also reuses for
-   * the hirer/poster's profile photo elsewhere on the page. See
-   * `isLikelyPersonImage` in `structuredFields.ts` for the second line of
-   * defense applied on top of this scoping.
+   * The detail pane's job "top card" — the region holding the CURRENT job's
+   * title, company name, and company logo. In LinkedIn's split-pane (SPA) view
+   * this is re-rendered for the selected job on every navigation, so scoping
+   * the logo search to it guarantees a parse reads THIS company's logo, never
+   * a left-list item's, the global nav's, or the previously-viewed job's.
+   */
+  topCard: [
+    ".job-details-jobs-unified-top-card__container--two-pane",
+    ".job-details-jobs-unified-top-card",
+    ".jobs-unified-top-card",
+    ".job-details-jobs-unified-top-card__content",
+    ".topcard",
+  ],
+  /**
+   * Company-logo `<img>` selectors searched WITHIN the `topCard` container (see
+   * LinkedInParser.readCompanyLogo), so they can be attribute/class based
+   * without risk of matching a left-list item's logo or the global nav. The
+   * `isLikelyPersonImage` guard in `structuredFields.ts` still rejects a
+   * hirer/poster headshot that happens to sit inside the card. Ordered so the
+   * canonical media.licdn.com company-logo image (`alt="…logo"`, src contains
+   * `company-logo`) wins first.
    */
   companyLogo: [
+    "img[alt*='logo' i]",
+    "img[src*='company-logo']",
+    "img.artdeco-entity-image",
+    "a[href*='/company/'] img",
+  ],
+  /**
+   * Document-scoped fallback used only when the `topCard` container can't be
+   * located — every selector is fully class-anchored to the top card so it can
+   * never match a list item or the nav logo.
+   */
+  companyLogoStrict: [
     ".job-details-jobs-unified-top-card__company-logo img",
     ".jobs-unified-top-card__company-logo img",
     "a.jobs-unified-top-card__company-name-link img",
-    ".job-details-jobs-unified-top-card__container--two-pane img.artdeco-entity-image",
-    "img[alt$='logo' i]",
-    "a[href*='/company/'] img",
   ],
-  /** A secondary DOM region (company info panel / right-rail card) distinct from the top-card logo — tried only if `companyLogo` yields nothing. */
+  /** A secondary DOM region (company info panel / right-rail card) distinct from the top-card logo — tried only if the top-card logo yields nothing. */
   companyPageLogo: [
     ".jobs-company__box img",
     ".jobs-company__logo",
@@ -114,6 +137,29 @@ export const linkedInSelectors = {
     ".job-details-jobs-unified-top-card__hirer-highlight",
     ".jobs-poster__name",
     ".hirer-card__hirer-information",
+  ],
+  /**
+   * "Meet the hiring team" cards — each yields a member name and, when present,
+   * a profile link. Scoped to the hirer/poster cards rather than any `/in/`
+   * link on the page.
+   */
+  hiringTeamCards: [
+    ".hirer-card__container",
+    ".job-details-module .hirer-card__container",
+    ".jobs-poster",
+  ],
+  hiringTeamName: [
+    ".hirer-card__hirer-information a",
+    ".jobs-poster__name",
+    "a[href*='/in/'] span[aria-hidden='true']",
+    "a[href*='/in/']",
+  ],
+  /** Company "About" region — scanned for a "…employees" company-size phrase. */
+  companyInfo: [
+    ".jobs-company__box",
+    ".jobs-company",
+    "[data-view-name='job-details-company-info']",
+    ".jobs-company__company-description",
   ],
   benefits: [".job-details-benefits__list li", ".jobs-benefits__list li"],
   skillItems: [

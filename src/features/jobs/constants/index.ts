@@ -60,14 +60,19 @@ export const EXPERIENCE_LEVEL_OPTIONS = [
   { value: "principal",    label: "Principal"    },
 ] as const;
 
+// Values MUST match `global_jobs.source` exactly — the extension writes the
+// lowercase `SupportedSite` tag for board captures ("linkedin", "internshala",
+// …) and "Manual" for manual imports. These previously used title-case values
+// ("LinkedIn", "Wellfound", …) that never matched any stored row, so the
+// Jobs page source filter always returned zero results despite job cards
+// correctly displaying "linkedin" (see JobRepository.findAll's `.in("source", …)`).
 export const SOURCE_OPTIONS = [
-  { value: "LinkedIn",   label: "LinkedIn"   },
-  { value: "Wellfound",  label: "Wellfound"  },
-  { value: "Greenhouse", label: "Greenhouse" },
-  { value: "Lever",      label: "Lever"      },
-  { value: "Ashby",      label: "Ashby"      },
-  { value: "Careers",    label: "Careers"    },
-  { value: "Manual",     label: "Manual"     },
+  { value: "linkedin",     label: "LinkedIn"     },
+  { value: "internshala",  label: "Internshala"  },
+  { value: "naukri",       label: "Naukri"       },
+  { value: "indeed",       label: "Indeed"       },
+  { value: "unstop",       label: "Unstop"       },
+  { value: "Manual",       label: "Manual"       },
 ] as const;
 
 /**

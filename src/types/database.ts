@@ -91,6 +91,27 @@ export type GlobalJobRow = {
   job_function: string | null;
   benefits: string[] | null;
   description_html: string | null;
+  // ── Module 4A: Universal Job Model additions ──
+  state: string | null;
+  department: string | null;
+  company_career_url: string | null;
+  salary_period: string | null;
+  salary_text: string | null;
+  responsibilities: string[] | null;
+  requirements: string[] | null;
+  preferred_qualifications: string[] | null;
+  technologies: string[] | null;
+  languages: string[] | null;
+  expiry_date: string | null;
+  hiring_team: Json | null;
+  recruiter_name: string | null;
+  recruiter_profile: string | null;
+  company_size: string | null;
+  parser_version: string | null;
+  parser_confidence: number | null;
+  extraction_warnings: string[] | null;
+  // ── Module 4A QA fix: discovery-feed visibility flag ──
+  is_manual_import: boolean;
   created_at: string;
   updated_at: string;
 };
@@ -353,6 +374,27 @@ export type GlobalJobInsert = {
   job_function?: string | null;
   benefits?: string[] | null;
   description_html?: string | null;
+  // ── Module 4A: Universal Job Model additions ──
+  state?: string | null;
+  department?: string | null;
+  company_career_url?: string | null;
+  salary_period?: string | null;
+  salary_text?: string | null;
+  responsibilities?: string[] | null;
+  requirements?: string[] | null;
+  preferred_qualifications?: string[] | null;
+  technologies?: string[] | null;
+  languages?: string[] | null;
+  expiry_date?: string | null;
+  hiring_team?: Json | null;
+  recruiter_name?: string | null;
+  recruiter_profile?: string | null;
+  company_size?: string | null;
+  parser_version?: string | null;
+  parser_confidence?: number | null;
+  extraction_warnings?: string[] | null;
+  // ── Module 4A QA fix: discovery-feed visibility flag ──
+  is_manual_import?: boolean;
   created_at?: string;
   updated_at?: string;
 };
