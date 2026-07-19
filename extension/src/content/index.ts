@@ -1,7 +1,8 @@
 import { DuplicateResolver } from "../core/dedup/DuplicateResolver";
 import { JobNormalizer } from "../core/normalization/JobNormalizer";
+import { ListingParserFactory } from "../core/parsers/ListingParserFactory";
 import { ParserFactory } from "../core/parsers/ParserFactory";
-import type { UniversalJob } from "../core/parsers/types";
+import type { JobParser, UniversalJob } from "../core/parsers/types";
 import {
   JOB_CHANGE_DEBOUNCE_MS,
   JOB_CHANGE_MAX_WAIT_MS,
@@ -18,6 +19,7 @@ import type {
   GlobalJobSyncResult,
 } from "../shared/messaging/types";
 import { debounceWithMaxWait } from "./util/debounce";
+import { ListingCapture } from "./listing/ListingCapture";
 import { PanelController } from "./inject-panel";
 import type { PanelActions, PanelJob, PanelViewState, PendingAction } from "../panel/FloatingPanel";
 
@@ -40,9 +42,31 @@ declare global {
  * panel. No site-specific DOM selectors live in this file.
  */
 const parser = ParserFactory.getParser(location.hostname);
+const listingParser = ListingParserFactory.getListingParser(location.hostname);
+const listingActive = listingParser?.matches({ document, url: location.href }) ?? false;
 
-if (parser && !window.__nextofferContentScriptActive) {
+if (!window.__nextofferContentScriptActive && (parser || listingActive)) {
   window.__nextofferContentScriptActive = true;
+
+  if (listingActive && listingParser) {
+    // Listing/search page (Internshala): capture the cards the user scrolls
+    // past, in the background. No floating panel — that's a single-job
+    // affordance — and the single-job pipeline below is deliberately NOT run,
+    // so only one set of observers is ever active on a page.
+    void new ListingCapture(listingParser).start();
+  } else if (parser) {
+    runDetailCapture(parser);
+  }
+}
+
+/**
+ * The single-job detail-page pipeline (LinkedIn, plus Internshala/Naukri detail
+ * pages): parse the one job on the page, sync it, and drive the floating panel
+ * and its CTAs. Behaviour is unchanged from before Module 4B — it was only
+ * lifted into a function so a listing page can take the branch above instead of
+ * running this.
+ */
+function runDetailCapture(activeParser: JobParser): void {
   const panel = new PanelController();
 
   let currentJob: UniversalJob | null = null;
@@ -79,7 +103,7 @@ if (parser && !window.__nextofferContentScriptActive) {
   async function runPipeline(): Promise<void> {
     // Website → Parser (extraction only) → Normalizer. Validation, dedup
     // resolution and persistence happen in the background handler.
-    const raw = parser!.tryParse({ document, url: location.href });
+    const raw = activeParser.tryParse({ document, url: location.href });
 
     if (!raw) {
       currentJob = null;

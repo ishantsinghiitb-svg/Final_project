@@ -82,12 +82,38 @@ export class ApplicationRepository {
 
     const total = count ?? 0;
     return {
-      data: (data ?? []) as unknown as Application[],
+      data: await this.attachLogos((data ?? []) as unknown as Application[]),
       total,
       page,
       pageSize,
       totalPages: Math.ceil(total / pageSize),
     };
+  }
+
+  /**
+   * Enriches applications with the linked global_job's stored `company_logo_url`
+   * (reused, never re-derived) so application views render the SAME company
+   * identity as the Jobs pages. One batched read keyed by `job_id`; applications
+   * with no job_id (or whose job row was deleted) simply get `null` and the
+   * avatar falls back to initials — exactly as `CompanyMark` already does.
+   */
+  private async attachLogos(apps: Application[]): Promise<Application[]> {
+    const jobIds = [...new Set(apps.map((a) => a.job_id).filter((id): id is string => Boolean(id)))];
+    if (jobIds.length === 0) return apps;
+
+    const { data, error } = await supabase
+      .from("global_jobs")
+      .select("id, company_logo_url")
+      .in("id", jobIds);
+    if (error) throw error;
+
+    const logos = new Map(
+      (data ?? []).map((r) => [r.id, r.company_logo_url] as [string, string | null]),
+    );
+    return apps.map((app) => ({
+      ...app,
+      company_logo_url: app.job_id ? (logos.get(app.job_id) ?? null) : null,
+    }));
   }
 
   /**
@@ -103,7 +129,7 @@ export class ApplicationRepository {
       .eq("archived", archived)
       .order("updated_at", { ascending: false });
     if (error) throw error;
-    return (data ?? []) as unknown as Application[];
+    return this.attachLogos((data ?? []) as unknown as Application[]);
   }
 
   async findByJobId(userId: string, jobId: string): Promise<Application | null> {
@@ -116,7 +142,8 @@ export class ApplicationRepository {
 
     if (error) throw error;
 
-    return data as Application | null;
+    const app = data as Application | null;
+    return app ? (await this.attachLogos([app]))[0] : null;
   }
 
   /**
@@ -165,7 +192,8 @@ export class ApplicationRepository {
 
   async create(
     userId: string,
-    payload: Omit<Application, "id" | "user_id" | "created_at" | "updated_at">,
+    // `company_logo_url` is a read-time-only derived field (see attachLogos), never a column — excluded from writes.
+    payload: Omit<Application, "id" | "user_id" | "created_at" | "updated_at" | "company_logo_url">,
   ): Promise<Application> {
     const { data, error } = await supabase
       .from("applications")
@@ -189,7 +217,7 @@ export class ApplicationRepository {
 
   async update(
     id: string,
-    updates: Partial<Omit<Application, "id" | "user_id" | "created_at" | "updated_at">>,
+    updates: Partial<Omit<Application, "id" | "user_id" | "created_at" | "updated_at" | "company_logo_url">>,
   ): Promise<Application> {
     const { data, error } = await supabase
       .from("applications")

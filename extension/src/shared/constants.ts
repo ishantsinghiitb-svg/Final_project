@@ -11,6 +11,10 @@ export const EXTENSION_DESCRIPTION = "Track and manage job applications directly
  */
 export const JOB_BOARD_MATCH_PATTERNS = [
   "*://*.linkedin.com/*",
+  "*://internshala.com/*",
+  "*://*.internshala.com/*",
+  "*://naukri.com/*",
+  "*://*.naukri.com/*",
   "*://wellfound.com/*",
   "*://*.wellfound.com/*",
   "*://boards.greenhouse.io/*",

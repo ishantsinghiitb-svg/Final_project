@@ -108,7 +108,7 @@ const JobCard = memo(function JobCard({ job, isSaved, onSave, onUnsave, onApply 
   const tone = logoToneForCompany(job.company_name);
 
   return (
-    <li className="group flex items-center gap-4 px-4 py-3.5 hover:bg-[oklch(0.98_0.005_265)] transition-colors">
+    <li className="group flex items-center gap-4 px-4 py-4 hover:bg-[oklch(0.98_0.005_265)] transition-colors">
       {/*
        * The entire left region is a <Link> so clicking anywhere on the card
        * navigates to the detail page. The Save and Apply buttons outside the
@@ -119,11 +119,11 @@ const JobCard = memo(function JobCard({ job, isSaved, onSave, onUnsave, onApply 
         params={{ jobId: job.id }}
         className="flex flex-1 min-w-0 items-center gap-4"
       >
-        <CompanyMark company={job.company_name} tone={tone} size={40} logoUrl={job.company_logo_url} />
+        <CompanyMark company={job.company_name} tone={tone} size={46} logoUrl={job.company_logo_url} />
 
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 flex-wrap">
-            <p className="truncate font-display text-sm font-semibold">{job.role}</p>
+            <p className="truncate font-display text-[15px] font-semibold">{job.role}</p>
             {job.remote && (
               <Chip tone="green" className="shrink-0">
                 Remote
@@ -150,8 +150,8 @@ const JobCard = memo(function JobCard({ job, isSaved, onSave, onUnsave, onApply 
             )}
           </div>
 
-          <div className="mt-0.5 flex items-center gap-2 flex-wrap">
-            <p className="text-xs text-[oklch(0.5_0.02_265)]">
+          <div className="mt-1 flex items-center gap-2 flex-wrap">
+            <p className="text-[13px] text-[oklch(0.5_0.02_265)]">
               {job.company_name}
               {job.location && (
                 <>
@@ -161,7 +161,7 @@ const JobCard = memo(function JobCard({ job, isSaved, onSave, onUnsave, onApply 
               )}
             </p>
             {job.employment_type && (
-              <span className="flex items-center gap-0.5 text-xs text-[oklch(0.5_0.02_265)]">
+              <span className="flex items-center gap-0.5 text-[13px] text-[oklch(0.5_0.02_265)]">
                 <Briefcase className="h-3 w-3" /> {job.employment_type}
               </span>
             )}
@@ -171,7 +171,7 @@ const JobCard = memo(function JobCard({ job, isSaved, onSave, onUnsave, onApply 
              * which would produce "$ ₹18L" double-currency.
              */}
             {salary && (
-              <span className="flex items-center gap-0.5 text-xs text-[oklch(0.5_0.02_265)]">
+              <span className="flex items-center gap-0.5 text-[13px] text-[oklch(0.5_0.02_265)]">
                 <Banknote className="h-3 w-3" /> {salary}
               </span>
             )}
@@ -180,9 +180,9 @@ const JobCard = memo(function JobCard({ job, isSaved, onSave, onUnsave, onApply 
 
         {/* Source + time — desktop only */}
         <div className="hidden flex-col items-end gap-0.5 md:flex min-w-[80px]">
-          <span className="text-[11px] text-[oklch(0.55_0.02_265)]">{formatSourceLabel(job.source)}</span>
+          <span className="text-xs text-[oklch(0.55_0.02_265)]">{formatSourceLabel(job.source)}</span>
           {posted && (
-            <span className="flex items-center gap-1 text-[11px] text-[oklch(0.55_0.02_265)]">
+            <span className="flex items-center gap-1 text-xs text-[oklch(0.55_0.02_265)]">
               <Clock className="h-3 w-3" /> {posted}
             </span>
           )}

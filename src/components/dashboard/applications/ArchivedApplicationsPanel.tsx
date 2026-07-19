@@ -92,7 +92,7 @@ export function ArchivedApplicationsPanel({ open, onClose }: Props) {
                     key={app.id}
                     className="flex items-center gap-3 rounded-xl border border-black/5 bg-white p-3 hover:bg-[oklch(0.99_0.005_265)] transition-colors"
                   >
-                    <CompanyMark company={app.company_name} tone={tone} size={32} />
+                    <CompanyMark company={app.company_name} tone={tone} size={32} logoUrl={app.company_logo_url} />
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-medium text-[oklch(0.2_0.02_265)]">{app.role}</p>
                       <p className="truncate text-xs text-[oklch(0.5_0.02_265)]">{app.company_name}</p>

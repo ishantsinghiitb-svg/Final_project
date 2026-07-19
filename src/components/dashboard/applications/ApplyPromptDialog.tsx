@@ -79,7 +79,7 @@ export function TrackApplicationModal({
 
           {/* Company info */}
           <div className="flex items-center gap-3">
-            <CompanyMark company={job.company_name} tone={tone} size={44} />
+            <CompanyMark company={job.company_name} tone={tone} size={44} logoUrl={job.company_logo_url} />
             <div className="min-w-0">
               <p className="truncate font-display text-sm font-semibold text-[oklch(0.2_0.02_265)]">
                 {job.role}
@@ -219,7 +219,7 @@ export function AlreadyTrackingModal({
 
           {/* Company info */}
           <div className="flex items-center gap-3">
-            <CompanyMark company={application.company_name} tone={tone} size={44} />
+            <CompanyMark company={application.company_name} tone={tone} size={44} logoUrl={application.company_logo_url} />
             <div className="min-w-0">
               <p className="truncate font-display text-sm font-semibold text-[oklch(0.2_0.02_265)]">
                 {application.role}

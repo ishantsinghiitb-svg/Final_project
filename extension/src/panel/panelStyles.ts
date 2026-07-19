@@ -143,6 +143,40 @@ export const panelStyles = `
   min-width: 0;
 }
 
+.nextoffer-panel__identity-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.nextoffer-panel__identity-text {
+  min-width: 0;
+  flex: 1;
+}
+
+/* Company logo — mirrors the dashboard CompanyMark (rounded, contained, white bg). */
+.nextoffer-panel__logo {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  object-fit: contain;
+  background: #fff;
+}
+
+.nextoffer-panel__logo-fallback {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: #fff;
+  background: linear-gradient(135deg, #2563eb, #7c3aed);
+}
+
 .nextoffer-panel__title {
   font-weight: 600;
   line-height: 1.35;

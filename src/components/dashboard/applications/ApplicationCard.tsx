@@ -82,7 +82,7 @@ export function ApplicationCard({
     >
       {/* Header: company mark + name + menu */}
       <div className="flex items-start gap-2.5">
-        <CompanyMark company={app.company_name} tone={tone} size={32} />
+        <CompanyMark company={app.company_name} tone={tone} size={32} logoUrl={app.company_logo_url} />
         <div className="min-w-0 flex-1">
           <p className="truncate text-[13px] font-semibold text-[oklch(0.2_0.02_265)]">
             {app.company_name}

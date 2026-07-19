@@ -63,7 +63,7 @@ export function ApplicationListView({ applications, onDelete, onArchive }: Props
                 {/* Company */}
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-2.5">
-                    <CompanyMark company={app.company_name} tone={tone} size={28} />
+                    <CompanyMark company={app.company_name} tone={tone} size={28} logoUrl={app.company_logo_url} />
                     <span className="font-medium text-[oklch(0.2_0.02_265)]">
                       {app.company_name}
                     </span>

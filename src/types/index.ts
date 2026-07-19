@@ -190,6 +190,13 @@ export type Application = {
   notes?: string | null;
   // Inherited from GlobalJob at creation time
   location?: string | null;
+  /**
+   * The linked global_job's stored logo, attached at read time by
+   * `ApplicationRepository.attachLogos` (not a persisted `applications` column).
+   * Lets application avatars reuse the same company logo the Jobs pages show;
+   * `null`/absent → `CompanyMark` falls back to initials.
+   */
+  company_logo_url?: string | null;
   salary_min?: number | null;
   salary_max?: number | null;
   salary_currency?: string | null;

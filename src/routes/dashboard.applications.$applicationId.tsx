@@ -258,7 +258,7 @@ function ApplicationDetailPage() {
         <div className="flex flex-wrap items-start justify-between gap-4">
           {/* Company + role */}
           <div className="flex items-start gap-4">
-            <CompanyMark company={app.company_name} tone={tone} size={52} />
+            <CompanyMark company={app.company_name} tone={tone} size={52} logoUrl={job?.company_logo_url} />
             <div>
               <h1 className="font-display text-xl font-semibold tracking-tight text-[oklch(0.2_0.02_265)]">
                 {app.role}
