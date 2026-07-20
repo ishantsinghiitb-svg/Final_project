@@ -105,7 +105,7 @@ export function DashboardShell({ children }: { children: ReactNode }) {
       <div className="grid min-h-screen lg:grid-cols-[240px_1fr]">
         <aside
           className={cn(
-            "fixed inset-y-0 left-0 z-40 w-[240px] overflow-y-auto border-r border-black/5 bg-white/80 p-4 backdrop-blur transition-transform lg:sticky lg:top-0 lg:h-screen lg:translate-x-0",
+            "fixed inset-y-0 left-0 z-40 w-[240px] overflow-y-auto border-r border-black/5 bg-white/80 p-3 backdrop-blur transition-transform lg:sticky lg:top-0 lg:h-screen lg:translate-x-0",
             mobileNav ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
           )}
         >
@@ -240,7 +240,7 @@ export function DashboardShell({ children }: { children: ReactNode }) {
               </button>
               <button
                 onClick={() => setPaletteOpen(true)}
-                className="flex w-[300px] max-w-[60vw] items-center gap-2 rounded-lg border border-black/5 bg-white px-3 py-2 text-sm text-[oklch(0.5_0.02_265)] transition-colors hover:border-black/10"
+                className="flex h-9 w-[300px] max-w-[60vw] items-center gap-2 rounded-lg border border-black/5 bg-white px-3 text-sm text-[oklch(0.5_0.02_265)] transition-colors hover:border-black/10"
               >
                 <Search className="h-4 w-4" />
                 <span className="flex-1 text-left">Search or jump to…</span>
@@ -304,7 +304,7 @@ export function DashboardShell({ children }: { children: ReactNode }) {
             </div>
           </header>
 
-          <main className="min-w-0 flex-1 space-y-6 p-4 md:p-6">{children}</main>
+          <main className="min-w-0 flex-1 space-y-4 p-3 md:p-5">{children}</main>
         </div>
       </div>
 

@@ -40,12 +40,19 @@ export const panelStyles = `
   to { opacity: 1; transform: translateY(-50%) scale(1); }
 }
 
-/* ── Collapsed launcher ── */
+/* ── Collapsed launcher ──
+ * The shell must be exactly the size of the launcher button and center it, so
+ * the two circles are concentric and read as ONE clean floating button. When
+ * the shell was larger than the button (and didn't center it), the extra ring
+ * of shell — its white background + drop shadow — peeked out on one side as a
+ * clipped "second circle" artifact. */
 .nextoffer-shell--collapsed {
-  width: 70px;
-  max-height: 70px;
+  width: 60px;
+  max-height: 60px;
   border-radius: 999px;
   box-shadow: 0 6px 18px -4px rgba(10, 102, 194, 0.45);
+  display: grid;
+  place-items: center;
 }
 
 .nextoffer-shell--collapsed:hover {
@@ -268,5 +275,19 @@ export const panelStyles = `
 
 .nextoffer-panel__btn--secondary:not(:disabled):hover {
   background: #e2edf9;
+}
+
+/* ── Unsupported-hiring-page message (Module 4C) ── */
+.nextoffer-panel__list {
+  margin: 0;
+  padding-left: 18px;
+  color: #1a1a1a;
+}
+
+/* ── No-job (supported host, nothing to save on this page) ── */
+.nextoffer-panel__empty-title {
+  font-weight: 600;
+  font-size: 14px;
+  color: #1a1a1a;
 }
 `;

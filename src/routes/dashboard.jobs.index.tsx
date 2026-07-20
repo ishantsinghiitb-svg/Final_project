@@ -492,7 +492,7 @@ function JobsPage() {
         {/* ── Filter bar ──────────────────────────────────────────────────── */}
         <div className="flex flex-wrap items-center gap-2 p-3">
           {/* Keyword search */}
-          <div className="flex flex-1 min-w-[220px] items-center gap-2 rounded-lg border border-black/5 bg-white px-3 py-2 text-sm">
+          <div className="flex h-9 flex-1 min-w-[220px] items-center gap-2 rounded-lg border border-black/5 bg-white px-3 text-sm">
             <Search className="h-4 w-4 shrink-0 text-[oklch(0.5_0.02_265)]" />
             <input
               ref={searchInputRef}
@@ -510,7 +510,7 @@ function JobsPage() {
           <select
             value={sortKey}
             onChange={(e) => setFilter("sort", e.target.value)}
-            className="rounded-lg border border-black/5 bg-white px-3 py-2 text-sm"
+            className="h-9 rounded-lg border border-black/5 bg-white px-3 text-sm"
           >
             {(Object.keys(SORT_OPTIONS) as JobSortOption[]).map((key) => (
               <option key={key} value={key}>
@@ -563,7 +563,7 @@ function JobsPage() {
           <select
             value={search.postedAfter ?? ""}
             onChange={(e) => setFilter("postedAfter", e.target.value)}
-            className="rounded-lg border border-black/5 bg-white px-3 py-2 text-sm"
+            className="h-9 rounded-lg border border-black/5 bg-white px-3 text-sm"
           >
             {POSTED_AFTER_OPTIONS.map((o) => (
               <option key={o.label} value={o.value}>
@@ -573,7 +573,7 @@ function JobsPage() {
           </select>
 
           {/* Remote toggle */}
-          <label className="inline-flex items-center gap-2 rounded-lg border border-black/5 bg-white px-3 py-2 text-sm cursor-pointer select-none">
+          <label className="inline-flex h-9 items-center gap-2 rounded-lg border border-black/5 bg-white px-3 text-sm cursor-pointer select-none">
             <input
               type="checkbox"
               checked={Boolean(search.remote)}
@@ -586,7 +586,7 @@ function JobsPage() {
           {(isFiltered || activeFilterCount > 0) && (
             <button
               onClick={resetFilters}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-black/5 bg-white px-3 py-2 text-xs font-medium text-[oklch(0.4_0.02_265)] hover:bg-black/[0.03] transition-colors"
+              className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-black/5 bg-white px-3 text-xs font-medium text-[oklch(0.4_0.02_265)] hover:bg-black/[0.03] transition-colors"
             >
               <X className="h-3.5 w-3.5" />
               Reset

@@ -1,5 +1,5 @@
 import { type ReactNode, useEffect, useRef, useState } from "react";
-import { ChevronDown, X } from "lucide-react";
+import { ChevronDown, Search, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export function DashCard({
@@ -36,7 +36,7 @@ export function StickyPageHeader({ children, className }: { children: ReactNode;
   return (
     <div
       className={cn(
-        "sticky top-15 z-10 space-y-4 bg-[oklch(0.98_0.005_250)]/95 pb-4 backdrop-blur-sm",
+        "sticky top-15 z-10 space-y-3 bg-[oklch(0.98_0.005_250)]/95 pb-3 backdrop-blur-sm",
         className,
       )}
     >
@@ -212,11 +212,57 @@ export function IconButton({
 export type MultiSelectOption = { value: string; label: string };
 
 /**
+ * Case-insensitive, whitespace-trimmed match against an option's label —
+ * substring first, then a lightweight edit-distance fallback (tolerance
+ * scaled to query length) so a minor typo still matches ("softwre" →
+ * "Software", "banglore" → "Bangalore"). Checked against the whole label AND
+ * each of its words, so a typo'd single word still matches inside a
+ * multi-word label ("Full Stack").
+ */
+function fuzzyMatchesOption(query: string, label: string): boolean {
+  const q = query.trim().toLowerCase();
+  if (!q) return true;
+
+  const l = label.trim().toLowerCase();
+  if (l.includes(q)) return true;
+
+  const maxDistance = q.length <= 4 ? 1 : q.length <= 8 ? 2 : 3;
+  return [l, ...l.split(/[\s/-]+/)].some(
+    (candidate) =>
+      Math.abs(candidate.length - q.length) <= maxDistance &&
+      levenshteinDistance(q, candidate) <= maxDistance,
+  );
+}
+
+function levenshteinDistance(a: string, b: string): number {
+  const dp: number[][] = Array.from({ length: a.length + 1 }, () =>
+    new Array<number>(b.length + 1).fill(0),
+  );
+  for (let i = 0; i <= a.length; i++) dp[i][0] = i;
+  for (let j = 0; j <= b.length; j++) dp[0][j] = j;
+  for (let i = 1; i <= a.length; i++) {
+    for (let j = 1; j <= b.length; j++) {
+      dp[i][j] =
+        a[i - 1] === b[j - 1]
+          ? dp[i - 1][j - 1]
+          : 1 + Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1]);
+    }
+  }
+  return dp[a.length][b.length];
+}
+
+/**
  * MultiSelectDropdown
  *
  * Checkbox-panel dropdown for filters with more than one selectable value at
  * once — same trigger-button styling as a native filter `<select>`, so it
- * drops into existing filter bars without changing their layout.
+ * drops into existing filter bars without changing their layout. Every
+ * instance gets a built-in search box that fuzzy-filters its own options —
+ * this is the one shared dropdown component every filter (Work mode,
+ * Employment type, Experience level, Role, Source) is built on, so adding
+ * search here covers all of them at once. Plain sort controls (native
+ * `<select>`s or their own hand-rolled dropdowns) don't use this component,
+ * so they're unaffected — nothing to exclude explicitly.
  */
 export function MultiSelectDropdown({
   label,
@@ -232,7 +278,9 @@ export function MultiSelectDropdown({
   className?: string;
 }) {
   const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
   const rootRef = useRef<HTMLDivElement>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -245,6 +293,15 @@ export function MultiSelectDropdown({
     return () => document.removeEventListener("mousedown", handler);
   }, [open]);
 
+  // Search always starts fresh on open, so it never shows a stale filter
+  // left over from the last time this dropdown was opened.
+  useEffect(() => {
+    if (open) {
+      setQuery("");
+      searchRef.current?.focus();
+    }
+  }, [open]);
+
   const toggleValue = (value: string) => {
     onChange(selected.includes(value) ? selected.filter((v) => v !== value) : [...selected, value]);
   };
@@ -255,6 +312,8 @@ export function MultiSelectDropdown({
       : selected.length === 1
         ? (options.find((o) => o.value === selected[0])?.label ?? label)
         : `${label} (${selected.length})`;
+
+  const filteredOptions = options.filter((o) => fuzzyMatchesOption(query, o.label));
 
   return (
     <div ref={rootRef} className={cn("relative", className)}>
@@ -273,24 +332,42 @@ export function MultiSelectDropdown({
       </button>
 
       {open && (
-        <div className="absolute left-0 top-10 z-20 max-h-72 w-52 overflow-y-auto rounded-xl border border-black/5 bg-white shadow-[0_12px_40px_-8px_rgba(0,0,0,0.18)]">
-          {options.map((o) => {
-            const checked = selected.includes(o.value);
-            return (
-              <label
-                key={o.value}
-                className="flex cursor-pointer items-center gap-2.5 px-3 py-2 text-sm text-[oklch(0.35_0.02_265)] transition-colors hover:bg-black/[0.03]"
-              >
-                <input
-                  type="checkbox"
-                  checked={checked}
-                  onChange={() => toggleValue(o.value)}
-                  className="h-3.5 w-3.5 rounded border-black/20 text-[#2563EB] focus:ring-[#2563EB]/30"
-                />
-                {o.label}
-              </label>
-            );
-          })}
+        <div className="absolute left-0 top-10 z-20 w-52 overflow-hidden rounded-xl border border-black/5 bg-white shadow-[0_12px_40px_-8px_rgba(0,0,0,0.18)]">
+          <div className="flex items-center gap-1.5 border-b border-black/5 px-3 py-2">
+            <Search className="h-3.5 w-3.5 shrink-0 text-[oklch(0.55_0.02_265)]" />
+            <input
+              ref={searchRef}
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search…"
+              className="w-full bg-transparent text-sm outline-none placeholder:text-[oklch(0.6_0.02_265)]"
+            />
+          </div>
+
+          <div className="max-h-60 overflow-y-auto">
+            {filteredOptions.length === 0 ? (
+              <p className="px-3 py-3 text-center text-xs text-[oklch(0.55_0.02_265)]">No matches</p>
+            ) : (
+              filteredOptions.map((o) => {
+                const checked = selected.includes(o.value);
+                return (
+                  <label
+                    key={o.value}
+                    className="flex cursor-pointer items-center gap-2.5 px-3 py-2 text-sm text-[oklch(0.35_0.02_265)] transition-colors hover:bg-black/[0.03]"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() => toggleValue(o.value)}
+                      className="h-3.5 w-3.5 rounded border-black/20 text-[#2563EB] focus:ring-[#2563EB]/30"
+                    />
+                    {o.label}
+                  </label>
+                );
+              })
+            )}
+          </div>
+
           {selected.length > 0 && (
             <button
               type="button"

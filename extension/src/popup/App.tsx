@@ -92,7 +92,7 @@ export function App() {
       | typeof MessageType.TRACK_APPLICATION,
     pendingKind: NonNullable<PendingAction>,
   ): Promise<void> {
-    if (!current || pending) return;
+    if (!current || pending || !("job" in current)) return;
     setPending(pendingKind);
 
     const response = await sendMessage<{ application?: { id: string; status: string } }>({
@@ -104,7 +104,7 @@ export function App() {
     if (!response.ok) return;
 
     setCurrent((prev) =>
-      prev
+      prev && "job" in prev
         ? {
             ...prev,
             state: type === MessageType.SAVE_JOB ? "saved" : "tracked",
@@ -119,7 +119,7 @@ export function App() {
     onSaveForLater: () => void runAction(MessageType.SAVE_JOB, "save"),
     onTrackApplication: () => void runAction(MessageType.TRACK_APPLICATION, "track"),
     onViewInNextOffer: () => {
-      if (!current) return;
+      if (!current || !("job" in current)) return;
       const url = current.applicationId
         ? `${env.appUrl}/dashboard/applications/${current.applicationId}`
         : `${env.appUrl}/dashboard/jobs/${current.globalJobId}`;
@@ -158,26 +158,35 @@ export function App() {
           <p className="popup__section-title">Current Job</p>
           <p className="popup__hint">Checking this page for a job…</p>
         </section>
+      ) : current && "job" in current ? (
+        <section className="popup__section">
+          <p className="popup__section-title">Current Job</p>
+          <JobIdentity job={current.job} />
+          <MetadataChipRow job={current.job} />
+          <div className="popup__cta">
+            <CtaRow
+              kind={current.state}
+              isClosed={current.job.isClosed}
+              pending={pending}
+              actions={actions}
+              readyLabels={{
+                primary: "Track Application",
+                primaryPending: "Tracking…",
+                secondary: "Save Job",
+                secondaryPending: "Saving…",
+              }}
+            />
+          </div>
+        </section>
       ) : (
         current && (
           <section className="popup__section">
             <p className="popup__section-title">Current Job</p>
-            <JobIdentity job={current.job} />
-            <MetadataChipRow job={current.job} />
-            <div className="popup__cta">
-              <CtaRow
-                kind={current.state}
-                isClosed={current.job.isClosed}
-                pending={pending}
-                actions={actions}
-                readyLabels={{
-                  primary: "Track Application",
-                  primaryPending: "Tracking…",
-                  secondary: "Save Job",
-                  secondaryPending: "Saving…",
-                }}
-              />
-            </div>
+            <p className="popup__hint">
+              Automatic tracking isn&apos;t available for this hiring platform yet. You can
+              still save this opportunity using Import Job URL or Manual Job Entry. Support
+              for additional hiring platforms is being added continuously.
+            </p>
           </section>
         )
       )}

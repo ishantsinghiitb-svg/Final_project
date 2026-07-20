@@ -18,12 +18,12 @@ export const JOB_PAGE_SIZE_OPTIONS = [10, 20, 50] as const;
 // ── Sort options ─────────────────────────────────────────────────────────────
 
 export const SORT_OPTIONS: Record<JobSortOption, { label: string; sort: JobSort }> = {
-  newest:     { label: "Newest first",       sort: { field: "posted_at",    direction: "desc" } },
-  oldest:     { label: "Oldest first",       sort: { field: "posted_at",    direction: "asc"  } },
-  salary_high:{ label: "Salary: High → Low", sort: { field: "salary_max",   direction: "desc" } },
-  salary_low: { label: "Salary: Low → High", sort: { field: "salary_min",   direction: "asc"  } },
-  company_az: { label: "Company: A → Z",     sort: { field: "company_name", direction: "asc"  } },
-  company_za: { label: "Company: Z → A",     sort: { field: "company_name", direction: "desc" } },
+  newest: { label: "Newest first", sort: { field: "posted_at", direction: "desc" } },
+  oldest: { label: "Oldest first", sort: { field: "posted_at", direction: "asc" } },
+  salary_high: { label: "Salary: High → Low", sort: { field: "salary_max", direction: "desc" } },
+  salary_low: { label: "Salary: Low → High", sort: { field: "salary_min", direction: "asc" } },
+  company_az: { label: "Company: A → Z", sort: { field: "company_name", direction: "asc" } },
+  company_za: { label: "Company: Z → A", sort: { field: "company_name", direction: "desc" } },
 };
 
 export const DEFAULT_SORT_OPTION: JobSortOption = "newest";
@@ -31,15 +31,15 @@ export const DEFAULT_SORT_OPTION: JobSortOption = "newest";
 // ── Filter option arrays ─────────────────────────────────────────────────────
 
 export const WORK_MODE_OPTIONS = [
-  { value: "remote", label: "Remote"  },
-  { value: "hybrid", label: "Hybrid"  },
-  { value: "onsite", label: "Onsite"  },
+  { value: "remote", label: "Remote" },
+  { value: "hybrid", label: "Hybrid" },
+  { value: "onsite", label: "Onsite" },
 ] as const;
 
 export const EMPLOYMENT_TYPE_OPTIONS = [
-  { value: "full-time",  label: "Full-Time"  },
-  { value: "part-time",  label: "Part-Time"  },
-  { value: "contract",   label: "Contract"   },
+  { value: "full-time", label: "Full-Time" },
+  { value: "part-time", label: "Part-Time" },
+  { value: "contract", label: "Contract" },
   { value: "internship", label: "Internship" },
 ] as const;
 
@@ -50,14 +50,14 @@ export const EMPLOYMENT_TYPE_OPTIONS = [
 // senior-level →  Senior-Level
 // intern       →  Intern
 export const EXPERIENCE_LEVEL_OPTIONS = [
-  { value: "intern",       label: "Intern"       },
-  { value: "entry-level",  label: "Entry-Level"  },
-  { value: "junior",       label: "Junior"       },
-  { value: "mid-level",    label: "Mid-Level"    },
+  { value: "intern", label: "Intern" },
+  { value: "entry-level", label: "Entry-Level" },
+  { value: "junior", label: "Junior" },
+  { value: "mid-level", label: "Mid-Level" },
   { value: "senior-level", label: "Senior-Level" },
-  { value: "lead",         label: "Lead"         },
-  { value: "staff",        label: "Staff"        },
-  { value: "principal",    label: "Principal"    },
+  { value: "lead", label: "Lead" },
+  { value: "staff", label: "Staff" },
+  { value: "principal", label: "Principal" },
 ] as const;
 
 // Values MUST match `global_jobs.source` exactly — the extension writes the
@@ -66,13 +66,21 @@ export const EXPERIENCE_LEVEL_OPTIONS = [
 // ("LinkedIn", "Wellfound", …) that never matched any stored row, so the
 // Jobs page source filter always returned zero results despite job cards
 // correctly displaying "linkedin" (see JobRepository.findAll's `.in("source", …)`).
+//
+// One entry per platform that has a dedicated extension parser (LinkedIn,
+// Internshala, Naukri, Wellfound, Foundit), plus "Manual" for manual imports.
+// When a new dedicated parser ships, add its lowercase `SupportedSite` tag
+// here (and to `JobSource` in src/types) — that's the single place the Source
+// filter reads from. Indeed/Unstop never got a working parser and were
+// removed. The decommissioned Generic Parser's jobs use source "generic" and
+// are deliberately NOT offered here.
 export const SOURCE_OPTIONS = [
-  { value: "linkedin",     label: "LinkedIn"     },
-  { value: "internshala",  label: "Internshala"  },
-  { value: "naukri",       label: "Naukri"       },
-  { value: "indeed",       label: "Indeed"       },
-  { value: "unstop",       label: "Unstop"       },
-  { value: "Manual",       label: "Manual"       },
+  { value: "linkedin", label: "LinkedIn" },
+  { value: "internshala", label: "Internshala" },
+  { value: "naukri", label: "Naukri" },
+  { value: "wellfound", label: "Wellfound" },
+  { value: "foundit", label: "Foundit" },
+  { value: "Manual", label: "Manual" },
 ] as const;
 
 /**
@@ -88,10 +96,10 @@ export const SOURCE_OPTIONS = [
  * the millisecond timestamp had already advanced since the module was loaded.
  */
 export const POSTED_AFTER_OPTIONS = [
-  { value: "",   label: "Any time"     },
-  { value: "1",  label: "Past 24 hours"},
-  { value: "7",  label: "Past week"    },
-  { value: "30", label: "Past month"   },
+  { value: "", label: "Any time" },
+  { value: "1", label: "Past 24 hours" },
+  { value: "7", label: "Past week" },
+  { value: "30", label: "Past month" },
 ] as const;
 
 /**

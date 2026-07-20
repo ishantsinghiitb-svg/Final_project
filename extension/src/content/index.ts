@@ -3,6 +3,7 @@ import { JobNormalizer } from "../core/normalization/JobNormalizer";
 import { ListingParserFactory } from "../core/parsers/ListingParserFactory";
 import { ParserFactory } from "../core/parsers/ParserFactory";
 import type { JobParser, UniversalJob } from "../core/parsers/types";
+import { hasHiringPageSignals } from "../core/site-detection/hiringPageSignals";
 import {
   JOB_CHANGE_DEBOUNCE_MS,
   JOB_CHANGE_MAX_WAIT_MS,
@@ -48,15 +49,119 @@ const listingActive = listingParser?.matches({ document, url: location.href }) ?
 if (!window.__nextofferContentScriptActive && (parser || listingActive)) {
   window.__nextofferContentScriptActive = true;
 
+  // The floating panel must stay visible on EVERY page of a supported site
+  // (homepage, search, listing, company, profile, job detail) — it never
+  // unmounts; it just shows a "no job detected" state when the current page
+  // has no single job to save.
   if (listingActive && listingParser) {
-    // Listing/search page (Internshala): capture the cards the user scrolls
-    // past, in the background. No floating panel — that's a single-job
-    // affordance — and the single-job pipeline below is deliberately NOT run,
-    // so only one set of observers is ever active on a page.
+    // Listing/search page: capture the cards the user scrolls past in the
+    // background, AND keep a persistent "no job detected" panel up. The
+    // single-job detail pipeline is deliberately NOT run here — a search page
+    // can carry a stray `JobPosting`, and we must never present a random
+    // listed job as the one the user is viewing (nor run its heavy navigation
+    // observer over an infinite-scroll list). A detail page is a different URL
+    // that reloads into the `runDetailCapture` branch below.
     void new ListingCapture(listingParser).start();
+    showNoJobState();
   } else if (parser) {
+    // Detail-capable page (LinkedIn/Naukri/Wellfound/Foundit detail, etc.):
+    // parse the active job and drive the panel; shows "no job detected" until
+    // a job becomes active (a Wellfound modal opening, an SPA nav into a
+    // detail view) and re-populates automatically when it does.
     runDetailCapture(parser);
   }
+} else if (!window.__nextofferContentScriptActive) {
+  // No dedicated parser or listing parser matched this host (the Generic
+  // Parser that used to fill this gap was decommissioned from production —
+  // see ParserRegistry). If the page still looks like a hiring page, say so
+  // instead of staying silently idle — but this branch never parses, syncs,
+  // saves, or tracks anything; it only shows an informational message.
+  const isUnsupportedHiringPage = hasHiringPageSignals(document, location.href);
+  console.debug("[NextOffer][DEBUG] 1. Unsupported hiring page detected?", isUnsupportedHiringPage);
+  if (isUnsupportedHiringPage) {
+    window.__nextofferContentScriptActive = true;
+    showUnsupportedHiringPageState();
+  }
+}
+
+/**
+ * Informational-only: no dedicated parser exists for this host, but the page
+ * still looks like a hiring page (see `hasHiringPageSignals`). The signal
+ * check itself runs once at load, same as the parser/listing checks above —
+ * it is never re-evaluated, so this never re-parses or re-scores the page.
+ *
+ * The panel mount is re-asserted on body-level DOM changes (a cheap,
+ * non-`subtree` observer — bounded to `document.body`'s direct children,
+ * nothing deeper) purely because some hiring-page SPAs keep rewriting the
+ * DOM after `document_idle` (hydration, client-side routing) and can carry
+ * the panel's host off along with whatever else they replace, leaving the
+ * background's published state correct (so the popup still shows it) while
+ * the on-page panel silently isn't there anymore. `PanelController.update`
+ * is what actually decides whether to recreate anything — this only decides
+ * when to ask it to check.
+ */
+function showUnsupportedHiringPageState(): void {
+  const panel = new PanelController();
+  const noop = (): void => {};
+  const actions: PanelActions = {
+    onApplyAndTrack: noop,
+    onSaveForLater: noop,
+    onTrackApplication: noop,
+    onViewInNextOffer: noop,
+    onOpenInNextOffer: () => window.open(env.appUrl, "_blank"),
+  };
+  const state: PanelViewState = { kind: "unsupported-hiring-page" };
+
+  const mount = () => {
+    console.debug("[NextOffer][DEBUG] 4. PanelController.update() called?", true);
+    panel.update(state, actions, null);
+  };
+  mount();
+  void sendMessage({
+    type: MessageType.CURRENT_JOB_UPDATED,
+    payload: { kind: "unsupported-hiring-page" },
+  })
+    .then(() => {
+      console.debug("[NextOffer][DEBUG] 2. Message sent from content script?", true);
+    })
+    .catch((err) => {
+      console.debug("[NextOffer][DEBUG] 2. Message sent from content script?", false, err);
+    });
+
+  const hostWatcher = new MutationObserver(mount);
+  hostWatcher.observe(document.body, { childList: true });
+}
+
+/**
+ * Persistent "no job detected" panel for a listing/search page — the page has
+ * no single job to save, but the extension must stay visible (and the user can
+ * still collapse/expand it) while `ListingCapture` imports cards in the
+ * background. Deliberately the lightweight counterpart to `runDetailCapture`:
+ * it never parses, syncs, or observes for job changes (a listing page has no
+ * single job to change), just keeps the panel mounted — re-asserting the mount
+ * on body-level DOM changes (a cheap, non-`subtree` observer) the same way
+ * `showUnsupportedHiringPageState` does, since listing SPAs rewrite the DOM as
+ * new cards load and can carry the panel host off with them.
+ */
+function showNoJobState(): void {
+  const panel = new PanelController();
+  const noop = (): void => {};
+  const actions: PanelActions = {
+    onApplyAndTrack: noop,
+    onSaveForLater: noop,
+    onTrackApplication: noop,
+    onViewInNextOffer: noop,
+    onOpenInNextOffer: () => window.open(env.appUrl, "_blank"),
+  };
+  const state: PanelViewState = { kind: "no-job" };
+
+  const mount = () => panel.update(state, actions, null);
+  mount();
+  // The popup reads the same bridge; a listing page has no current single job.
+  void sendMessage({ type: MessageType.CURRENT_JOB_UPDATED, payload: null }).catch(() => {});
+
+  const hostWatcher = new MutationObserver(mount);
+  hostWatcher.observe(document.body, { childList: true });
 }
 
 /**
@@ -106,9 +211,13 @@ function runDetailCapture(activeParser: JobParser): void {
     const raw = activeParser.tryParse({ document, url: location.href });
 
     if (!raw) {
+      // No single job on this page right now (a listing/search/company page, or
+      // a closed job modal). Keep the panel mounted showing "no job detected"
+      // rather than tearing it down — the extension must never disappear on a
+      // supported site; it re-populates when a job becomes active.
       currentJob = null;
       currentGlobalJobId = null;
-      panel.destroy();
+      panel.update({ kind: "no-job" }, actions, null);
       publishCurrentJob(null);
       return;
     }
@@ -157,8 +266,10 @@ function runDetailCapture(activeParser: JobParser): void {
     }
 
     if (!syncResponse.ok) {
-      // Invalid job (missing required fields, etc.) — nothing to show.
-      panel.destroy();
+      // Invalid job (missing required fields, etc.) — nothing to save, but keep
+      // the panel visible in its "no job detected" state rather than removing it.
+      panel.update({ kind: "no-job" }, actions, null);
+      publishCurrentJob(null);
       return;
     }
 

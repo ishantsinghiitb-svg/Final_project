@@ -75,14 +75,21 @@ export type ImportJobUrlResult = {
  * state changes, so the popup can show the same job/CTA state without a
  * direct channel to the content script. `null` means no job is currently
  * detected on the tab (nothing parsed, or not logged in).
+ *
+ * The second arm mirrors the floating panel's `unsupported-hiring-page`
+ * state: the page has hiring-page signals but no dedicated parser exists for
+ * it — informational only, never backed by an actual parse. It carries no
+ * job data, unlike the first arm — narrow on `"job" in state` to tell them apart.
  */
-export type CurrentJobState = {
-  job: PanelJob;
-  state: "ready" | "saved" | "tracked";
-  globalJobId: string;
-  /** Set once an application exists, so "View in NextOffer" can deep-link to it instead of the job. */
-  applicationId: string | null;
-};
+export type CurrentJobState =
+  | {
+      job: PanelJob;
+      state: "ready" | "saved" | "tracked";
+      globalJobId: string;
+      /** Set once an application exists, so "View in NextOffer" can deep-link to it instead of the job. */
+      applicationId: string | null;
+    }
+  | { kind: "unsupported-hiring-page" };
 
 /** Content script → background. Fire-and-forget; keyed by the sender tab. */
 export type CurrentJobUpdatedMessage = {

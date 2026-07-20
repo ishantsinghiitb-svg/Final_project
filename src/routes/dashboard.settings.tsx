@@ -22,12 +22,12 @@ function SettingsPage() {
       <PageHeader eyebrow="Settings" title="Make NextOffer yours." subtitle="Tune preferences, notifications, and integrations." />
       </StickyPageHeader>
 
-      <div className="flex flex-wrap gap-1 rounded-xl border border-black/5 bg-white p-1">
+      <div className="flex flex-wrap gap-1 rounded-xl border border-black/5 bg-white p-0.5">
         {tabs.map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
-            className={`rounded-lg px-3 py-1.5 text-sm ${
+            className={`rounded-lg px-3 py-1.5 text-xs ${
               tab === t ? "bg-[oklch(0.95_0.02_265)] font-medium text-[#2563EB]" : "text-[oklch(0.45_0.02_265)] hover:bg-black/[0.03]"
             }`}
           >
@@ -176,7 +176,7 @@ function ProfileTab() {
         </label>
       </div>
       <div className="mt-4 flex justify-end gap-2">
-        <button className="rounded-lg border border-black/5 bg-white px-3 py-1.5 text-sm">Cancel</button>
+        <button className="rounded-lg border border-black/5 bg-white px-3 py-1.5 text-xs">Cancel</button>
         <DashButton onClick={handleSave} disabled={saving}>
           {saving ? (
             <span className="flex items-center gap-2">

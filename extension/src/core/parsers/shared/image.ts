@@ -42,3 +42,41 @@ export function readImageUrl(el: Element | null | undefined): string | null {
 
   return null;
 }
+
+/**
+ * Turns a raw `<img>` URL into an absolute, directly-loadable one, so the
+ * value stored in `company_logo_url` renders on the dashboard (a different
+ * origin than the job board). Two board realities this handles that a plain
+ * absolute-CDN URL (LinkedIn/Naukri) never needed:
+ *
+ *   • Next.js image optimizer: Wellfound and Foundit are Next.js apps whose
+ *     logos come through `…/_next/image?url=<encoded>&w=…&q=…`. That endpoint
+ *     is origin-gated — it 404s when requested from anywhere but the board
+ *     itself — so the stored URL must be UNWRAPPED to the underlying source.
+ *   • Relative URLs: a protocol-relative (`//host/x`) or root-relative (`/x`)
+ *     src can't load from the dashboard's origin, so it's resolved against the
+ *     page URL.
+ *
+ * An already-absolute CDN URL is returned unchanged (so this is safe for any
+ * parser). Returns `null` for empty/undefined input or an unparseable URL.
+ */
+export function resolveImageUrl(rawUrl: string | null | undefined, pageUrl: string): string | null {
+  const raw = rawUrl?.trim();
+  if (!raw) return null;
+
+  let candidate = raw;
+  const nextImage = /\/_next\/image\?[^"'\s]*[?&]?url=([^&"'\s]+)/.exec(candidate);
+  if (nextImage) {
+    try {
+      candidate = decodeURIComponent(nextImage[1]);
+    } catch {
+      // Malformed encoding — fall through with the un-decoded candidate.
+    }
+  }
+
+  try {
+    return new URL(candidate, pageUrl).href;
+  } catch {
+    return null;
+  }
+}

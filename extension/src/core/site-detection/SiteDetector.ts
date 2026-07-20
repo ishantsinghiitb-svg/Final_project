@@ -16,6 +16,8 @@ export class SiteDetector {
     if (this.matches(host, "naukri.com")) return SupportedSite.Naukri;
     if (this.matches(host, "indeed.com")) return SupportedSite.Indeed;
     if (this.matches(host, "unstop.com")) return SupportedSite.Unstop;
+    if (this.matches(host, "wellfound.com")) return SupportedSite.Wellfound;
+    if (this.matches(host, "foundit.in")) return SupportedSite.Foundit;
 
     return SupportedSite.Unsupported;
   }

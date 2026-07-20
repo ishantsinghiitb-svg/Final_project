@@ -57,15 +57,14 @@ export type Company = {
 // which silently broke the Jobs page source filter (`.in("source", [...])`
 // never matched real lowercase rows) — see SOURCE_OPTIONS in
 // features/jobs/constants and ManualImport's source detection.
-export type JobSource = "linkedin" | "internshala" | "naukri" | "indeed" | "unstop" | "Manual";
+//
+// "indeed"/"unstop" were removed (no working parser ever shipped for either).
+// "wellfound" and "foundit" each have a dedicated parser (Module 4B phase 2A),
+// so the Source filter offers them and they match real captured rows.
+export type JobSource = "linkedin" | "internshala" | "naukri" | "wellfound" | "foundit" | "Manual";
 
 export type EmploymentType =
-  | "Full-Time"
-  | "Part-Time"
-  | "Contract"
-  | "Internship"
-  | "Temporary"
-  | "Freelance";
+  "Full-Time" | "Part-Time" | "Contract" | "Internship" | "Temporary" | "Freelance";
 
 export type WorkMode = "Remote" | "Hybrid" | "Onsite";
 
@@ -169,13 +168,7 @@ export type GlobalJob = {
 
 // ── Application ──
 export type ApplicationStatus =
-  | "applied"
-  | "online_assessment"
-  | "interview"
-  | "offer"
-  | "accepted"
-  | "rejected"
-  | "withdrawn";
+  "applied" | "online_assessment" | "interview" | "offer" | "accepted" | "rejected" | "withdrawn";
 
 export type Application = {
   id: string;
@@ -270,11 +263,7 @@ export type ApplicationContact = {
 
 // ── Application Reminders ──
 export type ApplicationReminderType =
-  | "follow_up"
-  | "interview"
-  | "oa_deadline"
-  | "offer_expiry"
-  | "custom";
+  "follow_up" | "interview" | "oa_deadline" | "offer_expiry" | "custom";
 
 export type ApplicationReminder = {
   id: string;
@@ -346,12 +335,7 @@ export type ResumeVersion = {
 
 // ── Interview ──
 export type InterviewType =
-  | "Recruiter"
-  | "Technical"
-  | "Design"
-  | "Behavioral"
-  | "Onsite"
-  | "Offer chat";
+  "Recruiter" | "Technical" | "Design" | "Behavioral" | "Onsite" | "Offer chat";
 
 export type InterviewStatus = "scheduled" | "completed" | "cancelled";
 
@@ -373,13 +357,7 @@ export type Interview = {
 
 // ── Notification ──
 export type NotificationType =
-  | "interview_reminder"
-  | "match"
-  | "offer"
-  | "follow_up"
-  | "resume"
-  | "rejection"
-  | "system";
+  "interview_reminder" | "match" | "offer" | "follow_up" | "resume" | "rejection" | "system";
 
 export type NotificationPriority = "high" | "medium" | "low";
 
@@ -407,13 +385,7 @@ export type Analytics = {
 export type Activity = {
   id: string;
   user_id: string;
-  kind:
-  | "match"
-  | "interview"
-  | "offer"
-  | "saved"
-  | "resume"
-  | "reject";
+  kind: "match" | "interview" | "offer" | "saved" | "resume" | "reject";
   text: string;
   when: string;
   created_at: string;
@@ -500,4 +472,3 @@ export type PaginatedResult<T> = {
   pageSize: number;
   totalPages: number;
 };
-

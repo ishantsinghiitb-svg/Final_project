@@ -16,6 +16,7 @@ export async function setCurrentJobForTab(
   tabId: number,
   state: CurrentJobState | null,
 ): Promise<void> {
+  console.debug("[NextOffer][DEBUG] 3. Background received message?", true, "tabId=", tabId, "state=", state);
   const key = `${KEY_PREFIX}${tabId}`;
   if (state === null) {
     await chrome.storage.session.remove(key);

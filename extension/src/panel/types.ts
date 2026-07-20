@@ -18,13 +18,30 @@ export type PanelJob = {
  * `loading`/`not-logged-in` are system states; `ready`/`saved`/`tracked` are
  * the three CTA states the redesigned panel cycles through as the user
  * interacts with a job (see `sections/CtaRow.tsx`).
+ *
+ * `no-job`: the host HAS a dedicated parser, but the current page has no
+ * single job to save right now — a listing/search page, a company/profile
+ * page, or a job modal that's closed. The panel stays mounted showing an
+ * informational "no job detected" message instead of unmounting, so the
+ * extension never disappears while the user is on a supported site (it
+ * re-populates automatically the moment a job becomes active). Carries no
+ * `job`.
+ *
+ * `unsupported-hiring-page`: the page has hiring-page signals (see
+ * `core/site-detection/hiringPageSignals.ts`) but no dedicated parser exists
+ * for this host — informational only, never backed by an actual parse (the
+ * Generic Parser that used to fill this gap was decommissioned from
+ * production). No job/CTA data exists for it, so — unlike
+ * `ready`/`saved`/`tracked` — it carries no `job`.
  */
 export type PanelViewState =
   | { kind: "loading" }
   | { kind: "not-logged-in" }
   | { kind: "ready"; job: PanelJob }
   | { kind: "saved"; job: PanelJob }
-  | { kind: "tracked"; job: PanelJob };
+  | { kind: "tracked"; job: PanelJob }
+  | { kind: "no-job" }
+  | { kind: "unsupported-hiring-page" };
 
 /** Which in-flight action should disable buttons and swap in a loading label. */
 export type PendingAction = "save" | "applyAndTrack" | "track" | null;
