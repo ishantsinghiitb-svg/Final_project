@@ -64,16 +64,12 @@ export class JobService {
   }
 
   /**
-   * Returns similar jobs to a reference job.
-   * Similar = same role (fuzzy) OR same location, excluding the reference job.
+   * Returns jobs related to a reference job, ranked by relevance (shared title
+   * keywords, job function, experience level, employment type, industry, and
+   * shared skills). Excludes the reference job. Reuses global_jobs only.
    */
-  async getSimilarJobs(
-    jobId: string,
-    role: string,
-    location: string | undefined,
-    limit: number = 6,
-  ): Promise<GlobalJob[]> {
-    return jobRepo.findSimilarJobs(jobId, role, location, limit);
+  async getSimilarJobs(job: GlobalJob, limit: number = 6): Promise<GlobalJob[]> {
+    return jobRepo.findSimilarJobs(job, limit);
   }
 
   /**
@@ -93,12 +89,37 @@ export class JobService {
     return jobRepo.findSavedByUser(userId, pagination);
   }
 
+  /** Archived (soft-hidden) saved jobs — the "archive instead of delete" partition. */
+  async getArchivedSavedJobs(
+    userId: string,
+    pagination: PaginationParams = DEFAULT_PAGINATION,
+  ): Promise<PaginatedResult<GlobalJob>> {
+    return jobRepo.findArchivedSavedByUser(userId, pagination);
+  }
+
   async saveJob(userId: string, jobId: string, notes?: string): Promise<SavedJob> {
     return jobRepo.saveJob(userId, jobId, notes);
   }
 
   async unsaveJob(userId: string, jobId: string): Promise<void> {
     return jobRepo.unsaveJob(userId, jobId);
+  }
+
+  async archiveSavedJob(userId: string, jobId: string): Promise<void> {
+    return jobRepo.archiveSavedJob(userId, jobId);
+  }
+
+  async unarchiveSavedJob(userId: string, jobId: string): Promise<void> {
+    return jobRepo.unarchiveSavedJob(userId, jobId);
+  }
+
+  /**
+   * Whether the saved-job archive columns exist in this environment. The UI
+   * uses it to hide archive controls until the Module 5A migration is applied,
+   * so a pending migration never shows a control that can't work.
+   */
+  async isSavedArchiveEnabled(): Promise<boolean> {
+    return jobRepo.isArchiveEnabled();
   }
 
   async isSaved(userId: string, jobId: string): Promise<boolean> {

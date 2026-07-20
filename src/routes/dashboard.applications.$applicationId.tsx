@@ -15,6 +15,8 @@ import {
   CheckCircle2,
   ChevronDown,
   Flag,
+  Archive,
+  ArchiveRestore,
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -33,6 +35,8 @@ import {
   useUpdateApplicationStatus,
   useDeleteApplication,
   useUpdatePriority,
+  useArchiveApplication,
+  useRestoreApplication,
 } from "@/features/applications/hooks";
 import { useJob } from "@/features/jobs/hooks";
 import { useCompany } from "@/features/companies/hooks";
@@ -142,6 +146,8 @@ function ApplicationDetailPage() {
   const updateStatus = useUpdateApplicationStatus();
   const deleteApp = useDeleteApplication();
   const updatePriority = useUpdatePriority(applicationId);
+  const archiveApp = useArchiveApplication();
+  const restoreApp = useRestoreApplication();
 
   // Best-effort enrichment from the linked GlobalJob — never renders the
   // description, only structural fields the Application itself doesn't store.
@@ -161,6 +167,26 @@ function ApplicationDetailPage() {
     updatePriority.mutate(priority, {
       onError: () => toast.error("Failed to update priority."),
     });
+  };
+
+  const handleArchive = () => {
+    archiveApp.mutate(
+      { id: applicationId },
+      {
+        onSuccess: () => toast.success("Application archived."),
+        onError: () => toast.error("Failed to archive application."),
+      },
+    );
+  };
+
+  const handleRestore = () => {
+    restoreApp.mutate(
+      { id: applicationId },
+      {
+        onSuccess: () => toast.success("Application restored."),
+        onError: () => toast.error("Failed to restore application."),
+      },
+    );
   };
 
   const handleDelete = () => {
@@ -267,6 +293,12 @@ function ApplicationDetailPage() {
                 {app.company_name}
               </p>
               <div className="mt-2 flex flex-wrap items-center gap-2">
+                {app.archived && (
+                  <Chip tone="default">
+                    Archived
+                    {app.archived_at && ` ${format(parseISO(app.archived_at), "MMM d, yyyy")}`}
+                  </Chip>
+                )}
                 {app.source && (
                   <Chip tone="default">{formatSourceLabel(app.source)}</Chip>
                 )}
@@ -295,6 +327,23 @@ function ApplicationDetailPage() {
               onChange={handlePriorityChange}
               isPending={updatePriority.isPending}
             />
+            {app.archived ? (
+              <button
+                onClick={handleRestore}
+                disabled={restoreApp.isPending}
+                className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-black/5 bg-white px-3 text-sm font-medium text-[#2563EB] transition-colors hover:bg-[#2563EB]/5 disabled:opacity-60"
+              >
+                <ArchiveRestore className="h-4 w-4" /> Restore
+              </button>
+            ) : (
+              <button
+                onClick={handleArchive}
+                disabled={archiveApp.isPending}
+                className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-black/5 bg-white px-3 text-sm font-medium text-[oklch(0.4_0.02_265)] transition-colors hover:bg-black/[0.03] disabled:opacity-60"
+              >
+                <Archive className="h-4 w-4" /> Archive
+              </button>
+            )}
             <button
               onClick={handleDelete}
               disabled={deleteApp.isPending}

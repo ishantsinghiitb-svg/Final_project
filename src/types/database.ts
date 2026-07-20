@@ -152,6 +152,8 @@ export type SavedJobRow = {
   user_id: string;
   job_id: string;
   notes: string | null;
+  archived: boolean;
+  archived_at: string | null;
   created_at: string;
 };
 
@@ -435,6 +437,8 @@ export type SavedJobInsert = {
   user_id: string;            // NOT NULL
   job_id: string;             // NOT NULL
   notes?: string | null;
+  archived?: boolean;
+  archived_at?: string | null;
   created_at?: string;
 };
 

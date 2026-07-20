@@ -454,6 +454,9 @@ export type SavedJob = {
   user_id: string;
   job_id: string;
   notes: string | null;
+  /** Soft-archive state — archived saves are hidden from the active Saved list but never deleted. */
+  archived?: boolean;
+  archived_at?: string | null;
   created_at: string;
 };
 

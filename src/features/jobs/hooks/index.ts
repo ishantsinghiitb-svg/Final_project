@@ -31,6 +31,9 @@ export const jobKeys = {
   saved: (userId: string) => [...jobKeys.all, "saved", userId] as const,
   savedList: (userId: string, pagination: PaginationParams) =>
     [...jobKeys.saved(userId), "list", pagination] as const,
+  /** Archived (soft-hidden) saved jobs list */
+  archivedSavedList: (userId: string, pagination: PaginationParams) =>
+    [...jobKeys.saved(userId), "archived", pagination] as const,
   /** All saved job IDs (no pagination) — used for optimistic save toggling */
   savedIds: (userId: string) => [...jobKeys.saved(userId), "ids"] as const,
 };
@@ -87,7 +90,7 @@ export function useJobSkills(jobId: string | undefined) {
 export function useSimilarJobs(jobId: string | undefined, job: GlobalJob | null | undefined) {
   return useQuery({
     queryKey: jobKeys.similar(jobId ?? ""),
-    queryFn: () => jobService.getSimilarJobs(jobId!, job!.role, job!.location, 6),
+    queryFn: () => jobService.getSimilarJobs(job!, 6),
     enabled: Boolean(jobId) && Boolean(job),
     staleTime: 5 * 60 * 1_000,
   });
@@ -104,6 +107,35 @@ export function useSavedJobs(pagination: PaginationParams = DEFAULT_PAGINATION) 
     queryFn: () => jobService.getSavedJobs(user!.id, pagination),
     enabled: Boolean(user),
     staleTime: 2 * 60 * 1_000, // 2 minutes
+    placeholderData: keepPreviousData,
+  });
+}
+
+// ── useSavedArchiveEnabled ───────────────────────────────────────────────────
+// Feature flag for the saved-job archive (true once the Module 5A migration is
+// applied). Cached for the whole session — it can't change without a redeploy.
+// The Saved page hides its archive controls while this is false, so a pending
+// migration never surfaces a control that would fail.
+
+export function useSavedArchiveEnabled() {
+  return useQuery({
+    queryKey: ["jobs", "saved", "archive-enabled"],
+    queryFn: () => jobService.isSavedArchiveEnabled(),
+    staleTime: Infinity,
+  });
+}
+
+// ── useArchivedSavedJobs ─────────────────────────────────────────────────────
+// Paginated list of the current user's ARCHIVED saved jobs. Disabled until the
+// user is authenticated. Mirrors useSavedJobs but reads the archived partition.
+
+export function useArchivedSavedJobs(pagination: PaginationParams = DEFAULT_PAGINATION) {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: jobKeys.archivedSavedList(user?.id ?? "", pagination),
+    queryFn: () => jobService.getArchivedSavedJobs(user!.id, pagination),
+    enabled: Boolean(user),
+    staleTime: 2 * 60 * 1_000,
     placeholderData: keepPreviousData,
   });
 }
@@ -209,6 +241,46 @@ export function useUnsaveJob() {
 
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: jobKeys.saved(userId) });
+    },
+  });
+}
+
+// ── useArchiveSavedJob / useUnarchiveSavedJob ────────────────────────────────
+// Move a saved job between the active and archived partitions. Both invalidate
+// the whole saved-jobs subtree (active list, archived list, and ids) plus the
+// sidebar "Saved" count so every surface reflects the move. The bookmark row
+// itself is never deleted — archiving is distinct from unsave.
+
+export function useArchiveSavedJob() {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const userId = user?.id ?? "";
+
+  return useMutation({
+    mutationFn: ({ jobId }: { jobId: string }) => {
+      if (!user) throw new Error("Not authenticated");
+      return jobService.archiveSavedJob(user.id, jobId);
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: jobKeys.saved(userId) });
+      queryClient.invalidateQueries({ queryKey: ["sidebar", "saved-count", userId] });
+    },
+  });
+}
+
+export function useUnarchiveSavedJob() {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const userId = user?.id ?? "";
+
+  return useMutation({
+    mutationFn: ({ jobId }: { jobId: string }) => {
+      if (!user) throw new Error("Not authenticated");
+      return jobService.unarchiveSavedJob(user.id, jobId);
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: jobKeys.saved(userId) });
+      queryClient.invalidateQueries({ queryKey: ["sidebar", "saved-count", userId] });
     },
   });
 }

@@ -498,7 +498,7 @@ function JobsPage() {
               ref={searchInputRef}
               defaultValue={q}
               onChange={(e) => handleSearchChange(e.target.value)}
-              placeholder="Search role, company, description, skills…"
+              placeholder="Search role, company, location, type, skills…"
               className="flex-1 bg-transparent outline-none placeholder:text-[oklch(0.55_0.02_265)] text-sm"
             />
             {isFetching && (

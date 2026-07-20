@@ -9,6 +9,8 @@ import {
   AlertCircle,
   BookmarkCheck,
   ArrowUpRight,
+  Archive,
+  ArchiveRestore,
 } from "lucide-react";
 import {
   DashCard,
@@ -26,10 +28,15 @@ import {
 } from "@/components/dashboard/applications/ApplyPromptDialog";
 import {
   useSavedJobs,
+  useArchivedSavedJobs,
   useSavedJobIds,
   useSaveJob,
   useUnsaveJob,
+  useArchiveSavedJob,
+  useUnarchiveSavedJob,
+  useSavedArchiveEnabled,
 } from "@/features/jobs/hooks";
+import { toast } from "sonner";
 import { useTrackedJobIds } from "@/features/applications/hooks";
 import { getJobBadges } from "@/features/jobs/utils";
 import type { PaginationParams } from "@/types";
@@ -84,25 +91,43 @@ function formatSalary(job: GlobalJob): string {
 }
 
 function SavedPage() {
+  // Active vs. archived partition — "archive instead of delete" (decision #7).
+  const [view, setView] = useState<"active" | "archived">("active");
   const [pagination, setPagination] =
     useState<PaginationParams>(DEFAULT_PAGINATION);
 
-  const {
-    data: result,
-    isLoading,
-    isError,
-    error,
-    isFetching,
-  } = useSavedJobs(pagination);
+  const activeQuery = useSavedJobs(view === "active" ? pagination : DEFAULT_PAGINATION);
+  const archivedQuery = useArchivedSavedJobs(
+    view === "archived" ? pagination : DEFAULT_PAGINATION,
+  );
+
+  const { data: result, isLoading, isError, error, isFetching } =
+    view === "active" ? activeQuery : archivedQuery;
 
   const { data: savedIds = [] } = useSavedJobIds();
   const { data: trackedIds = [] } = useTrackedJobIds();
+  const { data: archiveEnabled = false } = useSavedArchiveEnabled();
   const unsaveJob = useUnsaveJob();
   const saveJob = useSaveJob();
+  const archiveJob = useArchiveSavedJob();
+  const unarchiveJob = useUnarchiveSavedJob();
 
+  // Archive controls only render once the migration is applied; force the
+  // active partition otherwise so the page behaves exactly as it did pre-archive.
+  const isArchivedView = archiveEnabled && view === "archived";
   const jobs = result?.data ?? [];
   const total = result?.total ?? 0;
   const totalPages = result?.totalPages ?? 1;
+  const activeTotal = activeQuery.data?.total ?? 0;
+  const archivedTotal = archivedQuery.data?.total ?? 0;
+
+  // Switching partition resets to page 1 so the shared pagination state never
+  // lands the user on a page that doesn't exist in the other partition.
+  const switchView = (next: "active" | "archived") => {
+    if (next === view) return;
+    setView(next);
+    setPagination(DEFAULT_PAGINATION);
+  };
 
   // Apply flow — same TrackApplicationModal/AlreadyTrackingModal used on the
   // Jobs board and Job Detail page, so "Apply" behaves identically everywhere.
@@ -138,9 +163,35 @@ function SavedPage() {
         title="Everything you bookmarked, in one place."
         subtitle="Jobs you saved from the extension, LinkedIn, Wellfound, or added manually — organized by when you saved them."
         actions={
-          isFetching ? (
-            <Loader2 className="h-4 w-4 animate-spin text-[oklch(0.5_0.02_265)]" />
-          ) : undefined
+          <div className="flex items-center gap-2">
+            {isFetching && (
+              <Loader2 className="h-4 w-4 animate-spin text-[oklch(0.5_0.02_265)]" />
+            )}
+            {archiveEnabled && (
+              <div className="inline-flex items-center rounded-lg border border-black/5 bg-white p-0.5 text-xs font-medium">
+                <button
+                  onClick={() => switchView("active")}
+                  className={
+                    view === "active"
+                      ? "rounded-md bg-[oklch(0.95_0.02_265)] px-3 py-1.5 text-[#2563EB]"
+                      : "rounded-md px-3 py-1.5 text-[oklch(0.45_0.02_265)] hover:bg-black/[0.03]"
+                  }
+                >
+                  Active{activeTotal > 0 ? ` (${activeTotal})` : ""}
+                </button>
+                <button
+                  onClick={() => switchView("archived")}
+                  className={
+                    view === "archived"
+                      ? "rounded-md bg-[oklch(0.95_0.02_265)] px-3 py-1.5 text-[#2563EB]"
+                      : "rounded-md px-3 py-1.5 text-[oklch(0.45_0.02_265)] hover:bg-black/[0.03]"
+                  }
+                >
+                  Archived{archivedTotal > 0 ? ` (${archivedTotal})` : ""}
+                </button>
+              </div>
+            )}
+          </div>
         }
       />
       </StickyPageHeader>
@@ -163,12 +214,20 @@ function SavedPage() {
           </p>
         </div>
       ) : jobs.length === 0 ? (
-        <EmptyState
-          icon={Bookmark}
-          title="Nothing saved yet"
-          body="Install the extension and hit the bookmark icon on any job posting to send it here."
-          cta={<DashButtonLink to="/features">Get the extension</DashButtonLink>}
-        />
+        isArchivedView ? (
+          <EmptyState
+            icon={Archive}
+            title="No archived jobs"
+            body="Jobs you archive from your saved list will be tucked away here — still saved, just out of the way."
+          />
+        ) : (
+          <EmptyState
+            icon={Bookmark}
+            title="Nothing saved yet"
+            body="Install the extension and hit the bookmark icon on any job posting to send it here."
+            cta={<DashButtonLink to="/features">Get the extension</DashButtonLink>}
+          />
+        )
       ) : (
         <div className="space-y-6">
           {/* Saved jobs grid */}
@@ -207,6 +266,39 @@ function SavedPage() {
                         )}
                         {job.experience_level && <Chip tone="purple">{job.experience_level}</Chip>}
                       </div>
+                      {/* Archive / Restore button — only once the migration lands */}
+                      {archiveEnabled && (
+                        <button
+                          onClick={() => {
+                            if (isArchivedView) {
+                              unarchiveJob.mutate(
+                                { jobId: job.id },
+                                {
+                                  onSuccess: () => toast.success("Restored to active."),
+                                  onError: () => toast.error("Failed to restore job."),
+                                },
+                              );
+                            } else {
+                              archiveJob.mutate(
+                                { jobId: job.id },
+                                {
+                                  onSuccess: () => toast.success("Job archived."),
+                                  onError: () => toast.error("Failed to archive job."),
+                                },
+                              );
+                            }
+                          }}
+                          aria-label={isArchivedView ? "Restore" : "Archive"}
+                          title={isArchivedView ? "Restore to active" : "Archive"}
+                          className="grid h-7 w-7 shrink-0 place-items-center rounded-lg border border-black/5 bg-white text-[oklch(0.4_0.02_265)] transition-colors hover:bg-black/[0.03]"
+                        >
+                          {isArchivedView ? (
+                            <ArchiveRestore className="h-3.5 w-3.5" />
+                          ) : (
+                            <Archive className="h-3.5 w-3.5" />
+                          )}
+                        </button>
+                      )}
                       {/* Unsave button */}
                       <button
                         onClick={() => {

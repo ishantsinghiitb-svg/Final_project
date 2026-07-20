@@ -24,7 +24,7 @@ import {
   RotateCcw,
   ExternalLink,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import {
   DashCard,
@@ -47,6 +47,7 @@ import {
   formatSourceLabel,
   logoToneForCompany,
   getJobBadges,
+  primaryRoleKeyword,
 } from "@/features/jobs/utils";
 import type { GlobalJob } from "@/types";
 import {
@@ -54,6 +55,7 @@ import {
   AlreadyTrackingModal,
   useTrackApplication,
 } from "@/components/dashboard/applications/ApplyPromptDialog";
+import { JobMetadataSections } from "@/components/dashboard/jobs/JobMetadataSections";
 
 // ── Route definition ──────────────────────────────────────────────────────────
 export const Route = createFileRoute("/dashboard/jobs/$jobId")({
@@ -112,18 +114,28 @@ function ShareButton({ jobId, role, company }: { jobId: string; role: string; co
 }
 
 // ── Similar job card ──────────────────────────────────────────────────────────
-function SimilarJobCard({ job }: { job: GlobalJob }) {
+function SimilarJobCard({
+  job,
+  isSaved,
+  onToggleSave,
+  onApply,
+}: {
+  job: GlobalJob;
+  isSaved: boolean;
+  onToggleSave: (job: GlobalJob) => void;
+  onApply: (job: GlobalJob) => void;
+}) {
   const tone = logoToneForCompany(job.company_name);
   const salary = formatSalary(job);
-  const posted = formatPostedTime(job);
 
   return (
-    <Link
-      to="/dashboard/jobs/$jobId"
-      params={{ jobId: job.id }}
-      className="block rounded-xl border border-black/5 bg-white p-4 hover:shadow-md transition-shadow group"
-    >
-      <div className="flex items-start gap-3">
+    <div className="flex flex-col rounded-xl border border-black/5 bg-white p-4 hover:shadow-md transition-shadow group">
+      {/* Clickable identity → detail page */}
+      <Link
+        to="/dashboard/jobs/$jobId"
+        params={{ jobId: job.id }}
+        className="flex items-start gap-3"
+      >
         <CompanyMark company={job.company_name} tone={tone} size={36} logoUrl={job.company_logo_url} />
         <div className="min-w-0 flex-1">
           <p className="text-sm font-semibold font-display truncate group-hover:text-[#2563EB] transition-colors">
@@ -131,32 +143,59 @@ function SimilarJobCard({ job }: { job: GlobalJob }) {
           </p>
           <p className="text-xs text-[oklch(0.5_0.02_265)] truncate">{job.company_name}</p>
         </div>
+      </Link>
+
+      <div className="mt-2 space-y-1 text-xs text-[oklch(0.5_0.02_265)]">
+        {job.location && (
+          <p className="flex items-center gap-1 truncate">
+            <MapPin className="h-3 w-3 shrink-0" /> {job.location}
+          </p>
+        )}
+        <div className="flex items-center justify-between gap-2">
+          {salary ? (
+            <span className="flex items-center gap-0.5">
+              <Banknote className="h-3 w-3" /> {salary}
+            </span>
+          ) : (
+            <span />
+          )}
+          <span className="flex items-center gap-0.5 text-[oklch(0.55_0.02_265)]">
+            <Globe className="h-3 w-3" /> {formatSourceLabel(job.source)}
+          </span>
+        </div>
       </div>
 
-      <div className="mt-2 flex flex-wrap items-center gap-1.5">
-        {job.work_mode && (
-          <Chip tone={job.work_mode === "Remote" ? "green" : job.work_mode === "Hybrid" ? "blue" : "default"}>
-            {job.work_mode}
-          </Chip>
-        )}
-        {job.experience_level && (
-          <Chip tone="default">{job.experience_level}</Chip>
+      {/* CTA row — Save + Apply, siblings of the identity Link */}
+      <div className="mt-3 flex items-center gap-2 border-t border-black/5 pt-3">
+        <button
+          onClick={() => onToggleSave(job)}
+          aria-label={isSaved ? "Unsave job" : "Save job"}
+          className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-black/5 bg-white text-[oklch(0.4_0.02_265)] hover:bg-black/[0.03] transition-colors"
+        >
+          {isSaved ? (
+            <BookmarkCheck className="h-4 w-4 text-[#2563EB]" />
+          ) : (
+            <Bookmark className="h-4 w-4" />
+          )}
+        </button>
+        {job.url ? (
+          <button
+            onClick={() => onApply(job)}
+            className="inline-flex flex-1 items-center justify-center gap-1 rounded-lg bg-gradient-to-br from-[#2563EB] to-[#7C3AED] px-3 py-1.5 text-xs font-medium text-white shadow-[0_2px_8px_-2px_rgba(37,99,235,0.5)] transition-transform hover:-translate-y-px"
+          >
+            Apply <ArrowUpRight className="h-3 w-3" />
+          </button>
+        ) : (
+          <Link
+            to="/dashboard/jobs/$jobId"
+            params={{ jobId: job.id }}
+            className="inline-flex flex-1 items-center justify-center gap-1 rounded-lg border border-black/5 bg-white px-3 py-1.5 text-xs font-medium text-[oklch(0.35_0.02_265)] transition-colors hover:bg-black/[0.03]"
+          >
+            View Job
+          </Link>
         )}
       </div>
-
-      <div className="mt-2 flex items-center justify-between">
-        {salary && (
-          <span className="flex items-center gap-0.5 text-xs text-[oklch(0.5_0.02_265)]">
-            <Banknote className="h-3 w-3" /> {salary}
-          </span>
-        )}
-        {posted && (
-          <span className="flex items-center gap-0.5 text-xs text-[oklch(0.55_0.02_265)]">
-            <Clock className="h-3 w-3" /> {posted}
-          </span>
-        )}
-      </div>
-    </Link>
+    </div>
   );
 }
 
@@ -195,6 +234,37 @@ function JobDetailPage() {
     handleCloseAlreadyTracking,
     isRemovingTracking,
   } = useTrackApplication(job);
+
+  // ── Similar-jobs Save + Apply flow ────────────────────────────────────────
+  // A second, independent apply flow so applying to a similar job behaves
+  // exactly like the primary Apply button without disturbing it.
+  const handleToggleSaveJob = useCallback(
+    (j: GlobalJob) => {
+      if (savedIds.includes(j.id)) unsaveJob.mutate({ jobId: j.id });
+      else saveJob.mutate({ jobId: j.id });
+    },
+    [savedIds, saveJob, unsaveJob],
+  );
+
+  const [selectedSimilar, setSelectedSimilar] = useState<GlobalJob | null>(null);
+  const {
+    isOpen: similarTrackOpen,
+    handleApplyClick: handleSimilarApplyClick,
+    handleTrackAndContinue: handleSimilarTrackAndContinue,
+    handleContinueWithoutTracking: handleSimilarContinueWithoutTracking,
+    handleCancel: handleSimilarCancel,
+    isPending: similarIsPending,
+    alreadyTrackedApplication: similarAlreadyTracked,
+    handleViewApplication: handleSimilarViewApplication,
+    handleOpenJobPage: handleSimilarOpenJobPage,
+    handleRemoveTracking: handleSimilarRemoveTracking,
+    handleCloseAlreadyTracking: handleSimilarCloseAlreadyTracking,
+    isRemovingTracking: similarIsRemovingTracking,
+  } = useTrackApplication(selectedSimilar, () => setSelectedSimilar(null));
+
+  useEffect(() => {
+    if (selectedSimilar) handleSimilarApplyClick();
+  }, [selectedSimilar, handleSimilarApplyClick]);
 
   // ── Loading ───────────────────────────────────────────────────────────────
   if (isLoading) {
@@ -518,6 +588,10 @@ function JobDetailPage() {
               </div>
             </DashCard>
           )}
+
+          {/* Extended Universal Job Model metadata — each section renders only
+              when the underlying global_jobs field holds data. */}
+          <JobMetadataSections job={job} />
         </div>
 
         {/* ── Right: Apply CTA + Copy URL ────────────────────────────── */}
@@ -575,13 +649,60 @@ function JobDetailPage() {
       {/* ── Similar jobs ─────────────────────────────────────────────── */}
       {similarJobs.length > 0 && (
         <div>
-          <SectionTitle>Similar Jobs</SectionTitle>
+          <SectionTitle
+            action={
+              // Continue exploring — seeds the Jobs board with the reference
+              // role's primary keyword so relevance search takes over. Same
+              // right-aligned "See all →" header-action pattern used elsewhere
+              // in the dashboard (see dashboard.index.tsx's "Up next" section).
+              primaryRoleKeyword(job.role) ? (
+                <Link
+                  to="/dashboard/jobs"
+                  search={{ q: primaryRoleKeyword(job.role) }}
+                  className="text-xs font-medium text-[#2563EB] hover:underline"
+                >
+                  View All →
+                </Link>
+              ) : undefined
+            }
+          >
+            Similar Jobs
+          </SectionTitle>
           <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {similarJobs.slice(0, 6).map((sj) => (
-              <SimilarJobCard key={sj.id} job={sj} />
+              <SimilarJobCard
+                key={sj.id}
+                job={sj}
+                isSaved={savedIds.includes(sj.id)}
+                onToggleSave={handleToggleSaveJob}
+                onApply={(j) => setSelectedSimilar(j)}
+              />
             ))}
           </div>
         </div>
+      )}
+
+      {/* Similar-jobs apply flow (separate from the primary Apply) */}
+      {selectedSimilar && (
+        <TrackApplicationModal
+          job={selectedSimilar}
+          open={similarTrackOpen}
+          isPending={similarIsPending}
+          onTrackAndContinue={handleSimilarTrackAndContinue}
+          onContinueWithoutTracking={handleSimilarContinueWithoutTracking}
+          onCancel={handleSimilarCancel}
+        />
+      )}
+      {similarAlreadyTracked && (
+        <AlreadyTrackingModal
+          application={similarAlreadyTracked}
+          open={Boolean(similarAlreadyTracked)}
+          isPending={similarIsRemovingTracking}
+          onViewApplication={handleSimilarViewApplication}
+          onOpenJobPage={handleSimilarOpenJobPage}
+          onRemoveTracking={handleSimilarRemoveTracking}
+          onClose={handleSimilarCloseAlreadyTracking}
+        />
       )}
     </div>
   );

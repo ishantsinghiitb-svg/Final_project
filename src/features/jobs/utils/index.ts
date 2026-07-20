@@ -269,3 +269,37 @@ export function roleMatchesAnyCategory(
 ): boolean {
   return categories.some((c) => roleMatchesCategory(role, c));
 }
+
+// ── Role keyword extraction (Similar Jobs) ────────────────────────────────────
+// Seniority / generic modifiers are dropped so the CORE role words dominate,
+// letting "Product Manager", "Senior Product Manager" and "Associate Product
+// Manager" all share the same signal ("product", "manager").
+const ROLE_STOPWORDS = new Set([
+  "and", "the", "for", "of", "to", "in", "at", "with", "or", "a", "an",
+  "senior", "junior", "lead", "staff", "principal", "sr", "jr",
+  "associate", "entry", "mid", "level", "intern", "internship", "trainee",
+]);
+
+/**
+ * Significant, de-duplicated lowercase keywords from a role/title (≥3 chars,
+ * stopwords removed). "Associate Product Manager" → ["product", "manager"].
+ */
+export function extractRoleKeywords(role: string | null | undefined): string[] {
+  if (!role) return [];
+  const seen = new Set<string>();
+  for (const raw of role.toLowerCase().split(/[^a-z0-9]+/)) {
+    if (raw.length >= 3 && !ROLE_STOPWORDS.has(raw)) seen.add(raw);
+  }
+  return [...seen];
+}
+
+/**
+ * The single most representative keyword of a role — used to seed the
+ * "View More Similar Jobs" search. Prefers the longest significant word
+ * (usually the domain noun, e.g. "product") over shorter generic ones.
+ */
+export function primaryRoleKeyword(role: string | null | undefined): string | undefined {
+  const words = extractRoleKeywords(role);
+  if (words.length === 0) return undefined;
+  return words.reduce((a, b) => (b.length > a.length ? b : a));
+}
