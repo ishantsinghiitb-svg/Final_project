@@ -62,7 +62,21 @@ if (!window.__nextofferContentScriptActive && (parser || listingActive)) {
     // observer over an infinite-scroll list). A detail page is a different URL
     // that reloads into the `runDetailCapture` branch below.
     void new ListingCapture(listingParser).start();
-    showNoJobState();
+
+    if (listingParser.detailOpensInline && parser) {
+      // …EXCEPT on sites where a job opens INLINE on this same SPA URL (Indeed:
+      // `/` + `?vjk=`). There the listing/detail dispatch is decided once at
+      // load, so a page that starts as a bare listing would stay latched here
+      // and never notice a job being opened without a reload. Running the
+      // detail pipeline too lets `runDetailCapture` detect the inline job (via
+      // its own navigation observer) and drive its Save/Track CTAs, while still
+      // showing "no job detected" whenever none is open — so the bare listing
+      // page reads correctly. The site's own parser is URL-gated, so this
+      // safely reports no job until a job key appears in the URL.
+      runDetailCapture(parser);
+    } else {
+      showNoJobState();
+    }
   } else if (parser) {
     // Detail-capable page (LinkedIn/Naukri/Wellfound/Foundit detail, etc.):
     // parse the active job and drive the panel; shows "no job detected" until

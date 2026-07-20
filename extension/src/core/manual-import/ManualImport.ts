@@ -1,4 +1,6 @@
+import { extractIndeedJobIdFromUrl } from "../parsers/indeed/indeed.shared";
 import { extractLinkedInJobIdFromUrl } from "../parsers/linkedin/externalId";
+import { extractUnstopJobId } from "../parsers/unstop/unstop.shared";
 import { SiteDetector } from "../site-detection/SiteDetector";
 import { SupportedSite } from "../site-detection/types";
 import { createUniversalJob, type JobSourceTag, type UniversalJob } from "../parsers/types";
@@ -46,13 +48,19 @@ export class ManualImport {
    * URL-only external-id extraction for recognized boards — the same
    * resolution a live parser would reach for `source_job_id`, minus anything
    * that needs a fetched DOM/JSON-LD (not available to a bare URL import).
-   * Only LinkedIn has an extraction rule today; unrecognized/other boards
-   * fall back to fingerprint-based dedup (see `DuplicateResolver`).
+   * LinkedIn, Indeed and Unstop expose their job key in the URL itself, so a
+   * bare-URL import resolves the SAME `source_job_id` a live capture would and
+   * the two dedupe to one row; unrecognized/other boards fall back to
+   * fingerprint-based dedup (see `DuplicateResolver`).
    */
   private static extractExternalId(source: JobSourceTag, url: string): string | null {
     switch (source) {
       case SupportedSite.LinkedIn:
         return extractLinkedInJobIdFromUrl(url);
+      case SupportedSite.Indeed:
+        return extractIndeedJobIdFromUrl(url);
+      case SupportedSite.Unstop:
+        return extractUnstopJobId(url);
       default:
         return null;
     }

@@ -68,18 +68,19 @@ export const EXPERIENCE_LEVEL_OPTIONS = [
 // correctly displaying "linkedin" (see JobRepository.findAll's `.in("source", …)`).
 //
 // One entry per platform that has a dedicated extension parser (LinkedIn,
-// Internshala, Naukri, Wellfound, Foundit), plus "Manual" for manual imports.
-// When a new dedicated parser ships, add its lowercase `SupportedSite` tag
-// here (and to `JobSource` in src/types) — that's the single place the Source
-// filter reads from. Indeed/Unstop never got a working parser and were
-// removed. The decommissioned Generic Parser's jobs use source "generic" and
-// are deliberately NOT offered here.
+// Internshala, Naukri, Wellfound, Foundit, Indeed, Unstop), plus "Manual" for
+// manual imports. When a new dedicated parser ships, add its lowercase
+// `SupportedSite` tag here (and to `JobSource` in src/types) — that's the single
+// place the Source filter reads from. The decommissioned Generic Parser's jobs
+// use source "generic" and are deliberately NOT offered here.
 export const SOURCE_OPTIONS = [
   { value: "linkedin", label: "LinkedIn" },
   { value: "internshala", label: "Internshala" },
   { value: "naukri", label: "Naukri" },
   { value: "wellfound", label: "Wellfound" },
   { value: "foundit", label: "Foundit" },
+  { value: "indeed", label: "Indeed" },
+  { value: "unstop", label: "Unstop" },
   { value: "Manual", label: "Manual" },
 ] as const;
 

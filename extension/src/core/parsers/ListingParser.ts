@@ -18,6 +18,19 @@ import type { ParserContext, UniversalJob } from "./types";
  */
 export interface ListingParser {
   /**
+   * Set by sites where the listing/search results and a single OPEN job share
+   * ONE SPA URL, so selecting a job opens it inline (no page reload) instead of
+   * navigating to a distinct detail URL — Indeed (`/` with `?vjk=`) is the case
+   * today. When true, the content script runs the site's detail parser ALONGSIDE
+   * listing capture, so an inline-opened job is still detected and gets its
+   * Save/Track CTAs; the detail pipeline shows "no job detected" whenever none
+   * is open, so the bare listing page still reads correctly. Left undefined by
+   * sites whose detail pages are reached by a full navigation (Internshala,
+   * Foundit), which keep the lightweight no-job panel on their listing pages.
+   */
+  readonly detailOpensInline?: boolean;
+
+  /**
    * True when the current page is a listing/search page this parser handles.
    * Lets the content script pick the listing flow over the single-job flow
    * without hardcoding any per-site URL logic itself (see

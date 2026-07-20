@@ -9,8 +9,8 @@ export const EXTENSION_DESCRIPTION = "Track and manage job applications directly
  * re-injection (see `service-worker.ts`) so the two lists can never drift
  * apart and silently stop covering the same tabs.
  *
- * Wellfound and Foundit have dedicated parsers (Module 4B phase 2A). The ATS
- * hosts below (Greenhouse through ApplyToJob) don't yet — `SiteDetector`
+ * Wellfound, Foundit, Indeed and Unstop have dedicated parsers (Module 4B
+ * phase 2A/2B). The ATS hosts below (Greenhouse through ApplyToJob) don't yet — `SiteDetector`
  * resolves them to `Unsupported`, so today the content script only shows the
  * "not supported yet" informational state there (`hasHiringPageSignals` +
  * `content/index.ts`), never a parse/sync — see `ParserRegistry`'s note on
@@ -31,6 +31,10 @@ export const JOB_BOARD_MATCH_PATTERNS = [
   "*://*.wellfound.com/*",
   "*://foundit.in/*",
   "*://*.foundit.in/*",
+  "*://indeed.com/*",
+  "*://*.indeed.com/*",
+  "*://unstop.com/*",
+  "*://*.unstop.com/*",
   "*://boards.greenhouse.io/*",
   "*://jobs.lever.co/*",
   "*://jobs.ashbyhq.com/*",

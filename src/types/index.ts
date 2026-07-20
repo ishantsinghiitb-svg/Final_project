@@ -58,10 +58,11 @@ export type Company = {
 // never matched real lowercase rows) — see SOURCE_OPTIONS in
 // features/jobs/constants and ManualImport's source detection.
 //
-// "indeed"/"unstop" were removed (no working parser ever shipped for either).
-// "wellfound" and "foundit" each have a dedicated parser (Module 4B phase 2A),
-// so the Source filter offers them and they match real captured rows.
-export type JobSource = "linkedin" | "internshala" | "naukri" | "wellfound" | "foundit" | "Manual";
+// "wellfound", "foundit", "indeed" and "unstop" each have a dedicated parser
+// (Module 4B phase 2A/2B), so the Source filter offers them and they match real
+// captured rows.
+export type JobSource =
+  "linkedin" | "internshala" | "naukri" | "wellfound" | "foundit" | "indeed" | "unstop" | "Manual";
 
 export type EmploymentType =
   "Full-Time" | "Part-Time" | "Contract" | "Internship" | "Temporary" | "Freelance";
