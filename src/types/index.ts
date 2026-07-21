@@ -460,6 +460,31 @@ export type SavedJob = {
   created_at: string;
 };
 
+// ── Collections (Module 5B) ──
+// User-defined groupings of Global Jobs. A job may belong to many collections
+// and does NOT need to be saved first — collections reference global_jobs
+// directly via collection_jobs, never duplicating job data.
+
+/** Preset color key — mirrors the existing Chip tone vocabulary (see primitives.tsx). */
+export type CollectionColor = "default" | "blue" | "purple" | "green" | "amber" | "rose";
+
+export type Collection = {
+  id: string;
+  user_id: string;
+  name: string;
+  description: string | null;
+  color: CollectionColor | null;
+  created_at: string;
+  updated_at: string;
+};
+
+/** A collection enriched with lightweight, cheaply-computed stats for the Collections grid. */
+export type CollectionWithStats = Collection & {
+  job_count: number;
+  /** Up to 3 most common sources among the collection's jobs, most-common first. */
+  top_sources: { source: string; count: number }[];
+};
+
 // ── Pagination ──
 export type PaginationParams = {
   /** 1-indexed current page */

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
-import { Activity, Bell, Bookmark, Briefcase, CalendarClock, ChevronRight, Command, FileText, ChartLine as LineChart, Search, Settings, StickyNote, Target, X, Menu, LogOut } from "lucide-react";
+import { Activity, Bell, Bookmark, Briefcase, CalendarClock, ChevronRight, Command, FileText, FolderKanban, ChartLine as LineChart, Search, Settings, StickyNote, Target, X, Menu, LogOut } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { CommandPalette } from "./CommandPalette";
@@ -25,6 +25,9 @@ const nav: NavItem[] = [
   { to: "/dashboard",               label: "Overview",      icon: Activity,      exact: true },
   { to: "/dashboard/jobs",          label: "Jobs",          icon: Briefcase,     badgeKey: "jobs" },
   { to: "/dashboard/saved",         label: "Saved",         icon: Bookmark,      badgeKey: "saved" },
+  // No badgeKey — per product decision, Collections never shows a job-count
+  // badge; if a badge is added later it should count Collections, not jobs.
+  { to: "/dashboard/collections",   label: "Collections",   icon: FolderKanban },
   { to: "/dashboard/applications",  label: "Applications",  icon: Target,        badgeKey: "applications" },
   { to: "/dashboard/resumes",       label: "Resumes",       icon: FileText },
   { to: "/dashboard/interviews",    label: "Interviews",    icon: CalendarClock },

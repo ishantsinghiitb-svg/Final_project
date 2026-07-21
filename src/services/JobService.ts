@@ -49,6 +49,11 @@ export class JobService {
     return jobRepo.findById(id);
   }
 
+  /** Batch fetch by id — used by CollectionService to hydrate a collection's job_ids. */
+  async getJobsByIds(ids: string[]): Promise<GlobalJob[]> {
+    return jobRepo.findByIds(ids);
+  }
+
   /**
    * Finds an existing GlobalJob matching a company + role (+ optional
    * location), so manual application creation can reuse it instead of

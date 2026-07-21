@@ -56,6 +56,7 @@ import {
   useTrackApplication,
 } from "@/components/dashboard/applications/ApplyPromptDialog";
 import { JobMetadataSections } from "@/components/dashboard/jobs/JobMetadataSections";
+import { AddToCollectionMenu } from "@/components/dashboard/collections/AddToCollectionMenu";
 
 // ── Route definition ──────────────────────────────────────────────────────────
 export const Route = createFileRoute("/dashboard/jobs/$jobId")({
@@ -427,6 +428,8 @@ function JobDetailPage() {
                 </>
               )}
             </button>
+
+            <AddToCollectionMenu job={job} label="Collections" />
 
             {job.url && (
               <button

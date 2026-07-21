@@ -38,6 +38,7 @@ import {
 } from "@/features/jobs/hooks";
 import { toast } from "sonner";
 import { useTrackedJobIds } from "@/features/applications/hooks";
+import { AddToCollectionMenu } from "@/components/dashboard/collections/AddToCollectionMenu";
 import { getJobBadges } from "@/features/jobs/utils";
 import type { PaginationParams } from "@/types";
 import { DEFAULT_PAGINATION } from "@/features/jobs/constants";
@@ -266,6 +267,10 @@ function SavedPage() {
                         )}
                         {job.experience_level && <Chip tone="purple">{job.experience_level}</Chip>}
                       </div>
+                      {/* Add to Collection — a job doesn't need to be saved first,
+                          but the Saved page is a natural place to organize what's
+                          already saved. */}
+                      <AddToCollectionMenu job={job} className="h-7 w-7" />
                       {/* Archive / Restore button — only once the migration lands */}
                       {archiveEnabled && (
                         <button

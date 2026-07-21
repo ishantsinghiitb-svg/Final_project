@@ -28,11 +28,14 @@ import { Route as DashboardResumesRouteImport } from './routes/dashboard.resumes
 import { Route as DashboardNotesRouteImport } from './routes/dashboard.notes'
 import { Route as DashboardJobsRouteImport } from './routes/dashboard.jobs'
 import { Route as DashboardInterviewsRouteImport } from './routes/dashboard.interviews'
+import { Route as DashboardCollectionsRouteImport } from './routes/dashboard.collections'
 import { Route as DashboardApplicationsRouteImport } from './routes/dashboard.applications'
 import { Route as DashboardAnalyticsRouteImport } from './routes/dashboard.analytics'
 import { Route as DashboardJobsIndexRouteImport } from './routes/dashboard.jobs.index'
+import { Route as DashboardCollectionsIndexRouteImport } from './routes/dashboard.collections.index'
 import { Route as DashboardApplicationsIndexRouteImport } from './routes/dashboard.applications.index'
 import { Route as DashboardJobsJobIdRouteImport } from './routes/dashboard.jobs.$jobId'
+import { Route as DashboardCollectionsCollectionIdRouteImport } from './routes/dashboard.collections.$collectionId'
 import { Route as DashboardApplicationsApplicationIdRouteImport } from './routes/dashboard.applications.$applicationId'
 
 const SupabaseStatusRoute = SupabaseStatusRouteImport.update({
@@ -130,6 +133,11 @@ const DashboardInterviewsRoute = DashboardInterviewsRouteImport.update({
   path: '/interviews',
   getParentRoute: () => DashboardRoute,
 } as any)
+const DashboardCollectionsRoute = DashboardCollectionsRouteImport.update({
+  id: '/collections',
+  path: '/collections',
+  getParentRoute: () => DashboardRoute,
+} as any)
 const DashboardApplicationsRoute = DashboardApplicationsRouteImport.update({
   id: '/applications',
   path: '/applications',
@@ -145,6 +153,12 @@ const DashboardJobsIndexRoute = DashboardJobsIndexRouteImport.update({
   path: '/',
   getParentRoute: () => DashboardJobsRoute,
 } as any)
+const DashboardCollectionsIndexRoute =
+  DashboardCollectionsIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => DashboardCollectionsRoute,
+  } as any)
 const DashboardApplicationsIndexRoute =
   DashboardApplicationsIndexRouteImport.update({
     id: '/',
@@ -156,6 +170,12 @@ const DashboardJobsJobIdRoute = DashboardJobsJobIdRouteImport.update({
   path: '/$jobId',
   getParentRoute: () => DashboardJobsRoute,
 } as any)
+const DashboardCollectionsCollectionIdRoute =
+  DashboardCollectionsCollectionIdRouteImport.update({
+    id: '/$collectionId',
+    path: '/$collectionId',
+    getParentRoute: () => DashboardCollectionsRoute,
+  } as any)
 const DashboardApplicationsApplicationIdRoute =
   DashboardApplicationsApplicationIdRouteImport.update({
     id: '/$applicationId',
@@ -178,6 +198,7 @@ export interface FileRoutesByFullPath {
   '/supabase-status': typeof SupabaseStatusRoute
   '/dashboard/analytics': typeof DashboardAnalyticsRoute
   '/dashboard/applications': typeof DashboardApplicationsRouteWithChildren
+  '/dashboard/collections': typeof DashboardCollectionsRouteWithChildren
   '/dashboard/interviews': typeof DashboardInterviewsRoute
   '/dashboard/jobs': typeof DashboardJobsRouteWithChildren
   '/dashboard/notes': typeof DashboardNotesRoute
@@ -186,8 +207,10 @@ export interface FileRoutesByFullPath {
   '/dashboard/settings': typeof DashboardSettingsRoute
   '/dashboard/': typeof DashboardIndexRoute
   '/dashboard/applications/$applicationId': typeof DashboardApplicationsApplicationIdRoute
+  '/dashboard/collections/$collectionId': typeof DashboardCollectionsCollectionIdRoute
   '/dashboard/jobs/$jobId': typeof DashboardJobsJobIdRoute
   '/dashboard/applications/': typeof DashboardApplicationsIndexRoute
+  '/dashboard/collections/': typeof DashboardCollectionsIndexRoute
   '/dashboard/jobs/': typeof DashboardJobsIndexRoute
 }
 export interface FileRoutesByTo {
@@ -210,8 +233,10 @@ export interface FileRoutesByTo {
   '/dashboard/settings': typeof DashboardSettingsRoute
   '/dashboard': typeof DashboardIndexRoute
   '/dashboard/applications/$applicationId': typeof DashboardApplicationsApplicationIdRoute
+  '/dashboard/collections/$collectionId': typeof DashboardCollectionsCollectionIdRoute
   '/dashboard/jobs/$jobId': typeof DashboardJobsJobIdRoute
   '/dashboard/applications': typeof DashboardApplicationsIndexRoute
+  '/dashboard/collections': typeof DashboardCollectionsIndexRoute
   '/dashboard/jobs': typeof DashboardJobsIndexRoute
 }
 export interface FileRoutesById {
@@ -230,6 +255,7 @@ export interface FileRoutesById {
   '/supabase-status': typeof SupabaseStatusRoute
   '/dashboard/analytics': typeof DashboardAnalyticsRoute
   '/dashboard/applications': typeof DashboardApplicationsRouteWithChildren
+  '/dashboard/collections': typeof DashboardCollectionsRouteWithChildren
   '/dashboard/interviews': typeof DashboardInterviewsRoute
   '/dashboard/jobs': typeof DashboardJobsRouteWithChildren
   '/dashboard/notes': typeof DashboardNotesRoute
@@ -238,8 +264,10 @@ export interface FileRoutesById {
   '/dashboard/settings': typeof DashboardSettingsRoute
   '/dashboard/': typeof DashboardIndexRoute
   '/dashboard/applications/$applicationId': typeof DashboardApplicationsApplicationIdRoute
+  '/dashboard/collections/$collectionId': typeof DashboardCollectionsCollectionIdRoute
   '/dashboard/jobs/$jobId': typeof DashboardJobsJobIdRoute
   '/dashboard/applications/': typeof DashboardApplicationsIndexRoute
+  '/dashboard/collections/': typeof DashboardCollectionsIndexRoute
   '/dashboard/jobs/': typeof DashboardJobsIndexRoute
 }
 export interface FileRouteTypes {
@@ -259,6 +287,7 @@ export interface FileRouteTypes {
     | '/supabase-status'
     | '/dashboard/analytics'
     | '/dashboard/applications'
+    | '/dashboard/collections'
     | '/dashboard/interviews'
     | '/dashboard/jobs'
     | '/dashboard/notes'
@@ -267,8 +296,10 @@ export interface FileRouteTypes {
     | '/dashboard/settings'
     | '/dashboard/'
     | '/dashboard/applications/$applicationId'
+    | '/dashboard/collections/$collectionId'
     | '/dashboard/jobs/$jobId'
     | '/dashboard/applications/'
+    | '/dashboard/collections/'
     | '/dashboard/jobs/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -291,8 +322,10 @@ export interface FileRouteTypes {
     | '/dashboard/settings'
     | '/dashboard'
     | '/dashboard/applications/$applicationId'
+    | '/dashboard/collections/$collectionId'
     | '/dashboard/jobs/$jobId'
     | '/dashboard/applications'
+    | '/dashboard/collections'
     | '/dashboard/jobs'
   id:
     | '__root__'
@@ -310,6 +343,7 @@ export interface FileRouteTypes {
     | '/supabase-status'
     | '/dashboard/analytics'
     | '/dashboard/applications'
+    | '/dashboard/collections'
     | '/dashboard/interviews'
     | '/dashboard/jobs'
     | '/dashboard/notes'
@@ -318,8 +352,10 @@ export interface FileRouteTypes {
     | '/dashboard/settings'
     | '/dashboard/'
     | '/dashboard/applications/$applicationId'
+    | '/dashboard/collections/$collectionId'
     | '/dashboard/jobs/$jobId'
     | '/dashboard/applications/'
+    | '/dashboard/collections/'
     | '/dashboard/jobs/'
   fileRoutesById: FileRoutesById
 }
@@ -473,6 +509,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardInterviewsRouteImport
       parentRoute: typeof DashboardRoute
     }
+    '/dashboard/collections': {
+      id: '/dashboard/collections'
+      path: '/collections'
+      fullPath: '/dashboard/collections'
+      preLoaderRoute: typeof DashboardCollectionsRouteImport
+      parentRoute: typeof DashboardRoute
+    }
     '/dashboard/applications': {
       id: '/dashboard/applications'
       path: '/applications'
@@ -494,6 +537,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardJobsIndexRouteImport
       parentRoute: typeof DashboardJobsRoute
     }
+    '/dashboard/collections/': {
+      id: '/dashboard/collections/'
+      path: '/'
+      fullPath: '/dashboard/collections/'
+      preLoaderRoute: typeof DashboardCollectionsIndexRouteImport
+      parentRoute: typeof DashboardCollectionsRoute
+    }
     '/dashboard/applications/': {
       id: '/dashboard/applications/'
       path: '/'
@@ -507,6 +557,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/dashboard/jobs/$jobId'
       preLoaderRoute: typeof DashboardJobsJobIdRouteImport
       parentRoute: typeof DashboardJobsRoute
+    }
+    '/dashboard/collections/$collectionId': {
+      id: '/dashboard/collections/$collectionId'
+      path: '/$collectionId'
+      fullPath: '/dashboard/collections/$collectionId'
+      preLoaderRoute: typeof DashboardCollectionsCollectionIdRouteImport
+      parentRoute: typeof DashboardCollectionsRoute
     }
     '/dashboard/applications/$applicationId': {
       id: '/dashboard/applications/$applicationId'
@@ -534,6 +591,19 @@ const DashboardApplicationsRouteWithChildren =
     DashboardApplicationsRouteChildren,
   )
 
+interface DashboardCollectionsRouteChildren {
+  DashboardCollectionsCollectionIdRoute: typeof DashboardCollectionsCollectionIdRoute
+  DashboardCollectionsIndexRoute: typeof DashboardCollectionsIndexRoute
+}
+
+const DashboardCollectionsRouteChildren: DashboardCollectionsRouteChildren = {
+  DashboardCollectionsCollectionIdRoute: DashboardCollectionsCollectionIdRoute,
+  DashboardCollectionsIndexRoute: DashboardCollectionsIndexRoute,
+}
+
+const DashboardCollectionsRouteWithChildren =
+  DashboardCollectionsRoute._addFileChildren(DashboardCollectionsRouteChildren)
+
 interface DashboardJobsRouteChildren {
   DashboardJobsJobIdRoute: typeof DashboardJobsJobIdRoute
   DashboardJobsIndexRoute: typeof DashboardJobsIndexRoute
@@ -551,6 +621,7 @@ const DashboardJobsRouteWithChildren = DashboardJobsRoute._addFileChildren(
 interface DashboardRouteChildren {
   DashboardAnalyticsRoute: typeof DashboardAnalyticsRoute
   DashboardApplicationsRoute: typeof DashboardApplicationsRouteWithChildren
+  DashboardCollectionsRoute: typeof DashboardCollectionsRouteWithChildren
   DashboardInterviewsRoute: typeof DashboardInterviewsRoute
   DashboardJobsRoute: typeof DashboardJobsRouteWithChildren
   DashboardNotesRoute: typeof DashboardNotesRoute
@@ -563,6 +634,7 @@ interface DashboardRouteChildren {
 const DashboardRouteChildren: DashboardRouteChildren = {
   DashboardAnalyticsRoute: DashboardAnalyticsRoute,
   DashboardApplicationsRoute: DashboardApplicationsRouteWithChildren,
+  DashboardCollectionsRoute: DashboardCollectionsRouteWithChildren,
   DashboardInterviewsRoute: DashboardInterviewsRoute,
   DashboardJobsRoute: DashboardJobsRouteWithChildren,
   DashboardNotesRoute: DashboardNotesRoute,

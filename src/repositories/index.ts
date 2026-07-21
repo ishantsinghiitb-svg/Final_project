@@ -1,5 +1,6 @@
 export { ProfileRepository } from "./ProfileRepository";
 export { JobRepository } from "./JobRepository";
+export { CollectionRepository } from "./CollectionRepository";
 export { CompanyRepository } from "./CompanyRepository";
 export { ApplicationRepository } from "./ApplicationRepository";
 export { ResumeRepository } from "./ResumeRepository";

@@ -1,6 +1,7 @@
 export { ProfileService } from "./ProfileService";
 export { AuthService } from "./AuthService";
 export { JobService, jobService } from "./JobService";
+export { CollectionService, collectionService } from "./CollectionService";
 export { ApplicationService, applicationService } from "./ApplicationService";
 export { CompanyService, companyService } from "./CompanyService";
 export { ResumeService, resumeService } from "./ResumeService";

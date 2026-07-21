@@ -157,6 +157,25 @@ export type SavedJobRow = {
   created_at: string;
 };
 
+// ── Module 5B: Collections ──
+export type CollectionRow = {
+  id: string;
+  user_id: string;
+  name: string;
+  description: string | null;
+  color: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type CollectionJobRow = {
+  id: string;
+  collection_id: string;
+  job_id: string;
+  user_id: string;
+  added_at: string;
+};
+
 export type ApplicationRow = {
   id: string;
   user_id: string;
@@ -440,6 +459,25 @@ export type SavedJobInsert = {
   archived?: boolean;
   archived_at?: string | null;
   created_at?: string;
+};
+
+// ── Module 5B: Collections ──
+export type CollectionInsert = {
+  id?: string;
+  user_id: string;            // NOT NULL
+  name: string;                // NOT NULL
+  description?: string | null;
+  color?: string | null;
+  created_at?: string;
+  updated_at?: string;
+};
+
+export type CollectionJobInsert = {
+  id?: string;
+  collection_id: string;       // NOT NULL
+  job_id: string;              // NOT NULL
+  user_id: string;             // NOT NULL
+  added_at?: string;
 };
 
 export type ApplicationInsert = {
@@ -757,6 +795,18 @@ export type Database = {
         Row: SavedJobRow;
         Insert: SavedJobInsert;
         Update: Partial<SavedJobRow>;
+        Relationships: TableRelationship[];
+      };
+      collections: {
+        Row: CollectionRow;
+        Insert: CollectionInsert;
+        Update: Partial<CollectionRow>;
+        Relationships: TableRelationship[];
+      };
+      collection_jobs: {
+        Row: CollectionJobRow;
+        Insert: CollectionJobInsert;
+        Update: Partial<CollectionJobRow>;
         Relationships: TableRelationship[];
       };
       applications: {

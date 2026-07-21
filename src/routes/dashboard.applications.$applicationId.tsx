@@ -30,6 +30,7 @@ import { ApplicationAttachments } from "@/components/dashboard/applications/Appl
 import { ApplicationResumeCard } from "@/components/dashboard/applications/ApplicationResumeCard";
 import { ApplicationCoverLetterCard } from "@/components/dashboard/applications/ApplicationCoverLetterCard";
 import { PrioritySelector } from "@/components/dashboard/applications/PrioritySelector";
+import { AddToCollectionMenu } from "@/components/dashboard/collections/AddToCollectionMenu";
 import {
   useApplication,
   useUpdateApplicationStatus,
@@ -327,6 +328,10 @@ function ApplicationDetailPage() {
               onChange={handlePriorityChange}
               isPending={updatePriority.isPending}
             />
+            {/* Reuses the same AddToCollectionMenu as Jobs/Saved/Job Detail —
+                only rendered once the linked GlobalJob has loaded, since
+                collections reference global_jobs, not applications. */}
+            {job && <AddToCollectionMenu job={job} label="Collections" />}
             {app.archived ? (
               <button
                 onClick={handleRestore}

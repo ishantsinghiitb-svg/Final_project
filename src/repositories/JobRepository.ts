@@ -72,6 +72,23 @@ export class JobRepository {
     return data as GlobalJob | null;
   }
 
+  /**
+   * Fetches full GlobalJob rows for a batch of ids in one query (order not
+   * guaranteed — callers that need a specific order, e.g. a collection's
+   * added_at order, re-sort the result). Added for Module 5B (Collections) so
+   * CollectionRepository can hydrate its (collection_id → job_id) membership
+   * rows into full jobs without duplicating JOB_COLUMNS in a second repository.
+   */
+  async findByIds(ids: string[]): Promise<GlobalJob[]> {
+    if (ids.length === 0) return [];
+    const { data, error } = await supabase
+      .from("global_jobs")
+      .select(JOB_COLUMNS)
+      .in("id", ids);
+    if (error) throw error;
+    return (data ?? []) as unknown as GlobalJob[];
+  }
+
   // ── Write (manual import) ───────────────────────────────────────────────────
 
   /**
