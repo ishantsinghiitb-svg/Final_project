@@ -324,6 +324,16 @@ export type Resume = {
   times_used?: number;
   created_at: string;
   updated_at: string;
+  // ── Module 6A: resume management metadata ──
+  is_default?: boolean;
+  file_name?: string | null;
+  file_hash?: string | null;
+  file_size_bytes?: number | null;
+  mime_type?: string | null;
+  page_count?: number | null;
+  parse_status?: string;
+  parse_error?: string | null;
+  parsed_at?: string | null;
 };
 
 export type ResumeVersion = {

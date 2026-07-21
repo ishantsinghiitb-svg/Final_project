@@ -5,6 +5,7 @@ export { CollectionService, collectionService } from "./CollectionService";
 export { ApplicationService, applicationService } from "./ApplicationService";
 export { CompanyService, companyService } from "./CompanyService";
 export { ResumeService, resumeService } from "./ResumeService";
+export { aiClient } from "./ai/AIClient";
 export { CoverLetterService, coverLetterService } from "./CoverLetterService";
 export { ContactService, contactService } from "./ContactService";
 export { ReminderService, reminderService } from "./ReminderService";

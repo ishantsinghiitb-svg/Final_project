@@ -1,117 +1,298 @@
+import { useEffect, useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { FileText, Plus, Sparkles, Download, Copy, Wand as Wand2 } from "lucide-react";
-import { DashCard, PageHeader, Chip, SectionTitle, StickyPageHeader } from "@/components/dashboard/primitives";
+import {
+  FileText,
+  Plus,
+  Loader2,
+  Mail,
+  Phone,
+  MapPin,
+  Linkedin,
+  Github,
+  Globe,
+  Sparkles,
+  Star,
+  Gauge,
+} from "lucide-react";
+import {
+  DashCard,
+  PageHeader,
+  EmptyState,
+  StickyPageHeader,
+  SectionTitle,
+} from "@/components/dashboard/primitives";
 import { DashButton } from "@/components/dashboard/DashButton";
-import { resumes } from "@/lib/dashboard-data";
+import { ResumeUploadDialog } from "@/components/dashboard/resumes/ResumeUploadDialog";
+import { ResumeListItem } from "@/components/dashboard/resumes/ResumeListItem";
+import { ResumeHealthPanel } from "@/components/dashboard/resumes/ResumeHealthPanel";
+import { useResumes, useResumeParsed, useReparseResume } from "@/features/resumes/hooks";
+import { useAICredits } from "@/features/ai/hooks";
+import type { ResumeParsed } from "@/repositories/ResumeParsedRepository";
 
 export const Route = createFileRoute("/dashboard/resumes")({
-  head: () => ({ meta: [{ title: "Resumes — NextOffer" }, { name: "robots", content: "noindex" }] }),
+  head: () => ({
+    meta: [{ title: "Resumes — NextOffer" }, { name: "robots", content: "noindex" }],
+  }),
   component: ResumesPage,
 });
 
 function ResumesPage() {
+  const { data: resumes = [], isLoading } = useResumes();
+  const { data: credits } = useAICredits();
+  const [uploadOpen, setUploadOpen] = useState(false);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  // Keep a valid selection: prefer the default resume, else the first.
+  useEffect(() => {
+    if (resumes.length === 0) {
+      setSelectedId(null);
+      return;
+    }
+    if (!selectedId || !resumes.some((r) => r.id === selectedId)) {
+      const preferred = resumes.find((r) => r.is_default) ?? resumes[0];
+      setSelectedId(preferred.id);
+    }
+  }, [resumes, selectedId]);
+
+  const selected = useMemo(
+    () => resumes.find((r) => r.id === selectedId) ?? null,
+    [resumes, selectedId],
+  );
+  const defaultResume = useMemo(() => resumes.find((r) => r.is_default) ?? null, [resumes]);
+
+  // Fetched once here and passed down — avoids the detail panel re-subscribing
+  // to the same query key with its own hook call.
+  const { data: parsed } = useResumeParsed(selected?.id);
+  const reparse = useReparseResume();
+
   return (
     <>
       <StickyPageHeader>
-      <PageHeader
-        eyebrow="Resumes"
-        title="Tailor your resume for every role, in seconds."
-        subtitle="Keep one master resume, then let AI create job-specific versions that speak the recruiter's language."
-        actions={
-          <>
-            <button className="hidden items-center gap-1.5 rounded-lg border border-black/5 bg-white px-3 py-2 text-sm font-medium hover:bg-black/[0.03] sm:inline-flex">
-              <Wand2 className="h-4 w-4" /> Tailor with AI
-            </button>
-            <DashButton>
+        <PageHeader
+          eyebrow="Resumes"
+          title="Manage your resumes."
+          subtitle="Upload, organize, and keep a default resume. Every upload is parsed and gets an instant health report."
+          actions={
+            <DashButton onClick={() => setUploadOpen(true)}>
               <Plus className="h-4 w-4" /> Upload resume
             </DashButton>
-          </>
-        }
-      />
+          }
+        />
       </StickyPageHeader>
 
-      <div className="grid gap-4 lg:grid-cols-[1fr_1.2fr]">
-        <div className="space-y-3">
-          {resumes.map((r) => (
-            <DashCard key={r.id} className="hover:shadow-md">
-              <div className="flex items-start gap-3">
-                <div className="grid h-10 w-10 place-items-center rounded-lg bg-gradient-to-br from-[#2563EB]/10 to-[#7C3AED]/15 text-[#2563EB]">
-                  <FileText className="h-5 w-5" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="font-display font-semibold">{r.name}</p>
-                  {r.tailoredFor && (
-                    <p className="text-xs text-[oklch(0.5_0.02_265)]">Tailored for {r.tailoredFor}</p>
-                  )}
-                  <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-[oklch(0.5_0.02_265)]">
-                    <Chip tone={r.score >= 90 ? "green" : "blue"}>ATS {r.score}</Chip>
-                    <span>{r.keywords} keywords matched</span>
-                    <span>·</span>
-                    <span>Used {r.used}×</span>
-                    <span>·</span>
-                    <span>{r.updated}</span>
-                  </div>
-                </div>
-                <div className="flex flex-col gap-1">
-                  <button aria-label="Download" className="grid h-8 w-8 place-items-center rounded-lg border border-black/5 bg-white hover:bg-black/[0.03]">
-                    <Download className="h-3.5 w-3.5" />
-                  </button>
-                  <button aria-label="Duplicate" className="grid h-8 w-8 place-items-center rounded-lg border border-black/5 bg-white hover:bg-black/[0.03]">
-                    <Copy className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-              </div>
-            </DashCard>
-          ))}
+      {isLoading ? (
+        <div className="grid place-items-center py-20 text-[oklch(0.5_0.02_265)]">
+          <Loader2 className="h-6 w-6 animate-spin" />
         </div>
+      ) : resumes.length === 0 ? (
+        <EmptyState
+          icon={FileText}
+          title="No resumes yet"
+          body="Upload a PDF resume to get started. We extract the text and generate a deterministic health report — no AI credits used."
+          cta={
+            <DashButton onClick={() => setUploadOpen(true)}>
+              <Plus className="h-4 w-4" /> Upload resume
+            </DashButton>
+          }
+        />
+      ) : (
+        <>
+          <div className="grid gap-4 md:grid-cols-4">
+            <StatTile icon={FileText} label="Total resumes" value={String(resumes.length)} />
+            <StatTile
+              icon={Star}
+              label="Default resume"
+              value={defaultResume?.name ?? "None set"}
+              tone="text-[#B45309]"
+            />
+            <StatTile
+              icon={Sparkles}
+              label="AI credits"
+              value={credits ? `${credits.creditsRemaining} / ${credits.creditsTotal}` : "—"}
+              tone={credits?.featureLocked ? "text-[#E11D48]" : "text-[#7C3AED]"}
+            />
+            <StatTile
+              icon={Gauge}
+              label={selected ? `Health · ${selected.name}` : "Health score"}
+              value={parsed?.health ? `${parsed.health.score}/100` : "—"}
+              tone="text-[#2563EB]"
+            />
+          </div>
 
-        <div className="space-y-4">
-          <DashCard>
-            <SectionTitle>Live ATS score — Linear · Sr. Product Designer</SectionTitle>
-            <div className="mt-3 flex items-end gap-3">
-              <p className="font-display text-5xl font-semibold">92<span className="text-lg text-[oklch(0.5_0.02_265)]">%</span></p>
-              <span className="pb-2 text-xs font-medium text-[#16A34A]">Strong fit — you're ready to apply.</span>
-            </div>
-            <div className="mt-5 space-y-3 text-xs">
-              {[
-                { l: "Skills coverage", v: 94, c: "from-[#2563EB] to-[#3B82F6]" },
-                { l: "Experience match", v: 88, c: "from-[#7C3AED] to-[#A855F7]" },
-                { l: "Keyword density", v: 76, c: "from-[#F59E0B] to-[#EAB308]" },
-                { l: "Format clarity", v: 96, c: "from-[#22C55E] to-[#16A34A]" },
-              ].map((r) => (
-                <div key={r.l}>
-                  <div className="flex justify-between text-[oklch(0.5_0.02_265)]">
-                    <span>{r.l}</span>
-                    <span className="font-medium text-[oklch(0.3_0.02_265)]">{r.v}%</span>
-                  </div>
-                  <div className="mt-1 h-1.5 rounded-full bg-black/5">
-                    <div className={`h-full rounded-full bg-gradient-to-r ${r.c}`} style={{ width: `${r.v}%` }} />
-                  </div>
-                </div>
+          <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
+            <div className="space-y-3">
+              {resumes.map((r) => (
+                <ResumeListItem
+                  key={r.id}
+                  resume={r}
+                  selected={r.id === selectedId}
+                  onSelect={() => setSelectedId(r.id)}
+                />
               ))}
             </div>
-          </DashCard>
 
-          <DashCard className="bg-gradient-to-br from-[#2563EB]/[0.05] to-[#7C3AED]/[0.08]">
-            <SectionTitle>AI suggestions</SectionTitle>
-            <ul className="mt-3 space-y-2 text-sm">
-              {[
-                "Lead your summary with your design-systems work — Linear cares deeply about primitives.",
-                "Reframe the Ramp project to emphasize cross-functional partnership with engineering.",
-                "Add 'motion' and 'interaction' as skills — they're 4 of Linear's 10 job description keywords.",
-              ].map((s, i) => (
-                <li key={i} className="flex items-start gap-2">
-                  <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#7C3AED]" />
-                  <span>{s}</span>
-                </li>
-              ))}
-            </ul>
-            <button className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-white px-3 py-2 text-xs font-medium shadow-sm">
-              <Wand2 className="h-3.5 w-3.5 text-[#7C3AED]" /> Apply all suggestions
-            </button>
-          </DashCard>
-        </div>
-      </div>
+            <div className="space-y-4">
+              {selected && (
+                <ResumeDetail
+                  resumeId={selected.id}
+                  parseStatus={selected.parse_status}
+                  parseError={selected.parse_error}
+                  parsed={parsed ?? null}
+                  onReparse={() => reparse.mutate(selected.id)}
+                  reparsing={reparse.isPending}
+                />
+              )}
+            </div>
+          </div>
+        </>
+      )}
+
+      <ResumeUploadDialog open={uploadOpen} onOpenChange={setUploadOpen} />
     </>
+  );
+}
+
+function StatTile({
+  icon: Icon,
+  label,
+  value,
+  tone = "text-[#2563EB]",
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  value: string;
+  tone?: string;
+}) {
+  return (
+    <DashCard className="flex items-center gap-3">
+      <div
+        className={`grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-black/[0.03] ${tone}`}
+      >
+        <Icon className="h-4 w-4" />
+      </div>
+      <div className="min-w-0">
+        <p className="truncate text-xs text-[oklch(0.5_0.02_265)]">{label}</p>
+        <p className="truncate font-display text-lg font-semibold text-[oklch(0.2_0.02_265)]">
+          {value}
+        </p>
+      </div>
+    </DashCard>
+  );
+}
+
+function ResumeDetail({
+  resumeId,
+  parseStatus,
+  parseError,
+  parsed,
+  onReparse,
+  reparsing,
+}: {
+  resumeId: string;
+  parseStatus: string | undefined;
+  parseError: string | null | undefined;
+  parsed: ResumeParsed | null;
+  onReparse: () => void;
+  reparsing: boolean;
+}) {
+  const contact = parsed?.structured?.contact;
+
+  return (
+    <>
+      <DashCard key={resumeId}>
+        <ResumeHealthPanel
+          health={parsed?.health ?? null}
+          parseStatus={parseStatus}
+          parseError={parseError}
+          onReparse={onReparse}
+          reparsing={reparsing}
+        />
+      </DashCard>
+
+      {contact && (
+        <DashCard>
+          <SectionTitle>Extracted details</SectionTitle>
+          <div className="mt-3 space-y-2 text-sm text-[oklch(0.3_0.02_265)]">
+            {contact.name && (
+              <p className="font-display text-base font-semibold text-[oklch(0.2_0.02_265)]">
+                {contact.name}
+              </p>
+            )}
+            {contact.email && <Detail icon={Mail} value={contact.email} />}
+            {contact.phone && <Detail icon={Phone} value={contact.phone} />}
+            {contact.location && <Detail icon={MapPin} value={contact.location} />}
+            {contact.linkedin && (
+              <Detail icon={Linkedin} value={contact.linkedin} href={contact.linkedin} />
+            )}
+            {contact.github && (
+              <Detail icon={Github} value={contact.github} href={contact.github} />
+            )}
+            {contact.portfolio && (
+              <Detail icon={Globe} value={contact.portfolio} href={contact.portfolio} />
+            )}
+            {!contact.email &&
+              !contact.phone &&
+              !contact.location &&
+              !contact.linkedin &&
+              !contact.github &&
+              !contact.portfolio && (
+                <p className="text-[oklch(0.55_0.02_265)]">No contact details detected.</p>
+              )}
+          </div>
+
+          {parsed?.structured && parsed.structured.skills.length > 0 && (
+            <div className="mt-4">
+              <p className="text-[11px] uppercase tracking-[0.14em] text-[oklch(0.5_0.02_265)]">
+                Skills
+              </p>
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {parsed.structured.skills.slice(0, 30).map((s) => (
+                  <span
+                    key={s}
+                    className="rounded-full bg-black/[0.04] px-2 py-0.5 text-[11px] text-[oklch(0.35_0.02_265)]"
+                  >
+                    {s}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {parsed?.structured && parsed.structured.detectedSections.length > 0 && (
+            <div className="mt-4">
+              <p className="text-[11px] uppercase tracking-[0.14em] text-[oklch(0.5_0.02_265)]">
+                Detected sections
+              </p>
+              <p className="mt-1 text-sm capitalize text-[oklch(0.4_0.02_265)]">
+                {parsed.structured.detectedSections.join(" · ")}
+              </p>
+            </div>
+          )}
+        </DashCard>
+      )}
+    </>
+  );
+}
+
+function Detail({
+  icon: Icon,
+  value,
+  href,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  value: string;
+  href?: string;
+}) {
+  const content = (
+    <p className="flex items-center gap-2 truncate">
+      <Icon className="h-3.5 w-3.5 shrink-0 text-[oklch(0.5_0.02_265)]" />
+      <span className="truncate">{value}</span>
+    </p>
+  );
+  if (!href) return content;
+  return (
+    <a href={href} target="_blank" rel="noopener noreferrer" className="block hover:text-[#2563EB]">
+      {content}
+    </a>
   );
 }

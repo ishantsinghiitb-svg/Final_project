@@ -36,7 +36,7 @@ export function ApplicationResumeCard({ applicationId, resumeId }: Props) {
     uploadResume.mutate(
       { name: nameFromFile(file), file },
       {
-        onSuccess: (resume) => {
+        onSuccess: ({ resume }) => {
           setResume.mutate(resume.id, {
             onSuccess: () => toast.success("Resume attached."),
             onError: () => toast.error("Failed to attach resume."),
@@ -62,14 +62,22 @@ export function ApplicationResumeCard({ applicationId, resumeId }: Props) {
 
   return (
     <div>
-      <input ref={fileInputRef} type="file" accept=".pdf,.docx" onChange={handleFilePicked} className="hidden" />
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".pdf,.docx"
+        onChange={handleFilePicked}
+        className="hidden"
+      />
 
       {attached ? (
         <div>
           <div className="flex items-start gap-2.5 rounded-xl bg-[oklch(0.97_0.01_265)] p-3">
             <FileText className="mt-0.5 h-4 w-4 shrink-0 text-[#2563EB]" />
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium text-[oklch(0.2_0.02_265)]">{attached.name}</p>
+              <p className="truncate text-sm font-medium text-[oklch(0.2_0.02_265)]">
+                {attached.name}
+              </p>
               <p className="mt-0.5 text-[11px] text-[oklch(0.55_0.02_265)]">
                 {latestVersion && `Version ${latestVersion.version_number} · `}
                 Updated {format(parseISO(attached.updated_at), "MMM d, yyyy")}
@@ -83,7 +91,11 @@ export function ApplicationResumeCard({ applicationId, resumeId }: Props) {
                 disabled={viewLoading}
                 className="inline-flex items-center gap-1.5 rounded-lg border border-black/10 bg-white px-2.5 py-1.5 text-xs font-medium text-[oklch(0.3_0.02_265)] hover:bg-black/[0.03] transition-colors disabled:opacity-60"
               >
-                {viewLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <ExternalLink className="h-3 w-3" />}
+                {viewLoading ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : (
+                  <ExternalLink className="h-3 w-3" />
+                )}
                 View
               </button>
             )}
@@ -92,7 +104,11 @@ export function ApplicationResumeCard({ applicationId, resumeId }: Props) {
               disabled={isBusy}
               className="inline-flex items-center gap-1.5 rounded-lg border border-black/10 bg-white px-2.5 py-1.5 text-xs font-medium text-[oklch(0.3_0.02_265)] hover:bg-black/[0.03] transition-colors disabled:opacity-60"
             >
-              {isBusy ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+              {isBusy ? (
+                <Loader2 className="h-3 w-3 animate-spin" />
+              ) : (
+                <RefreshCw className="h-3 w-3" />
+              )}
               Replace
             </button>
           </div>

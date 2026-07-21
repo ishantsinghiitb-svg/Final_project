@@ -4,6 +4,7 @@ export { CollectionRepository } from "./CollectionRepository";
 export { CompanyRepository } from "./CompanyRepository";
 export { ApplicationRepository } from "./ApplicationRepository";
 export { ResumeRepository } from "./ResumeRepository";
+export { ResumeParsedRepository } from "./ResumeParsedRepository";
 export { CoverLetterRepository } from "./CoverLetterRepository";
 export { ContactRepository } from "./ContactRepository";
 export { ReminderRepository } from "./ReminderRepository";

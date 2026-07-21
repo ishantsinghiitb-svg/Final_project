@@ -146,3 +146,26 @@ export const ACCEPTED_RESUME_TYPES = [
   "application/pdf",
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
 ];
+
+// ── Resume Parsing (Module 6A) ──
+// Deterministic parse pipeline status, stored on resumes.parse_status.
+// Parsing is independent of the AI engine (PDF → Parser → StructuredResume).
+export const RESUME_PARSE_STATUS = {
+  PENDING: "pending",
+  PROCESSING: "processing",
+  READY: "ready",
+  FAILED: "failed",
+} as const;
+
+export type ResumeParseStatus = (typeof RESUME_PARSE_STATUS)[keyof typeof RESUME_PARSE_STATUS];
+
+export const RESUME_PARSE_STATUS_LABELS: Record<string, string> = {
+  pending: "Pending",
+  processing: "Processing",
+  ready: "Ready",
+  failed: "Failed",
+};
+
+// 6A parses PDF deterministically (unpdf, Cloudflare-Worker friendly). DOCX
+// text extraction is deferred; DOCX uploads are stored but not yet parsed.
+export const PARSEABLE_RESUME_TYPES = ["application/pdf"];

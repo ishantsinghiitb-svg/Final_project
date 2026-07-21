@@ -239,6 +239,146 @@ export type ResumeRow = {
   times_used: number;
   created_at: string;
   updated_at: string;
+  // ── Module 6A additive columns ──
+  is_default: boolean;
+  file_name: string | null;
+  file_hash: string | null;
+  file_size_bytes: number | null;
+  mime_type: string | null;
+  page_count: number | null;
+  parse_status: string;
+  parse_error: string | null;
+  parsed_at: string | null;
+};
+
+// ── Module 6A: AI Foundation & Resume Management ──
+export type ResumeParsedRow = {
+  resume_id: string;
+  user_id: string;
+  resume_file_hash: string | null;
+  parser_version: string;
+  raw_text: string | null;
+  structured: Json | null;
+  health: Json | null;
+  parse_confidence: number | null;
+  char_count: number | null;
+  token_estimate: number | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type ResumeParsedInsert = {
+  resume_id: string;
+  user_id: string;
+  resume_file_hash?: string | null;
+  parser_version: string;
+  raw_text?: string | null;
+  structured?: Json | null;
+  health?: Json | null;
+  parse_confidence?: number | null;
+  char_count?: number | null;
+  token_estimate?: number | null;
+  created_at?: string;
+  updated_at?: string;
+};
+
+export type AiRunRow = {
+  id: string;
+  user_id: string;
+  capability: string;
+  provider: string;
+  model: string;
+  prompt_id: string | null;
+  prompt_version: string | null;
+  analysis_version: string | null;
+  input_hash: string | null;
+  job_hash: string | null;
+  resume_id: string | null;
+  job_id: string | null;
+  status: string;
+  cache_hit: boolean;
+  credits_charged: number;
+  input_tokens: number | null;
+  output_tokens: number | null;
+  latency_ms: number | null;
+  cost_usd: number | null;
+  error_code: string | null;
+  error_message: string | null;
+  created_at: string;
+};
+
+export type AiRunInsert = {
+  id?: string;
+  user_id: string;
+  capability: string;
+  provider: string;
+  model: string;
+  prompt_id?: string | null;
+  prompt_version?: string | null;
+  analysis_version?: string | null;
+  input_hash?: string | null;
+  job_hash?: string | null;
+  resume_id?: string | null;
+  job_id?: string | null;
+  status?: string;
+  cache_hit?: boolean;
+  credits_charged?: number;
+  input_tokens?: number | null;
+  output_tokens?: number | null;
+  latency_ms?: number | null;
+  cost_usd?: number | null;
+  error_code?: string | null;
+  error_message?: string | null;
+  created_at?: string;
+};
+
+export type AiCacheRow = {
+  id: string;
+  user_id: string;
+  capability: string;
+  input_hash: string;
+  prompt_version: string;
+  analysis_version: string;
+  model: string;
+  job_hash: string | null;
+  response: Json;
+  expires_at: string | null;
+  created_at: string;
+};
+
+export type AiCacheInsert = {
+  id?: string;
+  user_id: string;
+  capability: string;
+  input_hash: string;
+  prompt_version: string;
+  analysis_version: string;
+  model: string;
+  job_hash?: string | null;
+  response: Json;
+  expires_at?: string | null;
+  created_at?: string;
+};
+
+export type UserAiUsageRow = {
+  user_id: string;
+  plan: string;
+  credits_total: number;
+  credits_used: number;
+  credits_remaining: number;
+  last_used_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type UserAiUsageInsert = {
+  user_id: string;
+  plan?: string;
+  credits_total?: number;
+  credits_used?: number;
+  last_used_at?: string | null;
+  created_at?: string;
+  updated_at?: string;
 };
 
 export type ResumeVersionRow = {
@@ -343,7 +483,7 @@ export type MessageRow = {
 //   - NOT NULL without DEFAULT          → required
 
 export type ProfileInsert = {
-  id: string;                  // Required — must match auth.users.id; no DEFAULT
+  id: string; // Required — must match auth.users.id; no DEFAULT
   full_name?: string | null;
   email?: string | null;
   location?: string | null;
@@ -355,7 +495,7 @@ export type ProfileInsert = {
 
 export type CompanyInsert = {
   id?: string;
-  name: string;               // NOT NULL, no DEFAULT
+  name: string; // NOT NULL, no DEFAULT
   website?: string | null;
   logo_url?: string | null;
   industry?: string | null;
@@ -368,12 +508,12 @@ export type CompanyInsert = {
 export type GlobalJobInsert = {
   id?: string;
   company_id?: string | null;
-  company_name: string;       // NOT NULL, no DEFAULT
-  role: string;               // NOT NULL, no DEFAULT
+  company_name: string; // NOT NULL, no DEFAULT
+  role: string; // NOT NULL, no DEFAULT
   role_id?: string | null;
   location_id?: string | null;
   location?: string | null;
-  remote?: boolean;           // NOT NULL DEFAULT false
+  remote?: boolean; // NOT NULL DEFAULT false
   work_mode?: string | null;
   employment_type?: string | null;
   experience_level?: string | null;
@@ -382,7 +522,7 @@ export type GlobalJobInsert = {
   salary_currency?: string | null;
   description?: string | null;
   url?: string | null;
-  source?: string;            // NOT NULL DEFAULT 'Manual'
+  source?: string; // NOT NULL DEFAULT 'Manual'
   posted_at?: string | null;
   source_job_id?: string | null;
   fingerprint?: string | null;
@@ -461,8 +601,8 @@ export type JobSkillInsert = {
 
 export type SavedJobInsert = {
   id?: string;
-  user_id: string;            // NOT NULL
-  job_id: string;             // NOT NULL
+  user_id: string; // NOT NULL
+  job_id: string; // NOT NULL
   notes?: string | null;
   archived?: boolean;
   archived_at?: string | null;
@@ -472,8 +612,8 @@ export type SavedJobInsert = {
 // ── Module 5B: Collections ──
 export type CollectionInsert = {
   id?: string;
-  user_id: string;            // NOT NULL
-  name: string;                // NOT NULL
+  user_id: string; // NOT NULL
+  name: string; // NOT NULL
   description?: string | null;
   color?: string | null;
   created_at?: string;
@@ -482,17 +622,17 @@ export type CollectionInsert = {
 
 export type CollectionJobInsert = {
   id?: string;
-  collection_id: string;       // NOT NULL
-  job_id: string;              // NOT NULL
-  user_id: string;             // NOT NULL
+  collection_id: string; // NOT NULL
+  job_id: string; // NOT NULL
+  user_id: string; // NOT NULL
   added_at?: string;
 };
 
 // ── Module 5C: Recently Viewed ──
 export type RecentlyViewedInsert = {
   id?: string;
-  user_id: string;             // NOT NULL
-  job_id: string;              // NOT NULL
+  user_id: string; // NOT NULL
+  job_id: string; // NOT NULL
   viewed_at?: string;
 };
 
@@ -654,6 +794,16 @@ export type ResumeInsert = {
   times_used?: number;
   created_at?: string;
   updated_at?: string;
+  // ── Module 6A additive columns ──
+  is_default?: boolean;
+  file_name?: string | null;
+  file_hash?: string | null;
+  file_size_bytes?: number | null;
+  mime_type?: string | null;
+  page_count?: number | null;
+  parse_status?: string;
+  parse_error?: string | null;
+  parsed_at?: string | null;
 };
 
 export type ResumeVersionInsert = {
@@ -731,7 +881,7 @@ export type CommunityInsert = {
   name: string;
   description?: string | null;
   member_count?: number;
-  creator_id: string;         // Required by RLS policy: auth.uid() = creator_id
+  creator_id: string; // Required by RLS policy: auth.uid() = creator_id
   created_at?: string;
   updated_at?: string;
 };
@@ -885,6 +1035,30 @@ export type Database = {
         Update: Partial<ResumeAtsScoreRow>;
         Relationships: TableRelationship[];
       };
+      resume_parsed: {
+        Row: ResumeParsedRow;
+        Insert: ResumeParsedInsert;
+        Update: Partial<ResumeParsedRow>;
+        Relationships: TableRelationship[];
+      };
+      ai_runs: {
+        Row: AiRunRow;
+        Insert: AiRunInsert;
+        Update: Partial<AiRunRow>;
+        Relationships: TableRelationship[];
+      };
+      ai_cache: {
+        Row: AiCacheRow;
+        Insert: AiCacheInsert;
+        Update: Partial<AiCacheRow>;
+        Relationships: TableRelationship[];
+      };
+      user_ai_usage: {
+        Row: UserAiUsageRow;
+        Insert: UserAiUsageInsert;
+        Update: Partial<UserAiUsageRow>;
+        Relationships: TableRelationship[];
+      };
       interviews: {
         Row: InterviewRow;
         Insert: InterviewInsert;
@@ -942,6 +1116,19 @@ export type Database = {
       upsert_global_job: {
         Args: { payload: Json };
         Returns: GlobalJobRow;
+      };
+      // ── Module 6A ──
+      ensure_ai_usage: {
+        Args: { p_credits_total: number };
+        Returns: UserAiUsageRow;
+      };
+      consume_ai_credit: {
+        Args: { p_capability: string; p_cost: number; p_credits_total: number };
+        Returns: Json;
+      };
+      set_default_resume: {
+        Args: { p_resume_id: string };
+        Returns: undefined;
       };
     };
   };
