@@ -54,6 +54,16 @@ export class JobService {
     return jobRepo.findByIds(ids);
   }
 
+  // ── Recently Viewed ──────────────────────────────────────────────────────
+
+  async recordJobView(userId: string, jobId: string): Promise<void> {
+    return jobRepo.recordJobView(userId, jobId);
+  }
+
+  async getRecentlyViewedJobs(userId: string, limit: number = 10): Promise<GlobalJob[]> {
+    return jobRepo.findRecentlyViewed(userId, limit);
+  }
+
   /**
    * Finds an existing GlobalJob matching a company + role (+ optional
    * location), so manual application creation can reuse it instead of

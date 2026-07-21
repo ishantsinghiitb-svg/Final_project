@@ -46,10 +46,22 @@ export function CollectionStats({ jobs }: Props) {
   const employmentTypes = tally(jobs.map((j) => j.employment_type));
 
   return (
-    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-      <StatTile icon={Briefcase} label="Total Jobs">
-        <p className="font-display text-2xl font-semibold text-[oklch(0.2_0.02_265)]">{jobs.length}</p>
-      </StatTile>
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      {/* Total Jobs mirrors ApplicationMetricsRow's stat-tile convention
+          exactly (number+label left, icon top-right) since it's the same
+          single-number shape — the other three tiles are chip lists, a
+          different shape, and use the local StatTile wrapper instead. */}
+      <DashCard>
+        <div className="flex items-start justify-between">
+          <div>
+            <p className="text-xs text-[oklch(0.5_0.02_265)]">Total Jobs</p>
+            <p className="mt-1 font-display text-2xl font-semibold tabular-nums text-[oklch(0.2_0.02_265)]">
+              {jobs.length}
+            </p>
+          </div>
+          <Briefcase className="h-4 w-4 text-[#2563EB]" />
+        </div>
+      </DashCard>
 
       <StatTile icon={Globe} label="Sources">
         {sources.length === 0 ? (

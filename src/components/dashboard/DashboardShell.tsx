@@ -18,16 +18,16 @@ type NavItem = {
   icon: React.ComponentType<{ className?: string }>;
   exact?: boolean;
   /** badge key — looked up dynamically from useSidebarCounts() */
-  badgeKey?: "jobs" | "saved" | "applications";
+  badgeKey?: "jobs" | "saved" | "applications" | "collections";
 };
 
 const nav: NavItem[] = [
   { to: "/dashboard",               label: "Overview",      icon: Activity,      exact: true },
   { to: "/dashboard/jobs",          label: "Jobs",          icon: Briefcase,     badgeKey: "jobs" },
   { to: "/dashboard/saved",         label: "Saved",         icon: Bookmark,      badgeKey: "saved" },
-  // No badgeKey — per product decision, Collections never shows a job-count
-  // badge; if a badge is added later it should count Collections, not jobs.
-  { to: "/dashboard/collections",   label: "Collections",   icon: FolderKanban },
+  // Badge shows the number of COLLECTIONS the user has, not the jobs inside
+  // them — same badgeKey-driven mechanism as Jobs/Saved/Applications.
+  { to: "/dashboard/collections",   label: "Collections",   icon: FolderKanban, badgeKey: "collections" },
   { to: "/dashboard/applications",  label: "Applications",  icon: Target,        badgeKey: "applications" },
   { to: "/dashboard/resumes",       label: "Resumes",       icon: FileText },
   { to: "/dashboard/interviews",    label: "Interviews",    icon: CalendarClock },

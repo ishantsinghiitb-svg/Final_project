@@ -85,6 +85,10 @@ export type JobSortOption =
   | "company_az"
   | "company_za";
 
+/** Which dataset the Jobs page is displaying — the global board, or just the
+ *  jobs the user has recently opened. Defaults to "all" when absent. */
+export type JobsView = "all" | "recent";
+
 // ── URL Search params shape ──────────────────────────────────────────────────
 // Used by TanStack Router's validateSearch to type the URL search params.
 
@@ -104,4 +108,5 @@ export type JobsSearchParams = {
   sort?: JobSortOption;
   page?: number;
   pageSize?: number;
+  view?: JobsView;
 };

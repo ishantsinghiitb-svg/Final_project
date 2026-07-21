@@ -1,5 +1,7 @@
 import type { GlobalJob } from "@/types";
-import type { RoleCategory } from "@/features/jobs/types";
+import type { JobFilters, JobSortOption, RoleCategory } from "@/features/jobs/types";
+import { normalizeFilters } from "@/features/jobs/filter-maps";
+import { SORT_OPTIONS } from "@/features/jobs/constants";
 
 // ── Stable gradient palette for company initials ──────────────────────────
 // Deterministic from the first character of the company name so the colour
@@ -302,4 +304,106 @@ export function primaryRoleKeyword(role: string | null | undefined): string | un
   const words = extractRoleKeywords(role);
   if (words.length === 0) return undefined;
   return words.reduce((a, b) => (b.length > a.length ? b : a));
+}
+
+// ── Client-side filter/sort (Recently Viewed tab) ────────────────────────────
+// The Jobs board's normal "All Jobs" search/filter/sort runs server-side
+// (JobRepository.findAll / findAllRanked) against the full, paginated global
+// catalog — that stays untouched. The "Recently Viewed" tab is a small (≤10),
+// already-fully-fetched dataset, so its search/filter/sort applies the SAME
+// filter fields and sort vocabulary in memory instead of round-tripping to
+// the server. Reuses the same normalizeFilters()/roleMatchesAnyCategory()
+// primitives the server-side path is built on, so "the exact same filters"
+// holds even though execution differs — no separate/divergent filtering rules.
+
+/** Does this job match every active filter field, mirroring JobRepository.findAll's semantics one field at a time. */
+export function jobMatchesFilters(job: GlobalJob, filters: JobFilters): boolean {
+  if (filters.q?.trim()) {
+    const needle = filters.q.trim().toLowerCase();
+    const haystack = [
+      job.role,
+      job.company_name,
+      job.location,
+      job.city,
+      job.employment_type,
+      job.description,
+      job.job_function,
+      job.industry,
+    ]
+      .filter(Boolean)
+      .join(" \n ")
+      .toLowerCase();
+    if (!haystack.includes(needle)) return false;
+  }
+
+  if (filters.company && !job.company_name?.toLowerCase().includes(filters.company.toLowerCase())) {
+    return false;
+  }
+
+  if (filters.location && !job.location?.toLowerCase().includes(filters.location.toLowerCase())) {
+    return false;
+  }
+
+  if (filters.remote !== undefined && Boolean(job.remote) !== filters.remote) {
+    return false;
+  }
+
+  // workMode/employmentType/experienceLevel arrive as lowercase URL slugs —
+  // normalizeFilters() maps them to the Title-Case values global_jobs stores,
+  // same as the server-side path.
+  const normalized = normalizeFilters(filters);
+
+  if (normalized.workMode) {
+    const modes = Array.isArray(normalized.workMode) ? normalized.workMode : [normalized.workMode];
+    if (!job.work_mode || !modes.includes(job.work_mode)) return false;
+  }
+
+  if (normalized.employmentType) {
+    const types = Array.isArray(normalized.employmentType) ? normalized.employmentType : [normalized.employmentType];
+    if (!job.employment_type || !types.includes(job.employment_type)) return false;
+  }
+
+  if (normalized.experienceLevel) {
+    const levels = Array.isArray(normalized.experienceLevel) ? normalized.experienceLevel : [normalized.experienceLevel];
+    if (!job.experience_level || !levels.includes(job.experience_level)) return false;
+  }
+
+  if (filters.roleCategory) {
+    const categories = Array.isArray(filters.roleCategory) ? filters.roleCategory : [filters.roleCategory];
+    if (!roleMatchesAnyCategory(job.role, categories)) return false;
+  }
+
+  if (filters.source) {
+    const sources = Array.isArray(filters.source) ? filters.source : [filters.source];
+    if (!sources.includes(job.source)) return false;
+  }
+
+  if (filters.salaryMin !== undefined && (job.salary_min == null || job.salary_min < filters.salaryMin)) {
+    return false;
+  }
+
+  if (filters.salaryMax !== undefined && (job.salary_max == null || job.salary_max > filters.salaryMax)) {
+    return false;
+  }
+
+  if (filters.postedAfter && (!job.posted_at || job.posted_at < filters.postedAfter)) {
+    return false;
+  }
+
+  return true;
+}
+
+/** Same field/direction semantics as the Jobs board's Sort control (SORT_OPTIONS), applied client-side. */
+export function compareJobsBy(a: GlobalJob, b: GlobalJob, sortOption: JobSortOption): number {
+  const { field, direction } = SORT_OPTIONS[sortOption].sort;
+  const dir = direction === "asc" ? 1 : -1;
+  const av = a[field as keyof GlobalJob];
+  const bv = b[field as keyof GlobalJob];
+
+  if (av == null && bv == null) return 0;
+  if (av == null) return 1; // nulls last regardless of direction
+  if (bv == null) return -1;
+
+  if (typeof av === "number" && typeof bv === "number") return (av - bv) * dir;
+  return String(av).localeCompare(String(bv)) * dir;
 }

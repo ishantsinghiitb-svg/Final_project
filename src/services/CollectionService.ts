@@ -21,6 +21,11 @@ export class CollectionService {
     return collectionRepo.findById(id);
   }
 
+  /** Number of collections the user owns — powers the sidebar "Collections" badge. */
+  async countCollections(userId: string): Promise<number> {
+    return collectionRepo.countByUser(userId);
+  }
+
   async createCollection(
     userId: string,
     name: string,
@@ -66,8 +71,9 @@ export class CollectionService {
     return ids.map((id) => byId.get(id)).filter((j): j is GlobalJob => j !== undefined);
   }
 
-  async getCollectionIdsForJob(userId: string, jobId: string): Promise<string[]> {
-    return collectionRepo.findCollectionIdsForJob(userId, jobId);
+  /** All (job_id → collection_ids[]) memberships for the user, in one batched call. */
+  async getAllMembershipsForUser(userId: string): Promise<Record<string, string[]>> {
+    return collectionRepo.findAllMembershipsForUser(userId);
   }
 
   async addJobToCollection(userId: string, collectionId: string, jobId: string): Promise<void> {

@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   useCollections,
-  useJobCollectionIds,
+  useAllJobCollectionMemberships,
   useAddJobToCollection,
   useRemoveJobFromCollection,
   useCreateCollection,
@@ -51,7 +51,11 @@ export function AddToCollectionMenu({ job, className, label }: Props) {
   const [submitting, setSubmitting] = useState(false);
 
   const { data: collections = [], isLoading } = useCollections();
-  const { data: memberIds = [], isLoading: membershipLoading } = useJobCollectionIds(job.id);
+  // Batched across every card on the page (Module 5C perf fix) — one request
+  // for the whole page instead of one per job card; this component just
+  // derives its own job's slice from the shared map.
+  const { data: allMemberships = {}, isLoading: membershipLoading } = useAllJobCollectionMemberships();
+  const memberIds = allMemberships[job.id] ?? [];
   const addJob = useAddJobToCollection();
   const removeJob = useRemoveJobFromCollection();
   const createCollection = useCreateCollection();

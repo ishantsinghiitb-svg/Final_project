@@ -89,6 +89,49 @@ export class JobRepository {
     return (data ?? []) as unknown as GlobalJob[];
   }
 
+  // ── Recently Viewed (Module 5C) ──────────────────────────────────────────────
+  // Lives here (not a separate repository) — a lightweight per-user/per-job
+  // fact, the same shape as saved_jobs, not a new top-level entity.
+
+  /**
+   * Records that a user opened a job's detail page. Upserts on the
+   * (user_id, job_id) unique constraint, so re-opening a job already in the
+   * list only bumps `viewed_at` — never creates a duplicate row.
+   */
+  async recordJobView(userId: string, jobId: string): Promise<void> {
+    const { error } = await supabase
+      .from("recently_viewed")
+      .upsert(
+        { user_id: userId, job_id: jobId, viewed_at: new Date().toISOString() },
+        { onConflict: "user_id,job_id" },
+      );
+    if (error) throw error;
+  }
+
+  /**
+   * The user's most recently viewed jobs, most-recent first, capped at 10.
+   * The cap is read-side only (ORDER BY + LIMIT) — history beyond 10 rows is
+   * kept, never deleted (product decision). Two-step fetch (ids, then
+   * findByIds) mirrors CollectionService.getCollectionJobs — findByIds
+   * doesn't guarantee row order, so the id order from step 1 is restored.
+   */
+  async findRecentlyViewed(userId: string, limit: number = 10): Promise<GlobalJob[]> {
+    const { data: rows, error } = await supabase
+      .from("recently_viewed")
+      .select("job_id")
+      .eq("user_id", userId)
+      .order("viewed_at", { ascending: false })
+      .limit(limit);
+    if (error) throw error;
+
+    const ids = (rows ?? []).map((r) => r.job_id as string);
+    if (ids.length === 0) return [];
+
+    const jobs = await this.findByIds(ids);
+    const byId = new Map(jobs.map((j) => [j.id, j]));
+    return ids.map((id) => byId.get(id)).filter((j): j is GlobalJob => j !== undefined);
+  }
+
   // ── Write (manual import) ───────────────────────────────────────────────────
 
   /**

@@ -20,6 +20,7 @@ import {
   MultiSelectDropdown,
   StickyPageHeader,
 } from "@/components/dashboard/primitives";
+import { DashButton } from "@/components/dashboard/DashButton";
 import { JobCard } from "@/components/dashboard/jobs/JobCard";
 import { AddToCollectionMenu } from "@/components/dashboard/collections/AddToCollectionMenu";
 import { CollectionStats } from "@/components/dashboard/collections/CollectionStats";
@@ -383,11 +384,18 @@ function CollectionDetailPage() {
               icon={Filter}
               title="No jobs match your filters"
               body="Try broadening your search or clearing the active filters."
+              cta={
+                <DashButton variant="ghost" size="sm" onClick={resetFilters}>
+                  Clear filters
+                </DashButton>
+              }
             />
           </div>
         ) : (
           <ul className="divide-y divide-black/5">
-            {visibleJobs.map((job) => (
+            {visibleJobs.map((job) => {
+              const isRemoving = removeJob.isPending && removeJob.variables?.jobId === job.id;
+              return (
               <JobCard
                 key={job.id}
                 job={job}
@@ -400,16 +408,22 @@ function CollectionDetailPage() {
                     <AddToCollectionMenu job={job} />
                     <button
                       onClick={() => handleRemoveJob(job.id)}
+                      disabled={isRemoving}
                       aria-label="Remove from this collection"
                       title="Remove from this collection"
-                      className="grid h-8 w-8 place-items-center rounded-lg border border-black/5 bg-white text-[oklch(0.4_0.02_265)] transition-colors hover:bg-rose-50 hover:text-rose-600"
+                      className="grid h-8 w-8 place-items-center rounded-lg border border-black/5 bg-white text-[oklch(0.4_0.02_265)] transition-colors hover:bg-rose-50 hover:text-rose-600 disabled:cursor-not-allowed disabled:opacity-60"
                     >
-                      <FolderMinus className="h-4 w-4" />
+                      {isRemoving ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <FolderMinus className="h-4 w-4" />
+                      )}
                     </button>
                   </>
                 }
               />
-            ))}
+              );
+            })}
           </ul>
         )}
       </DashCard>

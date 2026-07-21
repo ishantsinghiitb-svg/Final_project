@@ -17,9 +17,13 @@ export const collectionKeys = {
 
   jobs: (id: string) => [...collectionKeys.all, "jobs", id] as const,
 
-  /** Which of a user's collections contain a given job — powers the Add-to-Collection picker. */
-  membership: (userId: string, jobId: string) =>
-    [...collectionKeys.all, "membership", userId, jobId] as const,
+  /**
+   * Every (job_id → collection_ids[]) membership the user has, in one query —
+   * powers the Add-to-Collection picker's checkmarks on every card at once.
+   * One key per user (not per job), so every AddToCollectionMenu instance on
+   * a page shares the same cache entry and fires exactly one request.
+   */
+  allMemberships: (userId: string) => [...collectionKeys.all, "all-memberships", userId] as const,
 };
 
 // ── useCollections ───────────────────────────────────────────────────────────
@@ -60,18 +64,21 @@ export function useCollectionJobs(id: string | undefined) {
   });
 }
 
-// ── useJobCollectionIds ──────────────────────────────────────────────────────
-// Which collections (by id) a given job already belongs to. Backs the
-// Add-to-Collection picker's checkmarks — so a job already in "Dream
-// Companies" shows that immediately when the picker opens.
+// ── useAllJobCollectionMemberships ───────────────────────────────────────────
+// Every (job_id → collection_ids[]) membership the user has, fetched once per
+// page. Every AddToCollectionMenu instance derives its own job's slice
+// locally (`data[job.id] ?? []`) instead of running its own query — the same
+// "one query, every card reads its own slice" pattern useSavedJobIds already
+// uses for Saved state. Replaces a prior per-job query (one request per
+// visible job card) that this batches into one.
 
-export function useJobCollectionIds(jobId: string | undefined) {
+export function useAllJobCollectionMemberships() {
   const { user } = useAuth();
   return useQuery({
-    queryKey: collectionKeys.membership(user?.id ?? "", jobId ?? ""),
-    queryFn: () => collectionService.getCollectionIdsForJob(user!.id, jobId!),
-    enabled: Boolean(user) && Boolean(jobId),
-    staleTime: 30 * 1_000,
+    queryKey: collectionKeys.allMemberships(user?.id ?? ""),
+    queryFn: () => collectionService.getAllMembershipsForUser(user!.id),
+    enabled: Boolean(user),
+    staleTime: 60 * 1_000,
   });
 }
 
@@ -96,6 +103,7 @@ export function useCreateCollection() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: collectionKeys.lists(user?.id ?? "") });
+      queryClient.invalidateQueries({ queryKey: ["sidebar", "collections-count", user?.id ?? ""] });
     },
   });
 }
@@ -138,13 +146,15 @@ export function useDeleteCollection() {
     mutationFn: ({ id }: { id: string }) => collectionService.deleteCollection(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: collectionKeys.lists(user?.id ?? "") });
+      queryClient.invalidateQueries({ queryKey: ["sidebar", "collections-count", user?.id ?? ""] });
     },
   });
 }
 
 // ── useAddJobToCollection / useRemoveJobFromCollection ──────────────────────
 // Same optimistic-update shape as useSaveJob/useUnsaveJob (features/jobs/hooks)
-// applied to the membership query, so the picker's checkbox toggles instantly.
+// applied to the batched allMemberships map, so the picker's checkbox toggles
+// instantly without waiting on the round trip.
 
 export function useAddJobToCollection() {
   const { user } = useAuth();
@@ -158,25 +168,30 @@ export function useAddJobToCollection() {
     },
 
     onMutate: async ({ collectionId, jobId }) => {
-      await queryClient.cancelQueries({ queryKey: collectionKeys.membership(userId, jobId) });
+      await queryClient.cancelQueries({ queryKey: collectionKeys.allMemberships(userId) });
 
-      const previous = queryClient.getQueryData<string[]>(collectionKeys.membership(userId, jobId));
-
-      queryClient.setQueryData<string[]>(collectionKeys.membership(userId, jobId), (old) =>
-        old && old.includes(collectionId) ? old : [...(old ?? []), collectionId],
+      const previous = queryClient.getQueryData<Record<string, string[]>>(
+        collectionKeys.allMemberships(userId),
       );
+
+      queryClient.setQueryData<Record<string, string[]>>(collectionKeys.allMemberships(userId), (old) => {
+        const prev = old ?? {};
+        const existing = prev[jobId] ?? [];
+        if (existing.includes(collectionId)) return prev;
+        return { ...prev, [jobId]: [...existing, collectionId] };
+      });
 
       return { previous };
     },
 
-    onError: (_err, { jobId }, context) => {
+    onError: (_err, _vars, context) => {
       if (context?.previous !== undefined) {
-        queryClient.setQueryData(collectionKeys.membership(userId, jobId), context.previous);
+        queryClient.setQueryData(collectionKeys.allMemberships(userId), context.previous);
       }
     },
 
-    onSettled: (_data, _err, { collectionId, jobId }) => {
-      queryClient.invalidateQueries({ queryKey: collectionKeys.membership(userId, jobId) });
+    onSettled: (_data, _err, { collectionId }) => {
+      queryClient.invalidateQueries({ queryKey: collectionKeys.allMemberships(userId) });
       queryClient.invalidateQueries({ queryKey: collectionKeys.jobs(collectionId) });
       queryClient.invalidateQueries({ queryKey: collectionKeys.lists(userId) });
     },
@@ -193,25 +208,29 @@ export function useRemoveJobFromCollection() {
       collectionService.removeJobFromCollection(collectionId, jobId),
 
     onMutate: async ({ collectionId, jobId }) => {
-      await queryClient.cancelQueries({ queryKey: collectionKeys.membership(userId, jobId) });
+      await queryClient.cancelQueries({ queryKey: collectionKeys.allMemberships(userId) });
 
-      const previous = queryClient.getQueryData<string[]>(collectionKeys.membership(userId, jobId));
-
-      queryClient.setQueryData<string[]>(collectionKeys.membership(userId, jobId), (old) =>
-        (old ?? []).filter((id) => id !== collectionId),
+      const previous = queryClient.getQueryData<Record<string, string[]>>(
+        collectionKeys.allMemberships(userId),
       );
+
+      queryClient.setQueryData<Record<string, string[]>>(collectionKeys.allMemberships(userId), (old) => {
+        const prev = old ?? {};
+        const existing = prev[jobId] ?? [];
+        return { ...prev, [jobId]: existing.filter((id) => id !== collectionId) };
+      });
 
       return { previous };
     },
 
-    onError: (_err, { jobId }, context) => {
+    onError: (_err, _vars, context) => {
       if (context?.previous !== undefined) {
-        queryClient.setQueryData(collectionKeys.membership(userId, jobId), context.previous);
+        queryClient.setQueryData(collectionKeys.allMemberships(userId), context.previous);
       }
     },
 
-    onSettled: (_data, _err, { collectionId, jobId }) => {
-      queryClient.invalidateQueries({ queryKey: collectionKeys.membership(userId, jobId) });
+    onSettled: (_data, _err, { collectionId }) => {
+      queryClient.invalidateQueries({ queryKey: collectionKeys.allMemberships(userId) });
       queryClient.invalidateQueries({ queryKey: collectionKeys.jobs(collectionId) });
       queryClient.invalidateQueries({ queryKey: collectionKeys.lists(userId) });
     },

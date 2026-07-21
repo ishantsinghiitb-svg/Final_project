@@ -25,8 +25,15 @@ import {
 import { DashButton } from "@/components/dashboard/DashButton";
 import { JobCard } from "@/components/dashboard/jobs/JobCard";
 import { AddToCollectionMenu } from "@/components/dashboard/collections/AddToCollectionMenu";
-import { useJobs, useSavedJobIds, useSaveJob, useUnsaveJob } from "@/features/jobs/hooks";
-import type { JobFilters, JobSort, JobSortOption, JobsSearchParams } from "@/features/jobs/types";
+import {
+  useJobs,
+  useSavedJobIds,
+  useSaveJob,
+  useUnsaveJob,
+  useRecentlyViewedJobs,
+  useSidebarCounts,
+} from "@/features/jobs/hooks";
+import type { JobFilters, JobSort, JobSortOption, JobsSearchParams, JobsView } from "@/features/jobs/types";
 import type { PaginationParams, GlobalJob } from "@/types";
 import {
   DEFAULT_PAGINATION,
@@ -42,6 +49,7 @@ import {
   ROLE_CATEGORY_LABELS,
   ROLE_CATEGORY_OPTIONS,
 } from "@/features/jobs/constants";
+import { jobMatchesFilters, compareJobsBy } from "@/features/jobs/utils";
 
 // Multi-select filters store their selected values as a comma-joined string
 // in the URL (e.g. "remote,hybrid") rather than relying on the router's
@@ -81,6 +89,7 @@ export const Route = createFileRoute("/dashboard/jobs/")({
     sort: typeof search.sort === "string" ? (search.sort as JobSortOption) : undefined,
     page: typeof search.page === "number" && search.page > 0 ? Math.floor(search.page) : undefined,
     pageSize: typeof search.pageSize === "number" ? Math.floor(search.pageSize) : undefined,
+    view: search.view === "recent" ? "recent" : undefined,
   }),
   component: JobsPage,
 });
@@ -168,6 +177,7 @@ function JobsPage() {
   const sortKey = search.sort ?? DEFAULT_SORT_OPTION;
   const page = search.page ?? 1;
   const pageSize = search.pageSize ?? DEFAULT_PAGINATION.pageSize;
+  const view: JobsView = search.view ?? "all";
 
   const pagination: PaginationParams = { page, pageSize };
   const sort: JobSort = SORT_OPTIONS[sortKey]?.sort ?? SORT_OPTIONS[DEFAULT_SORT_OPTION].sort;
@@ -195,6 +205,10 @@ function JobsPage() {
   );
 
   // ── Data ─────────────────────────────────────────────────────────────────
+  // "All Jobs" stays exactly as before — the full server-side paginated query.
+  // "Recently Viewed" is a second, small (≤10) dataset fetched independently;
+  // which one is actually RENDERED is decided purely by `view` below, so
+  // switching tabs never refetches — both queries are already cached.
   const {
     data: result,
     isLoading,
@@ -205,6 +219,14 @@ function JobsPage() {
   const { data: savedIds = [] } = useSavedJobIds();
   const saveJob = useSaveJob();
   const unsaveJob = useUnsaveJob();
+  const {
+    data: recentlyViewed = [],
+    isLoading: recentlyViewedLoading,
+    isError: recentlyViewedError,
+    error: recentlyViewedErrorObj,
+    isFetching: recentlyViewedFetching,
+  } = useRecentlyViewedJobs();
+  const { jobs: allJobsCount } = useSidebarCounts();
   const [selectedJob, setSelectedJob] = useState<GlobalJob | null>(null);
 
   const {
@@ -233,6 +255,31 @@ function JobsPage() {
   const jobs = result?.data ?? [];
   const totalPages = result?.totalPages ?? 1;
   const total = result?.total ?? 0;
+
+  // ── Recently Viewed as a dataset, not a second filtering system ──────────
+  // Reuses the SAME `filters` object the server-side "All Jobs" query already
+  // builds — jobMatchesFilters/compareJobsBy (features/jobs/utils) apply that
+  // exact field set and sort vocabulary client-side, since this dataset is
+  // already small and fully fetched (no server round trip needed). When the
+  // Sort control is still at its default, the list keeps the server's natural
+  // viewed-at-descending order rather than being silently re-sorted by
+  // posted_at — the "newest first" here means most-recently-VIEWED, matching
+  // what findRecentlyViewed already returns.
+  const visibleRecentlyViewed = useMemo(() => {
+    const filtered = recentlyViewed.filter((job) => jobMatchesFilters(job, filters));
+    if (sortKey === DEFAULT_SORT_OPTION) return filtered;
+    return [...filtered].sort((a, b) => compareJobsBy(a, b, sortKey));
+  }, [recentlyViewed, filters, sortKey]);
+
+  const setView = useCallback(
+    (next: JobsView) => {
+      void navigate({
+        search: (prev) => ({ ...prev, view: next === "all" ? undefined : next }),
+        replace: true,
+      });
+    },
+    [navigate],
+  );
 
   // ── Debounced keyword search ──────────────────────────────────────────────
   // The input stays uncontrolled (never remounted) so typing never loses
@@ -350,6 +397,30 @@ function JobsPage() {
         eyebrow="Jobs"
         title="Discover roles worth your time."
         subtitle="Browse every job in the global board. Use filters to narrow down by role, location, salary and more."
+        actions={
+          <div className="inline-flex items-center rounded-lg border border-black/5 bg-white p-0.5 text-xs font-medium">
+            <button
+              onClick={() => setView("all")}
+              className={
+                view === "all"
+                  ? "rounded-md bg-[oklch(0.95_0.02_265)] px-3 py-1.5 text-[#2563EB]"
+                  : "rounded-md px-3 py-1.5 text-[oklch(0.45_0.02_265)] hover:bg-black/[0.03]"
+              }
+            >
+              All Jobs{allJobsCount > 0 ? ` (${allJobsCount})` : ""}
+            </button>
+            <button
+              onClick={() => setView("recent")}
+              className={
+                view === "recent"
+                  ? "rounded-md bg-[oklch(0.95_0.02_265)] px-3 py-1.5 text-[#2563EB]"
+                  : "rounded-md px-3 py-1.5 text-[oklch(0.45_0.02_265)] hover:bg-black/[0.03]"
+              }
+            >
+              Recently Viewed{recentlyViewed.length > 0 ? ` (${recentlyViewed.length})` : ""}
+            </button>
+          </div>
+        }
       />
 
       <DashCard padded={false}>
@@ -365,7 +436,7 @@ function JobsPage() {
               placeholder="Search role, company, location, type, skills…"
               className="flex-1 bg-transparent outline-none placeholder:text-[oklch(0.55_0.02_265)] text-sm"
             />
-            {isFetching && (
+            {(view === "all" ? isFetching : recentlyViewedFetching) && (
               <Loader2 className="h-3.5 w-3.5 animate-spin text-[oklch(0.5_0.02_265)]" />
             )}
           </div>
@@ -467,64 +538,123 @@ function JobsPage() {
 
       <DashCard padded={false}>
         {/* ── Body ──────────────────────────────────────────────────────────── */}
-        {isLoading ? (
+        {/* view === "all": exactly the existing server-paginated Jobs list —
+            unchanged. view === "recent": the same JobCard/filters/sort applied
+            to the small, already-fetched Recently Viewed dataset instead —
+            see visibleRecentlyViewed above. Never both at once, so a job can
+            no longer appear twice on the page. */}
+        {view === "all" ? (
+          isLoading ? (
+            <div className="flex items-center justify-center gap-2 py-16 text-sm text-[oklch(0.5_0.02_265)]">
+              <Loader2 className="h-5 w-5 animate-spin" />
+              Loading jobs…
+            </div>
+          ) : isError ? (
+            <div className="flex flex-col items-center gap-3 py-16 text-center">
+              <AlertCircle className="h-8 w-8 text-rose-500" />
+              <p className="font-display text-sm font-semibold">Failed to load jobs</p>
+              <p className="max-w-xs text-xs text-[oklch(0.5_0.02_265)]">
+                {error instanceof Error ? error.message : "An unexpected error occurred."}
+              </p>
+            </div>
+          ) : jobs.length === 0 ? (
+            <div className="p-5">
+              <EmptyState
+                icon={Filter}
+                title={isFiltered ? "No jobs match your filters" : "No jobs yet"}
+                body={
+                  isFiltered
+                    ? "Try broadening your search or clearing the active filters."
+                    : "Jobs from the global board will appear here once available."
+                }
+                cta={
+                  isFiltered ? (
+                    <DashButton variant="ghost" size="sm" onClick={resetFilters}>
+                      Clear filters
+                    </DashButton>
+                  ) : undefined
+                }
+              />
+            </div>
+          ) : (
+            <>
+              <ul className="divide-y divide-black/5">
+                {jobs.map((job) => (
+                  <JobCard
+                    key={job.id}
+                    job={job}
+                    isSaved={savedIds.includes(job.id)}
+                    onSave={() => saveJob.mutate({ jobId: job.id })}
+                    onUnsave={() => unsaveJob.mutate({ jobId: job.id })}
+                    onApply={(job) => {
+                      setSelectedJob(job);
+                    }}
+                    extraAction={<AddToCollectionMenu job={job} />}
+                  />
+                ))}
+              </ul>
+              <PaginationBar
+                page={page}
+                totalPages={totalPages}
+                total={total}
+                pageSize={pageSize}
+                onPageChange={setPage}
+                onPageSizeChange={setPageSize}
+              />
+            </>
+          )
+        ) : recentlyViewedLoading ? (
           <div className="flex items-center justify-center gap-2 py-16 text-sm text-[oklch(0.5_0.02_265)]">
             <Loader2 className="h-5 w-5 animate-spin" />
-            Loading jobs…
+            Loading recently viewed jobs…
           </div>
-        ) : isError ? (
+        ) : recentlyViewedError ? (
           <div className="flex flex-col items-center gap-3 py-16 text-center">
             <AlertCircle className="h-8 w-8 text-rose-500" />
-            <p className="font-display text-sm font-semibold">Failed to load jobs</p>
+            <p className="font-display text-sm font-semibold">Failed to load recently viewed jobs</p>
             <p className="max-w-xs text-xs text-[oklch(0.5_0.02_265)]">
-              {error instanceof Error ? error.message : "An unexpected error occurred."}
+              {recentlyViewedErrorObj instanceof Error
+                ? recentlyViewedErrorObj.message
+                : "An unexpected error occurred."}
             </p>
           </div>
-        ) : jobs.length === 0 ? (
+        ) : recentlyViewed.length === 0 ? (
           <div className="p-5">
             <EmptyState
               icon={Filter}
-              title={isFiltered ? "No jobs match your filters" : "No jobs yet"}
-              body={
-                isFiltered
-                  ? "Try broadening your search or clearing the active filters."
-                  : "Jobs from the global board will appear here once available."
-              }
+              title="No recently viewed jobs"
+              body="Open a job's detail page and it'll show up here — up to your 10 most recent."
+            />
+          </div>
+        ) : visibleRecentlyViewed.length === 0 ? (
+          <div className="p-5">
+            <EmptyState
+              icon={Filter}
+              title="No jobs match your filters"
+              body="Try broadening your search or clearing the active filters."
               cta={
-                isFiltered ? (
-                  <DashButton variant="ghost" size="sm" onClick={resetFilters}>
-                    Clear filters
-                  </DashButton>
-                ) : undefined
+                <DashButton variant="ghost" size="sm" onClick={resetFilters}>
+                  Clear filters
+                </DashButton>
               }
             />
           </div>
         ) : (
-          <>
-            <ul className="divide-y divide-black/5">
-              {jobs.map((job) => (
-                <JobCard
-                  key={job.id}
-                  job={job}
-                  isSaved={savedIds.includes(job.id)}
-                  onSave={() => saveJob.mutate({ jobId: job.id })}
-                  onUnsave={() => unsaveJob.mutate({ jobId: job.id })}
-                  onApply={(job) => {
-                    setSelectedJob(job);
-                  }}
-                  extraAction={<AddToCollectionMenu job={job} />}
-                />
-              ))}
-            </ul>
-            <PaginationBar
-              page={page}
-              totalPages={totalPages}
-              total={total}
-              pageSize={pageSize}
-              onPageChange={setPage}
-              onPageSizeChange={setPageSize}
-            />
-          </>
+          <ul className="divide-y divide-black/5">
+            {visibleRecentlyViewed.map((job) => (
+              <JobCard
+                key={job.id}
+                job={job}
+                isSaved={savedIds.includes(job.id)}
+                onSave={() => saveJob.mutate({ jobId: job.id })}
+                onUnsave={() => unsaveJob.mutate({ jobId: job.id })}
+                onApply={(job) => {
+                  setSelectedJob(job);
+                }}
+                extraAction={<AddToCollectionMenu job={job} />}
+              />
+            ))}
+          </ul>
         )}
       </DashCard>
 

@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { Briefcase, Pencil, Trash2 } from "lucide-react";
+import { Briefcase, Pencil, Trash2, Loader2 } from "lucide-react";
 import { formatDistanceToNow, parseISO } from "date-fns";
 import { DashCard } from "@/components/dashboard/primitives";
 import { COLLECTION_COLOR_META } from "@/features/collections/constants";
@@ -11,6 +11,8 @@ type Props = {
   collection: CollectionWithStats;
   onEdit: (collection: CollectionWithStats) => void;
   onDelete: (collection: CollectionWithStats) => void;
+  /** True while THIS card's delete mutation is in flight — swaps the icon for a spinner and disables both actions. */
+  isDeleting?: boolean;
 };
 
 /**
@@ -21,7 +23,7 @@ type Props = {
  * never conflict with the click target. No charts — a small source-count
  * list only.
  */
-export function CollectionCard({ collection, onEdit, onDelete }: Props) {
+export function CollectionCard({ collection, onEdit, onDelete, isDeleting }: Props) {
   const colorMeta = COLLECTION_COLOR_META[collection.color ?? "default"] ?? COLLECTION_COLOR_META.default;
 
   return (
@@ -65,15 +67,18 @@ export function CollectionCard({ collection, onEdit, onDelete }: Props) {
       <div className="mt-4 flex items-center gap-2 border-t border-black/5 pt-3">
         <button
           onClick={() => onEdit(collection)}
-          className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-black/5 bg-white px-3 py-1.5 text-xs font-medium text-[oklch(0.35_0.02_265)] transition-colors hover:bg-black/[0.03]"
+          disabled={isDeleting}
+          className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-black/5 bg-white px-3 py-1.5 text-xs font-medium text-[oklch(0.35_0.02_265)] transition-colors hover:bg-black/[0.03] disabled:cursor-not-allowed disabled:opacity-60"
         >
           <Pencil className="h-3.5 w-3.5" /> Edit
         </button>
         <button
           onClick={() => onDelete(collection)}
-          className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-black/5 bg-white px-3 py-1.5 text-xs font-medium text-rose-600 transition-colors hover:bg-rose-50"
+          disabled={isDeleting}
+          className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-black/5 bg-white px-3 py-1.5 text-xs font-medium text-rose-600 transition-colors hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          <Trash2 className="h-3.5 w-3.5" /> Delete
+          {isDeleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+          Delete
         </button>
       </div>
     </DashCard>

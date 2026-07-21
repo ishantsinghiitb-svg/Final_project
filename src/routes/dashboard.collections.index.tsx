@@ -123,6 +123,7 @@ function CollectionsPage() {
               collection={collection}
               onEdit={setEditing}
               onDelete={handleDelete}
+              isDeleting={deleteCollection.isPending && deleteCollection.variables?.id === collection.id}
             />
           ))}
         </div>

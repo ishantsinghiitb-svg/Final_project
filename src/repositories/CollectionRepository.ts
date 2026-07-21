@@ -72,6 +72,16 @@ export class CollectionRepository {
     return data as Collection | null;
   }
 
+  /** Number of collections the user owns — powers the sidebar "Collections" badge. */
+  async countByUser(userId: string): Promise<number> {
+    const { count, error } = await supabase
+      .from("collections")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", userId);
+    if (error) throw error;
+    return count ?? 0;
+  }
+
   // ── Write ─────────────────────────────────────────────────────────────────
 
   async create(
@@ -128,15 +138,27 @@ export class CollectionRepository {
     return (data ?? []).map((r) => r.job_id as string);
   }
 
-  /** Which of the user's collections a given job already belongs to — powers the Add-to-Collection picker's membership checkmarks. */
-  async findCollectionIdsForJob(userId: string, jobId: string): Promise<string[]> {
+  /**
+   * Every (job_id → collection_ids[]) membership the user has, in ONE query —
+   * powers the Add-to-Collection picker's checkmarks across every card on a
+   * page. Module 5C perf fix: a per-job query (one request per visible job
+   * card) was replaced by this single batched fetch, mirroring the same
+   * pattern JobRepository.getSavedJobIds already uses for Saved state — one
+   * request, every card derives its own slice locally.
+   */
+  async findAllMembershipsForUser(userId: string): Promise<Record<string, string[]>> {
     const { data, error } = await supabase
       .from("collection_jobs")
-      .select("collection_id")
-      .eq("user_id", userId)
-      .eq("job_id", jobId);
+      .select("job_id, collection_id")
+      .eq("user_id", userId);
     if (error) throw error;
-    return (data ?? []).map((r) => r.collection_id as string);
+
+    const map: Record<string, string[]> = {};
+    for (const row of data ?? []) {
+      const jobId = row.job_id as string;
+      (map[jobId] ??= []).push(row.collection_id as string);
+    }
+    return map;
   }
 
   /**

@@ -176,6 +176,14 @@ export type CollectionJobRow = {
   added_at: string;
 };
 
+// ── Module 5C: Recently Viewed ──
+export type RecentlyViewedRow = {
+  id: string;
+  user_id: string;
+  job_id: string;
+  viewed_at: string;
+};
+
 export type ApplicationRow = {
   id: string;
   user_id: string;
@@ -478,6 +486,14 @@ export type CollectionJobInsert = {
   job_id: string;              // NOT NULL
   user_id: string;             // NOT NULL
   added_at?: string;
+};
+
+// ── Module 5C: Recently Viewed ──
+export type RecentlyViewedInsert = {
+  id?: string;
+  user_id: string;             // NOT NULL
+  job_id: string;              // NOT NULL
+  viewed_at?: string;
 };
 
 export type ApplicationInsert = {
@@ -807,6 +823,12 @@ export type Database = {
         Row: CollectionJobRow;
         Insert: CollectionJobInsert;
         Update: Partial<CollectionJobRow>;
+        Relationships: TableRelationship[];
+      };
+      recently_viewed: {
+        Row: RecentlyViewedRow;
+        Insert: RecentlyViewedInsert;
+        Update: Partial<RecentlyViewedRow>;
         Relationships: TableRelationship[];
       };
       applications: {

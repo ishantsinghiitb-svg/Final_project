@@ -25,14 +25,12 @@ import {
   ExternalLink,
 } from "lucide-react";
 import { useState, useEffect } from "react";
-import { toast } from "sonner";
 import {
   DashCard,
   Chip,
   CompanyMark,
   SectionTitle,
 } from "@/components/dashboard/primitives";
-import { DashButton } from "@/components/dashboard/DashButton";
 import {
   useJob,
   useJobSkills,
@@ -40,6 +38,7 @@ import {
   useSavedJobIds,
   useSaveJob,
   useUnsaveJob,
+  useRecordJobView,
 } from "@/features/jobs/hooks";
 import {
   formatSalary,
@@ -211,6 +210,16 @@ function JobDetailPage() {
   const { data: savedIds = [] } = useSavedJobIds();
   const saveJob = useSaveJob();
   const unsaveJob = useUnsaveJob();
+
+  // Record a view whenever this job's detail page is opened — regardless of
+  // where the user navigated from (Jobs, Saved, Collections, Applications all
+  // link to this same route). Fires once per job id, not on every re-render;
+  // silent (no toast) since recording a view isn't user-facing feedback.
+  const recordJobView = useRecordJobView();
+  useEffect(() => {
+    if (jobId) recordJobView.mutate(jobId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [jobId]);
 
   const isSaved = Boolean(job && savedIds.includes(job.id));
 

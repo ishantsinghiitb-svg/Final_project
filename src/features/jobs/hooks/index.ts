@@ -6,6 +6,7 @@ import {
 } from "@tanstack/react-query";
 import { useAuth } from "@/context/AuthContext";
 import { jobService } from "@/services/JobService";
+import { collectionService } from "@/services/CollectionService";
 import { manualImportService, type ManualImportInput } from "@/services/ManualImportService";
 import type { JobFilters, JobSort } from "@/features/jobs/types";
 import type { GlobalJob, PaginationParams } from "@/types";
@@ -36,6 +37,9 @@ export const jobKeys = {
     [...jobKeys.saved(userId), "archived", pagination] as const,
   /** All saved job IDs (no pagination) — used for optimistic save toggling */
   savedIds: (userId: string) => [...jobKeys.saved(userId), "ids"] as const,
+
+  /** The user's most recently viewed jobs (Module 5C), capped server-side at 10. */
+  recentlyViewed: (userId: string) => [...jobKeys.all, "recently-viewed", userId] as const,
 };
 
 // ── useJobs ──────────────────────────────────────────────────────────────────
@@ -93,6 +97,42 @@ export function useSimilarJobs(jobId: string | undefined, job: GlobalJob | null 
     queryFn: () => jobService.getSimilarJobs(job!, 6),
     enabled: Boolean(jobId) && Boolean(job),
     staleTime: 5 * 60 * 1_000,
+  });
+}
+
+// ── useRecentlyViewedJobs ────────────────────────────────────────────────────
+// The current user's 10 most recently viewed jobs, most-recent first.
+
+export function useRecentlyViewedJobs() {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: jobKeys.recentlyViewed(user?.id ?? ""),
+    queryFn: () => jobService.getRecentlyViewedJobs(user!.id, 10),
+    enabled: Boolean(user),
+    staleTime: 60 * 1_000,
+  });
+}
+
+// ── useRecordJobView ─────────────────────────────────────────────────────────
+// Fire-and-forget: records that the current user opened a job's detail page.
+// Called once per job-id on Job Detail mount regardless of where the user
+// navigated from (Jobs, Saved, Collections, Applications all link to the same
+// route). No visible feedback — recording a view isn't something the user
+// needs to be told happened.
+
+export function useRecordJobView() {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const userId = user?.id ?? "";
+
+  return useMutation({
+    mutationFn: (jobId: string) => {
+      if (!user) throw new Error("Not authenticated");
+      return jobService.recordJobView(user.id, jobId);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: jobKeys.recentlyViewed(userId) });
+    },
   });
 }
 
@@ -303,11 +343,16 @@ export function useImportJob() {
 }
 
 // ── useSidebarCounts ─────────────────────────────────────────────────────────
-// Returns live counts for the three sidebar badges: Jobs, Saved, Applications.
-// Uses Supabase head-only count queries (no row data transferred).
+// Returns live counts for the four sidebar badges: Jobs, Saved, Applications,
+// Collections. Uses Supabase head-only count queries (no row data transferred).
 // staleTime = 5 minutes — these don't need to be real-time.
+//
+// The Collections count reuses collectionService (Module 5B) the same way
+// this hook already reuses jobService for the Saved/Applications counts — a
+// single "sidebar chrome" hook covering every badge, not a bespoke query per
+// nav item, so every badge stays visually and architecturally consistent.
 
-type SidebarCounts = { jobs: number; saved: number; applications: number };
+type SidebarCounts = { jobs: number; saved: number; applications: number; collections: number };
 
 export function useSidebarCounts(): SidebarCounts {
   const { user } = useAuth();
@@ -332,5 +377,17 @@ export function useSidebarCounts(): SidebarCounts {
     staleTime: 5 * 60 * 1_000,
   });
 
-  return { jobs: jobsCount, saved: savedCount, applications: applicationsCount };
+  const { data: collectionsCount = 0 } = useQuery({
+    queryKey: ["sidebar", "collections-count", user?.id ?? ""],
+    queryFn:  () => collectionService.countCollections(user!.id),
+    enabled:   Boolean(user),
+    staleTime: 5 * 60 * 1_000,
+  });
+
+  return {
+    jobs: jobsCount,
+    saved: savedCount,
+    applications: applicationsCount,
+    collections: collectionsCount,
+  };
 }
