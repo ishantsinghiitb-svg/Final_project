@@ -1,6 +1,8 @@
 import type { AICapability, AIResultCode } from "@/features/ai/constants";
 import type { StructuredResume } from "@/features/ai/schemas";
 import type { MatchLabel } from "@/features/ai/matchLabel";
+import type { AtsRating } from "@/features/ai/atsRating";
+import type { AtsComponentKey, AtsComponentSource } from "@/features/ai/atsScore";
 
 // ── AI credit status (paywall-ready) ──
 //
@@ -109,18 +111,81 @@ export type AIContext = {
   user?: UserContext;
 };
 
-// ── Resume Match — client-facing summary (Module 6B) ──
+// ── Resume Match — client-facing summary (Module 6B, extended in 6C polish) ──
 //
-// The ONLY shape the product surfaces for a match result. Deliberately
-// narrower than ResumeMatchResult (features/ai/schemas) — richer per-
-// dimension/confidence detail lives in `internal` and is never sent to a
-// client. `matchLabel` is derived (see matchLabel.ts), never AI-generated.
+// The shape the DASHBOARD surfaces for a match result (the extension defines
+// its own, separate `ResumeMatchSummary` and never imports this one — see
+// extension/src/shared/messaging/types.ts). `matchLabel` is derived (see
+// matchLabel.ts), never AI-generated.
+//
+// `dimensions`/`missingSkills`/`missingKeywords`/`matchedKeywords`/
+// `recommendation` were added for the Module 6C polish pass's full "View Full
+// Report" dialog. They surface data the AI already computes and that was
+// already being stored in `ai_analyses.result.internal` (see
+// ResumeMatchInternalSchema) — no new AI call, no scoring change, no prompt
+// change. Only the dashboard's read-side mapping now forwards fields it
+// previously stopped at `internal`.
+export type ResumeMatchDimension = { score: number; detail: string };
+
+export type ResumeMatchMissingSkill = {
+  skill: string;
+  importance: "required" | "preferred";
+  evidence: string | null;
+};
+
+export type ResumeMatchRecommendation = {
+  shouldApply: "apply" | "stretch" | "improve_first" | "skip";
+  rationale: string;
+};
+
 export type ResumeMatchSummary = {
   id: string;
   overallScore: number;
   matchLabel: MatchLabel;
   whatMatches: string[];
   whatToImprove: string[];
+  summary: string;
+  createdAt: string;
+  dimensions: {
+    experience: ResumeMatchDimension;
+    education: ResumeMatchDimension;
+    domain: ResumeMatchDimension;
+  };
+  missingSkills: ResumeMatchMissingSkill[];
+  missingKeywords: string[];
+  matchedKeywords: string[];
+  recommendation: ResumeMatchRecommendation;
+};
+
+// ── ATS Compatibility — client-facing summary (Module 6C) ──
+//
+// The ONLY shape the product surfaces for an ATS analysis. It is the combined
+// output of the deterministic parser (formatting + section completeness) and
+// the AI (keyword/skills/experience/readability + qualitative content), already
+// merged and weighted by the application (see server/ai/AtsScoreService). Like
+// Resume Match, `rating` is derived from the score in code (see atsRating.ts),
+// never AI-generated, and the AI's richer internal reasoning is never forwarded.
+export type AtsBreakdownItem = {
+  key: AtsComponentKey;
+  label: string;
+  /** Whole-number percentage weight of this component in the final score. */
+  weightPct: number;
+  source: AtsComponentSource; // "ai" | "deterministic"
+  score: number; // 0–100
+  detail: string;
+};
+
+export type AtsScoreSummary = {
+  id: string;
+  overallScore: number; // 0–100 final weighted ATS Compatibility score
+  rating: AtsRating;
+  breakdown: AtsBreakdownItem[]; // the six weighted components, in display order
+  matchedKeywords: string[];
+  missingKeywords: string[];
+  criticalMissingKeywords: string[];
+  strengths: string[];
+  atsRisks: string[]; // deterministic formatting risks + AI content risks, merged
+  recommendations: string[];
   summary: string;
   createdAt: string;
 };

@@ -1,30 +1,25 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
-import {
-  Sparkles,
-  RefreshCw,
-  Loader2,
-  AlertCircle,
-  CheckCircle2,
-  ArrowUpCircle,
-} from "lucide-react";
+import { Sparkles, Loader2, AlertCircle, CheckCircle2, FileSearch } from "lucide-react";
 import { DashCard, Chip } from "@/components/dashboard/primitives";
 import { DashButton } from "@/components/dashboard/DashButton";
-import { cn } from "@/lib/utils";
 import { useResumes } from "@/features/resumes/hooks";
-import { useResumeMatch, useResumeMatchHistory, useAnalyzeMatch } from "@/features/ai/hooks";
-import { MATCH_LABELS, matchLabelForScore, type MatchLabel } from "@/features/ai/matchLabel";
+import { useResumeMatch, useAnalyzeMatch } from "@/features/ai/hooks";
+import { MATCH_LABELS, type MatchLabel } from "@/features/ai/matchLabel";
 import { friendlyAIError } from "@/features/ai/errorMessages";
 import type { Resume } from "@/types";
 import { AnalyzeMatchDialog } from "./AnalyzeMatchDialog";
+import { ResumeMatchReportDialog } from "./ResumeMatchReportDialog";
 
-// ── AI Resume Match card (Module 6B) ──
+// ── AI Resume Match card (Module 6B, compacted in the Module 6C polish pass) ──
 //
 // Separate product from Resume Health: AI-powered, job-specific, consumes
-// credits. The card ONLY ever shows overallScore/matchLabel/whatMatches/
-// whatToImprove/summary — no confidence, dimension scores, model/provider,
-// or prompt/analysis version anywhere in this file. "View past analyses" is
-// a deliberately low-emphasis text link, not a first-class section.
+// credits. The card itself is a QUICK SUMMARY only (score, label, up to two
+// short highlights) — the full report (strengths, areas to improve, missing
+// skills/keywords, dimension breakdown, recommendation, summary, history,
+// re-analyze) lives in ResumeMatchReportDialog, opened via "View Full Report".
+// This keeps the card companion-sized to the ATS Compatibility card instead of
+// growing tall with the whole AI output.
 
 const LABEL_TONE: Record<MatchLabel, "green" | "blue" | "amber" | "rose"> = {
   [MATCH_LABELS.EXCELLENT]: "green",
@@ -104,39 +99,6 @@ function ResumePicker({
   );
 }
 
-function MatchHistoryList({ resumeId, jobId }: { resumeId: string; jobId: string }) {
-  const { data: history, isLoading } = useResumeMatchHistory(resumeId, jobId);
-
-  if (isLoading) {
-    return <p className="mt-3 text-xs text-[oklch(0.5_0.02_265)]">Loading history…</p>;
-  }
-  if (!history || history.length === 0) {
-    return <p className="mt-3 text-xs text-[oklch(0.5_0.02_265)]">No past analyses yet.</p>;
-  }
-
-  return (
-    <ul className="mt-3 space-y-1.5 border-t border-black/5 pt-3">
-      {history.map((entry) => (
-        <li
-          key={entry.id}
-          className="flex items-center justify-between text-xs text-[oklch(0.45_0.02_265)]"
-        >
-          <span>
-            {new Date(entry.createdAt).toLocaleDateString(undefined, {
-              month: "short",
-              day: "numeric",
-              year: "numeric",
-            })}
-          </span>
-          <span className="font-medium">
-            {entry.score != null ? `${entry.score}% · ${matchLabelForScore(entry.score)}` : "—"}
-          </span>
-        </li>
-      ))}
-    </ul>
-  );
-}
-
 export function ResumeMatchCard({ jobId }: { jobId: string }) {
   const { data: resumes, isLoading: resumesLoading } = useResumes();
   // null = "follow the default resume"; a concrete id = the user picked one.
@@ -171,7 +133,7 @@ export function ResumeMatchCard({ jobId }: { jobId: string }) {
 
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [reAnalyze, setReAnalyze] = useState(false);
-  const [historyOpen, setHistoryOpen] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
   // Synchronous re-entrancy guard: `analyzeMutation.isPending` only flips on
   // the NEXT render, so a fast double-click on the confirm button (two real
   // click events in the same tick) could otherwise fire mutate() twice before
@@ -308,6 +270,15 @@ export function ResumeMatchCard({ jobId }: { jobId: string }) {
     });
   };
 
+  // Re-analyze is triggered from inside the report dialog now — close it and
+  // open the same credit-confirmation flow the compact card used to show
+  // inline. The updated result is visible the next time the user reopens the
+  // report (or, once analysis completes, the card's own highlights update).
+  const handleReanalyzeFromDialog = () => {
+    setReportOpen(false);
+    openConfirm(true);
+  };
+
   // Friendly error copy only — the raw server/provider message is never shown
   // (it can carry OpenAI/rate-limit internals). Map by structured code instead.
   const failureCode =
@@ -321,27 +292,38 @@ export function ResumeMatchCard({ jobId }: { jobId: string }) {
     <div className="rounded-lg bg-rose-50 px-3 py-2 text-xs text-[#E11D48]">{errorText}</div>
   );
 
+  const analysis = result.analysis;
+  // Up to two one-line highlights; falls back to a clamped summary line when
+  // the AI returned no whatMatches items (rare — e.g. a very weak fit).
+  const highlights = analysis?.whatMatches.slice(0, 2) ?? [];
+
   return (
     <>
       <MatchCardShell resumeName={result.resumeName ?? resume.name} picker={picker}>
-        {!result.analysis ? (
+        {!analysis ? (
           <div className="space-y-3">
             {errorBanner}
             <p className="text-sm text-[oklch(0.45_0.02_265)]">
-              See how well your resume matches this job — what already fits, and what to improve.
+              See how well your resume matches this job, including what already fits and what to
+              improve.
             </p>
             <DashButton
               onClick={() => openConfirm(false)}
               disabled={analyzeMutation.isPending || locked}
-              className="w-full"
+              className="w-full justify-between"
             >
               {analyzeMutation.isPending ? (
-                <>
+                <span className="flex items-center gap-1.5">
                   <Loader2 className="h-4 w-4 animate-spin" /> Analyzing…
-                </>
+                </span>
               ) : (
                 <>
-                  <Sparkles className="h-4 w-4" /> Analyze Match · 1 credit
+                  <span className="flex items-center gap-1.5">
+                    <Sparkles className="h-4 w-4" /> Analyze Match
+                  </span>
+                  <span className="rounded-full bg-white/15 px-2 py-0.5 text-[11px] font-medium">
+                    1 Credit
+                  </span>
                 </>
               )}
             </DashButton>
@@ -355,7 +337,7 @@ export function ResumeMatchCard({ jobId }: { jobId: string }) {
             )}
           </div>
         ) : (
-          <div className="space-y-5">
+          <div className="space-y-4">
             {errorBanner}
 
             {result.stale && (
@@ -368,75 +350,41 @@ export function ResumeMatchCard({ jobId }: { jobId: string }) {
             {/* Overall Match */}
             <div className="flex items-end justify-between">
               <p className="font-display text-4xl font-semibold leading-none text-[oklch(0.2_0.02_265)]">
-                {result.analysis.overallScore}
+                {analysis.overallScore}
                 <span className="text-base font-medium text-[oklch(0.5_0.02_265)]">%</span>
               </p>
-              <Chip tone={LABEL_TONE[result.analysis.matchLabel]}>
-                {result.analysis.matchLabel}
-              </Chip>
+              <Chip tone={LABEL_TONE[analysis.matchLabel]}>{analysis.matchLabel}</Chip>
             </div>
 
-            {/* What Matches */}
-            {result.analysis.whatMatches.length > 0 && (
-              <div>
-                <p className="text-[11px] uppercase tracking-[0.14em] text-[oklch(0.5_0.02_265)]">
-                  What Matches
-                </p>
-                <ul className="mt-2 space-y-1.5">
-                  {result.analysis.whatMatches.map((item, i) => (
-                    <li key={i} className="flex items-start gap-2 text-sm">
-                      <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-[#16A34A]" />
-                      <span className="text-[oklch(0.3_0.02_265)]">{item}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
+            {/* Up to two short highlights */}
+            {highlights.length > 0 ? (
+              <ul className="space-y-1.5">
+                {highlights.map((item, i) => (
+                  <li key={i} className="flex items-start gap-2 text-sm">
+                    <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-[#16A34A]" />
+                    <span className="line-clamp-1 text-[oklch(0.3_0.02_265)]" title={item}>
+                      {item}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p
+                className="line-clamp-2 text-sm text-[oklch(0.35_0.02_265)]"
+                title={analysis.summary}
+              >
+                {analysis.summary}
+              </p>
             )}
 
-            {/* What You Can Improve */}
-            {result.analysis.whatToImprove.length > 0 && (
-              <div>
-                <p className="text-[11px] uppercase tracking-[0.14em] text-[oklch(0.5_0.02_265)]">
-                  What You Can Improve
-                </p>
-                <ul className="mt-2 space-y-1.5">
-                  {result.analysis.whatToImprove.map((item, i) => (
-                    <li key={i} className="flex items-start gap-2 text-sm">
-                      <ArrowUpCircle className="mt-0.5 h-4 w-4 shrink-0 text-[#F59E0B]" />
-                      <span className="text-[oklch(0.3_0.02_265)]">{item}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
-            {/* AI Summary */}
-            <div className="rounded-lg bg-[oklch(0.97_0.01_265)] p-3 text-sm italic leading-relaxed text-[oklch(0.35_0.02_265)]">
-              {result.analysis.summary}
-            </div>
-
-            {/* Actions */}
-            <div className="flex items-center justify-between border-t border-black/5 pt-3">
-              <button
-                onClick={() => setHistoryOpen((v) => !v)}
-                className="text-xs text-[oklch(0.5_0.02_265)] hover:underline"
-              >
-                {historyOpen ? "Hide" : "View"} past analyses
-              </button>
-              <DashButton
-                variant="outline"
-                size="sm"
-                onClick={() => openConfirm(true)}
-                disabled={analyzeMutation.isPending || locked}
-              >
-                <RefreshCw
-                  className={cn("h-3.5 w-3.5", analyzeMutation.isPending && "animate-spin")}
-                />
-                Re-analyze
-              </DashButton>
-            </div>
-
-            {historyOpen && <MatchHistoryList resumeId={resume.id} jobId={jobId} />}
+            <DashButton
+              variant="outline"
+              size="sm"
+              onClick={() => setReportOpen(true)}
+              className="w-full"
+            >
+              <FileSearch className="h-3.5 w-3.5" /> View Full Report
+            </DashButton>
           </div>
         )}
       </MatchCardShell>
@@ -449,6 +397,19 @@ export function ResumeMatchCard({ jobId }: { jobId: string }) {
         onConfirm={handleConfirm}
         onCancel={() => setConfirmOpen(false)}
       />
+
+      {analysis && (
+        <ResumeMatchReportDialog
+          open={reportOpen}
+          analysis={analysis}
+          resumeId={resume.id}
+          jobId={jobId}
+          onReanalyze={handleReanalyzeFromDialog}
+          reanalyzeDisabled={analyzeMutation.isPending || locked}
+          reanalyzePending={analyzeMutation.isPending}
+          onClose={() => setReportOpen(false)}
+        />
+      )}
     </>
   );
 }

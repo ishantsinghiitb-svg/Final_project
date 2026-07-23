@@ -90,16 +90,51 @@ export const ResumeMatchResultSchema = z.object({
 });
 export type ResumeMatchResult = z.infer<typeof ResumeMatchResultSchema>;
 
+// ── ATS Compatibility (Module 6C) ──
+//
+// This is the AI HALF of a hybrid score: the model evaluates ONLY the
+// contextual dimensions (keyword coverage, skills/experience alignment,
+// readability) plus the qualitative content (matched/missing keywords,
+// strengths, risks, recommendations, summary). The deterministic parser owns
+// formatting + section completeness, and the APPLICATION combines everything
+// with fixed weights (see features/ai/atsScore.ts) into the final 0–100 score.
+// The AI never returns the final number or a formatting score — that would let
+// it invent an arbitrary ATS score, which the spec forbids.
+//
+// Every field carries a `.catch()` fallback (same defensive pattern as Resume
+// Match) so a malformed/missing value from the model degrades gracefully
+// instead of failing validation of the whole analysis.
+
+const AtsComponentSchema = z
+  .object({
+    score: z.number().int().min(0).max(100).catch(0),
+    detail: z.string().catch(""),
+  })
+  .catch({ score: 0, detail: "" });
+
 export const AtsScoreResultSchema = z.object({
-  score: z.number(), // 0–100 ATS-friendliness
-  breakdown: z.array(
-    z.object({
-      category: z.string(),
-      score: z.number(),
-      detail: z.string(),
+  // AI-scored components only (0–100 each). Formatting + section completeness
+  // are computed deterministically by the application, never by the model.
+  components: z
+    .object({
+      keywordCoverage: AtsComponentSchema,
+      skillsAlignment: AtsComponentSchema,
+      experienceAlignment: AtsComponentSchema,
+      readability: AtsComponentSchema,
+    })
+    .catch({
+      keywordCoverage: { score: 0, detail: "" },
+      skillsAlignment: { score: 0, detail: "" },
+      experienceAlignment: { score: 0, detail: "" },
+      readability: { score: 0, detail: "" },
     }),
-  ),
-  issues: z.array(z.string()),
+  matchedKeywords: z.array(z.string()).max(30).catch([]),
+  missingKeywords: z.array(z.string()).max(30).catch([]),
+  criticalMissingKeywords: z.array(z.string()).max(15).catch([]),
+  strengths: z.array(z.string()).max(6).catch([]),
+  atsRisks: z.array(z.string()).max(6).catch([]),
+  recommendations: z.array(z.string()).max(6).catch([]),
+  summary: z.string().catch(""),
 });
 export type AtsScoreResult = z.infer<typeof AtsScoreResultSchema>;
 

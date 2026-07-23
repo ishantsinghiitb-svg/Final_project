@@ -112,7 +112,7 @@ export function resolveModel(provider: AIProviderId, tier: AIModelTier): string 
 // future subscription plan simply swaps the allowance source — the consume /
 // check path stays identical.
 export const aiCreditsConfig = {
-  freeCredits: Number(import.meta.env.VITE_AI_FREE_CREDITS ?? 3),
+  freeCredits: Number(import.meta.env.VITE_AI_FREE_CREDITS ?? 5),
 } as const;
 
 // ── Future Integrations ──

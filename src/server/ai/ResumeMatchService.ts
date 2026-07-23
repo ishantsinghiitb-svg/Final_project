@@ -41,6 +41,18 @@ function toSummary(row: { id: string; result: Json; created_at: string }): Resum
     whatToImprove: data.whatToImprove,
     summary: data.summary,
     createdAt: row.created_at,
+    // Module 6C polish: the "View Full Report" dialog surfaces this detail,
+    // which the AI already computed — `internal` was already stored on this
+    // row, just not previously forwarded to the client.
+    dimensions: {
+      experience: data.internal.dimensions.experience,
+      education: data.internal.dimensions.education,
+      domain: data.internal.dimensions.domain,
+    },
+    missingSkills: data.internal.missingSkills,
+    missingKeywords: data.internal.missingKeywords,
+    matchedKeywords: data.internal.matchedKeywords,
+    recommendation: data.internal.recommendation,
   };
 }
 
@@ -203,6 +215,15 @@ export async function analyzeResumeMatch(
       whatToImprove: data.whatToImprove,
       summary: data.summary,
       createdAt,
+      dimensions: {
+        experience: data.internal.dimensions.experience,
+        education: data.internal.dimensions.education,
+        domain: data.internal.dimensions.domain,
+      },
+      missingSkills: data.internal.missingSkills,
+      missingKeywords: data.internal.missingKeywords,
+      matchedKeywords: data.internal.matchedKeywords,
+      recommendation: data.internal.recommendation,
     },
     cacheHit: result.meta.cacheHit,
     credits: result.meta.credits,

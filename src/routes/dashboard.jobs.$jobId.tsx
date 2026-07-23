@@ -25,12 +25,7 @@ import {
   ExternalLink,
 } from "lucide-react";
 import { useState, useEffect } from "react";
-import {
-  DashCard,
-  Chip,
-  CompanyMark,
-  SectionTitle,
-} from "@/components/dashboard/primitives";
+import { DashCard, Chip, CompanyMark, SectionTitle } from "@/components/dashboard/primitives";
 import {
   useJob,
   useJobSkills,
@@ -58,14 +53,12 @@ import { JobMetadataSections } from "@/components/dashboard/jobs/JobMetadataSect
 import { AddToCollectionMenu } from "@/components/dashboard/collections/AddToCollectionMenu";
 import { ResumeHealthSummaryCard } from "@/components/dashboard/jobs/ResumeHealthSummaryCard";
 import { ResumeMatchCard } from "@/components/dashboard/jobs/ResumeMatchCard";
+import { AtsCompatibilityCard } from "@/components/dashboard/jobs/AtsCompatibilityCard";
 
 // ── Route definition ──────────────────────────────────────────────────────────
 export const Route = createFileRoute("/dashboard/jobs/$jobId")({
   head: () => ({
-    meta: [
-      { title: "Job Details — NextOffer" },
-      { name: "robots", content: "noindex" },
-    ],
+    meta: [{ title: "Job Details — NextOffer" }, { name: "robots", content: "noindex" }],
   }),
   component: JobDetailPage,
 });
@@ -138,7 +131,12 @@ function SimilarJobCard({
         params={{ jobId: job.id }}
         className="flex items-start gap-3"
       >
-        <CompanyMark company={job.company_name} tone={tone} size={36} logoUrl={job.company_logo_url} />
+        <CompanyMark
+          company={job.company_name}
+          tone={tone}
+          size={36}
+          logoUrl={job.company_logo_url}
+        />
         <div className="min-w-0 flex-1">
           <p className="text-sm font-semibold font-display truncate group-hover:text-[#2563EB] transition-colors">
             {job.role}
@@ -364,7 +362,12 @@ function JobDetailPage() {
         <div className="flex flex-wrap items-start justify-between gap-4">
           {/* Company mark + title */}
           <div className="flex items-start gap-4">
-            <CompanyMark company={job.company_name} tone={tone} size={56} logoUrl={job.company_logo_url} />
+            <CompanyMark
+              company={job.company_name}
+              tone={tone}
+              size={56}
+              logoUrl={job.company_logo_url}
+            />
             <div>
               <h1 className="font-display text-xl font-semibold tracking-tight text-[oklch(0.2_0.02_265)]">
                 {job.role}
@@ -612,6 +615,7 @@ function JobDetailPage() {
         <div className="space-y-4">
           <ResumeHealthSummaryCard />
           <ResumeMatchCard jobId={job.id} />
+          <AtsCompatibilityCard jobId={job.id} />
 
           <DashCard>
             <p className="font-display text-sm font-semibold">Ready to apply?</p>
@@ -751,9 +755,7 @@ function CopyUrlButton({ jobId }: { jobId: string }) {
         <Copy className="h-3.5 w-3.5 shrink-0" />
       )}
       <span className="truncate flex-1">{`…/jobs/${jobId.slice(0, 8)}…`}</span>
-      <span className="shrink-0 font-medium text-[#2563EB]">
-        {copied ? "Copied!" : "Copy"}
-      </span>
+      <span className="shrink-0 font-medium text-[#2563EB]">{copied ? "Copied!" : "Copy"}</span>
     </button>
   );
 }

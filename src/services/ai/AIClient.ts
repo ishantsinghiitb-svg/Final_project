@@ -1,5 +1,11 @@
 import { authService } from "@/services/AuthService";
-import { getAICredits, getResumeMatch, analyzeResumeMatch } from "@/server-functions/ai";
+import {
+  getAICredits,
+  getResumeMatch,
+  analyzeResumeMatch,
+  getAtsScore,
+  analyzeAtsScore,
+} from "@/server-functions/ai";
 import { parseResume } from "@/server-functions/resume";
 import type { AICreditStatus } from "@/features/ai/types";
 
@@ -35,6 +41,18 @@ export const aiClient = {
   /** Generate (or re-generate) a Resume Match. The caller must have already shown the credit-confirmation dialog. */
   async analyzeResumeMatch(resumeId: string, jobId: string, forceRefresh = false) {
     return analyzeResumeMatch({
+      data: { accessToken: await accessToken(), resumeId, jobId, forceRefresh },
+    });
+  },
+
+  /** Read-only peek at the latest ATS Compatibility analysis for (resumeId, jobId) — 0 credits. */
+  async getAtsScore(resumeId: string, jobId: string) {
+    return getAtsScore({ data: { accessToken: await accessToken(), resumeId, jobId } });
+  },
+
+  /** Generate (or re-generate) an ATS Compatibility analysis. The caller must have already shown the credit-confirmation dialog. */
+  async analyzeAtsScore(resumeId: string, jobId: string, forceRefresh = false) {
+    return analyzeAtsScore({
       data: { accessToken: await accessToken(), resumeId, jobId, forceRefresh },
     });
   },

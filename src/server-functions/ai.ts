@@ -1,11 +1,15 @@
 import { createServerFn } from "@tanstack/react-start";
-import type { AICreditStatus, ResumeMatchSummary } from "@/features/ai/types";
+import type { AICreditStatus, AtsScoreSummary, ResumeMatchSummary } from "@/features/ai/types";
 import { requireUser } from "@/server/supabase";
 import { AICreditService } from "@/server/ai/AICreditService";
 import {
   getResumeMatch as fetchResumeMatch,
   analyzeResumeMatch as runResumeMatchAnalysis,
 } from "@/server/ai/ResumeMatchService";
+import {
+  getAtsScore as fetchAtsScore,
+  analyzeAtsScore as runAtsScoreAnalysis,
+} from "@/server/ai/AtsScoreService";
 
 // ── AI server functions (Module 6A credits + Module 6B Resume Match) ──
 //
@@ -90,6 +94,67 @@ export const analyzeResumeMatch = createServerFn({ method: "POST" })
   .handler(async ({ data }): Promise<AnalyzeResumeMatchResult> => {
     const authed = await requireUser(data.accessToken);
     return runResumeMatchAnalysis(authed, data.resumeId, data.jobId, {
+      forceRefresh: data.forceRefresh,
+    });
+  });
+
+// ── ATS Compatibility (Module 6C) ──
+//
+// Same two-entry-point shape as Resume Match ("viewing never charges, only
+// Analyze/Re-analyze does"):
+//   • getAtsScore     — read-only peek (0 credits, no provider call); also
+//     recomputes the current input hash to report staleness.
+//   • analyzeAtsScore — the credit-gated generation path (hybrid: deterministic
+//     parser checks + AI component evaluations, combined server-side). The
+//     client must show the "this will use 1 AI Credit" confirmation first.
+
+type GetAtsScoreInput = { accessToken: string; resumeId: string; jobId: string };
+
+type GetAtsScoreResult =
+  | {
+      ok: true;
+      analysis: AtsScoreSummary | null;
+      stale: boolean;
+      resumeName: string | null;
+      credits: AICreditStatus;
+    }
+  | { ok: false; code: string; message: string };
+
+export const getAtsScore = createServerFn({ method: "POST" })
+  .validator((data: GetAtsScoreInput) => data)
+  .handler(async ({ data }): Promise<GetAtsScoreResult> => {
+    const authed = await requireUser(data.accessToken);
+    try {
+      const [ats, credits] = await Promise.all([
+        fetchAtsScore(authed, data.resumeId, data.jobId),
+        new AICreditService(authed.supabase).getStatus(),
+      ]);
+      return { ok: true, ...ats, credits };
+    } catch (err) {
+      return {
+        ok: false,
+        code: "error",
+        message: err instanceof Error ? err.message : "Failed to load your ATS analysis.",
+      };
+    }
+  });
+
+type AnalyzeAtsScoreInput = {
+  accessToken: string;
+  resumeId: string;
+  jobId: string;
+  forceRefresh?: boolean;
+};
+
+type AnalyzeAtsScoreResult =
+  | { ok: true; analysis: AtsScoreSummary; cacheHit: boolean; credits: AICreditStatus }
+  | { ok: false; code: string; message: string; credits?: AICreditStatus };
+
+export const analyzeAtsScore = createServerFn({ method: "POST" })
+  .validator((data: AnalyzeAtsScoreInput) => data)
+  .handler(async ({ data }): Promise<AnalyzeAtsScoreResult> => {
+    const authed = await requireUser(data.accessToken);
+    return runAtsScoreAnalysis(authed, data.resumeId, data.jobId, {
       forceRefresh: data.forceRefresh,
     });
   });

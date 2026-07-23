@@ -13,6 +13,10 @@ export const aiKeys = {
     [...aiKeys.all, "resume-match", resumeId, jobId] as const,
   resumeMatchHistory: (resumeId: string, jobId: string) =>
     [...aiKeys.all, "resume-match-history", resumeId, jobId] as const,
+  atsScore: (resumeId: string, jobId: string) =>
+    [...aiKeys.all, "ats-score", resumeId, jobId] as const,
+  atsScoreHistory: (resumeId: string, jobId: string) =>
+    [...aiKeys.all, "ats-score-history", resumeId, jobId] as const,
 };
 
 /**
@@ -81,6 +85,64 @@ export function useAnalyzeMatch(resumeId: string | undefined, jobId: string | un
       });
       void queryClient.invalidateQueries({
         queryKey: aiKeys.resumeMatchHistory(resumeId ?? "", jobId ?? ""),
+      });
+      void queryClient.invalidateQueries({ queryKey: aiKeys.credits(user?.id ?? "") });
+    },
+  });
+}
+
+// ── ATS Compatibility (Module 6C) ──
+//
+// Same read/analyze split as Resume Match: the peek never charges a credit, and
+// the mutation executes only after the caller has shown the credit-confirmation
+// dialog. Keyed by (resumeId, jobId) so switching the resume shows that pair's
+// cached analysis instantly with no AI call.
+
+/**
+ * Read-only peek at the latest ATS Compatibility analysis for (resumeId,
+ * jobId) — never consumes a credit. Returns `null` analysis when nothing has
+ * been analyzed yet, and `stale: true` when the resume or job changed since.
+ */
+export function useAtsScore(
+  resumeId: string | undefined,
+  jobId: string | undefined,
+  resumeReady = true,
+) {
+  return useQuery({
+    queryKey: aiKeys.atsScore(resumeId ?? "", jobId ?? ""),
+    queryFn: () => aiClient.getAtsScore(resumeId!, jobId!),
+    enabled: Boolean(resumeId) && Boolean(jobId) && resumeReady,
+    staleTime: 30 * 1_000,
+  });
+}
+
+/** Past ATS analyses for this (resumeId, jobId) pair, newest first. */
+export function useAtsScoreHistory(resumeId: string | undefined, jobId: string | undefined) {
+  return useQuery({
+    queryKey: aiKeys.atsScoreHistory(resumeId ?? "", jobId ?? ""),
+    queryFn: () => analysisRepo.listHistory(resumeId!, jobId!, AI_CAPABILITIES.ATS_SCORE),
+    enabled: Boolean(resumeId) && Boolean(jobId),
+    staleTime: 60 * 1_000,
+  });
+}
+
+/**
+ * Analyze (or re-analyze, with forceRefresh) ATS Compatibility. The caller must
+ * show the credit-confirmation dialog BEFORE invoking this — the mutation never
+ * confirms, it only executes.
+ */
+export function useAnalyzeAts(resumeId: string | undefined, jobId: string | undefined) {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (forceRefresh: boolean) =>
+      aiClient.analyzeAtsScore(resumeId!, jobId!, forceRefresh),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: aiKeys.atsScore(resumeId ?? "", jobId ?? ""),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: aiKeys.atsScoreHistory(resumeId ?? "", jobId ?? ""),
       });
       void queryClient.invalidateQueries({ queryKey: aiKeys.credits(user?.id ?? "") });
     },

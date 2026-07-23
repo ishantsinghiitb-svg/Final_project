@@ -42,7 +42,10 @@ export const AI_ANALYSIS_VERSIONS: Record<AICapability, string> = {
   // transferable-skill credit, required-vs-preferred weighting. Bumped so the
   // earlier keyword-driven (unrealistically low) cached scores are not reused.
   resume_match: "3",
-  ats_score: "1",
+  // v2 (6C): first real ATS Compatibility analysis (hybrid deterministic + AI).
+  // Bumped off the 6A placeholder "1" so no stale placeholder-shaped ai_cache
+  // row (from a 6A dev smoke test) is ever served for the new schema.
+  ats_score: "2",
   resume_optimizer: "1",
   cover_letter: "1",
   interview_prep: "1",
@@ -53,7 +56,8 @@ export const AI_PROMPT_VERSIONS: Record<AICapability, string> = {
   // v3 (6B refinement): recruiter rubric + structured-section context + richer
   // plain-language output contract.
   resume_match: "3",
-  ats_score: "1",
+  // v2 (6C): real ATS Compatibility prompt (component-evaluation contract).
+  ats_score: "2",
   resume_optimizer: "1",
   cover_letter: "1",
   interview_prep: "1",
