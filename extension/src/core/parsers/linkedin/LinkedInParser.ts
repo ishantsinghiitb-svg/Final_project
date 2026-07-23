@@ -27,7 +27,17 @@ import {
 type JsonLdJobPosting = Record<string, unknown>;
 
 /** Bumped when this parser's extraction logic changes materially. */
-const LINKEDIN_PARSER_VERSION = "linkedin-1";
+const LINKEDIN_PARSER_VERSION = "linkedin-2";
+
+/**
+ * LinkedIn tab titles that are NOT a job — used to reject the `document.title`
+ * fallback on non-job surfaces (feed, messaging, a company page) so it can only
+ * ever fill in a real job's title/company, never mislabel another page as a job.
+ */
+const GENERIC_LINKEDIN_TITLE =
+  /^(linkedin|jobs?|jobs? search|feed|messaging|notifications|my network|search|home|profile|sales navigator|recruiter)$/i;
+
+type DocTitleParts = { title: string | null; company: string | null; location: string | null };
 
 const SALARY_UNIT_MAP: Record<string, SalaryPeriod> = {
   HOUR: "Hourly",
@@ -44,6 +54,37 @@ const EMPLOYMENT_TYPE_MAP: Record<string, EmploymentType> = {
   TEMPORARY: "Temporary",
   INTERN: "Internship",
   INTERNSHIP: "Internship",
+};
+
+/** Visible top-card word (hyphens stripped) → EmploymentType enum. */
+const EMPLOYMENT_TYPE_TEXT: Record<string, EmploymentType> = {
+  fulltime: "Full-Time",
+  parttime: "Part-Time",
+  contract: "Contract",
+  internship: "Internship",
+  temporary: "Temporary",
+  freelance: "Freelance",
+};
+
+/** Visible top-card word (hyphens stripped) → WorkMode enum. */
+const WORK_MODE_TEXT: Record<string, WorkMode> = {
+  onsite: "Onsite",
+  remote: "Remote",
+  hybrid: "Hybrid",
+};
+
+type TopCardFacts = {
+  location: string | null;
+  city: string | null;
+  state: string | null;
+  country: string | null;
+  postedAgo: string | null;
+  applicantCount: number | null;
+  employmentType: EmploymentType | null;
+  workMode: WorkMode | null;
+  promoted: boolean;
+  responsesManaged: boolean;
+  easyApply: boolean;
 };
 
 type LocationParts = {
@@ -73,17 +114,67 @@ export class LinkedInParser extends BaseParser {
   tryParse(context: ParserContext): UniversalJob | null {
     const { document, url } = context;
     const jsonLd = this.findJsonLdByType(document, "JobPosting");
+    const sourceJobId = this.readSourceJobId(document, url, jsonLd);
 
-    const title = this.readTitle(document, jsonLd);
-    const companyName = this.readCompanyName(document, jsonLd);
+    // ── Locate the VISIBLE details pane ──
+    // LinkedIn's current /jobs/* surfaces render with obfuscated, per-build
+    // hashed class names (`_913286c8` …), so class selectors alone can't find
+    // the selected job. The details pane is instead located by STABLE semantic
+    // landmarks: the selected job's own `/jobs/view/<id>` title link and the
+    // "About the job" description heading (list cards never contain the latter).
+    const details = this.findDetailsPane(document, sourceJobId);
 
-    if (!title || !companyName) {
-      // No job selected / no job-details DOM present on this page right now.
+    // ── Title + company · priority: DOM → JSON-LD → document.title (last) ──
+    // DOM ALWAYS wins. `readTitleDom`/`readCompanyDom` read the details pane's
+    // own title/company links; the class selectors are a fallback for older
+    // layouts; `document.title` only ever fills a field still empty after both
+    // (it can never overwrite a DOM value).
+    const domTitle =
+      this.readTitleDom(document, details, sourceJobId) ??
+      this.firstText(document, [...linkedInSelectors.title]);
+    const domCompany =
+      this.readCompanyDom(details) ?? this.firstText(document, [...linkedInSelectors.companyName]);
+
+    const jsonTitle =
+      typeof jsonLd?.title === "string" ? this.cleanText(jsonLd.title) || null : null;
+    const org = jsonLd?.hiringOrganization as Record<string, unknown> | undefined;
+    const jsonCompany = typeof org?.name === "string" ? this.cleanText(org.name) || null : null;
+
+    // A hard signal that a job is genuinely on this page. Non-job surfaces
+    // (feed, profile, messaging) have none, which stops the document.title
+    // fallback from mislabeling them as a job (they all have a document.title).
+    const hasJobSignal =
+      Boolean(jsonLd) ||
+      Boolean(sourceJobId) ||
+      Boolean(domTitle) ||
+      Boolean(domCompany) ||
+      Boolean(details) ||
+      document.querySelector(linkedInSelectors.topCard.join(", ")) !== null;
+
+    const docParts: DocTitleParts = hasJobSignal
+      ? this.readDocumentTitleParts(document)
+      : { title: null, company: null, location: null };
+
+    const title = domTitle ?? jsonTitle ?? docParts.title;
+    const companyName = domCompany ?? jsonCompany ?? docParts.company;
+
+    // Return null ONLY when there is genuinely no LinkedIn job — no title, no
+    // company, AND no job id. A single failed selector never nulls the parse.
+    if (!title && !companyName && !sourceJobId) {
       return null;
     }
 
-    const { text: description, html: descriptionHtml } = this.readDescription(document, jsonLd);
-    const sourceJobId = this.readSourceJobId(document, url, jsonLd);
+    // ── Description · DOM ("About the job") → JSON-LD/class fallback ──
+    const domDesc = this.readDescriptionDom(document, details);
+    const { text: description, html: descriptionHtml } = domDesc.text
+      ? domDesc
+      : this.readDescription(document, jsonLd);
+
+    // ── Top-card metadata (location / posted / applicants / type / mode) ──
+    // Parsed from the details pane's own tertiary line — layout-independent,
+    // used only to FILL fields the structured sources didn't already provide.
+    const top = this.parseTopCard(details, title ?? "");
+
     const sourceUrl = sourceJobId
       ? `https://www.linkedin.com/jobs/view/${sourceJobId}/`
       : this.stableUrl(url);
@@ -93,40 +184,35 @@ export class LinkedInParser extends BaseParser {
     const primarySegments = parsePrimaryDescriptionSegments(document);
     const insightSegments = parseJobInsightSegments(document);
     const fitPreferences = parseFitLevelPreferences(document);
-    const companyUrl = this.readCompanyUrl(document, jsonLd);
+    const companyUrl = this.readCompanyUrl(document, jsonLd, details);
     const locationParts = this.readLocationParts(jsonLd);
     const location =
       locationParts.location ??
       primarySegments.location ??
-      this.firstText(document, [...linkedInSelectors.location]);
+      this.firstText(document, [...linkedInSelectors.location]) ??
+      top.location ??
+      docParts.location;
 
-    const workMode = this.readWorkMode(fitPreferences, criteriaMap, insightSegments, criteriaText);
+    const workMode =
+      this.readWorkMode(fitPreferences, criteriaMap, insightSegments, criteriaText) ?? top.workMode;
+    const employmentType =
+      this.readEmploymentType(jsonLd, fitPreferences, criteriaMap, insightSegments, criteriaText) ??
+      top.employmentType;
 
-    // Extraction only — `remote`, the salary display string, parser confidence
-    // and warnings are all derived later by JobNormalizer. Fields LinkedIn
-    // doesn't expose (department, career URL, responsibilities/requirements,
-    // technologies, languages) are left at their `null`/`[]` defaults, never
-    // fabricated.
     return createUniversalJob({
       source: SupportedSite.LinkedIn,
       parserVersion: LINKEDIN_PARSER_VERSION,
       sourceJobId,
-      title,
-      companyName,
-      companyLogoUrl: this.readCompanyLogo(document, jsonLd),
+      title: title ?? "",
+      companyName: companyName ?? "",
+      companyLogoUrl: this.readLogoDom(document, details) ?? this.readCompanyLogo(document, jsonLd),
       companyUrl,
       location,
-      city: locationParts.city,
-      state: locationParts.state,
-      country: locationParts.country,
+      city: locationParts.city ?? top.city,
+      state: locationParts.state ?? top.state,
+      country: locationParts.country ?? top.country,
       workMode,
-      employmentType: this.readEmploymentType(
-        jsonLd,
-        fitPreferences,
-        criteriaMap,
-        insightSegments,
-        criteriaText,
-      ),
+      employmentType,
       experienceLevel: this.readExperienceLevel(criteriaMap, insightSegments, criteriaText),
       salaryMin: this.readSalary(jsonLd, "minValue"),
       salaryMax: this.readSalary(jsonLd, "maxValue"),
@@ -134,36 +220,284 @@ export class LinkedInParser extends BaseParser {
       salaryPeriod: this.readSalaryPeriod(jsonLd),
       skills: this.readSkills(document),
       postedAt: this.readPostedAt(document, jsonLd),
-      postedAgo: primarySegments.postedAgo,
+      postedAgo: primarySegments.postedAgo ?? top.postedAgo,
       expiryDate: this.readExpiryDate(jsonLd),
-      applicantCount: primarySegments.applicantCount,
+      applicantCount: primarySegments.applicantCount ?? top.applicantCount,
       hiringTeam: this.readHiringTeam(document),
       companySize: this.readCompanySize(document),
       hiringInsights: this.readHiringInsights(document),
-      easyApply: this.readEasyApply(document),
-      promoted: this.readPromoted(document),
+      easyApply: this.readEasyApply(document) || top.easyApply,
+      promoted: this.readPromoted(document) || top.promoted,
       reposted: this.readReposted(document),
-      responsesManaged: this.readResponsesManaged(document),
+      responsesManaged: this.readResponsesManaged(document) || top.responsesManaged,
       industry: this.readIndustry(criteriaMap),
       jobFunction: this.readJobFunction(criteriaMap),
       benefits: this.readBenefits(document),
       description,
       descriptionHtml,
-      applyUrl: this.readApplyUrl(document) ?? sourceUrl,
+      applyUrl: this.readApplyDom(document, details) ?? this.readApplyUrl(document) ?? sourceUrl,
       sourceUrl,
       isClosed: this.readIsClosed(document, jsonLd),
     });
   }
 
-  private readTitle(document: Document, jsonLd: JsonLdJobPosting | null): string | null {
-    const fromJsonLd = typeof jsonLd?.title === "string" ? this.cleanText(jsonLd.title) : null;
-    return fromJsonLd || this.firstText(document, [...linkedInSelectors.title]);
+  // ══════════════════════════════════════════════════════════════════════
+  // Visible-DOM extraction (obfuscated-class-proof) — Module 6C
+  //
+  // LinkedIn's live /jobs/* DOM uses hashed, per-build class names, so these
+  // read the details pane via STABLE semantic anchors only: the selected job's
+  // `/jobs/view/<id>` title link, the `/company/<slug>` company link, the
+  // `img[alt*="logo"]` company logo, the `aria-label*="apply"` button, and the
+  // "About the job" description heading. Verified against real saved DOM.
+  // ══════════════════════════════════════════════════════════════════════
+
+  /** The description heading — a stable text landmark unique to the selected job's full view. */
+  private findAboutHeading(root: ParentNode): Element | null {
+    const heads = Array.from(root.querySelectorAll("h1, h2, h3, h4, strong"));
+    return heads.find((h) => /^\s*about the job\s*$/i.test(h.textContent ?? "")) ?? null;
   }
 
-  private readCompanyName(document: Document, jsonLd: JsonLdJobPosting | null): string | null {
-    const org = jsonLd?.hiringOrganization as Record<string, unknown> | undefined;
-    const fromJsonLd = typeof org?.name === "string" ? this.cleanText(org.name) : null;
-    return fromJsonLd || this.firstText(document, [...linkedInSelectors.companyName]);
+  /** The selected job's title link — scoped to `currentJobId` so it's this job, never a left-list card. */
+  private jobTitleLink(document: Document, jobId: string | null): Element | null {
+    if (jobId) {
+      const scoped = document.querySelector(`a[href*="/jobs/view/${jobId}"]`);
+      if (scoped) return scoped;
+    }
+    return document.querySelector('a[href*="/jobs/view/"]');
+  }
+
+  /**
+   * The details pane = the smallest ancestor of the selected job's title link
+   * that also contains the "About the job" heading. Falls back to the heading's
+   * or title link's own container. Returns null on non-job pages.
+   */
+  private findDetailsPane(document: Document, jobId: string | null): Element | null {
+    const titleLink = this.jobTitleLink(document, jobId);
+    const about = this.findAboutHeading(document);
+    if (titleLink && about) {
+      let node: Element | null = titleLink.parentElement;
+      for (let i = 0; node && i < 30; i++) {
+        if (node.contains(about)) return node;
+        node = node.parentElement;
+      }
+    }
+    return about?.parentElement ?? titleLink?.parentElement ?? null;
+  }
+
+  private readTitleDom(
+    document: Document,
+    details: Element | null,
+    jobId: string | null,
+  ): string | null {
+    const link =
+      this.jobTitleLink(document, jobId) ??
+      details?.querySelector('a[href*="/jobs/view/"]') ??
+      null;
+    const text = link ? this.cleanText(link.textContent ?? "") : "";
+    // Strip a trailing "(Verified job)" / "with verification" decoration.
+    return text ? text.replace(/\s*\((?:verified job|with verification)\)\s*$/i, "").trim() : null;
+  }
+
+  private readCompanyDom(details: Element | null): string | null {
+    if (!details) return null;
+    // First /company/ link inside the pane — the top card precedes the company
+    // card, so the first clean link text is the company NAME (not "N followers").
+    for (const a of Array.from(details.querySelectorAll('a[href*="/company/"]'))) {
+      const t = this.cleanText(a.textContent ?? "");
+      if (t && t.length <= 80 && !/follower|^show more$|^see all/i.test(t)) return t;
+    }
+    return null;
+  }
+
+  private readLogoDom(document: Document, details: Element | null): string | null {
+    const scope: ParentNode = details ?? document;
+    const img =
+      scope.querySelector('img[alt*="logo" i]') ??
+      document.querySelector('img[alt*="logo" i]') ??
+      (details ? details.querySelector("img") : null);
+    if (!img) return null;
+    for (const attr of ["src", "data-delayed-url", "data-ghost-url", "data-src"]) {
+      const v = img.getAttribute(attr)?.trim();
+      if (v && !v.startsWith("data:") && !isPlaceholderImageUrl(v)) return v;
+    }
+    return null;
+  }
+
+  private readApplyDom(document: Document, details: Element | null): string | null {
+    const scope: ParentNode = details ?? document;
+    const btn =
+      scope.querySelector('a[aria-label*="apply" i][href]') ??
+      document.querySelector('a[aria-label*="apply" i][href]');
+    const href = btn?.getAttribute("href")?.trim();
+    if (!href) return null;
+    // LinkedIn wraps external apply links: /safety/go/?url=<encoded>&… — unwrap it.
+    if (/\/safety\/go/i.test(href)) {
+      const m = /[?&]url=([^&]+)/.exec(href);
+      if (m) {
+        try {
+          return decodeURIComponent(m[1]);
+        } catch {
+          /* fall through to raw href */
+        }
+      }
+    }
+    return href.startsWith("http") ? href : null;
+  }
+
+  private readDescriptionDom(document: Document, details: Element | null): DescriptionParts {
+    const about = this.findAboutHeading(details ?? document);
+    if (!about) return { text: null, html: null };
+    // The heading sits in its own sub-wrapper; the body paragraphs are its
+    // siblings, so the section holding BOTH is the heading's grandparent.
+    const section = about.parentElement?.parentElement ?? about.parentElement;
+    if (!section) return { text: null, html: null };
+    const html = (section.innerHTML ?? "")
+      .replace(/<h[1-6][^>]*>[\s\S]*?<\/h[1-6]>/i, "") // drop the "About the job" heading
+      .trim();
+    const text = this.htmlToText(html);
+    if (!text || text.length < 20) return { text: null, html: null };
+    return { text, html: sanitizeDescriptionHtml(html) };
+  }
+
+  /**
+   * Parses the details pane's tertiary line (e.g. "Bengaluru, Karnataka, India ·
+   * 13 hours ago · Over 100 people clicked apply … Full-time") for the fields
+   * the structured sources don't expose on obfuscated layouts. Deterministic
+   * patterns only — never guesses; a field it can't confidently read stays null.
+   */
+  private parseTopCard(details: Element | null, title: string): TopCardFacts {
+    const empty: TopCardFacts = {
+      location: null,
+      city: null,
+      state: null,
+      country: null,
+      postedAgo: null,
+      applicantCount: null,
+      employmentType: null,
+      workMode: null,
+      promoted: false,
+      responsesManaged: false,
+      easyApply: false,
+    };
+    if (!details) return empty;
+    const full = this.cleanText(details.textContent ?? "");
+    const at = title ? full.indexOf(title) : -1;
+    const win = (at >= 0 ? full.slice(at + title.length) : full).slice(0, 400);
+
+    const facts: TopCardFacts = { ...empty };
+
+    const seg0 = (win.split("·")[0] ?? "").trim();
+    if (
+      seg0 &&
+      seg0.length <= 80 &&
+      /[a-z]/i.test(seg0) &&
+      !/\bago\b|applicant|clicked apply|promoted|managed|full-?time|part-?time|contract|internship|save\b|apply\b/i.test(
+        seg0,
+      )
+    ) {
+      const loc = seg0.replace(/\s*\((?:on-?site|remote|hybrid)\)\s*$/i, "").trim();
+      if (loc) {
+        facts.location = loc;
+        const p = loc
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean);
+        if (p.length >= 3) [facts.city, facts.state, facts.country] = [p[0], p[1], p[p.length - 1]];
+        else if (p.length === 2) [facts.city, facts.country] = [p[0], p[1]];
+        else facts.city = p[0] ?? null;
+      }
+    }
+
+    const posted = /(\d+)\s+(second|minute|hour|day|week|month|year)s?\s+ago/i.exec(win);
+    if (posted) facts.postedAgo = `${posted[1]} ${posted[2]}${posted[1] === "1" ? "" : "s"} ago`;
+
+    const appl = /over\s+(\d+)\s+(?:people|applicant)|(\d[\d,]*)\s+applicants?/i.exec(win);
+    if (appl) facts.applicantCount = Number((appl[1] ?? appl[2]).replace(/,/g, ""));
+
+    // Employment type / work mode are their own leaf chips (e.g. a `<span>`
+    // "Full-time"). In the concatenated textContent they glue to neighbours
+    // ("LinkedInFull-timeApply"), which defeats a word-boundary regex — so read
+    // them from leaf elements whose OWN text is exactly the label instead.
+    const et = this.findChipLabel(
+      details,
+      /^(full-?time|part-?time|contract|internship|temporary|freelance)$/i,
+    );
+    if (et) facts.employmentType = EMPLOYMENT_TYPE_TEXT[et.toLowerCase().replace("-", "")] ?? null;
+
+    const wm = this.findChipLabel(details, /^\(?(on-?site|remote|hybrid)\)?$/i);
+    if (wm) {
+      const key = wm.toLowerCase().replace(/[()-]/g, "");
+      facts.workMode = WORK_MODE_TEXT[key] ?? null;
+    }
+
+    facts.promoted = /\bpromoted\b/i.test(win);
+    facts.responsesManaged = /responses?\s+managed\s+off\s+linkedin/i.test(win);
+    facts.easyApply = /\beasy apply\b/i.test(full);
+    return facts;
+  }
+
+  /**
+   * The text of the first leaf-ish element whose OWN trimmed text is EXACTLY a
+   * short chip label (e.g. "Full-time", "On-site"). Reading the label off its
+   * own element sidesteps the whitespace-free concatenation that a wide
+   * textContent regex trips over, and the exact ^…$ match prevents false hits.
+   */
+  private findChipLabel(details: Element, label: RegExp): string | null {
+    for (const el of Array.from(details.querySelectorAll("span, li, button, strong"))) {
+      const t = this.cleanText(el.textContent ?? "");
+      if (t.length <= 20 && label.test(t)) return t;
+    }
+    return null;
+  }
+
+  /**
+   * Layout-independent title/company/location extracted from `document.title`.
+   * LinkedIn sets the tab title to the selected job on EVERY jobs surface
+   * (/jobs/view, /jobs/search, /jobs/search-results, /jobs/collections/*, …),
+   * so this resolves fields even when a surface's top-card DOM classes differ
+   * from every selector we know. Handles the two long-standing formats:
+   *   • "Company hiring Job Title in Location | LinkedIn"  (logged-out / public)
+   *   • "Job Title | Company | LinkedIn"  /  "Job Title - Company | LinkedIn"
+   * A leading "(3) " unread-count badge and the trailing " | LinkedIn" are
+   * stripped first. Only called once a hard job signal is present (see
+   * `tryParse`), and generic page titles are rejected, so it can never turn a
+   * non-job LinkedIn page into a phantom job.
+   */
+  private readDocumentTitleParts(document: Document): DocTitleParts {
+    const empty: DocTitleParts = { title: null, company: null, location: null };
+    const rawTitle = document.title ?? "";
+    const stripped = rawTitle
+      .replace(/^\(\d+\+?\)\s*/, "") // leading "(3) " / "(9+) " unread badge
+      .replace(/\s*[|–-]\s*LinkedIn\s*$/i, "") // trailing " | LinkedIn"
+      .trim();
+    if (!stripped) return empty;
+
+    const clean = (v: string): string | null => {
+      const c = this.cleanText(v);
+      return c && !GENERIC_LINKEDIN_TITLE.test(c) ? c : null;
+    };
+
+    // "Company hiring Job Title in Location"
+    const hiring = /^(.+?)\s+hiring\s+(.+?)(?:\s+in\s+(.+))?$/i.exec(stripped);
+    if (hiring) {
+      return {
+        company: clean(hiring[1]),
+        title: clean(hiring[2]),
+        location: hiring[3] ? this.cleanText(hiring[3]) || null : null,
+      };
+    }
+
+    // "Job Title | Company" / "Job Title – Company" / "Job Title - Company".
+    // Split on `|`/`–` (optional surrounding space) OR a hyphen that has spaces
+    // on BOTH sides — never a hyphen inside a word (e.g. "Front-End Engineer").
+    const parts = stripped
+      .split(/\s*[|–]\s*|\s+-\s+/)
+      .map((p) => p.trim())
+      .filter(Boolean);
+    if (parts.length >= 2) {
+      return { title: clean(parts[0]), company: clean(parts[1]), location: null };
+    }
+    return { title: clean(stripped), company: null, location: null };
   }
 
   /**
@@ -179,7 +513,30 @@ export class LinkedInParser extends BaseParser {
    * nearly every job regardless of which company actually posted it. `sameAs`
    * is now only a fallback for when the DOM has no link at all.
    */
-  private readCompanyUrl(document: Document, jsonLd: JsonLdJobPosting | null): string | null {
+  private readCompanyUrl(
+    document: Document,
+    jsonLd: JsonLdJobPosting | null,
+    details: Element | null,
+  ): string | null {
+    // Details-pane company link first (obfuscated-class-proof). Normalize a
+    // relative "/company/<slug>/…" href to an absolute LinkedIn company URL.
+    if (details) {
+      for (const a of Array.from(details.querySelectorAll('a[href*="/company/"]'))) {
+        const t = this.cleanText(a.textContent ?? "");
+        if (t && !/follower|^show more$|^see all/i.test(t)) {
+          const href = a.getAttribute("href")?.trim();
+          if (href) {
+            const abs = href.startsWith("http")
+              ? href
+              : `https://www.linkedin.com${href.startsWith("/") ? "" : "/"}${href}`;
+            // Canonicalize to the company root — drop a tab suffix (/life/,
+            // /jobs/, /people/, …) and any query string.
+            return abs.replace(/(\/company\/[^/?#]+)(?:\/[^?#]*)?.*$/i, "$1/");
+          }
+        }
+      }
+    }
+
     const domUrl = this.firstAttr(document, [...linkedInSelectors.companyName], "href");
     if (domUrl) return domUrl;
 
@@ -525,7 +882,15 @@ export class LinkedInParser extends BaseParser {
       return identifier.value;
     }
 
-    const dataJobId = document.querySelector("[data-job-id]")?.getAttribute("data-job-id");
+    // DOM last resort — scoped to the job-details region first so it reads THIS
+    // job's id, never a left-list card's `[data-job-id]`. Only falls back to a
+    // document-wide read when no details container is found.
+    const detailsRoot =
+      document.querySelector(linkedInSelectors.topCard.join(", ")) ??
+      document.querySelector(".jobs-details, .scaffold-layout__detail");
+    const dataJobId = (detailsRoot ?? document)
+      .querySelector("[data-job-id]")
+      ?.getAttribute("data-job-id");
     if (dataJobId && /^\d+$/.test(dataJobId)) return dataJobId;
 
     return null;

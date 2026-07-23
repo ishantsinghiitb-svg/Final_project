@@ -59,4 +59,25 @@ export class AICreditService {
 
     return { ok: result.ok, status: toStatus(result) };
   }
+
+  /**
+   * Compensating action for `consume` — used when a charged generation
+   * ultimately fails (provider/validation error) so the user isn't billed for
+   * nothing. Symmetric RPC; never lets credits_used go below 0.
+   */
+  async refund(capability: AICapability, cost: number): Promise<AICreditStatus> {
+    const { data, error } = await this.sb.rpc("refund_ai_credit", {
+      p_capability: capability,
+      p_cost: cost,
+    });
+    if (error) throw error;
+    return toStatus(
+      data as {
+        plan: string;
+        credits_total: number;
+        credits_used: number;
+        credits_remaining: number;
+      },
+    );
+  }
 }

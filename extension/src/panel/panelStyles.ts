@@ -277,6 +277,137 @@ export const panelStyles = `
   background: #e2edf9;
 }
 
+/* ── AI Job Match section (Module 6C) — selector + credits + cached score + actions ── */
+.nextoffer-panel__match {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.06), rgba(124, 58, 237, 0.08));
+}
+
+.nextoffer-panel__match-resume {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.nextoffer-panel__match-resume-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #5b6472;
+}
+
+.nextoffer-panel__upload-btn {
+  align-self: flex-start;
+  width: auto !important;
+  min-height: 0 !important;
+  padding: 5px 10px !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  border: 1px dashed rgba(37, 99, 235, 0.4) !important;
+  background: rgba(37, 99, 235, 0.06) !important;
+  color: #2563eb !important;
+  border-radius: 7px !important;
+}
+
+.nextoffer-panel__match-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 2px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.nextoffer-panel__match-title {
+  font-weight: 700;
+  font-size: 13px;
+  color: #1a1a1a;
+}
+
+.nextoffer-panel__match-credits {
+  font-size: 11px;
+  font-weight: 600;
+  color: #5b6472;
+}
+
+.nextoffer-panel__match-score {
+  font-size: 20px;
+  font-weight: 700;
+  color: #7c3aed;
+  line-height: 1.1;
+}
+
+.nextoffer-panel__match-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin-top: -4px;
+}
+
+.nextoffer-panel__match-hint {
+  font-size: 11px;
+  color: #5b6472;
+}
+
+.nextoffer-panel__match-error {
+  font-size: 11px;
+  color: #b3261e;
+}
+
+.nextoffer-panel__match-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.nextoffer-panel__match-confirm {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  font-size: 11.5px;
+  color: #1a1a1a;
+}
+
+.nextoffer-panel__match-confirm-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.nextoffer-panel__match-select {
+  flex: 1;
+  min-width: 0;
+  padding: 4px 6px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 6px;
+  background: #ffffff;
+  color: #1a1a1a;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.nextoffer-panel__match-select:focus-visible {
+  outline: 2px solid rgba(37, 99, 235, 0.4);
+  outline-offset: 1px;
+}
+
+/* The two-button action rows share width; single buttons stay full-width via
+   the base rule. Specificity must beat the shell's width:100% button rule above. */
+.nextoffer-shell--expanded .nextoffer-panel__match-actions button,
+.nextoffer-shell--expanded .nextoffer-panel__match-confirm-actions button {
+  flex: 1;
+  width: auto;
+  padding: 8px 10px;
+  font-size: 12px;
+}
+
 /* ── Unsupported-hiring-page message (Module 4C) ── */
 .nextoffer-panel__list {
   margin: 0;

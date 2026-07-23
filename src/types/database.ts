@@ -381,6 +381,43 @@ export type UserAiUsageInsert = {
   updated_at?: string;
 };
 
+// ── Module 6B: Resume Match ──
+export type AiAnalysisRow = {
+  id: string;
+  user_id: string;
+  capability: string;
+  resume_id: string | null;
+  job_id: string | null;
+  resume_file_hash: string | null;
+  job_hash: string | null;
+  input_hash: string;
+  prompt_version: string;
+  analysis_version: string;
+  model: string;
+  score: number | null;
+  result: Json;
+  cache_hit: boolean;
+  created_at: string;
+};
+
+export type AiAnalysisInsert = {
+  id?: string;
+  user_id: string;
+  capability: string;
+  resume_id?: string | null;
+  job_id?: string | null;
+  resume_file_hash?: string | null;
+  job_hash?: string | null;
+  input_hash: string;
+  prompt_version: string;
+  analysis_version: string;
+  model: string;
+  score?: number | null;
+  result: Json;
+  cache_hit?: boolean;
+  created_at?: string;
+};
+
 export type ResumeVersionRow = {
   id: string;
   resume_id: string;
@@ -1059,6 +1096,12 @@ export type Database = {
         Update: Partial<UserAiUsageRow>;
         Relationships: TableRelationship[];
       };
+      ai_analyses: {
+        Row: AiAnalysisRow;
+        Insert: AiAnalysisInsert;
+        Update: Partial<AiAnalysisRow>;
+        Relationships: TableRelationship[];
+      };
       interviews: {
         Row: InterviewRow;
         Insert: InterviewInsert;
@@ -1129,6 +1172,11 @@ export type Database = {
       set_default_resume: {
         Args: { p_resume_id: string };
         Returns: undefined;
+      };
+      // ── Module 6B ──
+      refund_ai_credit: {
+        Args: { p_capability: string; p_cost: number };
+        Returns: Json;
       };
     };
   };

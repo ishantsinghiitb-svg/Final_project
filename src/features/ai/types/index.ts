@@ -1,5 +1,6 @@
 import type { AICapability, AIResultCode } from "@/features/ai/constants";
 import type { StructuredResume } from "@/features/ai/schemas";
+import type { MatchLabel } from "@/features/ai/matchLabel";
 
 // ── AI credit status (paywall-ready) ──
 //
@@ -43,6 +44,13 @@ export type AISuccessMeta = {
   promptVersion: string;
   analysisVersion: string;
   credits: AICreditStatus;
+  // ── Module 6B additions ──
+  // Exposed so callers that persist a durable result (e.g. ai_analyses) can
+  // record the exact cache key + snapshot refs without re-building AIContext
+  // (which would mean a second resume/job fetch for every analysis).
+  inputHash: string;
+  jobHash: string | null;
+  resumeFileHash: string | null;
 };
 
 export type AISuccessResult<T> = {
@@ -99,4 +107,20 @@ export type AIContext = {
   resume?: ResumeContext;
   job?: JobContext;
   user?: UserContext;
+};
+
+// ── Resume Match — client-facing summary (Module 6B) ──
+//
+// The ONLY shape the product surfaces for a match result. Deliberately
+// narrower than ResumeMatchResult (features/ai/schemas) — richer per-
+// dimension/confidence detail lives in `internal` and is never sent to a
+// client. `matchLabel` is derived (see matchLabel.ts), never AI-generated.
+export type ResumeMatchSummary = {
+  id: string;
+  overallScore: number;
+  matchLabel: MatchLabel;
+  whatMatches: string[];
+  whatToImprove: string[];
+  summary: string;
+  createdAt: string;
 };

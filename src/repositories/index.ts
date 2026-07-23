@@ -9,3 +9,4 @@ export { CoverLetterRepository } from "./CoverLetterRepository";
 export { ContactRepository } from "./ContactRepository";
 export { ReminderRepository } from "./ReminderRepository";
 export { AttachmentRepository } from "./AttachmentRepository";
+export { AnalysisRepository } from "./AnalysisRepository";

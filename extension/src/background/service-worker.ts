@@ -9,7 +9,13 @@ import {
   getCurrentJobForTab,
   setCurrentJobForTab,
 } from "./handlers/currentJob";
-import { importJobFromUrl, saveGlobalJob, syncGlobalJob } from "./handlers/jobs";
+import {
+  getResumeMatchForResume,
+  importJobFromUrl,
+  saveGlobalJob,
+  syncGlobalJob,
+} from "./handlers/jobs";
+import { analyzeMatch, uploadResume } from "./handlers/aiJobMatch";
 
 /**
  * Chrome only auto-injects content scripts into tabs that navigate *after*
@@ -105,6 +111,29 @@ async function handleMessage(
       // The popup resolved its own tab id (see popup/App.tsx) — just read
       // what the content script last published for it.
       return getCurrentJobForTab(message.payload.tabId);
+    }
+
+    case MessageType.GET_RESUME_MATCH: {
+      // Read-only cached-score lookup behind the panel's resume selector.
+      // requireAuth first so the shared Supabase client is authenticated (RLS
+      // scopes the read to this user).
+      await requireAuth();
+      return getResumeMatchForResume(message.payload.resumeId, message.payload.globalJobId);
+    }
+
+    case MessageType.ANALYZE_MATCH: {
+      // No requireAuth() gate here — analyzeMatch resolves its own token (and
+      // returns a structured `not_authenticated` result) so a signed-out user
+      // gets a normal in-panel message instead of a thrown/rejected message.
+      return analyzeMatch(
+        message.payload.resumeId,
+        message.payload.globalJobId,
+        message.payload.forceRefresh,
+      );
+    }
+
+    case MessageType.UPLOAD_RESUME: {
+      return uploadResume(message.payload.name, message.payload.mimeType, message.payload.bytes);
     }
 
     case MessageType.SAVE_JOB: {

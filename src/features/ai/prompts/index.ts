@@ -29,6 +29,68 @@ function renderResume(ctx: AIContext): string {
   ].join("\n");
 }
 
+// ── Resume Match (Module 6B) — dedicated, richer renderers ──
+// Deliberately separate from renderResume/renderJob above: Match needs the
+// full structured signal (summary, detected sections, job seniority/mode/
+// location, responsibilities) to reason well, but that richer text must not
+// silently change the prompt (and therefore the cache key) for the other
+// capabilities, which haven't been revisited in this module.
+function renderResumeForMatch(ctx: AIContext): string {
+  if (!ctx.resume) return "(no resume provided)";
+  const s = ctx.resume.structured;
+  const contact = s.contact;
+
+  const header = [
+    "=== RESUME ===",
+    `Name: ${contact.name ?? "-"}`,
+    `Location: ${contact.location ?? "-"}`,
+    `Links: ${contact.links.length ? contact.links.join(" · ") : "-"}`,
+    `Summary: ${s.summary ?? "-"}`,
+    `Skills (parsed): ${s.skills.join(", ") || "-"}`,
+  ];
+
+  // Surface the structured sections (Experience / Education / Projects /
+  // Leadership / etc.) EXPLICITLY, before the raw dump. A long resume's raw
+  // text can exceed the truncation window and cut off education or projects
+  // near the end — rendering the parsed sections first guarantees the model
+  // reliably sees each one even when the tail of rawText is clipped. Falls
+  // back to the raw text when no sections were detected (unusual layouts).
+  let bodyBlock: string;
+  if (s.sections.length > 0) {
+    const rendered = s.sections
+      .map((sec) => {
+        const content = sec.content.trim().slice(0, 2500);
+        return content ? `## ${sec.heading}\n${content}` : `## ${sec.heading}`;
+      })
+      .join("\n\n")
+      .slice(0, 12000);
+    bodyBlock = `--- Sections ---\n${rendered}`;
+  } else {
+    bodyBlock = `--- Full text ---\n${ctx.resume.rawText.slice(0, 12000)}`;
+  }
+
+  return `${header.join("\n")}\n\n${bodyBlock}`;
+}
+
+function renderJobForMatch(ctx: AIContext): string {
+  if (!ctx.job) return "(no job provided)";
+  const j = ctx.job.snapshot;
+  return [
+    "=== JOB ===",
+    `Role: ${j.role ?? "-"}`,
+    `Company: ${j.companyName ?? "-"}`,
+    `Location: ${j.location ?? "-"}`,
+    `Employment type: ${j.employmentType ?? "-"}`,
+    `Work mode: ${j.workMode ?? "-"}`,
+    `Experience level: ${j.experienceLevel ?? "-"}`,
+    `Requirements: ${j.requirements.join("; ") || "-"}`,
+    `Responsibilities: ${j.responsibilities.join("; ") || "-"}`,
+    `Skills: ${j.skills.join(", ") || "-"}`,
+    "",
+    (j.description ?? "").slice(0, 12000),
+  ].join("\n");
+}
+
 function renderJob(ctx: AIContext): string {
   if (!ctx.job) return "(no job provided)";
   const j = ctx.job.snapshot;
@@ -62,8 +124,58 @@ function template(
 export const PROMPT_REGISTRY: Record<AICapability, PromptTemplate> = {
   [AI_CAPABILITIES.RESUME_MATCH]: template(
     AI_CAPABILITIES.RESUME_MATCH,
-    "You are an expert technical recruiter. Score how well the resume matches the job, and identify strengths, gaps, and keyword overlap.",
-    (ctx) => `${renderResume(ctx)}\n\n${renderJob(ctx)}`,
+    [
+      "You are a seasoned recruiter and hiring manager assessing how well a candidate fits a specific role.",
+      "Judge like an experienced human recruiter who reads between the lines — NOT like a keyword matcher.",
+      "A candidate who could clearly do the job well should score high even if their resume does not repeat",
+      "the exact words in the posting.",
+      "",
+      "HOW TO REASON:",
+      "• Credit TRANSFERABLE and adjacent skills. Experience described in different words than the posting",
+      "  still counts (e.g. 'coordinated across engineering and design' = stakeholder management;",
+      "  'shipped features' = product experience; 'ran the campus club' = leadership).",
+      "• Reward relevant internships, academic and side projects, coursework, leadership roles, ownership,",
+      "  stakeholder and cross-functional collaboration, and product/domain exposure.",
+      "• Distinguish REQUIRED from PREFERRED requirements. Postings mix must-haves with nice-to-haves;",
+      "  infer which is which. Missing a PREFERRED item should barely move the score. Missing a REQUIRED",
+      "  item matters more — but still credit closely related or transferable experience for it.",
+      "• Do NOT over-penalize missing tools, frameworks, or specific technologies — these are learnable on",
+      "  the job. Weigh capability, trajectory, and relevant experience far above exact tool/keyword overlap.",
+      "• Calibrate to the role's SENIORITY. For entry-level, junior, or internship roles, weight internships,",
+      "  projects, coursework, leadership and demonstrated aptitude heavily, and do NOT expect years of",
+      "  full-time experience. For senior roles, weight depth, scope, and track record more.",
+      "",
+      "SCORING CALIBRATION (overallScore, 0-100) — anchor to these bands and be realistic, not harsh:",
+      "• 85-100: Strong fit. Meets the core of the role; could clearly do the job. Only preferred-level gaps.",
+      "• 70-84: Good fit. Solid match on the core function with some gaps in preferred or secondary areas.",
+      "• 50-69: Partial fit. Relevant, transferable background (including a deliberate career pivot with",
+      "  strong adjacent skills) but missing some genuinely required qualifications.",
+      "• 30-49: Limited but plausible. A real stretch with significant gaps in the core function.",
+      "• 0-29: Reserve ONLY for fundamentally unrelated backgrounds (e.g. a nurse applying to a senior",
+      "  backend engineering role). A candidate with directly relevant experience for the role's core",
+      "  function must NEVER land here merely for missing tools or keywords.",
+      "A candidate whose background clearly targets this exact role (e.g. a product-management resume for a",
+      "product/project role) should not score below 50 unless there is a genuine, disqualifying core gap.",
+      "",
+      "OUTPUT: Produce BOTH the detailed `internal` analysis AND the consumer-facing summary",
+      "(`overallScore`, `whatMatches`, `whatToImprove`, `summary`) in one response. The overallScore must be",
+      "consistent with your internal reasoning.",
+      "",
+      "The consumer-facing fields are shown directly to a job seeker in a clean, premium product — write",
+      "them like concise, encouraging recruiter feedback in plain language: no scores, no jargon, no ATS",
+      "terminology, no hedging.",
+      "• whatMatches (max 5): each names a SPECIFIC reason this candidate fits, grounded in their actual",
+      "  experience — say WHY it matters for THIS role (e.g. 'Led a 6-person team to launch an app — direct",
+      "  product ownership this role needs'). Not generic praise.",
+      "• whatToImprove (max 5): practical, achievable actions that would strengthen THIS application (e.g.",
+      "  'Quantify your project impact with metrics hiring managers look for'). Never 'learn everything';",
+      "  never scold. If the fit is already strong, it is fine to return fewer, lighter suggestions.",
+      "• summary (2-3 sentences): a recruiter's verdict naming the overall fit plus the single biggest",
+      "  strength and the single most useful improvement. Warm, direct, specific.",
+      "Never repeat internal scoring/dimension detail in the public fields, and never invent resume facts",
+      "that are not present in the provided text.",
+    ].join("\n"),
+    (ctx) => `${renderResumeForMatch(ctx)}\n\n${renderJobForMatch(ctx)}`,
   ),
   [AI_CAPABILITIES.ATS_SCORE]: template(
     AI_CAPABILITIES.ATS_SCORE,

@@ -13,13 +13,20 @@
  * that gap; see `DuplicateResolver`.
  */
 export function extractLinkedInJobIdFromUrl(url: string): string | null {
+  // /jobs/view/<id> — the canonical single-job path.
   const fromPath = /\/jobs\/view\/(\d+)/.exec(url);
   if (fromPath) return fromPath[1];
 
   try {
     const parsed = new URL(url);
-    const currentJobId = parsed.searchParams.get("currentJobId");
-    if (currentJobId && /^\d+$/.test(currentJobId)) return currentJobId;
+    // Split-pane surfaces (/jobs/search, /jobs/search-results, /jobs/collections
+    // and its variants) all carry the selected job in a query param. LinkedIn
+    // has used a few names over time — check each so a param rename on any one
+    // surface doesn't drop job identity.
+    for (const key of ["currentJobId", "jobId", "trackingJobId"]) {
+      const value = parsed.searchParams.get(key);
+      if (value && /^\d+$/.test(value)) return value;
+    }
   } catch {
     // Not a parseable URL — no id extractable this way.
   }

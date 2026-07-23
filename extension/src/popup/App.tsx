@@ -5,11 +5,18 @@ import { panelStyles } from "../panel/panelStyles";
 import { CtaRow } from "../panel/sections/CtaRow";
 import { JobIdentity } from "../panel/sections/JobIdentity";
 import { MetadataChipRow } from "../panel/sections/MetadataChipRow";
+import { ResumeMatchRow } from "../panel/sections/ResumeMatchRow";
 import type { PanelActions, PendingAction } from "../panel/types";
 import { env } from "../shared/env";
+import { buildMatchUrl } from "../shared/matchDeepLink";
 import { sendMessage } from "../shared/messaging/bus";
 import { MessageType } from "../shared/messaging/types";
-import type { CurrentJobState } from "../shared/messaging/types";
+import type {
+  AnalyzeMatchResult,
+  CurrentJobState,
+  ResumeMatchSummary,
+  UploadResumeResult,
+} from "../shared/messaging/types";
 
 /** How many times to re-poll GET_CURRENT_JOB before accepting "no job" — covers the window while the content script's own parse→auth→sync round trip is still in flight. */
 const CURRENT_JOB_POLL_ATTEMPTS = 6;
@@ -126,6 +133,62 @@ export function App() {
       window.open(url, "_blank");
     },
     onOpenInNextOffer: () => window.open(env.appUrl, "_blank"),
+    onViewMatchDetails: (resumeId) => {
+      if (!current || !("job" in current)) return;
+      window.open(buildMatchUrl(current.globalJobId, resumeId, "view"), "_blank");
+    },
+    onAnalyzeMatch: async (resumeId, forceRefresh) => {
+      if (!current || !("job" in current)) {
+        return { ok: false, code: "no_job", message: "No job detected on this page." };
+      }
+      try {
+        const response = await sendMessage<AnalyzeMatchResult>({
+          type: MessageType.ANALYZE_MATCH,
+          payload: { resumeId, globalJobId: current.globalJobId, forceRefresh },
+        });
+        if (!response.ok) return { ok: false, code: "error", message: response.error };
+        return response.data;
+      } catch {
+        return { ok: false, code: "error", message: "Couldn't reach NextOffer. Try again." };
+      }
+    },
+    onFetchResumeMatch: async (resumeId) => {
+      if (!current || !("job" in current)) return null;
+      try {
+        const response = await sendMessage<ResumeMatchSummary | null>({
+          type: MessageType.GET_RESUME_MATCH,
+          payload: { resumeId, globalJobId: current.globalJobId },
+        });
+        return response.ok ? response.data : null;
+      } catch {
+        return null;
+      }
+    },
+    onUploadResume: async (file) => {
+      try {
+        const response = await sendMessage<UploadResumeResult>({
+          type: MessageType.UPLOAD_RESUME,
+          payload: { name: file.name, mimeType: file.type, bytes: file.bytes },
+        });
+        if (!response.ok) return { ok: false, message: response.error };
+        if (!response.data.ok) return response.data;
+
+        // Default-first, matching getUserResumes()'s own ordering — see the
+        // identical comment in content/index.ts's onUploadResume.
+        const newResume = response.data.resume;
+        setCurrent((prev) => {
+          if (!prev || !("job" in prev)) return prev;
+          const withoutDup = prev.job.resumes.filter((r) => r.id !== newResume.id);
+          const resumes = newResume.isDefault
+            ? [newResume, ...withoutDup]
+            : [...withoutDup, newResume];
+          return { ...prev, job: { ...prev.job, resumes } };
+        });
+        return { ok: true, resume: newResume };
+      } catch {
+        return { ok: false, message: "Couldn't reach NextOffer. Try again." };
+      }
+    },
   };
 
   return (
@@ -177,15 +240,25 @@ export function App() {
               }}
             />
           </div>
+          <ResumeMatchRow
+            key={current.globalJobId}
+            resumes={current.job.resumes}
+            initialMatch={current.job.resumeMatch}
+            credits={current.job.credits}
+            onViewDetails={actions.onViewMatchDetails}
+            onAnalyze={actions.onAnalyzeMatch}
+            onFetchMatch={actions.onFetchResumeMatch}
+            onUploadResume={actions.onUploadResume}
+          />
         </section>
       ) : (
         current && (
           <section className="popup__section">
             <p className="popup__section-title">Current Job</p>
             <p className="popup__hint">
-              Automatic tracking isn&apos;t available for this hiring platform yet. You can
-              still save this opportunity using Import Job URL or Manual Job Entry. Support
-              for additional hiring platforms is being added continuously.
+              Automatic tracking isn&apos;t available for this hiring platform yet. You can still
+              save this opportunity using Import Job URL or Manual Job Entry. Support for additional
+              hiring platforms is being added continuously.
             </p>
           </section>
         )

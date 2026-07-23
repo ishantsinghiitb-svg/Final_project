@@ -56,6 +56,8 @@ import {
 } from "@/components/dashboard/applications/ApplyPromptDialog";
 import { JobMetadataSections } from "@/components/dashboard/jobs/JobMetadataSections";
 import { AddToCollectionMenu } from "@/components/dashboard/collections/AddToCollectionMenu";
+import { ResumeHealthSummaryCard } from "@/components/dashboard/jobs/ResumeHealthSummaryCard";
+import { ResumeMatchCard } from "@/components/dashboard/jobs/ResumeMatchCard";
 
 // ── Route definition ──────────────────────────────────────────────────────────
 export const Route = createFileRoute("/dashboard/jobs/$jobId")({
@@ -606,8 +608,11 @@ function JobDetailPage() {
           <JobMetadataSections job={job} />
         </div>
 
-        {/* ── Right: Apply CTA + Copy URL ────────────────────────────── */}
+        {/* ── Right: Resume Health, AI Match, Apply CTA + Copy URL ────── */}
         <div className="space-y-4">
+          <ResumeHealthSummaryCard />
+          <ResumeMatchCard jobId={job.id} />
+
           <DashCard>
             <p className="font-display text-sm font-semibold">Ready to apply?</p>
             <p className="mt-1 text-xs text-[oklch(0.5_0.02_265)] leading-relaxed">

@@ -8,13 +8,85 @@ import { z } from "zod";
 // capability registry is complete and future phases (6B+) only wire the prompt.
 // No capability is INVOKED in 6A (the engine ships no user-facing AI output).
 
+// ── Resume Match (Module 6B) ──
+//
+// Public fields (overallScore/whatMatches/whatToImprove/summary) are the ONLY
+// fields the product surfaces — dashboard and extension render nothing else.
+// `matchLabel` is deliberately NOT part of this schema: it's derived
+// deterministically from `overallScore` in code (see `matchLabelForScore` in
+// ../matchLabel) so the label can never drift from the score and its
+// thresholds can be retuned without a prompt/version change.
+//
+// `internal` carries the richer per-dimension reasoning the model already had
+// to do to reach a calibrated score. It is stored (ai_analyses.result keeps
+// the whole object) for future capabilities to reuse server-side, but no
+// client response ever forwards it — see ResumeMatchService's mapping to
+// ResumeMatchSummary. Every internal field has a `.catch()` fallback so a
+// malformed/missing internal value never fails validation of the (load-
+// bearing) public fields.
+
+const DimensionSchema = z
+  .object({
+    score: z.number().int().min(0).max(100).catch(0),
+    detail: z.string().catch(""),
+  })
+  .catch({ score: 0, detail: "" });
+
+export const ResumeMatchInternalSchema = z
+  .object({
+    confidence: z.enum(["high", "medium", "low"]).catch("medium"),
+    dimensions: z
+      .object({
+        experience: DimensionSchema,
+        seniority: DimensionSchema,
+        domain: DimensionSchema,
+        education: DimensionSchema,
+      })
+      .catch({
+        experience: { score: 0, detail: "" },
+        seniority: { score: 0, detail: "" },
+        domain: { score: 0, detail: "" },
+        education: { score: 0, detail: "" },
+      }),
+    missingSkills: z
+      .array(
+        z.object({
+          skill: z.string(),
+          importance: z.enum(["required", "preferred"]).catch("preferred"),
+          evidence: z.string().nullable().catch(null),
+        }),
+      )
+      .max(10)
+      .catch([]),
+    missingKeywords: z.array(z.string()).max(15).catch([]),
+    matchedKeywords: z.array(z.string()).max(15).catch([]),
+    recommendation: z
+      .object({
+        shouldApply: z.enum(["apply", "stretch", "improve_first", "skip"]).catch("stretch"),
+        rationale: z.string().catch(""),
+      })
+      .catch({ shouldApply: "stretch", rationale: "" }),
+  })
+  .catch({
+    confidence: "medium",
+    dimensions: {
+      experience: { score: 0, detail: "" },
+      seniority: { score: 0, detail: "" },
+      domain: { score: 0, detail: "" },
+      education: { score: 0, detail: "" },
+    },
+    missingSkills: [],
+    missingKeywords: [],
+    matchedKeywords: [],
+    recommendation: { shouldApply: "stretch", rationale: "" },
+  });
+
 export const ResumeMatchResultSchema = z.object({
-  score: z.number(), // 0–100 overall match
+  overallScore: z.number().int().min(0).max(100),
+  whatMatches: z.array(z.string()).max(5),
+  whatToImprove: z.array(z.string()).max(5),
   summary: z.string(),
-  strengths: z.array(z.string()),
-  gaps: z.array(z.string()),
-  matchedKeywords: z.array(z.string()),
-  missingKeywords: z.array(z.string()),
+  internal: ResumeMatchInternalSchema,
 });
 export type ResumeMatchResult = z.infer<typeof ResumeMatchResultSchema>;
 

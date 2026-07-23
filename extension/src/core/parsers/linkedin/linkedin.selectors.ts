@@ -7,20 +7,51 @@
  * this list matters in practice.
  */
 export const linkedInSelectors = {
+  // Ordered fallbacks — most-specific/current class first, then inner-markup
+  // variants, then region-scoped `h1`s that survive a full class rename. The
+  // scoped `h1`s can only match inside the job-details region, never the global
+  // nav or a left-list card. `document.title` is an ADDITIONAL, layout-
+  // independent fallback applied in LinkedInParser (not a selector) — it is why
+  // /jobs/search-results/ (whose top-card classes differ) now resolves a title.
   title: [
     "h1.job-details-jobs-unified-top-card__job-title",
     ".job-details-jobs-unified-top-card__job-title a",
+    // Container form — catches layouts where the title is neither `h1.X` nor
+    // `.X a` but plain text on the `.X` element itself (LinkedIn periodically
+    // reshuffles the inner markup while keeping this class).
+    ".job-details-jobs-unified-top-card__job-title",
     ".jobs-unified-top-card__job-title h1",
+    ".jobs-unified-top-card__job-title",
+    ".jobs-details-top-card__job-title",
     "h1.top-card-layout__title",
     "h1[data-test-job-title]",
+    "[data-test-job-details-top-card-job-title]",
+    // Region-scoped last resorts (never document-wide `h1`, so they can't match
+    // the global nav or a left-list card) for when every class above drifts.
+    ".jobs-details__main-content h1",
+    ".jobs-search__job-details h1",
+    ".jobs-details h1",
+    ".job-view-layout h1",
+    ".scaffold-layout__detail h1",
   ],
   companyName: [
     ".job-details-jobs-unified-top-card__company-name a",
     ".job-details-jobs-unified-top-card__company-name",
+    // Span/text form of the same top-card class (inner-markup drift).
+    ".job-details-jobs-unified-top-card__company-name span",
     ".jobs-unified-top-card__company-name a",
     ".jobs-unified-top-card__company-name",
     "a[data-tracking-control-name='public_jobs_topcard-org-name']",
     ".topcard__org-name-link",
+    ".jobs-details-top-card__company-url",
+    ".artdeco-entity-lockup__subtitle a",
+    // Company links scoped to the job-details region so they can only be THIS
+    // job's company, never a left-list item's — resilient when classes drift.
+    ".job-details-jobs-unified-top-card__container--two-pane a[href*='/company/']",
+    ".jobs-unified-top-card__subtitle-primary-grouping a[href*='/company/']",
+    ".job-details-jobs-unified-top-card__primary-description-container a[href*='/company/']",
+    ".scaffold-layout__detail a[href*='/company/']",
+    ".jobs-details a[href*='/company/']",
   ],
   /**
    * The detail pane's job "top card" — the region holding the CURRENT job's
@@ -95,8 +126,11 @@ export const linkedInSelectors = {
   description: [
     "#job-details",
     ".jobs-description__content",
+    ".jobs-description-content__text",
+    ".jobs-description__container",
     ".jobs-box__html-content",
     ".description__text",
+    ".jobs-details__main-content article",
     "article",
   ],
   criteriaItems: [
@@ -110,6 +144,8 @@ export const linkedInSelectors = {
     "a[data-tracking-control-name='public_jobs_apply-link-offsite']",
     "a.jobs-apply-button",
     "a[data-tracking-control-name*='apply']",
+    ".jobs-apply-button--top-card a",
+    "a[href*='/jobs/view/'][data-tracking-control-name*='apply']",
   ],
   easyApplyButton: [
     "button.jobs-apply-button[aria-label*='Easy Apply' i]",

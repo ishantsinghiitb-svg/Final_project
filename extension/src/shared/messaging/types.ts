@@ -20,6 +20,9 @@ export const MessageType = {
   TRACK_APPLICATION: "TRACK_APPLICATION",
   APPLY_AND_TRACK: "APPLY_AND_TRACK",
   SESSION_UPDATED: "SESSION_UPDATED",
+  GET_RESUME_MATCH: "GET_RESUME_MATCH",
+  ANALYZE_MATCH: "ANALYZE_MATCH",
+  UPLOAD_RESUME: "UPLOAD_RESUME",
 } as const;
 
 export type MessageType = (typeof MessageType)[keyof typeof MessageType];
@@ -114,11 +117,40 @@ export type ApplicationSummary = {
   status: string;
 };
 
+/**
+ * Score + plain-language label only (Module 6B) — never the full analysis
+ * (whatMatches/whatToImprove/summary). The extension is a glance surface;
+ * "View Details" deep-links to the dashboard for the rest. `null` covers
+ * both "no default resume yet" and "not analyzed yet" — the panel only
+ * needs to distinguish "have a cached score" from "don't".
+ */
+export type ResumeMatchSummary = {
+  score: number;
+  label: string;
+};
+
+/**
+ * One selectable resume for the extension's Resume Match selector (Module 6C
+ * stabilization). Only analyzable (parse-ready) resumes are surfaced. The
+ * extension reads cached scores per resume; it never generates an analysis.
+ */
+export type ResumeOption = {
+  id: string;
+  name: string;
+  isDefault: boolean;
+};
+
 export type GlobalJobSyncResult = {
   globalJobId: string;
   isClosed: boolean;
   isSaved: boolean;
   application: ApplicationSummary | null;
+  /** The user's ready resumes (default first). Empty when none — the selector then hides. */
+  resumes: ResumeOption[];
+  /** Cached match for `resumes[0]` (the default, or the most-recent ready resume). */
+  resumeMatch: ResumeMatchSummary | null;
+  /** Remaining AI credits (RLS read). `null` when no usage row exists yet. */
+  credits: number | null;
 };
 
 export type SaveJobMessage = {
@@ -158,6 +190,49 @@ export type SessionUpdatedMessage = {
   payload: { accessToken: string; refreshToken: string } | null;
 };
 
+/**
+ * Read the cached Resume Match for a SPECIFIC resume + job — the read behind
+ * the extension's resume selector. Never generates an analysis (0 credits, no
+ * provider call); returns `null` when that resume hasn't been analyzed for
+ * this job yet. The panel/popup also cache results locally, so switching back
+ * to a previously-selected resume restores instantly without even this message.
+ */
+export type GetResumeMatchMessage = {
+  type: typeof MessageType.GET_RESUME_MATCH;
+  payload: { resumeId: string; globalJobId: string };
+};
+
+/**
+ * Runs the analysis directly from the extension (Module 6C) — background
+ * forwards to the extension API route (`/api/extension/analyze-match`), which
+ * reuses `ResumeMatchService.analyzeResumeMatch` exactly (same engine, cache,
+ * versioning, AI-Credit accounting as the dashboard). The caller must already
+ * have shown its own credit confirmation; this never confirms on its own.
+ */
+export type AnalyzeMatchMessage = {
+  type: typeof MessageType.ANALYZE_MATCH;
+  payload: { resumeId: string; globalJobId: string; forceRefresh: boolean };
+};
+
+export type AnalyzeMatchResult =
+  | { ok: true; score: number; label: string; creditsRemaining: number }
+  | { ok: false; code: string; message: string };
+
+/**
+ * Uploads + parses a PDF resume directly from the extension (Module 6C).
+ * `bytes` is an ArrayBuffer (not a File/Blob) — the one payload shape that
+ * survives structured-clone through `chrome.runtime.sendMessage` reliably
+ * across every supported Chrome version.
+ */
+export type UploadResumeMessage = {
+  type: typeof MessageType.UPLOAD_RESUME;
+  payload: { name: string; mimeType: string; bytes: ArrayBuffer };
+};
+
+export type UploadResumeResult =
+  | { ok: true; resume: ResumeOption }
+  | { ok: false; message: string };
+
 export type ExtensionMessage =
   | PingMessage
   | GetAuthStateMessage
@@ -168,7 +243,10 @@ export type ExtensionMessage =
   | SaveJobMessage
   | TrackApplicationMessage
   | ApplyAndTrackMessage
-  | SessionUpdatedMessage;
+  | SessionUpdatedMessage
+  | GetResumeMatchMessage
+  | AnalyzeMatchMessage
+  | UploadResumeMessage;
 
 export type ExtensionResponse<TData = unknown> =
   { ok: true; data: TData } | { ok: false; error: string };

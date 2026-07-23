@@ -61,6 +61,16 @@ const SECTION_KEYWORDS: Record<string, string[]> = {
     "selected projects",
     "academic projects",
   ],
+  // Leadership / positions of responsibility — kept tight to avoid mislabeling
+  // generic "activities" blocks. Recruiters weigh these heavily for early-career
+  // candidates, so a clean section helps both Resume Health and Resume Match.
+  leadership: [
+    "leadership",
+    "leadership experience",
+    "positions of responsibility",
+    "position of responsibility",
+    "leadership and involvement",
+  ],
   certifications: [
     "certifications",
     "certificates",

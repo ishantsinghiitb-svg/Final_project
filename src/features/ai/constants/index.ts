@@ -38,7 +38,10 @@ export const AI_CREDIT_COSTS: Record<AICapability, number> = {
  * the prompt text) so either can move without the other.
  */
 export const AI_ANALYSIS_VERSIONS: Record<AICapability, string> = {
-  resume_match: "1",
+  // v3 (6B refinement): recruiter-grade scoring calibration — realistic bands,
+  // transferable-skill credit, required-vs-preferred weighting. Bumped so the
+  // earlier keyword-driven (unrealistically low) cached scores are not reused.
+  resume_match: "3",
   ats_score: "1",
   resume_optimizer: "1",
   cover_letter: "1",
@@ -47,7 +50,9 @@ export const AI_ANALYSIS_VERSIONS: Record<AICapability, string> = {
 
 /** Prompt version — bump when the prompt template text changes. */
 export const AI_PROMPT_VERSIONS: Record<AICapability, string> = {
-  resume_match: "1",
+  // v3 (6B refinement): recruiter rubric + structured-section context + richer
+  // plain-language output contract.
+  resume_match: "3",
   ats_score: "1",
   resume_optimizer: "1",
   cover_letter: "1",
@@ -59,7 +64,7 @@ export const AI_PROMPT_VERSIONS: Record<AICapability, string> = {
 // reuses a cached parse when its parser_version matches, so a version bump
 // makes already-uploaded resumes self-heal on the next (re)parse instead of
 // serving a stale/incorrect analysis forever.
-export const RESUME_PARSER_VERSION = "1.1.0";
+export const RESUME_PARSER_VERSION = "1.2.0";
 
 // ── Structured, machine-readable codes returned in AI response envelopes ──
 export const AI_RESULT_CODES = {

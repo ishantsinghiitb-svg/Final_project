@@ -5,6 +5,7 @@ import { CtaRow } from "./sections/CtaRow";
 import { JobIdentity } from "./sections/JobIdentity";
 import { MetadataChipRow } from "./sections/MetadataChipRow";
 import { PanelHeader } from "./sections/PanelHeader";
+import { ResumeMatchRow } from "./sections/ResumeMatchRow";
 import type { PanelActions, PanelViewState, PendingAction } from "./types";
 
 export type { PanelJob, PanelViewState, PanelActions, PendingAction } from "./types";
@@ -25,7 +26,6 @@ export function FloatingPanel({
   actions: PanelActions;
   pending: PendingAction;
 }) {
-  console.debug("[NextOffer][DEBUG] 7. FloatingPanel rendered?", true, "state.kind=", state.kind);
   // Defaults open — matches the "first visit" requirement — until the
   // persisted preference (if any) loads and overrides it. The preference is
   // per-installation, not per-job, so it deliberately survives job changes
@@ -100,6 +100,18 @@ function PanelBody({
             pending={pending}
             actions={actions}
           />
+          <ResumeMatchRow
+            // Keyed by job so navigating to another job remounts the row with
+            // fresh selector/cache state instead of leaking the previous job's.
+            key={`${state.job.title}|${state.job.companyName}`}
+            resumes={state.job.resumes}
+            initialMatch={state.job.resumeMatch}
+            credits={state.job.credits}
+            onViewDetails={actions.onViewMatchDetails}
+            onAnalyze={actions.onAnalyzeMatch}
+            onFetchMatch={actions.onFetchResumeMatch}
+            onUploadResume={actions.onUploadResume}
+          />
         </div>
       );
 
@@ -121,6 +133,17 @@ function PanelBody({
             <li>Manual Job Entry</li>
           </ul>
           <span>Support for additional hiring platforms is being added continuously.</span>
+        </div>
+      );
+
+    case "extension-invalidated":
+      return (
+        <div className="nextoffer-panel__body">
+          <span className="nextoffer-panel__empty-title">NextOffer was updated.</span>
+          <span>Refresh this page to keep using the extension here.</span>
+          <button className="nextoffer-panel__btn--primary" onClick={() => location.reload()}>
+            Refresh page
+          </button>
         </div>
       );
   }

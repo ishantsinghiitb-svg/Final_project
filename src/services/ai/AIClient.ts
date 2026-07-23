@@ -1,5 +1,5 @@
 import { authService } from "@/services/AuthService";
-import { getAICredits } from "@/server-functions/ai";
+import { getAICredits, getResumeMatch, analyzeResumeMatch } from "@/server-functions/ai";
 import { parseResume } from "@/server-functions/resume";
 import type { AICreditStatus } from "@/features/ai/types";
 
@@ -25,5 +25,17 @@ export const aiClient = {
   /** Kick off the deterministic parse pipeline for a resume. */
   async parseResume(resumeId: string) {
     return parseResume({ data: { accessToken: await accessToken(), resumeId } });
+  },
+
+  /** Read-only peek at the latest Resume Match for (resumeId, jobId) — 0 credits. */
+  async getResumeMatch(resumeId: string, jobId: string) {
+    return getResumeMatch({ data: { accessToken: await accessToken(), resumeId, jobId } });
+  },
+
+  /** Generate (or re-generate) a Resume Match. The caller must have already shown the credit-confirmation dialog. */
+  async analyzeResumeMatch(resumeId: string, jobId: string, forceRefresh = false) {
+    return analyzeResumeMatch({
+      data: { accessToken: await accessToken(), resumeId, jobId, forceRefresh },
+    });
   },
 };

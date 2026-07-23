@@ -26,14 +26,43 @@ export type RunCapabilityParams = {
   authed: AuthedContext;
   resumeId?: string;
   jobId?: string;
+  /** Bypass the ai_cache lookup and force a fresh provider call. Still charges a credit — see 6B "Re-analyze". */
+  forceRefresh?: boolean;
 };
 
+function hashPrompt(
+  capability: AICapability,
+  prompt: { system: string; user: string },
+  cap: CapabilityDefinition,
+): Promise<string> {
+  return hashObject({
+    capability,
+    system: prompt.system,
+    user: prompt.user,
+    model: cap.model,
+    promptVersion: cap.promptVersion,
+    analysisVersion: cap.analysisVersion,
+  });
+}
+
+/** The exact cache key every capability hashes on — exported so callers (e.g. a "is this stale?" peek) can recompute it without duplicating the prompt-render + hash logic. */
+export async function computeInputHash(
+  capability: AICapability,
+  ctx: AIContext,
+  cap: CapabilityDefinition,
+): Promise<string> {
+  return hashPrompt(capability, buildPrompt(capability, ctx), cap);
+}
+
 export async function runCapability(params: RunCapabilityParams): Promise<AIResult<unknown>> {
-  const { capability, authed, resumeId, jobId } = params;
+  const { capability, authed, resumeId, jobId, forceRefresh } = params;
   const { supabase, user } = authed;
   const cap = getCapability(capability);
   const credits = new AICreditService(supabase);
   const startedAt = Date.now();
+  // Set only once a credit charge actually succeeds, so the catch block below
+  // knows whether there is anything to refund on failure.
+  let chargedCost = 0;
 
   try {
     // 1. Build the reusable context.
@@ -42,20 +71,16 @@ export async function runCapability(params: RunCapabilityParams): Promise<AIResu
     if (resumeId) ctx.resume = await builder.buildResumeContext(resumeId);
     if (jobId) ctx.job = await builder.buildJobContext(jobId);
 
-    // 2. Render prompt + compute the content-addressed input hash.
+    // 2. Render prompt once + compute the content-addressed input hash from it
+    // (reused unchanged for the provider call in step 5 — never rebuilt).
     const prompt = buildPrompt(capability, ctx);
-    const inputHash = await hashObject({
-      capability,
-      system: prompt.system,
-      user: prompt.user,
-      model: cap.model,
-      promptVersion: cap.promptVersion,
-      analysisVersion: cap.analysisVersion,
-    });
+    const inputHash = await hashPrompt(capability, prompt, cap);
     const jobHash = ctx.job?.jobHash ?? null;
+    const resumeFileHash = ctx.resume?.fileHash ?? null;
 
-    // 3. Cache lookup (no credit charge on a hit).
-    if (cap.cachePolicy.enabled) {
+    // 3. Cache lookup (no credit charge on a hit). Skipped entirely when
+    // forceRefresh is set — re-analyze always pays for a fresh provider call.
+    if (cap.cachePolicy.enabled && !forceRefresh) {
       const cached = await lookupCache(supabase, user.id, capability, inputHash, cap);
       if (cached !== undefined) {
         const status = await credits.getStatus();
@@ -71,7 +96,7 @@ export async function runCapability(params: RunCapabilityParams): Promise<AIResu
           creditsCharged: 0,
           latencyMs: Date.now() - startedAt,
         });
-        return success(cached, cap, status, true);
+        return success(cached, cap, status, true, { inputHash, jobHash, resumeFileHash });
       }
     }
 
@@ -99,6 +124,7 @@ export async function runCapability(params: RunCapabilityParams): Promise<AIResu
         credits: consume.status,
       };
     }
+    chargedCost = cap.creditCost;
 
     // 5. Provider call + schema validation (one repair retry on invalid shape).
     const provider = getProvider(cap.provider);
@@ -137,14 +163,31 @@ export async function runCapability(params: RunCapabilityParams): Promise<AIResu
       outputTokens: validated.usage.outputTokens,
     });
 
-    return success(validated.data, cap, consume.status, false);
+    return success(validated.data, cap, consume.status, false, {
+      inputHash,
+      jobHash,
+      resumeFileHash,
+    });
   } catch (err) {
     const code = toResultCode(err);
     let status: AICreditStatus | undefined;
+    let refunded = false;
     try {
-      status = await credits.getStatus();
+      if (chargedCost > 0) {
+        // A refund is the one thing here that must not silently no-op on a
+        // transient failure — unlike the provider call, there's no user-facing
+        // retry for "your credit wasn't given back." Retry before giving up.
+        status = await withRetry(() => credits.refund(capability, chargedCost), {
+          attempts: 3,
+          baseDelayMs: 200,
+          maxDelayMs: 1000,
+        });
+        refunded = true;
+      } else {
+        status = await credits.getStatus();
+      }
     } catch {
-      /* ignore */
+      /* ignore — best-effort status/refund */
     }
     try {
       await logRun(supabase, {
@@ -152,10 +195,14 @@ export async function runCapability(params: RunCapabilityParams): Promise<AIResu
         cap,
         status: "error",
         cacheHit: false,
+        // Net cost to the user for this run — 0 whenever the charge above was
+        // refunded, so this log line never overstates what the user actually paid.
         creditsCharged: 0,
         latencyMs: Date.now() - startedAt,
         errorCode: code,
-        errorMessage: err instanceof Error ? err.message : String(err),
+        errorMessage:
+          (err instanceof Error ? err.message : String(err)) +
+          (refunded ? " (credit refunded)" : ""),
       });
     } catch {
       /* best-effort */
@@ -175,6 +222,7 @@ function success(
   cap: CapabilityDefinition,
   credits: AICreditStatus,
   cacheHit: boolean,
+  hashes: { inputHash: string; jobHash: string | null; resumeFileHash: string | null },
 ): AIResult<unknown> {
   return {
     ok: true,
@@ -188,6 +236,9 @@ function success(
       promptVersion: cap.promptVersion,
       analysisVersion: cap.analysisVersion,
       credits,
+      inputHash: hashes.inputHash,
+      jobHash: hashes.jobHash,
+      resumeFileHash: hashes.resumeFileHash,
     },
   };
 }

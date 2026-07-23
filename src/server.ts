@@ -2,6 +2,7 @@ import "./lib/error-capture";
 
 import { consumeLastCapturedError } from "./lib/error-capture";
 import { renderErrorPage } from "./lib/error-page";
+import { handleExtensionApiRequest } from "./server/extensionApi";
 
 type ServerEntry = {
   fetch: (request: Request, env: unknown, ctx: unknown) => Promise<Response> | Response;
@@ -47,6 +48,13 @@ function isH3SwallowedErrorBody(body: string): boolean {
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
     try {
+      // Extension API routes (/api/extension/*) are plain fetch handlers, not
+      // part of the TanStack Start router — intercepted here, before SSR, so
+      // they never touch the router/RSC pipeline. Returns null for every
+      // other path, which falls through to normal SSR unchanged.
+      const extensionResponse = await handleExtensionApiRequest(request);
+      if (extensionResponse) return extensionResponse;
+
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);
       return await normalizeCatastrophicSsrResponse(response);
