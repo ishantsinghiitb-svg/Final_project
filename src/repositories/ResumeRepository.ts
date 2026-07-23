@@ -6,7 +6,16 @@ const RESUME_COLUMNS =
   "id, user_id, name, tailored_for, file_url, score, keywords_count, times_used, created_at, updated_at, " +
   "is_default, file_name, file_hash, file_size_bytes, mime_type, page_count, parse_status, parse_error, parsed_at";
 
-const RESUME_VERSION_COLUMNS = "id, resume_id, version_number, content, created_at";
+const RESUME_VERSION_COLUMNS =
+  "id, resume_id, version_number, content, created_at, name, source, category, analysis_id";
+
+export type ResumeVersionCreateInput = {
+  content: string;
+  name?: string | null;
+  source?: string | null;
+  category?: string | null;
+  analysisId?: string | null;
+};
 
 export type ResumeCreateInput = {
   name: string;
@@ -81,6 +90,39 @@ export class ResumeRepository {
       .order("version_number", { ascending: false });
     if (error) throw error;
     return (data ?? []) as unknown as ResumeVersion[];
+  }
+
+  /**
+   * Appends a new version to a resume (Module 6D). Never overwrites the resume
+   * or an existing version — computes the next version_number and inserts. RLS
+   * ensures only the resume's owner can insert (see resume_versions policies).
+   */
+  async createVersion(resumeId: string, input: ResumeVersionCreateInput): Promise<ResumeVersion> {
+    const { data: latest, error: maxErr } = await supabase
+      .from("resume_versions")
+      .select("version_number")
+      .eq("resume_id", resumeId)
+      .order("version_number", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (maxErr) throw maxErr;
+    const nextNumber = (latest?.version_number ?? 0) + 1;
+
+    const { data, error } = await supabase
+      .from("resume_versions")
+      .insert({
+        resume_id: resumeId,
+        version_number: nextNumber,
+        content: input.content,
+        name: input.name ?? null,
+        source: input.source ?? null,
+        category: input.category ?? null,
+        analysis_id: input.analysisId ?? null,
+      })
+      .select(RESUME_VERSION_COLUMNS)
+      .single();
+    if (error) throw error;
+    return data as unknown as ResumeVersion;
   }
 
   async create(userId: string, input: ResumeCreateInput): Promise<Resume> {

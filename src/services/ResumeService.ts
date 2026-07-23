@@ -1,5 +1,5 @@
 import type { Resume, ResumeVersion } from "@/types";
-import { ResumeRepository } from "@/repositories/ResumeRepository";
+import { ResumeRepository, type ResumeVersionCreateInput } from "@/repositories/ResumeRepository";
 import { ResumeParsedRepository, type ResumeParsed } from "@/repositories/ResumeParsedRepository";
 import { ResumeStorage } from "@/services/storage/ResumeStorage";
 
@@ -27,6 +27,15 @@ export class ResumeService {
 
   async getVersions(resumeId: string): Promise<ResumeVersion[]> {
     return resumeRepo.findVersions(resumeId);
+  }
+
+  /**
+   * Module 6D — appends a new resume version (e.g. an optimized resume). Never
+   * overwrites the resume or any prior version; the repository computes the next
+   * version number.
+   */
+  async saveVersion(resumeId: string, input: ResumeVersionCreateInput): Promise<ResumeVersion> {
+    return resumeRepo.createVersion(resumeId, input);
   }
 
   async getParsed(resumeId: string): Promise<ResumeParsed | null> {

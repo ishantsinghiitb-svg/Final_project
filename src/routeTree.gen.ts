@@ -37,6 +37,7 @@ import { Route as DashboardApplicationsIndexRouteImport } from './routes/dashboa
 import { Route as DashboardJobsJobIdRouteImport } from './routes/dashboard.jobs.$jobId'
 import { Route as DashboardCollectionsCollectionIdRouteImport } from './routes/dashboard.collections.$collectionId'
 import { Route as DashboardApplicationsApplicationIdRouteImport } from './routes/dashboard.applications.$applicationId'
+import { Route as DashboardResumesResumeIdOptimizeRouteImport } from './routes/dashboard.resumes_.$resumeId.optimize'
 
 const SupabaseStatusRoute = SupabaseStatusRouteImport.update({
   id: '/supabase-status',
@@ -182,6 +183,12 @@ const DashboardApplicationsApplicationIdRoute =
     path: '/$applicationId',
     getParentRoute: () => DashboardApplicationsRoute,
   } as any)
+const DashboardResumesResumeIdOptimizeRoute =
+  DashboardResumesResumeIdOptimizeRouteImport.update({
+    id: '/resumes_/$resumeId/optimize',
+    path: '/resumes/$resumeId/optimize',
+    getParentRoute: () => DashboardRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -212,6 +219,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/applications/': typeof DashboardApplicationsIndexRoute
   '/dashboard/collections/': typeof DashboardCollectionsIndexRoute
   '/dashboard/jobs/': typeof DashboardJobsIndexRoute
+  '/dashboard/resumes/$resumeId/optimize': typeof DashboardResumesResumeIdOptimizeRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -238,6 +246,7 @@ export interface FileRoutesByTo {
   '/dashboard/applications': typeof DashboardApplicationsIndexRoute
   '/dashboard/collections': typeof DashboardCollectionsIndexRoute
   '/dashboard/jobs': typeof DashboardJobsIndexRoute
+  '/dashboard/resumes/$resumeId/optimize': typeof DashboardResumesResumeIdOptimizeRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -269,6 +278,7 @@ export interface FileRoutesById {
   '/dashboard/applications/': typeof DashboardApplicationsIndexRoute
   '/dashboard/collections/': typeof DashboardCollectionsIndexRoute
   '/dashboard/jobs/': typeof DashboardJobsIndexRoute
+  '/dashboard/resumes_/$resumeId/optimize': typeof DashboardResumesResumeIdOptimizeRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -301,6 +311,7 @@ export interface FileRouteTypes {
     | '/dashboard/applications/'
     | '/dashboard/collections/'
     | '/dashboard/jobs/'
+    | '/dashboard/resumes/$resumeId/optimize'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -327,6 +338,7 @@ export interface FileRouteTypes {
     | '/dashboard/applications'
     | '/dashboard/collections'
     | '/dashboard/jobs'
+    | '/dashboard/resumes/$resumeId/optimize'
   id:
     | '__root__'
     | '/'
@@ -357,6 +369,7 @@ export interface FileRouteTypes {
     | '/dashboard/applications/'
     | '/dashboard/collections/'
     | '/dashboard/jobs/'
+    | '/dashboard/resumes_/$resumeId/optimize'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -572,6 +585,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardApplicationsApplicationIdRouteImport
       parentRoute: typeof DashboardApplicationsRoute
     }
+    '/dashboard/resumes_/$resumeId/optimize': {
+      id: '/dashboard/resumes_/$resumeId/optimize'
+      path: '/resumes/$resumeId/optimize'
+      fullPath: '/dashboard/resumes/$resumeId/optimize'
+      preLoaderRoute: typeof DashboardResumesResumeIdOptimizeRouteImport
+      parentRoute: typeof DashboardRoute
+    }
   }
 }
 
@@ -629,6 +649,7 @@ interface DashboardRouteChildren {
   DashboardSavedRoute: typeof DashboardSavedRoute
   DashboardSettingsRoute: typeof DashboardSettingsRoute
   DashboardIndexRoute: typeof DashboardIndexRoute
+  DashboardResumesResumeIdOptimizeRoute: typeof DashboardResumesResumeIdOptimizeRoute
 }
 
 const DashboardRouteChildren: DashboardRouteChildren = {
@@ -642,6 +663,7 @@ const DashboardRouteChildren: DashboardRouteChildren = {
   DashboardSavedRoute: DashboardSavedRoute,
   DashboardSettingsRoute: DashboardSettingsRoute,
   DashboardIndexRoute: DashboardIndexRoute,
+  DashboardResumesResumeIdOptimizeRoute: DashboardResumesResumeIdOptimizeRoute,
 }
 
 const DashboardRouteWithChildren = DashboardRoute._addFileChildren(

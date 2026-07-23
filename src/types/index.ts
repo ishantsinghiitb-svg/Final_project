@@ -342,6 +342,11 @@ export type ResumeVersion = {
   version_number: number;
   content: string;
   created_at: string;
+  // ── Module 6D: optimizer version metadata (additive, nullable) ──
+  name?: string | null;
+  source?: string | null;
+  category?: string | null;
+  analysis_id?: string | null;
 };
 
 // ── Interview ──
