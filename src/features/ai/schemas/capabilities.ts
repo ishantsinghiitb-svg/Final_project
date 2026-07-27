@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { ImprovementActionSchema } from "./improvement";
 
 // ── Per-capability AI output schemas ──
 //
@@ -86,6 +87,14 @@ export const ResumeMatchResultSchema = z.object({
   whatMatches: z.array(z.string()).max(5),
   whatToImprove: z.array(z.string()).max(5),
   summary: z.string(),
+  // ── Module 6E: organized, actionable improvement plan ──
+  // "What prevents this from being an excellent match?" — ordered actions
+  // across matches / missing / improve / add / remove / rewrite / move, each
+  // with why/how/example. Additive + `.catch([])` so older cached analyses
+  // (which have no plan) still parse.
+  // No `.max()`: `.max(N).catch([])` empties the whole plan on overflow (too many
+  // → zero). The service caps + de-duplicates instead (Module 6E final pass).
+  improvementPlan: z.array(ImprovementActionSchema).catch([]),
   internal: ResumeMatchInternalSchema,
 });
 export type ResumeMatchResult = z.infer<typeof ResumeMatchResultSchema>;
@@ -134,6 +143,13 @@ export const AtsScoreResultSchema = z.object({
   strengths: z.array(z.string()).max(6).catch([]),
   atsRisks: z.array(z.string()).max(6).catch([]),
   recommendations: z.array(z.string()).max(6).catch([]),
+  // ── Module 6E: "how to reach 95%+ ATS compatibility" plan ──
+  // Ordered, concrete actions (keyword placement, sections, formatting, weak
+  // bullets, restructures, additions/removals), each with why/how/example and
+  // the expected ATS benefit. Additive + `.catch([])` for old cached rows.
+  // No `.max()`: `.max(N).catch([])` empties the whole plan on overflow (too many
+  // → zero). The service caps + de-duplicates instead (Module 6E final pass).
+  improvementPlan: z.array(ImprovementActionSchema).catch([]),
   summary: z.string().catch(""),
 });
 export type AtsScoreResult = z.infer<typeof AtsScoreResultSchema>;

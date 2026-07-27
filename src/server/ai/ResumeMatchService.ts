@@ -1,7 +1,11 @@
 import { getCapability } from "@/features/ai/capabilities";
 import { AI_CAPABILITIES } from "@/features/ai/constants";
 import { matchLabelForScore } from "@/features/ai/matchLabel";
-import { ResumeMatchResultSchema, type ResumeMatchResult } from "@/features/ai/schemas";
+import {
+  ResumeMatchResultSchema,
+  cleanImprovementPlan,
+  type ResumeMatchResult,
+} from "@/features/ai/schemas";
 import type { AICreditStatus, AIContext, ResumeMatchSummary } from "@/features/ai/types";
 import type { Json } from "@/types/database";
 import type { AuthedContext } from "@/server/supabase";
@@ -53,6 +57,7 @@ function toSummary(row: { id: string; result: Json; created_at: string }): Resum
     missingKeywords: data.internal.missingKeywords,
     matchedKeywords: data.internal.matchedKeywords,
     recommendation: data.internal.recommendation,
+    improvementPlan: cleanImprovementPlan(data.improvementPlan).slice(0, 25),
   };
 }
 
@@ -224,6 +229,7 @@ export async function analyzeResumeMatch(
       missingKeywords: data.internal.missingKeywords,
       matchedKeywords: data.internal.matchedKeywords,
       recommendation: data.internal.recommendation,
+      improvementPlan: cleanImprovementPlan(data.improvementPlan).slice(0, 25),
     },
     cacheHit: result.meta.cacheHit,
     credits: result.meta.credits,

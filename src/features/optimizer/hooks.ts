@@ -3,9 +3,15 @@ import { useAuth } from "@/context/AuthContext";
 import { aiKeys } from "@/features/ai/hooks";
 import { resumeService } from "@/services/ResumeService";
 import { resumeKeys } from "@/features/resumes/hooks";
-import { optimizerClient } from "@/services/optimizer/OptimizerClient";
-import type { CareerCategoryId, OptimizeSectionId } from "./constants";
-import type { OptimizationResult, SavedResumeVersion } from "./types";
+import { optimizerClient, type OptimizeParams } from "@/services/optimizer/OptimizerClient";
+import type { Json } from "@/types/database";
+import type {
+  OptimizationChange,
+  OptimizationRecord,
+  OptimizationResult,
+  SavedResumeVersion,
+  SuggestionDecision,
+} from "./types";
 
 // ── Resume Optimizer hooks (Module 6D) ──
 //
@@ -19,12 +25,7 @@ export const optimizerKeys = {
   versions: (resumeId: string) => [...optimizerKeys.all, "versions", resumeId] as const,
 };
 
-export type OptimizeArgs = {
-  resumeId: string;
-  category: CareerCategoryId;
-  sections: OptimizeSectionId[];
-  forceRefresh?: boolean;
-};
+export type OptimizeArgs = OptimizeParams;
 
 /**
  * Run an optimization. The caller must show the credit-confirmation dialog
@@ -34,8 +35,7 @@ export function useOptimizeResume() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (args: OptimizeArgs) =>
-      optimizerClient.optimize(args.resumeId, args.category, args.sections, args.forceRefresh),
+    mutationFn: (args: OptimizeArgs) => optimizerClient.optimize(args),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: aiKeys.credits(user?.id ?? "") });
     },
@@ -56,9 +56,40 @@ export type SaveVersionArgs = {
   resumeId: string;
   name: string;
   content: string;
-  category: CareerCategoryId;
   result: OptimizationResult;
+  /** Per-suggestion decisions at save time — persisted as durable history. */
+  decisions: Record<string, SuggestionDecision>;
 };
+
+/** Build the durable, reopen-months-later change record (accepted + rejected). */
+function buildOptimizationRecord(
+  result: OptimizationResult,
+  decisions: Record<string, SuggestionDecision>,
+): OptimizationRecord {
+  const changes: OptimizationChange[] = result.suggestions
+    .filter((s) => decisions[s.id] === "accepted" || decisions[s.id] === "rejected")
+    .map((s) => ({
+      decision: decisions[s.id] as "accepted" | "rejected",
+      kind: s.kind,
+      section: s.section,
+      target: s.target,
+      action: s.action,
+      current: s.current,
+      suggested: s.suggested,
+      reason: s.reason,
+      how: s.how,
+      benefit: s.benefit,
+      example: s.example,
+      changeType: s.changeType,
+    }));
+  return {
+    category: result.category,
+    categoryLabel: result.categoryLabel,
+    savedAt: new Date().toISOString(),
+    auditSummary: result.auditSummary,
+    changes,
+  };
+}
 
 /**
  * Save the reviewed, accepted optimization as a NEW resume version (never an
@@ -69,12 +100,15 @@ export function useSaveOptimizedVersion() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (args: SaveVersionArgs): Promise<SavedResumeVersion> => {
+      // Store the resolved, human-readable label (e.g. "GenAI Engineer" for a
+      // custom target) — versions are read-only history, never looked up by id.
       const version = await resumeService.saveVersion(args.resumeId, {
         content: args.content,
         name: args.name,
         source: "optimizer",
-        category: args.category,
+        category: args.result.categoryLabel,
         analysisId: args.result.id,
+        optimization: buildOptimizationRecord(args.result, args.decisions) as unknown as Json,
       });
       return {
         id: version.id,

@@ -429,6 +429,8 @@ export type ResumeVersionRow = {
   source: string | null;
   category: string | null;
   analysis_id: string | null;
+  // ── Module 6E: durable optimizer change history (additive, nullable) ──
+  optimization: Json | null;
 };
 
 export type ResumeAtsScoreRow = {
@@ -859,6 +861,8 @@ export type ResumeVersionInsert = {
   source?: string | null;
   category?: string | null;
   analysis_id?: string | null;
+  // ── Module 6E: durable optimizer change history (additive, nullable) ──
+  optimization?: Json | null;
 };
 
 export type ResumeAtsScoreInsert = {

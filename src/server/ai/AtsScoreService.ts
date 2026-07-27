@@ -11,6 +11,8 @@ import {
 import {
   ResumeHealthSchema,
   StructuredResumeSchema,
+  ImprovementActionSchema,
+  cleanImprovementPlan,
   type AtsScoreResult,
   type ResumeHealth,
   type StructuredResume,
@@ -75,6 +77,8 @@ const AtsStoredResultSchema = z.object({
   strengths: z.array(z.string()),
   atsRisks: z.array(z.string()),
   recommendations: z.array(z.string()),
+  // Module 6E — persisted "path to 95%" plan; `.catch([])` keeps pre-6E rows valid.
+  improvementPlan: z.array(ImprovementActionSchema).catch([]),
   summary: z.string(),
 });
 
@@ -127,6 +131,7 @@ function buildStoredResult(
     strengths: ai.strengths.slice(0, 6),
     atsRisks,
     recommendations: ai.recommendations.slice(0, 6),
+    improvementPlan: cleanImprovementPlan(ai.improvementPlan).slice(0, 25),
     summary: ai.summary,
   };
 }
@@ -165,6 +170,7 @@ function toSummary(row: { id: string; result: Json; created_at: string }): AtsSc
     strengths: data.strengths,
     atsRisks: data.atsRisks,
     recommendations: data.recommendations,
+    improvementPlan: cleanImprovementPlan(data.improvementPlan),
     summary: data.summary,
     createdAt: row.created_at,
   };
@@ -193,6 +199,7 @@ function summaryFromStored(
     strengths: stored.strengths,
     atsRisks: stored.atsRisks,
     recommendations: stored.recommendations,
+    improvementPlan: cleanImprovementPlan(stored.improvementPlan),
     summary: stored.summary,
     createdAt,
   };

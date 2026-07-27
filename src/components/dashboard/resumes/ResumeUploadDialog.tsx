@@ -13,9 +13,12 @@ import { toast } from "sonner";
 export function ResumeUploadDialog({
   open,
   onOpenChange,
+  onUploaded,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** Called after a successful upload (new or duplicate reuse) with the resume's id — e.g. to continue into the Optimization Studio. */
+  onUploaded?: (resumeId: string) => void;
 }) {
   const [file, setFile] = useState<File | null>(null);
   const [name, setName] = useState("");
@@ -51,13 +54,17 @@ export function ResumeUploadDialog({
   async function submit() {
     if (!file) return;
     try {
-      const { isDuplicate } = await upload.mutateAsync({ name: name.trim() || file.name, file });
+      const { resume, isDuplicate } = await upload.mutateAsync({
+        name: name.trim() || file.name,
+        file,
+      });
       toast.success(
         isDuplicate
           ? "This resume is already in your library — reusing the existing analysis."
           : "Resume uploaded and analyzed.",
       );
       close();
+      onUploaded?.(resume.id);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Upload failed.");
     }

@@ -1,5 +1,6 @@
 import { supabase } from "@/lib/supabase";
 import type { Resume, ResumeVersion } from "@/types";
+import type { Json } from "@/types/database";
 
 // Includes Module 6A additive columns (metadata, file hash, parse status).
 const RESUME_COLUMNS =
@@ -7,7 +8,7 @@ const RESUME_COLUMNS =
   "is_default, file_name, file_hash, file_size_bytes, mime_type, page_count, parse_status, parse_error, parsed_at";
 
 const RESUME_VERSION_COLUMNS =
-  "id, resume_id, version_number, content, created_at, name, source, category, analysis_id";
+  "id, resume_id, version_number, content, created_at, name, source, category, analysis_id, optimization";
 
 export type ResumeVersionCreateInput = {
   content: string;
@@ -15,6 +16,8 @@ export type ResumeVersionCreateInput = {
   source?: string | null;
   category?: string | null;
   analysisId?: string | null;
+  /** Module 6E — durable optimizer change history (accepted + rejected). */
+  optimization?: Json | null;
 };
 
 export type ResumeCreateInput = {
@@ -118,6 +121,7 @@ export class ResumeRepository {
         source: input.source ?? null,
         category: input.category ?? null,
         analysis_id: input.analysisId ?? null,
+        optimization: input.optimization ?? null,
       })
       .select(RESUME_VERSION_COLUMNS)
       .single();

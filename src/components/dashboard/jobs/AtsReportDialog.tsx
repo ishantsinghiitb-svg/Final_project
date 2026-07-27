@@ -1,16 +1,27 @@
-import { ShieldCheck, X, CheckCircle2, AlertTriangle, ArrowUpCircle } from "lucide-react";
+import { useState } from "react";
+import { ShieldCheck, X, CheckCircle2, ArrowUpCircle, ChevronDown } from "lucide-react";
 import { Chip } from "@/components/dashboard/primitives";
 import { cn } from "@/lib/utils";
 import { ATS_RATINGS, type AtsRating } from "@/features/ai/atsRating";
-import type { AtsScoreSummary } from "@/features/ai/types";
+import type { AtsScoreSummary, AtsBreakdownItem } from "@/features/ai/types";
+import { ActionPlanList, type ActionItem } from "@/components/dashboard/reports/ActionPlanList";
+import { atsFallbackItems, improvementPlanToItems } from "./reportActions";
 
-// ── AtsReportDialog (Module 6C) ──
+// ── AtsReportDialog (Module 6C; reframed in the 6E AI-quality pass) ──
 //
-// The full ATS Compatibility report — everything the compact card summarizes:
-// the six weighted components with per-component detail, matched / missing /
-// critical-missing keywords, strengths, ATS risks, recommendations, and the
-// summary. Same fixed-overlay/gradient-strip modal convention as the other
-// dashboard dialogs; scrolls internally so it never grows the page.
+// The full ATS Compatibility report. It no longer leads with the score — it
+// leads with the AI's "how to reach 95%+ ATS compatibility" IMPROVEMENT PLAN
+// (from the model's new `improvementPlan` output): ordered, concrete actions
+// with why / how / example / expected benefit. Older cached analyses (no plan)
+// fall back to a plan derived from their existing keyword/risk/component fields.
+// The weighted breakdown, keyword chips, strengths, and summary remain as
+// supporting detail below.
+
+function atsPlanItems(analysis: AtsScoreSummary): ActionItem[] {
+  return analysis.improvementPlan.length > 0
+    ? improvementPlanToItems(analysis.improvementPlan)
+    : atsFallbackItems(analysis);
+}
 
 const RATING_TONE: Record<AtsRating, "green" | "blue" | "amber" | "rose"> = {
   [ATS_RATINGS.EXCELLENT]: "green",
@@ -34,6 +45,8 @@ type Props = {
 
 export function AtsReportDialog({ open, analysis, onClose }: Props) {
   if (!open) return null;
+
+  const planItems = atsPlanItems(analysis);
 
   return (
     <div
@@ -84,40 +97,17 @@ export function AtsReportDialog({ open, analysis, onClose }: Props) {
         </div>
 
         <div className="space-y-6 overflow-y-auto px-6 py-5">
-          {/* Breakdown */}
+          {/* Improvement plan — the AI's "how to reach 95%+ ATS compatibility", most impactful first */}
+          <ActionPlanList items={planItems} title="How to reach 95%+ ATS compatibility" />
+
+          {/* Breakdown — each category expands into its diagnosis (why the score is what it is) */}
           <section>
             <p className="text-[11px] uppercase tracking-[0.14em] text-[oklch(0.5_0.02_265)]">
               Breakdown
             </p>
-            <ul className="mt-3 space-y-3">
+            <ul className="mt-3 space-y-2.5">
               {analysis.breakdown.map((c) => (
-                <li key={c.key}>
-                  <div className="flex items-center justify-between gap-2 text-sm">
-                    <span className="flex items-center gap-2 font-medium text-[oklch(0.3_0.02_265)]">
-                      {c.label}
-                      <span className="rounded-full bg-black/[0.04] px-1.5 py-0.5 text-[10px] font-medium text-[oklch(0.5_0.02_265)]">
-                        {c.weightPct}%
-                      </span>
-                      <span className="text-[10px] uppercase tracking-wide text-[oklch(0.6_0.02_265)]">
-                        {c.source === "ai" ? "AI" : "Parser"}
-                      </span>
-                    </span>
-                    <span className="shrink-0 font-semibold text-[oklch(0.25_0.02_265)]">
-                      {c.score}
-                    </span>
-                  </div>
-                  <div className="mt-1.5 h-1.5 rounded-full bg-black/5">
-                    <div
-                      className={cn("h-full rounded-full bg-gradient-to-r", barGradient(c.score))}
-                      style={{ width: `${c.score}%` }}
-                    />
-                  </div>
-                  {c.detail && (
-                    <p className="mt-1 text-xs leading-relaxed text-[oklch(0.5_0.02_265)]">
-                      {c.detail}
-                    </p>
-                  )}
-                </li>
+                <BreakdownRow key={c.key} item={c} />
               ))}
             </ul>
           </section>
@@ -165,15 +155,6 @@ export function AtsReportDialog({ open, analysis, onClose }: Props) {
             />
           )}
 
-          {/* ATS Risks */}
-          {analysis.atsRisks.length > 0 && (
-            <IconList
-              title="ATS Risks"
-              items={analysis.atsRisks}
-              icon={<AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-[#B45309]" />}
-            />
-          )}
-
           {/* Recommendations */}
           {analysis.recommendations.length > 0 && (
             <IconList
@@ -197,6 +178,62 @@ export function AtsReportDialog({ open, analysis, onClose }: Props) {
         </div>
       </div>
     </div>
+  );
+}
+
+/**
+ * One weighted-category row. Collapsed it shows the category, its weight, whether
+ * it was scored by the AI or the deterministic parser, the score, and the score
+ * bar (the at-a-glance breakdown). Expanded it reveals the AI/parser DIAGNOSIS
+ * for that category — why the score is what it is, what's strong, what's missing,
+ * and the opportunity — so the user can drill into any category to understand it.
+ */
+function BreakdownRow({ item }: { item: AtsBreakdownItem }) {
+  const [open, setOpen] = useState(false);
+  const hasDetail = item.detail.trim().length > 0;
+
+  return (
+    <li className="rounded-xl border border-black/5 bg-white px-3 py-2.5">
+      <button
+        type="button"
+        onClick={() => hasDetail && setOpen((v) => !v)}
+        className={cn(
+          "flex w-full items-center justify-between gap-2 text-left",
+          hasDetail && "cursor-pointer",
+        )}
+        aria-expanded={hasDetail ? open : undefined}
+      >
+        <span className="flex items-center gap-2 text-sm font-medium text-[oklch(0.3_0.02_265)]">
+          {item.label}
+          <span className="rounded-full bg-black/[0.04] px-1.5 py-0.5 text-[10px] font-medium text-[oklch(0.5_0.02_265)]">
+            {item.weightPct}%
+          </span>
+          <span className="text-[10px] uppercase tracking-wide text-[oklch(0.6_0.02_265)]">
+            {item.source === "ai" ? "AI" : "Parser"}
+          </span>
+        </span>
+        <span className="flex shrink-0 items-center gap-1.5">
+          <span className="text-sm font-semibold text-[oklch(0.25_0.02_265)]">{item.score}</span>
+          {hasDetail && (
+            <ChevronDown
+              className={cn(
+                "h-3.5 w-3.5 text-[oklch(0.6_0.02_265)] transition-transform",
+                open && "rotate-180",
+              )}
+            />
+          )}
+        </span>
+      </button>
+      <div className="mt-1.5 h-1.5 rounded-full bg-black/5">
+        <div
+          className={cn("h-full rounded-full bg-gradient-to-r", barGradient(item.score))}
+          style={{ width: `${item.score}%` }}
+        />
+      </div>
+      {open && hasDetail && (
+        <p className="mt-2 text-xs leading-relaxed text-[oklch(0.45_0.02_265)]">{item.detail}</p>
+      )}
+    </li>
   );
 }
 

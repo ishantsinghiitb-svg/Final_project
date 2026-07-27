@@ -1,5 +1,5 @@
 import type { AICapability, AIResultCode } from "@/features/ai/constants";
-import type { StructuredResume } from "@/features/ai/schemas";
+import type { StructuredResume, ImprovementAction } from "@/features/ai/schemas";
 import type { MatchLabel } from "@/features/ai/matchLabel";
 import type { AtsRating } from "@/features/ai/atsRating";
 import type { AtsComponentKey, AtsComponentSource } from "@/features/ai/atsScore";
@@ -155,6 +155,8 @@ export type ResumeMatchSummary = {
   missingKeywords: string[];
   matchedKeywords: string[];
   recommendation: ResumeMatchRecommendation;
+  // ── Module 6E: organized, actionable improvement plan (may be empty for legacy analyses). ──
+  improvementPlan: ImprovementAction[];
 };
 
 // ── ATS Compatibility — client-facing summary (Module 6C) ──
@@ -186,6 +188,8 @@ export type AtsScoreSummary = {
   strengths: string[];
   atsRisks: string[]; // deterministic formatting risks + AI content risks, merged
   recommendations: string[];
+  // ── Module 6E: "path to 95%" improvement plan (may be empty for legacy analyses). ──
+  improvementPlan: ImprovementAction[];
   summary: string;
   createdAt: string;
 };

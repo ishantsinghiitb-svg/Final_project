@@ -1,30 +1,30 @@
-import type { ResumeDocument } from "./compose";
+import type { ResumeDocument, ResumeDocBlock } from "./compose";
 import { renderResumeText } from "./compose";
 
-// ── Optimized resume download (Module 6D, client-only) ──
+// ── Optimized resume download (Module 6D; PDF fixed in the 6E pass) ──
 //
 // Format-agnostic by design. A renderer registry maps a format id to a concrete
-// exporter, so DOCX can be added later as one more entry with zero changes to
-// callers or to composition. Shipping now:
-//   • txt — a plain-text Blob download (always available, no dependencies).
-//   • pdf — the browser's own print-to-PDF over a styled print document.
-// DOCX is declared but not yet available (needs a document library); the UI
-// reads `available` and shows it as coming soon rather than hard-coding the
-// list of buttons.
+// exporter, so a new format is one more registry entry. Shipping:
+//   • pdf  — a REAL, downloadable .pdf built with jsPDF (dynamically imported).
+//     The previous print-window approach relied on pop-ups and never produced a
+//     file; this generates an actual PDF blob and downloads it directly.
+//   • docx — a real .docx via the `docx` package (dynamically imported).
+//   • txt  — a plain-text Blob download (no dependencies; not in the primary
+//     menu but kept as a supported format).
+// The heavy libraries load only when their format is actually used.
 
-export type DownloadFormat = "pdf" | "txt" | "docx";
+export type DownloadFormat = "pdf" | "docx" | "txt";
 
 export type ResumeFormatOption = {
   id: DownloadFormat;
   label: string;
   hint: string;
-  available: boolean;
 };
 
+/** The formats offered in the Download ▼ menu (PDF + DOCX per the 6E spec). */
 export const RESUME_FORMATS: readonly ResumeFormatOption[] = [
-  { id: "pdf", label: "PDF", hint: "Best for applications", available: true },
-  { id: "txt", label: "Plain text", hint: "Universal, ATS-safe", available: true },
-  { id: "docx", label: "Word (DOCX)", hint: "Coming soon", available: false },
+  { id: "pdf", label: "PDF", hint: "Best for applications" },
+  { id: "docx", label: "Word (DOCX)", hint: "Editable in Word" },
 ] as const;
 
 function safeFileName(name: string): string {
@@ -35,12 +35,7 @@ function safeFileName(name: string): string {
   return base || "resume";
 }
 
-function escapeHtml(s: string): string {
-  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-}
-
-function triggerBlobDownload(content: string, filename: string, mime: string): void {
-  const blob = new Blob([content], { type: mime });
+function triggerBlobDownload(blob: Blob, filename: string): void {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
@@ -51,78 +46,190 @@ function triggerBlobDownload(content: string, filename: string, mime: string): v
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-/** Render the document as a clean, print-ready HTML page. */
-export function renderResumeHtml(doc: ResumeDocument, title: string): string {
-  const header: string[] = [];
-  if (doc.name) header.push(`<h1>${escapeHtml(doc.name)}</h1>`);
-  if (doc.contactLines.length) {
-    header.push(
-      `<p class="contact">${doc.contactLines.map((l) => escapeHtml(l)).join("<br/>")}</p>`,
-    );
+// ── PDF (jsPDF) ──────────────────────────────────────────────────────────────
+async function buildPdfBlob(doc: ResumeDocument): Promise<Blob> {
+  const { jsPDF } = await import("jspdf");
+  const pdf = new jsPDF({ unit: "pt", format: "a4" });
+
+  const pageWidth = pdf.internal.pageSize.getWidth();
+  const pageHeight = pdf.internal.pageSize.getHeight();
+  const margin = 48;
+  const maxWidth = pageWidth - margin * 2;
+  let y = margin;
+
+  const ensureSpace = (needed: number) => {
+    if (y + needed > pageHeight - margin) {
+      pdf.addPage();
+      y = margin;
+    }
+  };
+
+  const writeLines = (
+    text: string,
+    opts: {
+      size: number;
+      style?: "normal" | "bold";
+      color?: [number, number, number];
+      gap: number;
+    },
+  ) => {
+    pdf.setFont("helvetica", opts.style ?? "normal");
+    pdf.setFontSize(opts.size);
+    pdf.setTextColor(...(opts.color ?? [26, 26, 46]));
+    const lines = pdf.splitTextToSize(text, maxWidth) as string[];
+    const lineHeight = opts.size * 1.35;
+    for (const line of lines) {
+      ensureSpace(lineHeight);
+      pdf.text(line, margin, y);
+      y += lineHeight;
+    }
+    y += opts.gap;
+  };
+
+  if (doc.name) writeLines(doc.name, { size: 20, style: "bold", gap: 2 });
+  for (const line of doc.contactLines) {
+    writeLines(line, { size: 10, color: [90, 90, 100], gap: 1 });
+  }
+  y += 8;
+
+  for (const block of doc.blocks) {
+    ensureSpace(40);
+    writeLines(block.heading.toUpperCase(), {
+      size: 11,
+      style: "bold",
+      color: [37, 99, 235],
+      gap: 2,
+    });
+    // Divider under the heading.
+    ensureSpace(6);
+    pdf.setDrawColor(225, 228, 232);
+    pdf.line(margin, y - 4, pageWidth - margin, y - 4);
+    y += 4;
+    for (const rawLine of block.body.split("\n")) {
+      const line = rawLine.trim();
+      if (!line) continue;
+      writeLines(line, { size: 10.5, gap: 2 });
+    }
+    y += 8;
   }
 
-  const blocks = doc.blocks
-    .map((b) => {
-      const body = escapeHtml(b.body)
-        .split("\n")
-        .map((line) => line.trimEnd())
-        .filter(Boolean)
-        .map((line) => `<p>${line}</p>`)
-        .join("");
-      return `<section><h2>${escapeHtml(b.heading)}</h2>${body}</section>`;
-    })
-    .join("");
-
-  return `<!doctype html><html><head><meta charset="utf-8"/><title>${escapeHtml(title)}</title>
-<style>
-  * { box-sizing: border-box; }
-  body { font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; color: #1a1a2e;
-         max-width: 720px; margin: 40px auto; padding: 0 24px; line-height: 1.5; }
-  h1 { font-size: 24px; margin: 0 0 4px; }
-  .contact { color: #555; font-size: 13px; margin: 0 0 20px; }
-  section { margin: 0 0 18px; }
-  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.08em; color: #2563EB;
-       border-bottom: 1px solid #e5e7eb; padding-bottom: 4px; margin: 0 0 8px; }
-  section p { margin: 0 0 6px; font-size: 13.5px; }
-  @media print { body { margin: 0; } @page { margin: 18mm; } }
-</style></head><body>${header.join("")}${blocks}</body></html>`;
+  return pdf.output("blob");
 }
 
-function downloadPdf(doc: ResumeDocument, title: string): void {
-  const html = renderResumeHtml(doc, title);
-  const win = window.open("", "_blank", "noopener,noreferrer,width=820,height=1000");
-  if (!win) {
-    throw new Error(
-      "Your browser blocked the print window. Allow pop-ups for this site, or download as plain text.",
+// ── DOCX (docx) ──────────────────────────────────────────────────────────────
+async function buildDocxBlob(doc: ResumeDocument): Promise<Blob> {
+  const { Document, Packer, Paragraph, TextRun, HeadingLevel } = await import("docx");
+
+  const children: InstanceType<typeof Paragraph>[] = [];
+
+  if (doc.name) {
+    children.push(new Paragraph({ text: doc.name, heading: HeadingLevel.TITLE }));
+  }
+  for (const line of doc.contactLines) {
+    children.push(
+      new Paragraph({
+        spacing: { after: 120 },
+        children: [new TextRun({ text: line, size: 20, color: "555555" })],
+      }),
     );
   }
-  win.document.open();
-  win.document.write(html);
-  win.document.close();
-  // Give the new document a tick to lay out before invoking print.
-  win.setTimeout(() => {
-    win.focus();
-    win.print();
-  }, 350);
+
+  for (const block of doc.blocks) {
+    children.push(
+      new Paragraph({
+        text: block.heading.toUpperCase(),
+        heading: HeadingLevel.HEADING_2,
+        spacing: { before: 240, after: 100 },
+      }),
+    );
+    for (const rawLine of block.body.split("\n")) {
+      const line = rawLine.trim();
+      if (!line) continue;
+      children.push(new Paragraph({ text: line, spacing: { after: 60 } }));
+    }
+  }
+
+  const wordDoc = new Document({ sections: [{ properties: {}, children }] });
+  return Packer.toBlob(wordDoc);
 }
 
 /**
- * Download the optimized resume in the requested format. Throws a
- * human-readable error only for the pop-up-blocked PDF case so the caller can
- * surface it as a toast.
+ * Reverse of `renderResumeText` — reconstructs a ResumeDocument from the stored
+ * plain-text of a SAVED version, so a past version can be re-exported to PDF/
+ * DOCX without keeping the original document model around. Deterministic
+ * because it parses text this module itself produced (heading line followed by
+ * a dashed underline).
  */
-export function downloadResume(doc: ResumeDocument, name: string, format: DownloadFormat): void {
+export function parseResumeText(content: string): ResumeDocument {
+  const lines = content.replace(/\r\n/g, "\n").split("\n");
+  const isDivider = (s: string) => /^-{2,}$/.test(s.trim());
+
+  let name: string | null = null;
+  const contactLines: string[] = [];
+  const blocks: ResumeDocBlock[] = [];
+  let current: ResumeDocBlock | null = null;
+  let sawHeading = false;
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const trimmed = line.trim();
+    const next = lines[i + 1] ?? "";
+
+    // A heading is a non-empty line immediately followed by a dashed underline.
+    if (trimmed && isDivider(next)) {
+      if (current) blocks.push(current);
+      current = { heading: toTitleCase(trimmed), body: "" };
+      sawHeading = true;
+      i++; // consume the divider line
+      continue;
+    }
+    if (isDivider(trimmed)) continue;
+
+    if (!sawHeading) {
+      // Header region: first non-empty line = name, the rest = contact lines.
+      if (!trimmed) continue;
+      if (name === null) name = trimmed;
+      else contactLines.push(trimmed);
+      continue;
+    }
+
+    if (current) {
+      current.body += (current.body ? "\n" : "") + line;
+    }
+  }
+  if (current) blocks.push(current);
+
+  for (const b of blocks) b.body = b.body.replace(/\n{3,}/g, "\n\n").trim();
+
+  return { name, contactLines, blocks };
+}
+
+function toTitleCase(s: string): string {
+  return s.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+/**
+ * Download the resume in the requested format. Async because PDF/DOCX generation
+ * dynamically imports its library.
+ */
+export async function downloadResume(
+  doc: ResumeDocument,
+  name: string,
+  format: DownloadFormat,
+): Promise<void> {
   const fileBase = safeFileName(name);
   switch (format) {
     case "txt":
-      triggerBlobDownload(renderResumeText(doc), `${fileBase}.txt`, "text/plain;charset=utf-8");
+      triggerBlobDownload(
+        new Blob([renderResumeText(doc)], { type: "text/plain;charset=utf-8" }),
+        `${fileBase}.txt`,
+      );
       return;
     case "pdf":
-      downloadPdf(doc, name);
+      triggerBlobDownload(await buildPdfBlob(doc), `${fileBase}.pdf`);
       return;
     case "docx":
-      // Not yet available — the UI never offers this path. Fall back safely.
-      triggerBlobDownload(renderResumeText(doc), `${fileBase}.txt`, "text/plain;charset=utf-8");
+      triggerBlobDownload(await buildDocxBlob(doc), `${fileBase}.docx`);
       return;
   }
 }

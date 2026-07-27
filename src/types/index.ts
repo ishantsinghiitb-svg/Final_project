@@ -347,6 +347,8 @@ export type ResumeVersion = {
   source?: string | null;
   category?: string | null;
   analysis_id?: string | null;
+  // ── Module 6E: durable optimizer change history (additive, nullable) ──
+  optimization?: Json | null;
 };
 
 // ── Interview ──

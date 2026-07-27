@@ -15,20 +15,24 @@ async function accessToken(): Promise<string> {
   return token;
 }
 
+export type OptimizeParams = {
+  resumeId: string;
+  category: CareerCategoryId;
+  /** Required (and used) only when `category` is "other". */
+  customCategory?: string;
+  sections: OptimizeSectionId[];
+  forceRefresh?: boolean;
+};
+
 export const optimizerClient = {
   /**
    * Run an optimization for a resume against a career category + section
    * selection. The caller must have shown the "this uses 1 AI Credit"
    * confirmation first — this only executes.
    */
-  async optimize(
-    resumeId: string,
-    category: CareerCategoryId,
-    sections: OptimizeSectionId[],
-    forceRefresh = false,
-  ) {
+  async optimize(params: OptimizeParams) {
     return optimizeResume({
-      data: { accessToken: await accessToken(), resumeId, category, sections, forceRefresh },
+      data: { accessToken: await accessToken(), ...params },
     });
   },
 };

@@ -19,6 +19,8 @@ type OptimizeInput = {
   accessToken: string;
   resumeId: string;
   category: CareerCategoryId;
+  /** Required (and used) only when `category` is "other" — the user's free-text career target. */
+  customCategory?: string;
   sections: OptimizeSectionId[];
   forceRefresh?: boolean;
 };
@@ -30,6 +32,7 @@ export const optimizeResume = createServerFn({ method: "POST" })
     const res = await runOptimize(authed, {
       resumeId: data.resumeId,
       category: data.category,
+      customCategory: data.customCategory,
       sections: data.sections,
       forceRefresh: data.forceRefresh,
     });

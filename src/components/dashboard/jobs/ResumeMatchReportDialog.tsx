@@ -1,20 +1,30 @@
-import { Sparkles, X, CheckCircle2, ArrowUpCircle, RefreshCw } from "lucide-react";
+import { useState } from "react";
+import { Sparkles, X, CheckCircle2, RefreshCw, ChevronDown } from "lucide-react";
 import { Chip } from "@/components/dashboard/primitives";
 import { DashButton } from "@/components/dashboard/DashButton";
 import { cn } from "@/lib/utils";
 import { useResumeMatchHistory } from "@/features/ai/hooks";
 import { MATCH_LABELS, matchLabelForScore, type MatchLabel } from "@/features/ai/matchLabel";
 import type { ResumeMatchSummary, ResumeMatchRecommendation } from "@/features/ai/types";
+import { ActionPlanList, type ActionItem } from "@/components/dashboard/reports/ActionPlanList";
+import { improvementPlanToItems, matchFallbackItems } from "./reportActions";
 
-// ── ResumeMatchReportDialog (Module 6C polish) ──
+// ── ResumeMatchReportDialog (Module 6C; reframed in the 6E AI-quality pass) ──
 //
-// The full Resume Match report, split out of the dashboard card so the card
-// itself can stay a compact, quick-decision summary (see ResumeMatchCard).
-// Deliberately a NEW, self-contained file rather than a shared component with
-// AtsReportDialog: that dialog is frozen ("leave exactly as implemented"), so
-// reusing its internals would mean editing a file we're not allowed to touch.
-// The visual language (header layout, section typography, keyword chip
-// groups, icon lists) is copied to match it, not imported from it.
+// The full Resume Match report. It no longer leads with a scoring breakdown — it
+// leads with the AI's IMPROVEMENT PLAN: "what prevents this from being an
+// excellent match, and how to fix it." The plan comes straight from the model's
+// new `improvementPlan` output (see the Resume Match prompt) and renders as an
+// ordered What → Why → How → Example action list. Older cached analyses (no
+// plan) fall back to a plan derived from their existing fields so nothing
+// regresses. The Fit Breakdown, Keywords, Recommendation, Summary and History
+// remain available as supporting detail below.
+
+function matchPlanItems(analysis: ResumeMatchSummary): ActionItem[] {
+  return analysis.improvementPlan.length > 0
+    ? improvementPlanToItems(analysis.improvementPlan)
+    : matchFallbackItems(analysis);
+}
 
 const LABEL_TONE: Record<MatchLabel, "green" | "blue" | "amber" | "rose"> = {
   [MATCH_LABELS.EXCELLENT]: "green",
@@ -45,6 +55,53 @@ function barGradient(score: number): string {
   if (score >= 70) return "from-[#2563EB] to-[#7C3AED]";
   if (score >= 50) return "from-[#F59E0B] to-[#EAB308]";
   return "from-[#F43F5E] to-[#E11D48]";
+}
+
+/**
+ * One role-fit dimension row. Collapsed it shows the dimension, its score, and
+ * the score bar; expanded it reveals the AI's DIAGNOSIS for that dimension — what
+ * already fits, what's missing, and the opportunity — so the user can drill into
+ * any dimension to understand why the fit is what it is.
+ */
+function FitRow({ label, score, detail }: { label: string; score: number; detail: string }) {
+  const [open, setOpen] = useState(false);
+  const hasDetail = detail.trim().length > 0;
+
+  return (
+    <li className="rounded-xl border border-black/5 bg-white px-3 py-2.5">
+      <button
+        type="button"
+        onClick={() => hasDetail && setOpen((v) => !v)}
+        className={cn(
+          "flex w-full items-center justify-between gap-2 text-left",
+          hasDetail && "cursor-pointer",
+        )}
+        aria-expanded={hasDetail ? open : undefined}
+      >
+        <span className="text-sm font-medium text-[oklch(0.3_0.02_265)]">{label}</span>
+        <span className="flex shrink-0 items-center gap-1.5">
+          <span className="text-sm font-semibold text-[oklch(0.25_0.02_265)]">{score}</span>
+          {hasDetail && (
+            <ChevronDown
+              className={cn(
+                "h-3.5 w-3.5 text-[oklch(0.6_0.02_265)] transition-transform",
+                open && "rotate-180",
+              )}
+            />
+          )}
+        </span>
+      </button>
+      <div className="mt-1.5 h-1.5 rounded-full bg-black/5">
+        <div
+          className={cn("h-full rounded-full bg-gradient-to-r", barGradient(score))}
+          style={{ width: `${score}%` }}
+        />
+      </div>
+      {open && hasDetail && (
+        <p className="mt-2 text-xs leading-relaxed text-[oklch(0.45_0.02_265)]">{detail}</p>
+      )}
+    </li>
+  );
 }
 
 function KeywordGroup({
@@ -163,6 +220,7 @@ export function ResumeMatchReportDialog({
     { label: "Education Match", ...analysis.dimensions.education },
     { label: "Domain Fit", ...analysis.dimensions.domain },
   ];
+  const planItems = matchPlanItems(analysis);
 
   return (
     <div
@@ -213,21 +271,15 @@ export function ResumeMatchReportDialog({
         </div>
 
         <div className="space-y-6 overflow-y-auto px-6 py-5">
+          {/* Improvement plan — the AI's "what to fix to become an excellent match", most impactful first */}
+          <ActionPlanList items={planItems} title="How to improve this match" />
+
           {/* Strengths */}
           {analysis.whatMatches.length > 0 && (
             <IconList
               title="Strengths"
               items={analysis.whatMatches}
               icon={<CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-[#16A34A]" />}
-            />
-          )}
-
-          {/* Areas to Improve */}
-          {analysis.whatToImprove.length > 0 && (
-            <IconList
-              title="Areas to Improve"
-              items={analysis.whatToImprove}
-              icon={<ArrowUpCircle className="mt-0.5 h-4 w-4 shrink-0 text-[#F59E0B]" />}
             />
           )}
 
@@ -280,32 +332,14 @@ export function ResumeMatchReportDialog({
             </section>
           )}
 
-          {/* Fit Breakdown */}
+          {/* Fit Breakdown — each dimension expands into its diagnosis (why the fit is what it is) */}
           <section>
             <p className="text-[11px] uppercase tracking-[0.14em] text-[oklch(0.5_0.02_265)]">
               Fit Breakdown
             </p>
-            <ul className="mt-3 space-y-3">
+            <ul className="mt-3 space-y-2.5">
               {dimensionRows.map((d) => (
-                <li key={d.label}>
-                  <div className="flex items-center justify-between gap-2 text-sm">
-                    <span className="font-medium text-[oklch(0.3_0.02_265)]">{d.label}</span>
-                    <span className="shrink-0 font-semibold text-[oklch(0.25_0.02_265)]">
-                      {d.score}
-                    </span>
-                  </div>
-                  <div className="mt-1.5 h-1.5 rounded-full bg-black/5">
-                    <div
-                      className={cn("h-full rounded-full bg-gradient-to-r", barGradient(d.score))}
-                      style={{ width: `${d.score}%` }}
-                    />
-                  </div>
-                  {d.detail && (
-                    <p className="mt-1 text-xs leading-relaxed text-[oklch(0.5_0.02_265)]">
-                      {d.detail}
-                    </p>
-                  )}
-                </li>
+                <FitRow key={d.label} label={d.label} score={d.score} detail={d.detail} />
               ))}
             </ul>
           </section>

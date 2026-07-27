@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import {
   FileText,
   Plus,
@@ -14,10 +14,11 @@ import {
   Star,
   Gauge,
   Wand2,
-  Download,
   History,
 } from "lucide-react";
+import { toast } from "sonner";
 import {
+  Chip,
   DashCard,
   PageHeader,
   EmptyState,
@@ -28,11 +29,20 @@ import { DashButton } from "@/components/dashboard/DashButton";
 import { ResumeUploadDialog } from "@/components/dashboard/resumes/ResumeUploadDialog";
 import { ResumeListItem } from "@/components/dashboard/resumes/ResumeListItem";
 import { ResumeHealthPanel } from "@/components/dashboard/resumes/ResumeHealthPanel";
+import { OptimizeEntryDialog } from "@/components/dashboard/optimizer/OptimizeEntryDialog";
+import { DownloadMenu } from "@/components/dashboard/optimizer/DownloadMenu";
+import { VersionHistoryDialog } from "@/components/dashboard/optimizer/VersionHistoryDialog";
 import { useResumes, useResumeParsed, useReparseResume } from "@/features/resumes/hooks";
 import { useResumeVersionsList } from "@/features/optimizer/hooks";
 import { useAICredits } from "@/features/ai/hooks";
+import {
+  downloadResume,
+  parseResumeText,
+  type DownloadFormat,
+} from "@/features/optimizer/download";
+import type { OptimizationRecord } from "@/features/optimizer/types";
 import type { ResumeParsed } from "@/repositories/ResumeParsedRepository";
-import type { ResumeVersion } from "@/types";
+import type { Resume, ResumeVersion } from "@/types";
 
 export const Route = createFileRoute("/dashboard/resumes")({
   head: () => ({
@@ -42,9 +52,15 @@ export const Route = createFileRoute("/dashboard/resumes")({
 });
 
 function ResumesPage() {
+  const navigate = useNavigate();
   const { data: resumes = [], isLoading } = useResumes();
   const { data: credits } = useAICredits();
   const [uploadOpen, setUploadOpen] = useState(false);
+  const [optimizeEntryOpen, setOptimizeEntryOpen] = useState(false);
+  // True only when the upload dialog was opened from the "Optimize resume" →
+  // "Upload new resume" path — the plain "Upload resume" button leaves this
+  // false, so its existing behavior (no redirect) is unaffected.
+  const [uploadForOptimize, setUploadForOptimize] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   // Keep a valid selection: prefer the default resume, else the first.
@@ -70,6 +86,10 @@ function ResumesPage() {
   const { data: parsed } = useResumeParsed(selected?.id);
   const reparse = useReparseResume();
 
+  function goToOptimize(resumeId: string) {
+    void navigate({ to: "/dashboard/resumes/$resumeId/optimize", params: { resumeId } });
+  }
+
   return (
     <>
       <StickyPageHeader>
@@ -78,9 +98,14 @@ function ResumesPage() {
           title="Manage your resumes."
           subtitle="Upload, organize, and keep a default resume. Every upload is parsed and gets an instant health report."
           actions={
-            <DashButton onClick={() => setUploadOpen(true)}>
-              <Plus className="h-4 w-4" /> Upload resume
-            </DashButton>
+            <>
+              <DashButton variant="outline" onClick={() => setUploadOpen(true)}>
+                <Plus className="h-4 w-4" /> Upload resume
+              </DashButton>
+              <DashButton onClick={() => setOptimizeEntryOpen(true)}>
+                <Sparkles className="h-4 w-4" /> Optimize resume
+              </DashButton>
+            </>
           }
         />
       </StickyPageHeader>
@@ -127,7 +152,7 @@ function ResumesPage() {
           <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
             <div className="space-y-3">
               {resumes.map((r) => (
-                <ResumeListItem
+                <ResumeLibraryEntry
                   key={r.id}
                   resume={r}
                   selected={r.id === selectedId}
@@ -152,7 +177,25 @@ function ResumesPage() {
         </>
       )}
 
-      <ResumeUploadDialog open={uploadOpen} onOpenChange={setUploadOpen} />
+      <ResumeUploadDialog
+        open={uploadOpen}
+        onOpenChange={(next) => {
+          setUploadOpen(next);
+          if (!next) setUploadForOptimize(false);
+        }}
+        onUploaded={uploadForOptimize ? goToOptimize : undefined}
+      />
+
+      <OptimizeEntryDialog
+        open={optimizeEntryOpen}
+        resumes={resumes}
+        onOpenChange={setOptimizeEntryOpen}
+        onSelectExisting={goToOptimize}
+        onUploadNew={() => {
+          setUploadForOptimize(true);
+          setUploadOpen(true);
+        }}
+      />
     </>
   );
 }
@@ -185,6 +228,99 @@ function StatTile({
   );
 }
 
+/**
+ * One resume in the library list, together with its optimized versions (if
+ * any) nested directly beneath it — never a separate section elsewhere on the
+ * page. Each version carries an "Optimized" badge so it's visually distinct
+ * from the base resume while still reading as part of the same entry.
+ */
+function ResumeLibraryEntry({
+  resume,
+  selected,
+  onSelect,
+}: {
+  resume: Resume;
+  selected: boolean;
+  onSelect: () => void;
+}) {
+  const { data: versions = [] } = useResumeVersionsList(resume.id);
+  const optimizedVersions = versions.filter((v) => v.source === "optimizer");
+
+  return (
+    <div className="space-y-1.5">
+      <ResumeListItem resume={resume} selected={selected} onSelect={onSelect} />
+      {optimizedVersions.length > 0 && (
+        <div className="ml-4 space-y-1.5 border-l-2 border-black/5 pl-3">
+          {optimizedVersions.map((v) => (
+            <VersionRow key={v.id} version={v} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Defensively read a version's stored optimizer change record (may be absent/legacy). */
+function readOptimizationRecord(version: ResumeVersion): OptimizationRecord | null {
+  const raw = version.optimization;
+  if (!raw || typeof raw !== "object") return null;
+  const rec = raw as Partial<OptimizationRecord>;
+  if (!Array.isArray(rec.changes)) return null;
+  return rec as OptimizationRecord;
+}
+
+function VersionRow({ version }: { version: ResumeVersion }) {
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const record = readOptimizationRecord(version);
+
+  async function handleDownload(format: DownloadFormat) {
+    try {
+      const doc = parseResumeText(version.content);
+      await downloadResume(doc, version.name ?? "resume", format);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Download failed.");
+    }
+  }
+
+  return (
+    <>
+      <div className="flex items-center justify-between gap-3 rounded-xl border border-black/5 bg-white px-3 py-2">
+        <div className="min-w-0 flex-1">
+          <p className="flex items-center gap-1.5 truncate text-sm font-medium text-[oklch(0.3_0.02_265)]">
+            <span className="truncate">{version.name ?? `Version ${version.version_number}`}</span>
+            <Chip tone="purple" className="shrink-0">
+              <Wand2 className="h-3 w-3" /> Optimized
+            </Chip>
+          </p>
+          <p className="mt-0.5 text-[11px] text-[oklch(0.55_0.02_265)]">
+            {new Date(version.created_at).toLocaleDateString()}
+            {version.category ? ` · ${version.category}` : ""}
+          </p>
+        </div>
+        <div className="flex shrink-0 items-center gap-1.5">
+          {record && (
+            <button
+              onClick={() => setHistoryOpen(true)}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-black/10 bg-white px-2.5 py-1.5 text-xs font-medium text-[oklch(0.4_0.02_265)] transition-colors hover:border-[#7C3AED]/30 hover:text-[#7C3AED]"
+            >
+              <History className="h-3.5 w-3.5" /> Changes
+            </button>
+          )}
+          <DownloadMenu onDownload={handleDownload} size="sm" />
+        </div>
+      </div>
+
+      <VersionHistoryDialog
+        open={historyOpen}
+        versionName={version.name ?? `Version ${version.version_number}`}
+        versionNumber={version.version_number}
+        record={record}
+        onClose={() => setHistoryOpen(false)}
+      />
+    </>
+  );
+}
+
 function ResumeDetail({
   resumeId,
   parseStatus,
@@ -200,8 +336,8 @@ function ResumeDetail({
   onReparse: () => void;
   reparsing: boolean;
 }) {
+  const navigate = useNavigate();
   const contact = parsed?.structured?.contact;
-  const { data: versions = [] } = useResumeVersionsList(resumeId);
   const ready = parseStatus === "ready";
 
   return (
@@ -230,19 +366,21 @@ function ResumeDetail({
                 Review AI suggestions and save an improved version. You keep control of every
                 change.
               </p>
-              <Link
-                to="/dashboard/resumes/$resumeId/optimize"
-                params={{ resumeId }}
+              <button
+                onClick={() =>
+                  void navigate({
+                    to: "/dashboard/resumes/$resumeId/optimize",
+                    params: { resumeId },
+                  })
+                }
                 className="mt-3 inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-br from-[#2563EB] to-[#7C3AED] px-3.5 py-2 text-sm font-semibold text-white shadow-[0_4px_14px_-4px_rgba(37,99,235,0.6)] transition-all hover:-translate-y-px"
               >
-                <Sparkles className="h-4 w-4" /> Open optimizer
-              </Link>
+                <Sparkles className="h-4 w-4" /> Optimize resume
+              </button>
             </div>
           </div>
         </DashCard>
       )}
-
-      {versions.length > 0 && <OptimizedVersions versions={versions} />}
 
       {contact && (
         <DashCard>
@@ -306,62 +444,6 @@ function ResumeDetail({
         </DashCard>
       )}
     </>
-  );
-}
-
-function OptimizedVersions({ versions }: { versions: ResumeVersion[] }) {
-  function downloadVersion(v: ResumeVersion) {
-    const blob = new Blob([v.content], { type: "text/plain;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${
-      (v.name ?? "resume")
-        .replace(/[^\w\d\-. ]+/g, "")
-        .trim()
-        .replace(/\s+/g, "_") || "resume"
-    }.txt`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-  }
-
-  return (
-    <DashCard>
-      <div className="flex items-center gap-2">
-        <History className="h-4 w-4 text-[#2563EB]" />
-        <SectionTitle>Saved versions</SectionTitle>
-      </div>
-      <div className="mt-3 space-y-2">
-        {versions.map((v) => (
-          <div
-            key={v.id}
-            className="flex items-center justify-between gap-3 rounded-xl border border-black/5 bg-black/[0.015] px-3 py-2"
-          >
-            <div className="min-w-0">
-              <p className="flex items-center gap-1.5 truncate text-sm font-medium text-[oklch(0.28_0.02_265)]">
-                {v.name ?? `Version ${v.version_number}`}
-                <span className="rounded-md bg-[#2563EB]/10 px-1.5 py-0.5 text-[10px] font-medium text-[#2563EB]">
-                  v{v.version_number}
-                </span>
-              </p>
-              <p className="mt-0.5 text-[11px] text-[oklch(0.55_0.02_265)]">
-                {new Date(v.created_at).toLocaleDateString()}
-                {v.source === "optimizer" ? " · Optimized" : ""}
-              </p>
-            </div>
-            <button
-              onClick={() => downloadVersion(v)}
-              aria-label="Download version"
-              className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-black/10 bg-white px-2.5 py-1.5 text-xs font-medium text-[oklch(0.4_0.02_265)] transition-colors hover:border-[#2563EB]/30 hover:text-[#2563EB]"
-            >
-              <Download className="h-3.5 w-3.5" /> Text
-            </button>
-          </div>
-        ))}
-      </div>
-    </DashCard>
   );
 }
 

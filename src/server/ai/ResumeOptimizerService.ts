@@ -1,3 +1,4 @@
+import type { z } from "zod";
 import { getCapability } from "@/features/ai/capabilities";
 import { AI_CAPABILITIES } from "@/features/ai/constants";
 import {
@@ -7,13 +8,21 @@ import {
 } from "@/features/ai/schemas";
 import type { AICreditStatus } from "@/features/ai/types";
 import {
-  getCareerCategory,
+  resolveCareerCategory,
   resolveTargetSections,
   type CareerCategoryId,
   type OptimizeSectionId,
 } from "@/features/optimizer/constants";
-import { buildOptimizerPrompt, type OptimizerPromptHints } from "@/features/optimizer/prompt";
-import { OptimizerResultSchema } from "@/features/optimizer/schema";
+import {
+  buildOptimizerPrompt,
+  buildOptimizerGapFillPrompt,
+  type OptimizerPromptHints,
+} from "@/features/optimizer/prompt";
+import {
+  OptimizerResultSchema,
+  OptimizerSuggestionSchema,
+  type OptimizerAISuggestion,
+} from "@/features/optimizer/schema";
 import type { OptimizationResult, OptimizationSuggestion } from "@/features/optimizer/types";
 import type { Json } from "@/types/database";
 import type { AuthedContext, ServerSupabase } from "@/server/supabase";
@@ -111,25 +120,108 @@ async function loadResumeForOptimize(
   };
 }
 
+/**
+ * Which fields make a suggestion "actionable" depends on its kind — a `reorder`
+ * has no verbatim text span (it moves a section), an `add` has no prior
+ * `current` (nothing existed before). Suggestions failing this check are the
+ * model's graceful-degradation fallback (schema `.catch()` producing empty
+ * strings) and carry no value in the UI, so they're dropped here rather than
+ * rendered as a blank card.
+ */
+function isActionable(s: z.infer<typeof OptimizerSuggestionSchema>): boolean {
+  const has = (v: string | null | undefined) => (v?.trim().length ?? 0) > 0;
+  switch (s.kind) {
+    case "add":
+      // New content to add + a reason to act (nothing existed before).
+      return has(s.suggested) && (has(s.reason) || has(s.action));
+    case "remove":
+      return has(s.current) || has(s.removeSection);
+    case "move":
+    case "reorder":
+    case "promote":
+    case "demote":
+      return has(s.moveSection);
+    case "rename":
+      return has(s.renameTo) && (has(s.current) || has(s.target));
+    default:
+      // Every replace-like kind: keep it as long as it carries the improved text.
+      // `current` (the verbatim original) is preferred so composition can
+      // auto-apply the edit, but a suggestion that only names the better version
+      // is still valuable ADVICE — show it (compose simply won't auto-apply it)
+      // instead of silently dropping it, which previously discarded real review
+      // insight and shrank the list (Module 6E follow-up).
+      return has(s.suggested) || has(s.current);
+  }
+}
+
+/**
+ * Merge the audit pass + the gap-fill pass, dropping duplicates. Two suggestions
+ * are "the same" when they share a kind + near-identical action headline + the
+ * same edited span — so the second reviewer's genuinely-new items survive while
+ * repeats of the first pass are collapsed. Capped at a generous ceiling so a
+ * runaway response can never balloon the review list.
+ */
+function mergeSuggestions(
+  first: OptimizerAISuggestion[],
+  second: OptimizerAISuggestion[],
+): OptimizerAISuggestion[] {
+  const seen = new Set<string>();
+  const out: OptimizerAISuggestion[] = [];
+  const keyOf = (s: OptimizerAISuggestion) => {
+    const action = s.action.trim().toLowerCase().slice(0, 70);
+    const span = (s.current || s.suggested || s.moveSection || s.removeSection || s.renameTo || "")
+      .trim()
+      .toLowerCase()
+      .slice(0, 50);
+    return `${s.kind}|${action}|${span}`;
+  };
+  for (const s of [...first, ...second]) {
+    if (!s.action.trim() && !s.suggested.trim() && !s.current.trim()) continue;
+    const k = keyOf(s);
+    if (seen.has(k)) continue;
+    seen.add(k);
+    out.push(s);
+  }
+  return out.slice(0, 80);
+}
+
 function toSuggestions(
   ai: ReturnType<typeof OptimizerResultSchema.parse>,
 ): OptimizationSuggestion[] {
-  return (
-    ai.suggestions
-      // Only keep suggestions we can actually apply and review — both a real
-      // `current` (to replace) and a real `suggested`. Empty ones are the model's
-      // graceful-degradation fallback and carry no value in the UI.
-      .filter((s) => s.current.trim().length > 0 && s.suggested.trim().length > 0)
-      .map((s, i) => ({
-        id: `s-${i}`,
-        section: s.section,
-        target: s.target,
-        current: s.current.trim(),
-        suggested: s.suggested.trim(),
-        reason: s.reason,
-        changeType: s.changeType,
-      }))
-  );
+  return ai.suggestions.filter(isActionable).map((s, i) => ({
+    id: `s-${i}`,
+    kind: s.kind,
+    section: s.section,
+    target: s.target,
+    action: s.action,
+    current: s.current.trim(),
+    suggested: s.suggested.trim(),
+    reason: s.reason,
+    how: s.how,
+    benefit: s.benefit,
+    example: s.example?.trim() ? s.example.trim() : null,
+    changeType: s.changeType,
+    severity: s.severity,
+    moveSection: s.moveSection?.trim() || null,
+    beforeSection: s.beforeSection?.trim() || null,
+    removeSection: s.removeSection?.trim() || null,
+    renameTo: s.renameTo?.trim() || null,
+  }));
+}
+
+/** Impact ordering — the review workspace shows the plan most-impactful first (no visible tiers). */
+const SEVERITY_RANK: Record<OptimizationSuggestion["severity"], number> = {
+  critical: 0,
+  high: 1,
+  medium: 2,
+  low: 3,
+};
+
+function orderSuggestions(items: OptimizationSuggestion[]): OptimizationSuggestion[] {
+  return items
+    .map((s, i) => ({ s, i }))
+    .sort((a, b) => SEVERITY_RANK[a.s.severity] - SEVERITY_RANK[b.s.severity] || a.i - b.i)
+    .map(({ s }) => s);
 }
 
 async function lookupCache(
@@ -230,6 +322,8 @@ export async function optimizeResume(
   params: {
     resumeId: string;
     category: CareerCategoryId;
+    /** Required (and used) only when `category` is "other" — the user's free-text career target. */
+    customCategory?: string;
     sections: OptimizeSectionId[];
     forceRefresh?: boolean;
   },
@@ -276,15 +370,16 @@ export async function optimizeResume(
       };
     }
 
-    const category = getCareerCategory(params.category);
+    const category = resolveCareerCategory(params.category, params.customCategory);
     const targetSections = resolveTargetSections(params.sections);
-    const prompt = buildOptimizerPrompt({
+    const promptInput = {
       structured: loaded.structured,
       rawText: loaded.rawText,
       category,
       targetSections,
       hints: loaded.hints,
-    });
+    };
+    const prompt = buildOptimizerPrompt(promptInput);
 
     const inputHash = await hashObject({
       capability: cap.id,
@@ -293,7 +388,9 @@ export async function optimizeResume(
       model: cap.model,
       promptVersion: cap.promptVersion,
       analysisVersion: cap.analysisVersion,
-      category: category.id,
+      // Distinct custom career targets are distinct cache entries even though
+      // the system prompt text embeds the label already (defense in depth).
+      category: category.id === "other" ? `other:${category.label}` : category.id,
       sections: [...targetSections].sort(),
     });
 
@@ -351,7 +448,7 @@ export async function optimizeResume(
       }
       chargedCost = cap.creditCost;
 
-      // ── Provider call + validation (one repair retry) ──
+      // ── Pass 1: exhaustive audit (one repair retry) ──
       const provider = getProvider(cap.provider);
       const validated = await withRetry(
         async () => {
@@ -369,7 +466,52 @@ export async function optimizeResume(
         { attempts: 2 },
       );
 
-      aiResult = validated.data;
+      // ── Pass 2: gap-fill verification (best-effort) ──
+      // A single pass reliably under-produces on an exhaustive audit; a second
+      // reviewer that sees pass 1's findings surfaces the items it missed. This
+      // is BEST-EFFORT: pass 1 already succeeded and the user was already charged,
+      // so a pass-2 failure must never fail the run or refund — we just keep pass 1.
+      let mergedSuggestions = validated.data.suggestions;
+      let gapOutputTokens = 0;
+      try {
+        const found = validated.data.suggestions
+          .filter((s) => s.action.trim().length > 0)
+          .map((s) => `[${s.kind}] ${s.target ? `${s.target}: ` : ""}${s.action}`)
+          .slice(0, 80);
+        const gapPrompt = buildOptimizerGapFillPrompt(promptInput, found);
+        const gapRes = await provider.complete({
+          system: gapPrompt.system,
+          user: gapPrompt.user,
+          model: cap.model,
+          schema: OptimizerResultSchema,
+          schemaName: cap.id,
+        });
+        const gapParsed = OptimizerResultSchema.safeParse(gapRes.raw);
+        if (gapParsed.success && gapParsed.data.suggestions.length > 0) {
+          mergedSuggestions = mergeSuggestions(
+            validated.data.suggestions,
+            gapParsed.data.suggestions,
+          );
+          gapOutputTokens = gapRes.usage.outputTokens ?? 0;
+        }
+      } catch {
+        /* gap-fill is best-effort — keep pass 1's result as-is */
+      }
+
+      // Keep pass 1's transformation analysis (benchmark / readiness / scorecard /
+      // strengths / gaps come from the full pipeline); only the suggestions are merged.
+      aiResult = {
+        benchmark: validated.data.benchmark,
+        readiness: validated.data.readiness,
+        transformationPotential: validated.data.transformationPotential,
+        scorecard: validated.data.scorecard,
+        categoryStrengths: validated.data.categoryStrengths,
+        categoryGaps: validated.data.categoryGaps,
+        careerSignals: validated.data.careerSignals,
+        auditSummary: validated.data.auditSummary,
+        suggestions: mergedSuggestions,
+        summary: validated.data.summary,
+      };
       creditStatus = consume.status;
 
       if (cap.cachePolicy.enabled) {
@@ -391,16 +533,70 @@ export async function optimizeResume(
         inputHash,
         resumeId: params.resumeId,
         inputTokens: validated.usage.inputTokens,
-        outputTokens: validated.usage.outputTokens,
+        outputTokens: (validated.usage.outputTokens ?? 0) + gapOutputTokens,
       });
     }
 
-    const suggestions = toSuggestions(aiResult);
+    const suggestions = orderSuggestions(toSuggestions(aiResult));
+
+    // Cleaned, capped transformation header (shared by the stored row + the response).
+    const transformation = {
+      benchmark: aiResult.benchmark.trim(),
+      readiness: aiResult.readiness,
+      // Defend the "ceiling >= today" invariant even if the model slips.
+      transformationPotential: Math.max(aiResult.transformationPotential, aiResult.readiness),
+      scorecard: aiResult.scorecard
+        .filter((e) => e.dimension.trim().length > 0)
+        .map((e) => ({
+          dimension: e.dimension.trim(),
+          score: e.score,
+          status: e.status,
+          insight: e.insight.trim(),
+        }))
+        .slice(0, 14),
+      categoryStrengths: aiResult.categoryStrengths
+        .map((s) => s.trim())
+        .filter(Boolean)
+        .slice(0, 8),
+      categoryGaps: aiResult.categoryGaps
+        .map((s) => s.trim())
+        .filter(Boolean)
+        .slice(0, 8),
+      careerSignals: aiResult.careerSignals
+        .filter((s) => s.signal.trim().length > 0)
+        .map((s) => {
+          // Truthfulness guard: no genuine evidence (presence "no") is ALWAYS a
+          // "build this experience" item, never a resume edit — enforce it here
+          // so the UI can't mislabel a gap as something to add to the résumé.
+          const developmental = s.developmental || s.presence === "no";
+          return {
+            signal: s.signal.trim(),
+            importance: s.importance.trim(),
+            presence: s.presence,
+            developmental,
+            recommendation: s.recommendation.trim(),
+            // Practical ways to gain the experience — only meaningful for a
+            // developmental gap; drop them for a signal they already have.
+            waysToBuild: developmental
+              ? s.waysToBuild
+                  .map((w) => w.trim())
+                  .filter(Boolean)
+                  .slice(0, 4)
+              : [],
+            example: s.example?.trim() ? s.example.trim() : null,
+            exampleIsTemplate: s.exampleIsTemplate,
+          };
+        })
+        .slice(0, 8),
+    };
 
     // ── Durable history (best-effort; never erases a paid-for result) ──
     const storedResult = {
       category: category.id,
+      categoryLabel: category.label,
       sections: params.sections,
+      ...transformation,
+      auditSummary: aiResult.auditSummary,
       suggestions,
       summary: aiResult.summary,
     };
@@ -439,7 +635,10 @@ export async function optimizeResume(
       result: {
         id: analysisId,
         category: category.id,
+        categoryLabel: category.label,
         sections: params.sections,
+        ...transformation,
+        auditSummary: aiResult.auditSummary,
         suggestions,
         summary: aiResult.summary,
         cacheHit,

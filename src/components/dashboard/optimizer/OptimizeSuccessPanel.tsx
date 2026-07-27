@@ -1,19 +1,18 @@
 import { Link } from "@tanstack/react-router";
-import { ArrowLeft, CheckCircle2, Download, FileText } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { ArrowLeft, CheckCircle2, FileText } from "lucide-react";
 import { DashCard } from "@/components/dashboard/primitives";
-import { RESUME_FORMATS, type DownloadFormat } from "@/features/optimizer/download";
+import { DownloadMenu } from "./DownloadMenu";
+import type { DownloadFormat } from "@/features/optimizer/download";
 import type { SavedResumeVersion } from "@/features/optimizer/types";
 
-// ── OptimizeSuccessPanel (Module 6D) ──
+// ── OptimizeSuccessPanel (Module 6D; 6E download menu) ──
 //
-// Post-save confirmation: the version was created, download it (PDF / plain
-// text; DOCX shown as coming soon via the format registry's `available` flag),
-// or head back to the resume library.
+// Post-save confirmation: the version was created, download it (PDF / DOCX via
+// the Download ▼ menu), or head back to the resume library.
 
 type Props = {
   version: SavedResumeVersion;
-  onDownload: (format: DownloadFormat) => void;
+  onDownload: (format: DownloadFormat) => void | Promise<void>;
 };
 
 export function OptimizeSuccessPanel({ version, onDownload }: Props) {
@@ -38,33 +37,8 @@ export function OptimizeSuccessPanel({ version, onDownload }: Props) {
           </span>
         </div>
 
-        <div className="mt-6">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[oklch(0.5_0.02_265)]">
-            Download
-          </p>
-          <div className="mt-2.5 flex flex-wrap justify-center gap-2">
-            {RESUME_FORMATS.map((f) => (
-              <button
-                key={f.id}
-                type="button"
-                onClick={() => f.available && onDownload(f.id)}
-                disabled={!f.available}
-                title={f.hint}
-                className={cn(
-                  "inline-flex items-center gap-1.5 rounded-xl border px-3.5 py-2 text-sm font-medium transition-all",
-                  f.available
-                    ? "border-black/10 bg-white text-[oklch(0.3_0.02_265)] hover:-translate-y-px hover:border-[#2563EB]/30 hover:text-[#2563EB]"
-                    : "cursor-not-allowed border-dashed border-black/10 bg-black/[0.02] text-[oklch(0.6_0.02_265)]",
-                )}
-              >
-                <Download className="h-3.5 w-3.5" />
-                {f.label}
-                {!f.available && (
-                  <span className="ml-0.5 text-[10px] text-[oklch(0.6_0.02_265)]">soon</span>
-                )}
-              </button>
-            ))}
-          </div>
+        <div className="mt-6 flex justify-center">
+          <DownloadMenu onDownload={onDownload} />
         </div>
 
         <div className="mt-7 border-t border-black/5 pt-5">

@@ -1,13 +1,31 @@
-import { CheckCircle2, AlertTriangle, XCircle, Loader2, RefreshCw, HeartPulse } from "lucide-react";
+import { XCircle, Loader2, RefreshCw, HeartPulse } from "lucide-react";
 import { Chip } from "@/components/dashboard/primitives";
 import { DashButton } from "@/components/dashboard/DashButton";
 import { cn } from "@/lib/utils";
 import type { ResumeHealth, ResumeHealthCheck } from "@/features/ai/schemas";
+import { ActionPlanList, type ActionItem } from "@/components/dashboard/reports/ActionPlanList";
 
 // ── Resume Health panel (deterministic report — NOT an AI feature) ──
-// Groups checks by severity, surfaces actionable recommendations, and shows
-// the score as a gradient bar (matching the dashboard's existing progress-bar
-// idiom from Analytics/the old resumes mock) instead of a bare number.
+// Surfaces the score as a gradient bar plus an actionable improvement plan.
+//
+// Presentation-only (6E): checks needing attention render through the shared
+// ActionPlanList as a plain improvement plan (fail before warn) — no
+// Critical/High/Medium/Low tier labels. Same analysis, same checks, same
+// `detail` text; only the framing changed. The deterministic parser output
+// (ResumeHealth) itself is untouched.
+
+function checksToItems(checks: ResumeHealthCheck[]): ActionItem[] {
+  // Failing checks first (higher impact), then warnings — ordering only, no tiers shown.
+  return [...checks]
+    .filter((c) => c.status !== "pass")
+    .sort((a, b) => (a.status === "fail" ? 0 : 1) - (b.status === "fail" ? 0 : 1))
+    .map((c) => ({
+      id: c.id,
+      title: c.label,
+      tag: c.status === "fail" ? "Fix" : "Improve",
+      why: c.detail ?? undefined,
+    }));
+}
 
 type Props = {
   health: ResumeHealth | null;
@@ -116,21 +134,9 @@ export function ResumeHealthPanel({
         {failCount > 0 && <Chip tone="rose">{failCount} missing</Chip>}
       </div>
 
-      {/* Recommendations — only the checks that need attention */}
+      {/* Improvement plan — only the checks that need attention */}
       {issues.length > 0 && (
-        <div>
-          <p className="text-[11px] uppercase tracking-[0.14em] text-[oklch(0.5_0.02_265)]">
-            Recommendations
-          </p>
-          <ul className="mt-2 space-y-1.5">
-            {issues.map((c) => (
-              <li key={c.id} className="flex items-start gap-2 text-sm">
-                <CheckIcon status={c.status} />
-                <span className="text-[oklch(0.3_0.02_265)]">{c.detail ?? c.label}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
+        <ActionPlanList items={checksToItems(issues)} title="Improvement plan" />
       )}
 
       <div className="flex flex-wrap gap-3 border-t border-black/5 pt-3 text-[11px] text-[oklch(0.5_0.02_265)]">
@@ -140,11 +146,4 @@ export function ResumeHealthPanel({
       </div>
     </div>
   );
-}
-
-function CheckIcon({ status }: { status: ResumeHealthCheck["status"] }) {
-  if (status === "pass") return <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-[#16A34A]" />;
-  if (status === "warn")
-    return <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-[#B45309]" />;
-  return <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-[#E11D48]" />;
 }

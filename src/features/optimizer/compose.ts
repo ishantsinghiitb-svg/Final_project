@@ -5,14 +5,23 @@ import type { OptimizationSuggestion } from "./types";
 //
 // Turns the parsed resume + the ACCEPTED suggestions into a clean, ordered
 // document model, then renders it. The document model is format-agnostic on
-// purpose: the same `ResumeDocument` feeds the plain-text download today and a
-// DOCX renderer later (see download.ts) — adding a format never touches this
-// composition step.
+// purpose: the same `ResumeDocument` feeds the plain-text/PDF/DOCX downloads
+// (see download.ts) — adding a format never touches this composition step.
 //
-// Applying a suggestion = replacing its verbatim `current` text with
-// `suggested`. The model is instructed to quote `current` exactly; matching
-// falls back to a whitespace-tolerant line match, and if a span still can't be
-// located the block is left unchanged (never fabricated).
+// A suggestion is not only a text rewrite. Its `kind` determines HOW it is
+// applied to the downloadable document (6E: the full kind set):
+//   • rewrite/replace/merge/split/compress/expand/highlight/restructure —
+//     replace the verbatim `current` span with `suggested`.
+//   • remove — delete the verbatim `current` span, or (via `removeSection`)
+//     drop a whole section entirely.
+//   • add — append `suggested` into whichever EXISTING section it targets.
+//     Never fabricates a brand-new section.
+//   • move/reorder/promote/demote — move a whole section (promote = up,
+//     demote = down; move/reorder honor `beforeSection`).
+//   • rename — rename a section heading to `renameTo`.
+// Every operation is a no-op (never throws, never fabricates) when its target
+// text/section can't be located — the compose step never guesses, so an
+// advisory-only suggestion still shows in the UI without corrupting the file.
 
 export type ResumeDocBlock = {
   /** Section heading, e.g. "Summary", "Experience", "Skills". */
@@ -31,29 +40,60 @@ function collapse(s: string): string {
   return s.replace(/\s+/g, " ").trim();
 }
 
-/** Replace `current` with `suggested` in `body`, tolerant of whitespace. */
-function applyOne(body: string, current: string, suggested: string): string {
+/** Replace `current` with `replacement` in `body`, tolerant of whitespace. */
+function applyOne(body: string, current: string, replacement: string): string {
   const cur = current.trim();
   if (!cur) return body;
-  if (body.includes(cur)) return body.replace(cur, suggested.trim());
+  if (body.includes(cur)) return body.replace(cur, replacement);
 
   // Fall back to a whitespace-collapsed line match.
   const target = collapse(cur);
   const lines = body.split("\n");
   for (let i = 0; i < lines.length; i++) {
     if (collapse(lines[i]) === target) {
-      lines[i] = lines[i].replace(/\S.*\S|\S/, suggested.trim());
+      lines[i] = lines[i].replace(/\S.*\S|\S/, replacement);
       return lines.join("\n");
     }
   }
 
   // Multi-line spans: collapse the whole body and try a single replacement.
-  if (collapse(body).includes(target)) {
-    const idx = collapse(body).indexOf(target);
-    // Best-effort: if the whole body collapses to the target, replace wholesale.
-    if (idx === 0 && collapse(body) === target) return suggested.trim();
-  }
+  if (collapse(body) === target) return replacement;
   return body;
+}
+
+/** Collapse blank-line artifacts left behind by a removal. */
+function cleanupBody(body: string): string {
+  return body
+    .split("\n")
+    .filter((line) => line.trim().length > 0)
+    .join("\n");
+}
+
+function findBlockIndexByHeading(blocks: ResumeDocBlock[], heading: string): number {
+  const needle = heading.trim().toLowerCase();
+  if (!needle) return -1;
+  return blocks.findIndex(
+    (b) => b.heading.toLowerCase().includes(needle) || needle.includes(b.heading.toLowerCase()),
+  );
+}
+
+const SECTION_KEYWORDS: Partial<Record<OptimizationSuggestion["section"], string>> = {
+  summary: "summary",
+  skills: "skills",
+  experience: "experience",
+  projects: "project",
+  education: "education",
+};
+
+/** Locate the existing block an `add` suggestion targets — by label first, then section keyword. Never creates a new block. */
+function findTargetBlockIndex(blocks: ResumeDocBlock[], s: OptimizationSuggestion): number {
+  if (s.target.trim()) {
+    const idx = findBlockIndexByHeading(blocks, s.target);
+    if (idx !== -1) return idx;
+  }
+  const keyword = SECTION_KEYWORDS[s.section];
+  if (!keyword) return -1;
+  return blocks.findIndex((b) => b.heading.toLowerCase().includes(keyword));
 }
 
 function buildBaseDocument(structured: StructuredResume): ResumeDocument {
@@ -79,26 +119,102 @@ function buildBaseDocument(structured: StructuredResume): ResumeDocument {
   return { name: c.name, contactLines, blocks };
 }
 
+/** Content-edit kinds: all replace a verbatim `current` span with `suggested`. */
+const REPLACE_KINDS = new Set<OptimizationSuggestion["kind"]>([
+  "rewrite",
+  "replace",
+  "merge",
+  "split",
+  "compress",
+  "expand",
+  "highlight",
+  "restructure",
+]);
+
+/** Section-move kinds. */
+const MOVE_KINDS = new Set<OptimizationSuggestion["kind"]>([
+  "move",
+  "reorder",
+  "promote",
+  "demote",
+]);
+
 /**
  * Compose the optimized resume document from the parsed resume and the accepted
- * suggestions. Suggestions are applied in order; each edits whichever block
- * contains its `current` text.
+ * suggestions. Applied in ordered passes so kinds never interfere: whole-section
+ * removal, then content edits, then additions, then renames, then section moves.
  */
 export function composeOptimizedResume(
   structured: StructuredResume,
   accepted: OptimizationSuggestion[],
 ): ResumeDocument {
   const doc = buildBaseDocument(structured);
+
+  // 1. Whole-section removals (changes the blocks array's length/indices).
   for (const s of accepted) {
-    if (!s.current.trim() || !s.suggested.trim()) continue;
+    if (s.kind === "remove" && s.removeSection) {
+      const idx = findBlockIndexByHeading(doc.blocks, s.removeSection);
+      if (idx !== -1) doc.blocks.splice(idx, 1);
+    }
+  }
+
+  // 2. Content edits: every replace-like kind + line-level remove.
+  for (const s of accepted) {
+    const isReplace = REPLACE_KINDS.has(s.kind);
+    const isLineRemove = s.kind === "remove" && !s.removeSection;
+    if (!isReplace && !isLineRemove) continue;
+    const cur = s.current.trim();
+    if (!cur) continue;
+    const replacement = isLineRemove ? "" : s.suggested.trim();
     for (const block of doc.blocks) {
-      const next = applyOne(block.body, s.current, s.suggested);
+      const next = applyOne(block.body, cur, replacement);
       if (next !== block.body) {
-        block.body = next;
+        block.body = cleanupBody(next);
         break;
       }
     }
   }
+
+  // 3. Additions — append into a matching EXISTING block only; never fabricate a new section.
+  for (const s of accepted) {
+    if (s.kind !== "add") continue;
+    const suggested = s.suggested.trim();
+    if (!suggested) continue;
+    const idx = findTargetBlockIndex(doc.blocks, s);
+    if (idx !== -1) {
+      doc.blocks[idx] = {
+        ...doc.blocks[idx],
+        body: `${doc.blocks[idx].body.trim()}\n${suggested}`,
+      };
+    }
+  }
+
+  // 4. Renames — change a section heading in place.
+  for (const s of accepted) {
+    if (s.kind !== "rename") continue;
+    const newHeading = (s.renameTo ?? s.suggested).trim();
+    if (!newHeading) continue;
+    const idx = findBlockIndexByHeading(doc.blocks, s.current || s.target);
+    if (idx !== -1) doc.blocks[idx] = { ...doc.blocks[idx], heading: newHeading };
+  }
+
+  // 5. Section moves (move/reorder/promote/demote).
+  for (const s of accepted) {
+    if (!MOVE_KINDS.has(s.kind) || !s.moveSection) continue;
+    const fromIdx = findBlockIndexByHeading(doc.blocks, s.moveSection);
+    if (fromIdx === -1) continue;
+    const [moved] = doc.blocks.splice(fromIdx, 1);
+
+    if (s.beforeSection) {
+      const toIdx = findBlockIndexByHeading(doc.blocks, s.beforeSection);
+      doc.blocks.splice(toIdx === -1 ? doc.blocks.length : toIdx, 0, moved);
+    } else if (s.kind === "demote") {
+      doc.blocks.push(moved); // demote with no explicit anchor → move to the bottom
+    } else {
+      doc.blocks.unshift(moved); // move/reorder/promote with no anchor → move to the top
+    }
+  }
+
   return doc;
 }
 

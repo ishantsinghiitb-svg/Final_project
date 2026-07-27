@@ -28,9 +28,10 @@ import { AtsReportDialog } from "./AtsReportDialog";
 // "will this resume perform well in ATS screening for THIS job?" The card
 // itself is a QUICK SUMMARY only (score, rating, one key insight) so it stays
 // companion-sized to the Resume Match card — the full breakdown, keywords,
-// risks, and recommendations live in the existing AtsReportDialog (unchanged;
-// see "View Full Report"). Re-analyze/history stay on the card rather than
-// the dialog because the dialog's structure is frozen and must not change.
+// risks, and recommendations live in AtsReportDialog (see "View Full Report").
+// Re-analyze/history stay on the card rather than the dialog since they're
+// controls, not report content — kept here regardless of the dialog's own
+// (presentation-only) redesign into a priority-actions format.
 
 const RATING_TONE: Record<AtsRating, "green" | "blue" | "amber" | "rose"> = {
   [ATS_RATINGS.EXCELLENT]: "green",
