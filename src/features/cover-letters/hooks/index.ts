@@ -158,8 +158,6 @@ export function useCreateCoverLetter() {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: coverLetterKeys.all });
       void queryClient.invalidateQueries({ queryKey: aiKeys.credits(user?.id ?? "") });
-      // The run is now in the audit log, so the AI Hub timeline is a row stale.
-      void queryClient.invalidateQueries({ queryKey: aiKeys.activity(user?.id ?? "") });
     },
   });
 }
@@ -231,11 +229,6 @@ export function useRunCoverLetterAction() {
       });
       void queryClient.invalidateQueries({ queryKey: coverLetterKeys.byUser(user?.id ?? "") });
       void queryClient.invalidateQueries({ queryKey: aiKeys.credits(user?.id ?? "") });
-      // Only a charged action (Regenerate entire letter) adds a Hub row; the
-      // free refinements are filtered out of the timeline by design. Refreshing
-      // on both is simpler than tracking which action ran, and costs one cheap
-      // read of an already-cached list.
-      void queryClient.invalidateQueries({ queryKey: aiKeys.activity(user?.id ?? "") });
     },
   });
 }

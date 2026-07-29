@@ -6,9 +6,9 @@ import { PageHeader, EmptyState, StickyPageHeader } from "@/components/dashboard
 import { KanbanBoard } from "@/components/dashboard/applications/KanbanBoard";
 import { ApplicationListView } from "@/components/dashboard/applications/ApplicationListView";
 import { ApplicationFiltersBar } from "@/components/dashboard/applications/ApplicationFiltersBar";
-import { ApplicationMetricsRow } from "@/components/dashboard/applications/ApplicationMetricsRow";
 import { AddApplicationDialog } from "@/components/dashboard/applications/AddApplicationDialog";
 import { ArchivedApplicationsPanel } from "@/components/dashboard/applications/ArchivedApplicationsPanel";
+import { ScheduleInterviewDialog } from "@/components/dashboard/interviews/ScheduleInterviewDialog";
 import { DashButton } from "@/components/dashboard/DashButton";
 import {
   useAllApplications,
@@ -18,8 +18,9 @@ import {
 } from "@/features/applications/hooks";
 import { SORT_OPTIONS, DEFAULT_APPLICATION_SORT_OPTION } from "@/features/applications/constants";
 import { roleMatchesAnyCategory } from "@/features/jobs/utils";
+import { maybePromptScheduleInterview } from "@/features/interviews/sync";
 import type { ApplicationFilters, ApplicationSortOption } from "@/features/applications/types";
-import type { ApplicationStatus } from "@/types";
+import type { Application, ApplicationStatus } from "@/types";
 import { cn } from "@/lib/utils";
 
 // ── Route definition ──────────────────────────────────────────────────────────
@@ -41,6 +42,7 @@ function AppsPage() {
   );
   const [addOpen, setAddOpen] = useState(false);
   const [archiveOpen, setArchiveOpen] = useState(false);
+  const [scheduleFor, setScheduleFor] = useState<Application | null>(null);
 
   const { data: applications = [], isLoading, isError, error } = useAllApplications();
   const updateStatus = useUpdateApplicationStatus();
@@ -123,11 +125,18 @@ function AppsPage() {
       updateStatus.mutate(
         { id, status },
         {
+          onSuccess: () => {
+            if (status !== "interview") return;
+            void maybePromptScheduleInterview(id, () => {
+              const app = applications.find((a) => a.id === id) ?? null;
+              setScheduleFor(app);
+            });
+          },
           onError: () => toast.error("Failed to update status. Please try again."),
         },
       );
     },
-    [updateStatus],
+    [updateStatus, applications],
   );
 
   const handleDelete = useCallback(
@@ -241,9 +250,6 @@ function AppsPage() {
         />
       </StickyPageHeader>
 
-      {/* Metrics — always reflect the full active pipeline, unaffected by filters below */}
-      <ApplicationMetricsRow applications={applications} />
-
       {/* Empty state */}
       {applications.length === 0 && (
         <EmptyState
@@ -275,6 +281,17 @@ function AppsPage() {
 
       <AddApplicationDialog open={addOpen} onClose={() => setAddOpen(false)} />
       <ArchivedApplicationsPanel open={archiveOpen} onClose={() => setArchiveOpen(false)} />
+      {scheduleFor && (
+        <ScheduleInterviewDialog
+          linkedApplication={{
+            applicationId: scheduleFor.id,
+            companyName: scheduleFor.company_name,
+            role: scheduleFor.role,
+            resumeId: scheduleFor.resume_id,
+          }}
+          onClose={() => setScheduleFor(null)}
+        />
+      )}
     </>
   );
 }

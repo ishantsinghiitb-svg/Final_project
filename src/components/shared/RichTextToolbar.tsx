@@ -1,14 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 import { Bold, Italic, Link2, List, ListOrdered } from "lucide-react";
-import type { RichTextCommand } from "@/features/cover-letters/richText";
+import type { RichTextCommand } from "@/lib/richText";
 
-// ── Rich text toolbar (Module 6E foundation refinement) ──
+// ── Rich text toolbar (shared) ──
 //
-// Five buttons, matching the spec exactly: Bold, Italic, Bullet list,
-// Numbered list, Hyperlink. Each operates on the textarea's current
-// selection via the pure transforms in richText.ts (see applyRichTextCommand)
-// — the toolbar itself only wires the DOM (reading/restoring selection) to
-// those transforms via the `onCommand` callback its caller supplies.
+// Five buttons: Bold, Italic, Bullet list, Numbered list, Hyperlink. Each
+// operates on the textarea's current selection via the pure transforms in
+// lib/richText.ts (see applyRichTextCommand) — the toolbar itself only wires
+// the DOM (reading/restoring selection) to those transforms via the
+// `onCommand` callback its caller supplies.
 
 type Props = {
   disabled?: boolean;

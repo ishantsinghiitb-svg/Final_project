@@ -39,7 +39,7 @@ import {
 import { toast } from "sonner";
 import { useTrackedJobIds } from "@/features/applications/hooks";
 import { AddToCollectionMenu } from "@/components/dashboard/collections/AddToCollectionMenu";
-import { getJobBadges } from "@/features/jobs/utils";
+import { getJobBadges, logoToneForCompany } from "@/features/jobs/utils";
 import type { PaginationParams } from "@/types";
 import { DEFAULT_PAGINATION } from "@/features/jobs/constants";
 import type { GlobalJob } from "@/types";
@@ -50,27 +50,6 @@ export const Route = createFileRoute("/dashboard/saved")({
   }),
   component: SavedPage,
 });
-
-// ── Stable gradient palette ────────────────────────────────────────────────
-const LOGO_GRADIENTS = [
-  "from-[#5E6AD2] to-[#3B82F6]",
-  "from-[#111827] to-[#374151]",
-  "from-[#635BFF] to-[#7C3AED]",
-  "from-[#E5E7EB] to-[#9CA3AF]",
-  "from-[#FF6363] to-[#F59E0B]",
-  "from-[#C97A5A] to-[#7C3AED]",
-  "from-[#F24E1E] to-[#A259FF]",
-  "from-[#000]    to-[#374151]",
-  "from-[#F59E0B] to-[#EAB308]",
-  "from-[#EC4899] to-[#8B5CF6]",
-  "from-[#20B8CD] to-[#0EA5E9]",
-  "from-[#3B82F6] to-[#6366F1]",
-];
-
-function logoToneForCompany(name: string): string {
-  const idx = (name.charCodeAt(0) ?? 0) % LOGO_GRADIENTS.length;
-  return LOGO_GRADIENTS[idx];
-}
 
 function formatSalary(job: GlobalJob): string {
   if (!job.salary_min && !job.salary_max) return "";

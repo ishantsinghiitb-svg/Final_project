@@ -3,7 +3,6 @@ import {
   AlertCircle,
   ArrowLeft,
   ArrowRight,
-  Briefcase,
   Check,
   FileText,
   PenLine,
@@ -11,9 +10,10 @@ import {
   Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Chip } from "@/components/dashboard/primitives";
+import { Chip, CompanyMark } from "@/components/dashboard/primitives";
 import { useResumes } from "@/features/resumes/hooks";
 import { useJobs, useSavedJobs } from "@/features/jobs/hooks";
+import { logoToneForCompany } from "@/features/jobs/utils";
 import {
   DEFAULT_LENGTH,
   DEFAULT_TONE,
@@ -298,9 +298,12 @@ export function GenerateCoverLetterDialog({
 
             {fixedJob ? (
               <div className="mt-2 flex items-center gap-2.5 rounded-xl border border-[#2563EB]/40 bg-[#2563EB]/[0.04] p-2.5 ring-1 ring-[#2563EB]/15">
-                <div className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-gradient-to-br from-[#2563EB]/15 to-[#7C3AED]/20 text-[#2563EB]">
-                  <Briefcase className="h-4 w-4" />
-                </div>
+                <CompanyMark
+                  company={fixedJob.company_name}
+                  tone={logoToneForCompany(fixedJob.company_name)}
+                  size={32}
+                  logoUrl={fixedJob.company_logo_url}
+                />
                 <div className="min-w-0">
                   <p className="truncate text-sm font-medium text-[oklch(0.25_0.02_265)]">
                     {fixedJob.role}
@@ -346,16 +349,12 @@ export function GenerateCoverLetterDialog({
                               : "border-black/8 bg-white hover:border-black/15 hover:bg-black/[0.02]",
                           )}
                         >
-                          <div
-                            className={cn(
-                              "grid h-8 w-8 shrink-0 place-items-center rounded-lg",
-                              active
-                                ? "bg-gradient-to-br from-[#2563EB]/15 to-[#7C3AED]/20 text-[#2563EB]"
-                                : "bg-black/[0.04] text-[oklch(0.5_0.02_265)]",
-                            )}
-                          >
-                            <Briefcase className="h-4 w-4" />
-                          </div>
+                          <CompanyMark
+                            company={job.company_name}
+                            tone={logoToneForCompany(job.company_name)}
+                            size={32}
+                            logoUrl={job.company_logo_url}
+                          />
                           <div className="min-w-0 flex-1">
                             <p className="truncate text-sm font-medium text-[oklch(0.25_0.02_265)]">
                               {job.role}

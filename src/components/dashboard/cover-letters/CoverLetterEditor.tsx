@@ -2,15 +2,11 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Eye, Loader2, PenLine, Redo2, Save, Undo2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { DashButton } from "@/components/dashboard/DashButton";
-import {
-  applyRichTextCommand,
-  renderRichTextHtml,
-  type RichTextCommand,
-} from "@/features/cover-letters/richText";
+import { applyRichTextCommand, renderRichTextHtml, type RichTextCommand } from "@/lib/richText";
 import { AIThinkingInline } from "@/components/dashboard/ai/AIThinking";
 import { AI_CAPABILITIES } from "@/features/ai/constants";
 import { ExportMenu } from "./ExportMenu";
-import { RichTextToolbar } from "./RichTextToolbar";
+import { RichTextToolbar } from "@/components/shared/RichTextToolbar";
 import type { CoverLetterExportFormat } from "@/features/cover-letters/export";
 
 // ── Cover letter editor (Module 6E · centre pane) ──

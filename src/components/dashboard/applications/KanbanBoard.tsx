@@ -1,4 +1,5 @@
 import { useState, useCallback } from "react";
+import { ArrowDown } from "lucide-react";
 import type { Application, ApplicationStatus } from "@/types";
 import { KANBAN_COLUMNS, STATUS_META } from "@/features/applications/constants";
 import { ApplicationCard } from "./ApplicationCard";
@@ -70,7 +71,7 @@ export function KanbanBoard({ applications, onStatusChange, onDelete, onArchive 
   }, []);
 
   return (
-    <div className="flex gap-3 overflow-x-auto pb-4">
+    <div className="scrollbar-hide flex gap-3 overflow-x-auto scroll-smooth pb-4">
       {KANBAN_COLUMNS.map((col) => {
         const meta = STATUS_META[col];
         const cards = grouped[col] ?? [];
@@ -126,14 +127,27 @@ export function KanbanBoard({ applications, onStatusChange, onDelete, onArchive 
               ))}
 
               {cards.length === 0 && !isOver && (
-                <div className="flex flex-1 items-center justify-center rounded-lg border border-dashed border-black/10 py-8">
-                  <p className="text-center text-[11px] text-[oklch(0.6_0.02_265)]">Drop here</p>
+                <div className="flex min-h-[160px] flex-1 flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-black/10 bg-black/[0.012] px-3 py-8 text-center transition-colors hover:border-black/20 hover:bg-black/[0.025]">
+                  <div className="grid h-9 w-9 place-items-center rounded-full bg-black/[0.04] text-[oklch(0.6_0.02_265)]">
+                    <ArrowDown className="h-4 w-4" />
+                  </div>
+                  <p className="text-xs font-medium text-[oklch(0.5_0.02_265)]">
+                    Drag an application here
+                  </p>
+                  <p className="text-[11px] text-[oklch(0.6_0.02_265)]">
+                    to move it into {meta.label}
+                  </p>
                 </div>
               )}
 
               {isOver && (
-                <div className="flex items-center justify-center rounded-lg border-2 border-dashed border-[#2563EB]/40 bg-[#2563EB]/[0.04] py-8">
-                  <p className="text-center text-[11px] text-[#2563EB]">Move to {meta.label}</p>
+                <div className="flex animate-in fade-in min-h-[120px] flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-[#2563EB]/50 bg-[#2563EB]/[0.06] py-8 duration-150">
+                  <div className="grid h-9 w-9 place-items-center rounded-full bg-[#2563EB]/15 text-[#2563EB]">
+                    <ArrowDown className="h-4 w-4" />
+                  </div>
+                  <p className="text-center text-xs font-semibold text-[#2563EB]">
+                    Move to {meta.label}
+                  </p>
                 </div>
               )}
             </div>

@@ -138,6 +138,17 @@
   mask-image: radial-gradient(ellipse at center, black 40%, transparent 75%);
 }
 
+/* Hides the native scrollbar while keeping wheel/trackpad/touch scroll and
+   drag-and-drop fully functional — used by the Kanban board's horizontal
+   scroll container so it behaves like Jira/Linear/Trello. */
+@utility scrollbar-hide {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
 @keyframes float-slow {
   0%, 100% { transform: translateY(0) }
   50% { transform: translateY(-10px) }

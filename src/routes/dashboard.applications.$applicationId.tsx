@@ -25,7 +25,9 @@ import { CompanyMark } from "@/components/dashboard/primitives";
 import { ApplicationTimeline } from "@/components/dashboard/applications/ApplicationTimeline";
 import { ApplicationNotes } from "@/components/dashboard/applications/ApplicationNotes";
 import { ApplicationContacts } from "@/components/dashboard/applications/ApplicationContacts";
+import { ApplicationInterviews } from "@/components/dashboard/applications/ApplicationInterviews";
 import { ApplicationReminders } from "@/components/dashboard/applications/ApplicationReminders";
+import { ScheduleInterviewDialog } from "@/components/dashboard/interviews/ScheduleInterviewDialog";
 import { ApplicationAttachments } from "@/components/dashboard/applications/ApplicationAttachments";
 import { ApplicationResumeCard } from "@/components/dashboard/applications/ApplicationResumeCard";
 import { ApplicationCoverLetterCard } from "@/components/dashboard/applications/ApplicationCoverLetterCard";
@@ -43,6 +45,7 @@ import { useJob } from "@/features/jobs/hooks";
 import { useCompany } from "@/features/companies/hooks";
 import { STATUS_META, ALL_STATUSES, PRIORITY_META } from "@/features/applications/constants";
 import { logoToneForCompany, getJobBadges, formatSourceLabel } from "@/features/jobs/utils";
+import { maybePromptScheduleInterview } from "@/features/interviews/sync";
 import type { ApplicationPriority, ApplicationStatus } from "@/types";
 import { cn } from "@/lib/utils";
 import { format, parseISO } from "date-fns";
@@ -154,6 +157,7 @@ function ApplicationDetailPage() {
   const updatePriority = useUpdatePriority(applicationId);
   const archiveApp = useArchiveApplication();
   const restoreApp = useRestoreApplication();
+  const [scheduleAfterMove, setScheduleAfterMove] = useState(false);
 
   // Best-effort enrichment from the linked GlobalJob — never renders the
   // description, only structural fields the Application itself doesn't store.
@@ -164,6 +168,10 @@ function ApplicationDetailPage() {
     updateStatus.mutate(
       { id: applicationId, status },
       {
+        onSuccess: () => {
+          if (status !== "interview") return;
+          void maybePromptScheduleInterview(applicationId, () => setScheduleAfterMove(true));
+        },
         onError: () => toast.error("Failed to update status."),
       },
     );
@@ -424,6 +432,20 @@ function ApplicationDetailPage() {
             </div>
           </DashCard>
 
+          {/* Interviews — surfaced above Reminders: higher priority during an active hiring process */}
+          <DashCard>
+            <SectionTitle>Interviews</SectionTitle>
+            <div className="mt-3">
+              <ApplicationInterviews
+                applicationId={app.id}
+                companyName={app.company_name}
+                role={app.role}
+                status={app.status}
+                resumeId={app.resume_id}
+              />
+            </div>
+          </DashCard>
+
           {/* Contacts */}
           <DashCard>
             <SectionTitle>Contacts</SectionTitle>
@@ -509,6 +531,18 @@ function ApplicationDetailPage() {
         <span>Created {format(parseISO(app.created_at), "MMM d, yyyy 'at' h:mm a")}</span>
         <span>Last updated {format(parseISO(app.updated_at), "MMM d, yyyy 'at' h:mm a")}</span>
       </div>
+
+      {scheduleAfterMove && (
+        <ScheduleInterviewDialog
+          linkedApplication={{
+            applicationId: app.id,
+            companyName: app.company_name,
+            role: app.role,
+            resumeId: app.resume_id,
+          }}
+          onClose={() => setScheduleAfterMove(false)}
+        />
+      )}
     </div>
   );
 }

@@ -4,7 +4,7 @@ import {
   stripRichTextMarkup,
   type InlineSpan,
   type RichLine,
-} from "./richText";
+} from "@/lib/richText";
 
 // ── Cover letter export (Module 6E) ──
 //

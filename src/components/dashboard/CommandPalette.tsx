@@ -94,14 +94,6 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
         run: go("/dashboard/cover-letters"),
       },
       {
-        id: "n-ai",
-        label: "Go to AI Hub",
-        hint: "Recent AI activity and credits",
-        section: "Navigate",
-        icon: Sparkles,
-        run: go("/dashboard/ai"),
-      },
-      {
         id: "n-int",
         label: "Go to Interviews",
         section: "Navigate",

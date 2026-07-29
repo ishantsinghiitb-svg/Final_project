@@ -15,7 +15,6 @@ import {
   Mail,
   Search,
   Settings,
-  Sparkles,
   StickyNote,
   Target,
   X,
@@ -56,10 +55,6 @@ const nav: NavItem[] = [
   { to: "/dashboard/applications", label: "Applications", icon: Target, badgeKey: "applications" },
   { to: "/dashboard/resumes", label: "Resumes", icon: FileText },
   { to: "/dashboard/cover-letters", label: "Cover Letters", icon: Mail },
-  // Sits directly under the AI surfaces it summarizes (Resumes → Cover
-  // Letters → AI Hub), so the group reads as one area rather than a stray
-  // analytics entry near the bottom.
-  { to: "/dashboard/ai", label: "AI Hub", icon: Sparkles },
   { to: "/dashboard/interviews", label: "Interviews", icon: CalendarClock },
   { to: "/dashboard/notes", label: "Notes", icon: StickyNote },
   { to: "/dashboard/analytics", label: "Analytics", icon: LineChart },

@@ -1,15 +1,26 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { CalendarClock, Video, Sparkles, Clock, User } from "lucide-react";
-import {
-  DashCard,
-  PageHeader,
-  Chip,
-  CompanyMark,
-  SectionTitle,
-  StickyPageHeader,
-} from "@/components/dashboard/primitives";
+import { AlertCircle, CalendarClock, LayoutGrid, List, Loader2, Plus } from "lucide-react";
+import { useCallback, useMemo, useState } from "react";
+import { toast } from "sonner";
+import { EmptyState, PageHeader, StickyPageHeader } from "@/components/dashboard/primitives";
+import { InterviewCard } from "@/components/dashboard/interviews/InterviewCard";
+import { InterviewTableView } from "@/components/dashboard/interviews/InterviewTableView";
+import { InterviewFiltersBar } from "@/components/dashboard/interviews/InterviewFiltersBar";
+import { ScheduleInterviewDialog } from "@/components/dashboard/interviews/ScheduleInterviewDialog";
 import { DashButton } from "@/components/dashboard/DashButton";
-import { interviews } from "@/lib/dashboard-data";
+import {
+  useAllInterviews,
+  useDeleteInterview,
+  useUpdateInterviewStatus,
+} from "@/features/interviews/hooks";
+import { DEFAULT_INTERVIEW_SORT_OPTION, SORT_OPTIONS } from "@/features/interviews/constants";
+import type {
+  InterviewFilters,
+  InterviewSortOption,
+  InterviewViewMode,
+} from "@/features/interviews/types";
+import type { Interview, InterviewStatus } from "@/types";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/dashboard/interviews")({
   head: () => ({
@@ -18,125 +29,210 @@ export const Route = createFileRoute("/dashboard/interviews")({
   component: InterviewsPage,
 });
 
-const typeTone: Record<string, "blue" | "purple" | "green" | "amber" | "rose"> = {
-  Recruiter: "blue",
-  Technical: "purple",
-  Design: "purple",
-  Behavioral: "amber",
-  Onsite: "rose",
-  "Offer chat": "green",
-};
+function isSameDay(iso: string, ref: Date): boolean {
+  const d = new Date(iso);
+  return (
+    d.getFullYear() === ref.getFullYear() &&
+    d.getMonth() === ref.getMonth() &&
+    d.getDate() === ref.getDate()
+  );
+}
 
 function InterviewsPage() {
-  const [next, ...upcoming] = interviews;
+  const [view, setView] = useState<InterviewViewMode>("card");
+  const [filters, setFilters] = useState<InterviewFilters>({});
+  const [sortOption, setSortOption] = useState<InterviewSortOption>(DEFAULT_INTERVIEW_SORT_OPTION);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [editing, setEditing] = useState<Interview | null>(null);
+
+  const { data: interviews = [], isLoading, isError, error } = useAllInterviews();
+  const updateStatus = useUpdateInterviewStatus();
+  const deleteInterview = useDeleteInterview();
+
+  const sort = SORT_OPTIONS[sortOption];
+
+  const roundOptions = useMemo(() => {
+    const set = new Set(interviews.map((i) => i.type).filter(Boolean));
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [interviews]);
+
+  const filtered = useMemo(() => {
+    let list = [...interviews];
+    const now = new Date();
+
+    if (filters.q) {
+      const q = filters.q.toLowerCase();
+      list = list.filter(
+        (i) =>
+          i.company_name.toLowerCase().includes(q) ||
+          i.role.toLowerCase().includes(q) ||
+          (i.interviewer ?? "").toLowerCase().includes(q),
+      );
+    }
+
+    if (filters.when) {
+      const when = filters.when;
+      list = list.filter((i) => {
+        if (when === "completed") return i.status !== "scheduled";
+        if (i.status !== "scheduled") return false;
+        const sameDay = isSameDay(i.scheduled_at, now);
+        return when === "today" ? sameDay : new Date(i.scheduled_at) > now && !sameDay;
+      });
+    }
+
+    if (filters.round && filters.round.length > 0) {
+      const rounds = filters.round;
+      list = list.filter((i) => rounds.includes(i.type));
+    }
+
+    if (filters.linked) {
+      const linked = filters.linked;
+      list = list.filter((i) =>
+        linked === "linked" ? Boolean(i.application_id) : !i.application_id,
+      );
+    }
+
+    list.sort((a, b) => {
+      const dir = sort.direction === "asc" ? 1 : -1;
+      return (new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime()) * dir;
+    });
+
+    return list;
+  }, [interviews, filters, sort]);
+
+  const handleStatusChange = useCallback(
+    (interview: Interview, status: InterviewStatus) => {
+      updateStatus.mutate(
+        { interview, status },
+        { onError: () => toast.error("Failed to update status. Please try again.") },
+      );
+    },
+    [updateStatus],
+  );
+
+  const handleDelete = useCallback(
+    (id: string) => {
+      const applicationId = interviews.find((i) => i.id === id)?.application_id ?? null;
+      deleteInterview.mutate(
+        { id, applicationId },
+        {
+          onSuccess: () => toast.success("Interview deleted."),
+          onError: () => toast.error("Failed to delete interview."),
+        },
+      );
+    },
+    [deleteInterview, interviews],
+  );
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center gap-2 py-24 text-sm text-[oklch(0.5_0.02_265)]">
+        <Loader2 className="h-5 w-5 animate-spin" />
+        Loading interviews…
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="flex flex-col items-center gap-3 py-24 text-center">
+        <AlertCircle className="h-8 w-8 text-rose-500" />
+        <p className="font-display text-sm font-semibold">Failed to load interviews</p>
+        <p className="max-w-xs text-xs text-[oklch(0.5_0.02_265)]">
+          {error instanceof Error ? error.message : "An unexpected error occurred."}
+        </p>
+      </div>
+    );
+  }
 
   return (
     <>
       <StickyPageHeader>
         <PageHeader
           eyebrow="Interviews"
-          title="Walk in prepared, walk out confident."
-          subtitle="Every interview lives here with AI-generated prep, likely questions, and space for your notes afterward."
+          title="Every round, in one place."
+          subtitle="Schedule interviews from a tracked application, or add a standalone one — see what's next at a glance."
+          actions={
+            <>
+              <div className="inline-flex items-center rounded-lg border border-black/5 bg-white p-0.5 text-xs">
+                {(["card", "table"] as InterviewViewMode[]).map((v) => (
+                  <button
+                    key={v}
+                    onClick={() => setView(v)}
+                    className={cn(
+                      "inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 font-medium transition-all",
+                      view === v
+                        ? "bg-[oklch(0.95_0.02_265)] text-[#2563EB]"
+                        : "text-[oklch(0.5_0.02_265)] hover:text-[oklch(0.3_0.02_265)]",
+                    )}
+                  >
+                    {v === "card" ? (
+                      <LayoutGrid className="h-3.5 w-3.5" />
+                    ) : (
+                      <List className="h-3.5 w-3.5" />
+                    )}
+                    {v === "card" ? "Card" : "Table"}
+                  </button>
+                ))}
+              </div>
+
+              <DashButton onClick={() => setCreateOpen(true)}>
+                <Plus className="h-4 w-4" /> New Interview
+              </DashButton>
+            </>
+          }
+        />
+
+        <InterviewFiltersBar
+          filters={filters}
+          sortOption={sortOption}
+          onFiltersChange={setFilters}
+          onSortChange={setSortOption}
+          roundOptions={roundOptions}
+          totalCount={filtered.length}
         />
       </StickyPageHeader>
 
-      {next && (
-        <DashCard className="border-[#7C3AED]/15 bg-gradient-to-br from-[#7C3AED]/[0.06] to-[#2563EB]/[0.04]">
-          <div className="flex flex-wrap items-start gap-4">
-            <CompanyMark company={next.company} tone="from-[#7C3AED] to-[#2563EB]" size={56} />
-            <div className="min-w-0 flex-1">
-              <div className="flex flex-wrap items-center gap-2">
-                <p className="font-display text-lg font-semibold">{next.company}</p>
-                <Chip tone={typeTone[next.type]}>{next.type} round</Chip>
-              </div>
-              <p className="text-sm text-[oklch(0.45_0.02_265)]">{next.role}</p>
-              <div className="mt-2 flex flex-wrap items-center gap-4 text-xs text-[oklch(0.5_0.02_265)]">
-                <span className="inline-flex items-center gap-1">
-                  <Clock className="h-3 w-3" /> {next.when} · {next.time}
-                </span>
-                <span className="inline-flex items-center gap-1">
-                  <User className="h-3 w-3" /> {next.interviewer}
-                </span>
-                {next.link && (
-                  <span className="inline-flex items-center gap-1">
-                    <Video className="h-3 w-3" /> {next.link}
-                  </span>
-                )}
-              </div>
-            </div>
-            <div className="flex gap-2">
-              <button className="inline-flex items-center gap-1.5 rounded-lg border border-black/5 bg-white px-3 py-2 text-sm font-medium hover:bg-black/[0.03]">
-                Reschedule
-              </button>
-              <DashButton>
-                <Sparkles className="h-4 w-4" /> Open AI prep
-              </DashButton>
-            </div>
-          </div>
-
-          <div className="mt-5 grid gap-3 md:grid-cols-3">
-            <div className="rounded-xl border border-black/5 bg-white p-4">
-              <p className="text-[11px] font-semibold uppercase tracking-widest text-[oklch(0.55_0.02_265)]">
-                Likely questions
-              </p>
-              <ul className="mt-2 space-y-1.5 text-sm">
-                <li>"Walk us through the design of your favorite product."</li>
-                <li>"How do you handle disagreements with engineering?"</li>
-                <li>"What would you change about Linear's UI?"</li>
-              </ul>
-            </div>
-            <div className="rounded-xl border border-black/5 bg-white p-4">
-              <p className="text-[11px] font-semibold uppercase tracking-widest text-[oklch(0.55_0.02_265)]">
-                Company research
-              </p>
-              <ul className="mt-2 space-y-1.5 text-sm">
-                <li>Just shipped Cycles v2 and Insights</li>
-                <li>Series C · 130 people · profitable</li>
-                <li>Design-led, cares about primitives</li>
-              </ul>
-            </div>
-            <div className="rounded-xl border border-black/5 bg-white p-4">
-              <p className="text-[11px] font-semibold uppercase tracking-widest text-[oklch(0.55_0.02_265)]">
-                Your prep note
-              </p>
-              <p className="mt-2 text-sm text-[oklch(0.4_0.02_265)]">{next.prep}</p>
-              <button className="mt-2 text-xs font-medium text-[#2563EB]">Open note →</button>
-            </div>
-          </div>
-        </DashCard>
+      {interviews.length === 0 && (
+        <EmptyState
+          icon={CalendarClock}
+          title="No interviews yet"
+          body="Schedule one from a tracked application, or add a standalone interview to start prepping."
+          cta={
+            <DashButton onClick={() => setCreateOpen(true)}>
+              <Plus className="h-4 w-4" /> New Interview
+            </DashButton>
+          }
+        />
       )}
 
-      <div>
-        <SectionTitle>Coming up</SectionTitle>
-        <ul className="mt-3 divide-y divide-black/5 overflow-hidden rounded-2xl border border-black/5 bg-white">
-          {upcoming.map((i) => (
-            <li
-              key={i.id}
-              className="flex items-center gap-4 px-4 py-3 hover:bg-[oklch(0.98_0.005_265)]"
-            >
-              <div className="grid h-10 w-10 place-items-center rounded-lg bg-[oklch(0.97_0.01_265)] text-[oklch(0.4_0.02_265)]">
-                <CalendarClock className="h-4 w-4" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
-                  <p className="truncate font-medium">{i.company}</p>
-                  <Chip tone={typeTone[i.type]}>{i.type}</Chip>
-                </div>
-                <p className="truncate text-xs text-[oklch(0.5_0.02_265)]">
-                  {i.role} · with {i.interviewer}
-                </p>
-              </div>
-              <div className="text-right">
-                <p className="text-sm font-medium">{i.when}</p>
-                <p className="text-[11px] text-[oklch(0.55_0.02_265)]">{i.time}</p>
-              </div>
-              <button className="hidden rounded-lg border border-black/5 bg-white px-3 py-1.5 text-xs font-medium hover:bg-black/[0.03] md:block">
-                Prep
-              </button>
-            </li>
-          ))}
-        </ul>
-      </div>
+      {interviews.length > 0 &&
+        view === "card" &&
+        (filtered.length === 0 ? (
+          <div className="flex flex-col items-center gap-2 py-16 text-center">
+            <p className="text-sm font-medium text-[oklch(0.35_0.02_265)]">No interviews found</p>
+            <p className="text-xs text-[oklch(0.55_0.02_265)]">Try adjusting your filters.</p>
+          </div>
+        ) : (
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {filtered.map((interview) => (
+              <InterviewCard
+                key={interview.id}
+                interview={interview}
+                onStatusChange={handleStatusChange}
+                onEdit={setEditing}
+                onDelete={handleDelete}
+              />
+            ))}
+          </div>
+        ))}
+
+      {interviews.length > 0 && view === "table" && (
+        <InterviewTableView interviews={filtered} onEdit={setEditing} onDelete={handleDelete} />
+      )}
+
+      {createOpen && <ScheduleInterviewDialog onClose={() => setCreateOpen(false)} />}
+      {editing && <ScheduleInterviewDialog interview={editing} onClose={() => setEditing(null)} />}
     </>
   );
 }

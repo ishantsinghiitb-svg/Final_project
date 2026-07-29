@@ -396,23 +396,43 @@ export type ResumeVersion = {
 };
 
 // ── Interview ──
-export type InterviewType =
-  "Recruiter" | "Technical" | "Design" | "Behavioral" | "Onsite" | "Offer chat";
+// Interview Round — free text (a curated preset list drives the UI, but any
+// typed value is valid, exactly like ApplicationStatus is free text with a
+// curated ALL_STATUSES list layered on top).
+export type InterviewRound = string;
 
-export type InterviewStatus = "scheduled" | "completed" | "cancelled";
+export type InterviewMode = "online" | "offline";
+
+// Superset of every valid status. Which subset is actually assignable to a
+// given interview depends on whether it's linked to an application — see
+// LINKED_STATUSES / STANDALONE_STATUSES in features/interviews/constants,
+// enforced by InterviewService.updateStatus.
+export type InterviewStatus = "scheduled" | "completed" | "passed" | "rejected";
 
 export type Interview = {
   id: string;
   user_id: string;
-  application_id?: string;
+  application_id?: string | null;
   company_name: string;
   role: string;
   scheduled_at: string;
-  interviewer?: string;
-  type: InterviewType;
+  interviewer?: string | null;
+  type: InterviewRound;
   status: InterviewStatus;
-  link?: string;
-  prep?: string;
+  link?: string | null;
+  mode: InterviewMode;
+  location?: string | null;
+  resume_id?: string | null;
+  resume_name_snapshot?: string | null;
+  job_id?: string | null;
+  notes?: string | null;
+  /**
+   * The linked global_job's stored logo, attached at read time by
+   * `InterviewRepository.attachLogos` (not a persisted `interviews` column) —
+   * mirrors `Application.company_logo_url`. `null`/absent → `CompanyMark`
+   * falls back to initials.
+   */
+  company_logo_url?: string | null;
   created_at: string;
   updated_at: string;
 };

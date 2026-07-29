@@ -19,7 +19,8 @@ export class ApplicationRepository {
       .eq("id", id)
       .maybeSingle();
     if (error) throw error;
-    return data as Application | null;
+    const app = data as Application | null;
+    return app ? (await this.attachLogos([app]))[0] : null;
   }
 
   /**

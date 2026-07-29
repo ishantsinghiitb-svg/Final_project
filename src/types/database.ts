@@ -454,6 +454,12 @@ export type InterviewRow = {
   status: string;
   link: string | null;
   prep: string | null;
+  mode: string;
+  location: string | null;
+  resume_id: string | null;
+  resume_name_snapshot: string | null;
+  job_id: string | null;
+  notes: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -966,6 +972,12 @@ export type InterviewInsert = {
   status?: string;
   link?: string | null;
   prep?: string | null;
+  mode?: string;
+  location?: string | null;
+  resume_id?: string | null;
+  resume_name_snapshot?: string | null;
+  job_id?: string | null;
+  notes?: string | null;
   created_at?: string;
   updated_at?: string;
 };

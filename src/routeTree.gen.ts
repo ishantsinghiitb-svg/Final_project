@@ -32,7 +32,6 @@ import { Route as DashboardCoverLettersRouteImport } from './routes/dashboard.co
 import { Route as DashboardCollectionsRouteImport } from './routes/dashboard.collections'
 import { Route as DashboardApplicationsRouteImport } from './routes/dashboard.applications'
 import { Route as DashboardAnalyticsRouteImport } from './routes/dashboard.analytics'
-import { Route as DashboardAiRouteImport } from './routes/dashboard.ai'
 import { Route as DashboardJobsIndexRouteImport } from './routes/dashboard.jobs.index'
 import { Route as DashboardCoverLettersIndexRouteImport } from './routes/dashboard.cover-letters.index'
 import { Route as DashboardCollectionsIndexRouteImport } from './routes/dashboard.collections.index'
@@ -158,11 +157,6 @@ const DashboardAnalyticsRoute = DashboardAnalyticsRouteImport.update({
   path: '/analytics',
   getParentRoute: () => DashboardRoute,
 } as any)
-const DashboardAiRoute = DashboardAiRouteImport.update({
-  id: '/ai',
-  path: '/ai',
-  getParentRoute: () => DashboardRoute,
-} as any)
 const DashboardJobsIndexRoute = DashboardJobsIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -229,7 +223,6 @@ export interface FileRoutesByFullPath {
   '/signup': typeof SignupRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/supabase-status': typeof SupabaseStatusRoute
-  '/dashboard/ai': typeof DashboardAiRoute
   '/dashboard/analytics': typeof DashboardAnalyticsRoute
   '/dashboard/applications': typeof DashboardApplicationsRouteWithChildren
   '/dashboard/collections': typeof DashboardCollectionsRouteWithChildren
@@ -263,7 +256,6 @@ export interface FileRoutesByTo {
   '/signup': typeof SignupRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/supabase-status': typeof SupabaseStatusRoute
-  '/dashboard/ai': typeof DashboardAiRoute
   '/dashboard/analytics': typeof DashboardAnalyticsRoute
   '/dashboard/interviews': typeof DashboardInterviewsRoute
   '/dashboard/notes': typeof DashboardNotesRoute
@@ -295,7 +287,6 @@ export interface FileRoutesById {
   '/signup': typeof SignupRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/supabase-status': typeof SupabaseStatusRoute
-  '/dashboard/ai': typeof DashboardAiRoute
   '/dashboard/analytics': typeof DashboardAnalyticsRoute
   '/dashboard/applications': typeof DashboardApplicationsRouteWithChildren
   '/dashboard/collections': typeof DashboardCollectionsRouteWithChildren
@@ -332,7 +323,6 @@ export interface FileRouteTypes {
     | '/signup'
     | '/sitemap.xml'
     | '/supabase-status'
-    | '/dashboard/ai'
     | '/dashboard/analytics'
     | '/dashboard/applications'
     | '/dashboard/collections'
@@ -366,7 +356,6 @@ export interface FileRouteTypes {
     | '/signup'
     | '/sitemap.xml'
     | '/supabase-status'
-    | '/dashboard/ai'
     | '/dashboard/analytics'
     | '/dashboard/interviews'
     | '/dashboard/notes'
@@ -397,7 +386,6 @@ export interface FileRouteTypes {
     | '/signup'
     | '/sitemap.xml'
     | '/supabase-status'
-    | '/dashboard/ai'
     | '/dashboard/analytics'
     | '/dashboard/applications'
     | '/dashboard/collections'
@@ -598,13 +586,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardAnalyticsRouteImport
       parentRoute: typeof DashboardRoute
     }
-    '/dashboard/ai': {
-      id: '/dashboard/ai'
-      path: '/ai'
-      fullPath: '/dashboard/ai'
-      preLoaderRoute: typeof DashboardAiRouteImport
-      parentRoute: typeof DashboardRoute
-    }
     '/dashboard/jobs/': {
       id: '/dashboard/jobs/'
       path: '/'
@@ -731,7 +712,6 @@ const DashboardJobsRouteWithChildren = DashboardJobsRoute._addFileChildren(
 )
 
 interface DashboardRouteChildren {
-  DashboardAiRoute: typeof DashboardAiRoute
   DashboardAnalyticsRoute: typeof DashboardAnalyticsRoute
   DashboardApplicationsRoute: typeof DashboardApplicationsRouteWithChildren
   DashboardCollectionsRoute: typeof DashboardCollectionsRouteWithChildren
@@ -747,7 +727,6 @@ interface DashboardRouteChildren {
 }
 
 const DashboardRouteChildren: DashboardRouteChildren = {
-  DashboardAiRoute: DashboardAiRoute,
   DashboardAnalyticsRoute: DashboardAnalyticsRoute,
   DashboardApplicationsRoute: DashboardApplicationsRouteWithChildren,
   DashboardCollectionsRoute: DashboardCollectionsRouteWithChildren,

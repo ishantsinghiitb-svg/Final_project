@@ -1,11 +1,10 @@
-// ── Lightweight rich text (Module 6E foundation refinement) ──
+// ── Lightweight rich text (shared) ──
 //
-// Deliberately NOT a WYSIWYG editor and NOT stored as HTML. The Studio's
-// `content` column stays plain text — the single source of truth the AI
-// prompts, section-splicing (sections.ts) and history all already depend on
-// — with a tiny, fully-controlled markdown-like syntax layered on top for
-// exactly five constructs: **bold**, *italic*/_italic_, "- " bullet lines,
-// "1. " numbered lines, and [label](url) links. Nothing else is recognized.
+// Deliberately NOT a WYSIWYG editor and NOT stored as HTML. Callers keep a
+// plain text column as the single source of truth — with a tiny, fully
+// controlled markdown-like syntax layered on top for exactly five constructs:
+// **bold**, *italic*/_italic_, "- " bullet lines, "1. " numbered lines, and
+// [label](url) links. Nothing else is recognized.
 //
 // This module is the one place that understands that syntax:
 //   • parseRichText   — text → structured lines/spans (used by Preview + export)
@@ -14,6 +13,10 @@
 //   • toggleBold/Italic/BulletList/NumberedList/insertLink — textarea-selection
 //     transforms used by the toolbar; pure functions so they're easy to reason
 //     about and don't need a DOM to be tested.
+//
+// Originally built for Cover Letter Studio (Module 6E), relocated here so
+// other features (e.g. Interview notes) can reuse it without depending on
+// the cover-letters feature folder.
 
 export type InlineSpan = { text: string; bold?: boolean; italic?: boolean; href?: string };
 
@@ -63,7 +66,7 @@ function classifyLine(line: string): RichLine {
   return { kind: "text", spans: parseInline(line) };
 }
 
-/** Parse a letter into paragraphs of classified lines — the shared model for Preview and export. */
+/** Parse text into paragraphs of classified lines — the shared model for Preview and export. */
 export function parseRichText(content: string): RichParagraph[] {
   return splitParagraphs(content).map((paragraph) => ({
     lines: paragraph.split("\n").map(classifyLine),
@@ -128,7 +131,7 @@ function renderParagraphHtml(lines: RichLine[]): string {
   return chunks.join("");
 }
 
-/** Sanitized HTML for the editor's Preview tab. Never sent to the AI or stored. */
+/** Sanitized HTML for a Preview pane. Never sent to the AI or stored. */
 export function renderRichTextHtml(content: string): string {
   return parseRichText(content)
     .map((para) => renderParagraphHtml(para.lines))

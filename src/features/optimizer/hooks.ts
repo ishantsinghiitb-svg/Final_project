@@ -38,8 +38,6 @@ export function useOptimizeResume() {
     mutationFn: (args: OptimizeArgs) => optimizerClient.optimize(args),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: aiKeys.credits(user?.id ?? "") });
-      // The run is now in the audit log, so the AI Hub timeline is a row stale.
-      void queryClient.invalidateQueries({ queryKey: aiKeys.activity(user?.id ?? "") });
     },
   });
 }

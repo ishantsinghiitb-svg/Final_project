@@ -70,7 +70,7 @@ export function AIPageHeader({
   subtitle,
   actions,
 }: {
-  backTo: "/dashboard/resumes" | "/dashboard/cover-letters" | "/dashboard/ai";
+  backTo: "/dashboard/resumes" | "/dashboard/cover-letters";
   backLabel: string;
   icon: React.ComponentType<{ className?: string }>;
   title: string;

@@ -1,4 +1,4 @@
-import { stripRichTextMarkup } from "./richText";
+import { stripRichTextMarkup } from "@/lib/richText";
 import type { LetterStats } from "./types";
 
 // ── Letter statistics (Module 6E) ──
