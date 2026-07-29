@@ -6,7 +6,8 @@ import type { PaginationParams, PaginatedResult } from "@/types";
 const APP_COLUMNS =
   "id, user_id, job_id, company_name, role, status, applied_at, next_step, notes, location, salary_min, salary_max, salary_currency, source, url, archived, archived_at, created_via, metadata, notes_updated_at, priority, resume_id, cover_letter_id, created_at, updated_at";
 
-const TIMELINE_COLUMNS = "id, application_id, user_id, kind, text, previous_value, new_value, metadata, created_at";
+const TIMELINE_COLUMNS =
+  "id, application_id, user_id, kind, text, previous_value, new_value, metadata, created_at";
 
 export class ApplicationRepository {
   // ── Read ──────────────────────────────────────────────────────────────────
@@ -98,7 +99,9 @@ export class ApplicationRepository {
    * avatar falls back to initials — exactly as `CompanyMark` already does.
    */
   private async attachLogos(apps: Application[]): Promise<Application[]> {
-    const jobIds = [...new Set(apps.map((a) => a.job_id).filter((id): id is string => Boolean(id)))];
+    const jobIds = [
+      ...new Set(apps.map((a) => a.job_id).filter((id): id is string => Boolean(id))),
+    ];
     if (jobIds.length === 0) return apps;
 
     const { data, error } = await supabase
@@ -217,7 +220,9 @@ export class ApplicationRepository {
 
   async update(
     id: string,
-    updates: Partial<Omit<Application, "id" | "user_id" | "created_at" | "updated_at" | "company_logo_url">>,
+    updates: Partial<
+      Omit<Application, "id" | "user_id" | "created_at" | "updated_at" | "company_logo_url">
+    >,
   ): Promise<Application> {
     const { data, error } = await supabase
       .from("applications")

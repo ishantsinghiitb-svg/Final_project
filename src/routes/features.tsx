@@ -1,5 +1,22 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowRight, Chromium as Chrome, Bookmark, FileText, BrainCircuit, Sparkles, Bot, Kanban, CalendarClock, StickyNote, ChartLine as LineChart, Check, Wand as Wand2, MousePointerClick, Search, Gauge } from "lucide-react";
+import {
+  ArrowRight,
+  Chromium as Chrome,
+  Bookmark,
+  FileText,
+  BrainCircuit,
+  Sparkles,
+  Bot,
+  Kanban,
+  CalendarClock,
+  StickyNote,
+  ChartLine as LineChart,
+  Check,
+  Wand as Wand2,
+  MousePointerClick,
+  Search,
+  Gauge,
+} from "lucide-react";
 import { Section } from "@/components/site/Section";
 import { ButtonLink } from "@/components/site/PrimaryButton";
 
@@ -13,7 +30,10 @@ export const Route = createFileRoute("/features")({
           "How NextOffer works — from saving your first job to landing the offer. Capture opportunities, optimize applications, and stay organized.",
       },
       { property: "og:title", content: "Features — NextOffer" },
-      { property: "og:description", content: "A walkthrough of every step of your job search, in one workspace." },
+      {
+        property: "og:description",
+        content: "A walkthrough of every step of your job search, in one workspace.",
+      },
     ],
   }),
   component: FeaturesPage,
@@ -38,11 +58,16 @@ function FeaturesPage() {
         <div className="rounded-3xl border border-white/10 bg-gradient-to-br from-[oklch(0.22_0.06_265)] to-[oklch(0.18_0.08_290)] p-10 md:p-14">
           <h3 className="font-display text-3xl font-semibold md:text-4xl">Ready to try it?</h3>
           <p className="mt-3 max-w-xl text-muted-foreground">
-            Install the extension, connect a resume, and see your first match score in under two minutes.
+            Install the extension, connect a resume, and see your first match score in under two
+            minutes.
           </p>
           <div className="mt-6 flex gap-3">
-            <ButtonLink to="/signup" size="lg">Get Started <ArrowRight className="h-4 w-4" /></ButtonLink>
-            <ButtonLink to="/pricing" size="lg" variant="outline">View pricing</ButtonLink>
+            <ButtonLink to="/signup" size="lg">
+              Get Started <ArrowRight className="h-4 w-4" />
+            </ButtonLink>
+            <ButtonLink to="/pricing" size="lg" variant="outline">
+              View pricing
+            </ButtonLink>
           </div>
           <p className="mt-4 text-xs text-muted-foreground">
             Prefer to explore first?{" "}
@@ -75,21 +100,19 @@ function Step({ n, label }: { n: number; label: string }) {
       <span className="grid h-7 w-7 place-items-center rounded-full border border-white/10 bg-white/[0.03] text-xs font-semibold text-muted-foreground">
         {n}
       </span>
-      <span className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">{label}</span>
+      <span className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+        {label}
+      </span>
     </div>
   );
 }
 
-function ProblemSolutionOutcome({
-  problem,
-  outcome,
-}: {
-  problem: string;
-  outcome: string;
-}) {
+function ProblemSolutionOutcome({ problem, outcome }: { problem: string; outcome: string }) {
   return (
     <div className="mt-6 flex flex-col gap-2 rounded-xl border border-white/5 bg-white/[0.015] p-4 text-sm md:flex-row md:items-center md:gap-6">
-      <span className="text-xs font-semibold uppercase tracking-widest text-muted-foreground md:w-28 md:shrink-0">The problem</span>
+      <span className="text-xs font-semibold uppercase tracking-widest text-muted-foreground md:w-28 md:shrink-0">
+        The problem
+      </span>
       <span className="text-muted-foreground">{problem}</span>
       <span className="hidden text-muted-foreground/30 md:inline">·</span>
       <span className="text-[#93C5FD]">{outcome}</span>
@@ -128,7 +151,9 @@ function FeatureRow({
           <div className="mb-4 grid h-10 w-10 place-items-center rounded-lg border border-white/10 bg-gradient-to-br from-white/5 to-transparent text-[#93C5FD]">
             <Icon className="h-5 w-5" />
           </div>
-          <h3 className="font-display text-2xl font-semibold tracking-tight md:text-3xl">{title}</h3>
+          <h3 className="font-display text-2xl font-semibold tracking-tight md:text-3xl">
+            {title}
+          </h3>
           <div className="mt-4 text-muted-foreground">{children}</div>
         </div>
         <div className={reverse ? "order-1 md:order-2" : ""}>{preview}</div>
@@ -173,7 +198,8 @@ function CaptureSection() {
           problem="You find a great role on LinkedIn, another on Greenhouse, a third on a company's careers page — and by the weekend you've forgotten which was which."
           outcome="Every role you're considering lives in one searchable library — no more lost tabs."
         >
-          The extension reads the page when you click it and extracts title, company, salary, and requirements automatically.
+          The extension reads the page when you click it and extracts title, company, salary, and
+          requirements automatically.
         </FeatureRow>
 
         <FeatureRow
@@ -194,7 +220,8 @@ function CaptureSection() {
           title="A job library you'll actually use."
           preview={<LibraryPreview />}
         >
-          Every saved role stays searchable and filterable by fit, stage, salary, remote, and seniority.
+          Every saved role stays searchable and filterable by fit, stage, salary, remote, and
+          seniority.
         </FeatureRow>
       </div>
     </Section>
@@ -223,7 +250,8 @@ function OptimizeSection() {
           problem="You have one resume and fifty roles. Which one should you rewrite for, and how much rewriting is enough?"
           outcome="You know which resume to send — and what to change before you send it."
         >
-          Upload your resume once. NextOffer scores it against the actual job description — per skill, keyword, and experience level.
+          Upload your resume once. NextOffer scores it against the actual job description — per
+          skill, keyword, and experience level.
         </FeatureRow>
 
         <FeatureRow
@@ -234,7 +262,8 @@ function OptimizeSection() {
           reverse
           preview={<ATSPreview />}
         >
-          Real-time checks against modern ATS rules — formatting, parsing, keyword density — with fixes ranked by impact.
+          Real-time checks against modern ATS rules — formatting, parsing, keyword density — with
+          fixes ranked by impact.
         </FeatureRow>
 
         <FeatureRow
@@ -244,7 +273,8 @@ function OptimizeSection() {
           title="Skill gap analysis."
           preview={<GapPreview />}
         >
-          NextOffer maps the JD's required skills against your resume and highlights the real gaps, with a short study plan.
+          NextOffer maps the JD's required skills against your resume and highlights the real gaps,
+          with a short study plan.
         </FeatureRow>
 
         <FeatureRow
@@ -258,7 +288,8 @@ function OptimizeSection() {
           problem="Writing a cover letter for every application is the worst kind of homework — and generic templates get ignored."
           outcome="A cover letter that sounds like you — in seconds, not an hour."
         >
-          Drafts a cover letter from your resume and the JD, referencing real projects you've shipped, in a tone you can tune.
+          Drafts a cover letter from your resume and the JD, referencing real projects you've
+          shipped, in a tone you can tune.
         </FeatureRow>
       </div>
     </Section>
@@ -284,7 +315,8 @@ function OrganizeSection() {
           title="A kanban tracker for job search."
           preview={<KanbanPreview />}
         >
-          The pipeline board shows every application from Interested to Offer — drag between stages and get nudged when something goes quiet.
+          The pipeline board shows every application from Interested to Offer — drag between stages
+          and get nudged when something goes quiet.
         </FeatureRow>
 
         <FeatureRow
@@ -295,7 +327,8 @@ function OrganizeSection() {
           reverse
           preview={<InterviewPreview />}
         >
-          Every interview in one place: type, interviewer, prep notes, and AI-generated likely questions for that role and round.
+          Every interview in one place: type, interviewer, prep notes, and AI-generated likely
+          questions for that role and round.
         </FeatureRow>
 
         <FeatureRow
@@ -305,7 +338,8 @@ function OrganizeSection() {
           title="Personal notes, kept in context."
           preview={<NotesPreview />}
         >
-          Notes attach to the company and role they belong to, with tags for prep, questions, and follow-ups.
+          Notes attach to the company and role they belong to, with tags for prep, questions, and
+          follow-ups.
         </FeatureRow>
 
         <FeatureRow
@@ -316,7 +350,8 @@ function OrganizeSection() {
           reverse
           preview={<AnalyticsPreview />}
         >
-          Response rate by resume, average time-to-interview, and where you drop off — the signals, not the vanity metrics.
+          Response rate by resume, average time-to-interview, and where you drop off — the signals,
+          not the vanity metrics.
         </FeatureRow>
       </div>
     </Section>
@@ -325,7 +360,13 @@ function OrganizeSection() {
 
 /* ----------------------------------------------- previews */
 
-function Frame({ children, tone = "from-[#2563EB]/15 to-[#7C3AED]/10" }: { children: React.ReactNode; tone?: string }) {
+function Frame({
+  children,
+  tone = "from-[#2563EB]/15 to-[#7C3AED]/10",
+}: {
+  children: React.ReactNode;
+  tone?: string;
+}) {
   return (
     <div className="relative">
       <div className={`absolute -inset-8 -z-10 rounded-3xl bg-gradient-to-br ${tone} blur-3xl`} />
@@ -349,7 +390,9 @@ function ExtensionPreview() {
           <p className="text-sm font-semibold">Senior Frontend Engineer</p>
           <p className="text-xs text-muted-foreground">Linear · Remote · $180k – $230k</p>
         </div>
-        <button className="rounded-lg bg-gradient-to-br from-[#2563EB] to-[#7C3AED] px-3 py-1.5 text-xs font-medium text-white">Save</button>
+        <button className="rounded-lg bg-gradient-to-br from-[#2563EB] to-[#7C3AED] px-3 py-1.5 text-xs font-medium text-white">
+          Save
+        </button>
       </div>
       <div className="mt-4 grid grid-cols-3 gap-2 text-[11px]">
         {[
@@ -406,8 +449,13 @@ function LibraryPreview() {
       </div>
       <div className="mt-3 space-y-2">
         {jobs.map((j) => (
-          <div key={j.c} className="flex items-center gap-3 rounded-lg border border-white/5 bg-white/[0.02] p-3">
-            <div className="grid h-7 w-7 place-items-center rounded bg-white/10 text-[10px] font-semibold">{j.c[0]}</div>
+          <div
+            key={j.c}
+            className="flex items-center gap-3 rounded-lg border border-white/5 bg-white/[0.02] p-3"
+          >
+            <div className="grid h-7 w-7 place-items-center rounded bg-white/10 text-[10px] font-semibold">
+              {j.c[0]}
+            </div>
             <div className="min-w-0 flex-1">
               <p className="truncate text-xs font-semibold">{j.c}</p>
               <p className="text-[11px] text-muted-foreground">{j.r}</p>
@@ -428,7 +476,9 @@ function MatchPreview() {
         <span className="rounded-full bg-[#22C55E]/15 px-2 py-0.5 text-[#22C55E]">Strong fit</span>
       </div>
       <div className="mt-4 flex items-end gap-2">
-        <p className="font-display text-5xl font-semibold">92<span className="text-2xl text-muted-foreground">%</span></p>
+        <p className="font-display text-5xl font-semibold">
+          92<span className="text-2xl text-muted-foreground">%</span>
+        </p>
         <p className="pb-2 text-xs text-muted-foreground">resume ↔ job description</p>
       </div>
       <div className="mt-5 space-y-3 text-xs">
@@ -444,7 +494,10 @@ function MatchPreview() {
               <span>{r.v}%</span>
             </div>
             <div className="mt-1 h-1.5 rounded-full bg-white/5">
-              <div className="h-full rounded-full bg-gradient-to-r from-[#2563EB] to-[#7C3AED]" style={{ width: `${r.v}%` }} />
+              <div
+                className="h-full rounded-full bg-gradient-to-r from-[#2563EB] to-[#7C3AED]"
+                style={{ width: `${r.v}%` }}
+              />
             </div>
           </div>
         ))}
@@ -458,15 +511,28 @@ function ATSPreview() {
     <Frame>
       <div className="flex items-center justify-between">
         <p className="text-xs text-muted-foreground">ATS compatibility</p>
-        <span className="rounded-full bg-[#22C55E]/15 px-2 py-0.5 text-[11px] text-[#22C55E]">Ready</span>
+        <span className="rounded-full bg-[#22C55E]/15 px-2 py-0.5 text-[11px] text-[#22C55E]">
+          Ready
+        </span>
       </div>
       <div className="mt-3 flex items-center gap-4">
         <svg viewBox="0 0 48 48" className="h-16 w-16 -rotate-90">
           <circle cx="24" cy="24" r="20" stroke="oklch(1 0 0 / 0.08)" strokeWidth="4" fill="none" />
-          <circle cx="24" cy="24" r="20" stroke="#7C3AED" strokeWidth="4" fill="none" strokeDasharray={`${(88 / 100) * 125.6} 125.6`} strokeLinecap="round" />
+          <circle
+            cx="24"
+            cy="24"
+            r="20"
+            stroke="#7C3AED"
+            strokeWidth="4"
+            fill="none"
+            strokeDasharray={`${(88 / 100) * 125.6} 125.6`}
+            strokeLinecap="round"
+          />
         </svg>
         <div>
-          <p className="font-display text-3xl font-semibold">88<span className="text-base text-muted-foreground">/100</span></p>
+          <p className="font-display text-3xl font-semibold">
+            88<span className="text-base text-muted-foreground">/100</span>
+          </p>
           <p className="text-[11px] text-muted-foreground">vs. Greenhouse rules</p>
         </div>
       </div>
@@ -476,9 +542,15 @@ function ATSPreview() {
           { l: "Format & parsing", v: 96, c: "from-[#22C55E] to-[#16A34A]" },
         ].map((r) => (
           <div key={r.l}>
-            <div className="flex justify-between text-muted-foreground"><span>{r.l}</span><span>{r.v}%</span></div>
+            <div className="flex justify-between text-muted-foreground">
+              <span>{r.l}</span>
+              <span>{r.v}%</span>
+            </div>
             <div className="mt-1 h-1.5 rounded-full bg-white/5">
-              <div className={`h-full rounded-full bg-gradient-to-r ${r.c}`} style={{ width: `${r.v}%` }} />
+              <div
+                className={`h-full rounded-full bg-gradient-to-r ${r.c}`}
+                style={{ width: `${r.v}%` }}
+              />
             </div>
           </div>
         ))}
@@ -490,7 +562,9 @@ function ATSPreview() {
 function GapPreview() {
   return (
     <Frame tone="from-[#7C3AED]/15 to-[#2563EB]/10">
-      <p className="px-1 pb-3 text-xs text-muted-foreground">Skill gap — Linear · Sr. Product Designer</p>
+      <p className="px-1 pb-3 text-xs text-muted-foreground">
+        Skill gap — Linear · Sr. Product Designer
+      </p>
       <div className="space-y-3 text-xs">
         {[
           { l: "Design systems", v: 88, c: "bg-[#22C55E]" },
@@ -498,7 +572,10 @@ function GapPreview() {
           { l: "Canvas / rendering", v: 35, c: "bg-[#EF4444]" },
         ].map((s) => (
           <div key={s.l}>
-            <div className="flex justify-between text-muted-foreground"><span>{s.l}</span><span>{s.v}%</span></div>
+            <div className="flex justify-between text-muted-foreground">
+              <span>{s.l}</span>
+              <span>{s.v}%</span>
+            </div>
             <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-white/5">
               <div className={`h-full ${s.c}`} style={{ width: `${s.v}%` }} />
             </div>
@@ -506,7 +583,8 @@ function GapPreview() {
         ))}
       </div>
       <div className="mt-4 rounded-lg border border-white/10 bg-white/[0.02] p-3 text-[11px] text-muted-foreground">
-        Study plan: <span className="text-foreground">Canvas fundamentals (2h)</span> — comes up in 3 of the JD's 8 requirements.
+        Study plan: <span className="text-foreground">Canvas fundamentals (2h)</span> — comes up in
+        3 of the JD's 8 requirements.
       </div>
     </Frame>
   );
@@ -517,16 +595,22 @@ function CoverLetterPreview() {
     <Frame>
       <div className="flex items-center justify-between border-b border-white/5 pb-3 text-xs">
         <span className="text-muted-foreground">Cover letter · Linear · Sr. Product Designer</span>
-        <span className="inline-flex items-center gap-1 text-[#A78BFA]"><Bot className="h-3 w-3" /> AI draft</span>
+        <span className="inline-flex items-center gap-1 text-[#A78BFA]">
+          <Bot className="h-3 w-3" /> AI draft
+        </span>
       </div>
       <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-        Hi Karri — I've followed Linear's craft since the first public beta. At
-        Ramp I led the design-systems rollout that cut our component sprawl by
-        40%, and I'd love to bring that discipline to your primitives team…
+        Hi Karri — I've followed Linear's craft since the first public beta. At Ramp I led the
+        design-systems rollout that cut our component sprawl by 40%, and I'd love to bring that
+        discipline to your primitives team…
       </p>
       <div className="mt-4 flex items-center gap-2">
-        <button className="rounded-lg bg-white/5 px-2.5 py-1.5 text-[11px] text-muted-foreground">Regenerate</button>
-        <button className="rounded-lg bg-gradient-to-br from-[#2563EB] to-[#7C3AED] px-2.5 py-1.5 text-[11px] font-medium text-white">Export PDF</button>
+        <button className="rounded-lg bg-white/5 px-2.5 py-1.5 text-[11px] text-muted-foreground">
+          Regenerate
+        </button>
+        <button className="rounded-lg bg-gradient-to-br from-[#2563EB] to-[#7C3AED] px-2.5 py-1.5 text-[11px] font-medium text-white">
+          Export PDF
+        </button>
       </div>
     </Frame>
   );
@@ -564,11 +648,15 @@ function InterviewPreview() {
     <Frame tone="from-[#7C3AED]/15 to-[#2563EB]/10">
       <div className="flex items-center justify-between">
         <p className="text-sm font-semibold">Linear — Design round</p>
-        <span className="rounded-full bg-[#7C3AED]/15 px-2 py-0.5 text-[11px] text-[#A78BFA]">Today</span>
+        <span className="rounded-full bg-[#7C3AED]/15 px-2 py-0.5 text-[11px] text-[#A78BFA]">
+          Today
+        </span>
       </div>
       <p className="mt-1 text-xs text-muted-foreground">with Karri Saarinen</p>
       <div className="mt-3 rounded-xl border border-white/5 bg-white/[0.02] p-3">
-        <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Likely questions</p>
+        <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+          Likely questions
+        </p>
         <ul className="mt-2 space-y-1.5 text-xs text-muted-foreground">
           <li>"Walk us through your favorite product's design."</li>
           <li>"How do you handle disagreements with engineering?"</li>
@@ -591,7 +679,9 @@ function NotesPreview() {
           <div key={n.t} className="rounded-xl border border-white/5 bg-white/[0.02] p-3">
             <div className="flex items-center justify-between">
               <p className="text-xs font-medium">{n.t}</p>
-              <span className="rounded bg-white/5 px-1.5 py-0.5 text-[9px] text-muted-foreground">{n.tag}</span>
+              <span className="rounded bg-white/5 px-1.5 py-0.5 text-[9px] text-muted-foreground">
+                {n.tag}
+              </span>
             </div>
           </div>
         ))}
@@ -606,9 +696,13 @@ function AnalyticsPreview() {
       <div className="flex items-center justify-between">
         <div>
           <p className="text-xs text-muted-foreground">Weekly activity</p>
-          <p className="mt-1 font-display text-2xl font-semibold">142 <span className="text-sm text-muted-foreground">applications</span></p>
+          <p className="mt-1 font-display text-2xl font-semibold">
+            142 <span className="text-sm text-muted-foreground">applications</span>
+          </p>
         </div>
-        <span className="rounded-full bg-[#22C55E]/15 px-2 py-0.5 text-[11px] text-[#22C55E]">+22%</span>
+        <span className="rounded-full bg-[#22C55E]/15 px-2 py-0.5 text-[11px] text-[#22C55E]">
+          +22%
+        </span>
       </div>
       <svg viewBox="0 0 320 140" className="mt-4 h-40 w-full">
         <defs>
@@ -620,8 +714,16 @@ function AnalyticsPreview() {
         {[20, 50, 80, 110].map((y) => (
           <line key={y} x1="0" x2="320" y1={y} y2={y} stroke="oklch(1 0 0 / 0.05)" />
         ))}
-        <path d="M0,100 C40,90 60,60 100,70 C140,80 160,30 200,40 C240,50 260,20 320,30 L320,140 L0,140 Z" fill="url(#fa)" />
-        <path d="M0,100 C40,90 60,60 100,70 C140,80 160,30 200,40 C240,50 260,20 320,30" stroke="#2563EB" strokeWidth="2" fill="none" />
+        <path
+          d="M0,100 C40,90 60,60 100,70 C140,80 160,30 200,40 C240,50 260,20 320,30 L320,140 L0,140 Z"
+          fill="url(#fa)"
+        />
+        <path
+          d="M0,100 C40,90 60,60 100,70 C140,80 160,30 200,40 C240,50 260,20 320,30"
+          stroke="#2563EB"
+          strokeWidth="2"
+          fill="none"
+        />
       </svg>
     </Frame>
   );

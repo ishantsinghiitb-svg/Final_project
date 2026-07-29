@@ -12,7 +12,9 @@
     "format": "prettier --write .",
     "extension:install": "npm install --prefix extension",
     "extension:dev": "npm run dev --prefix extension",
-    "extension:build": "npm run build --prefix extension"
+    "extension:build": "npm run build --prefix extension",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
@@ -90,6 +92,7 @@
     "prettier": "^3.7.3",
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.56.1",
-    "vite": "^8.0.16"
+    "vite": "^8.0.16",
+    "vitest": "^3.2.7"
   }
 }

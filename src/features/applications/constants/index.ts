@@ -123,8 +123,7 @@ export const DEFAULT_APPLICATION_SORT: ApplicationSort = {
   direction: "desc",
 };
 
-export const DEFAULT_APPLICATION_SORT_OPTION: ApplicationSortOption =
-  "recently_updated";
+export const DEFAULT_APPLICATION_SORT_OPTION: ApplicationSortOption = "recently_updated";
 
 // ── Applied-date filter ──────────────────────────────────────────────────────
 

@@ -3,6 +3,8 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft, Loader2, Sparkles, AlertCircle, Wand2, History, X } from "lucide-react";
 import { toast } from "sonner";
 import { DashCard, EmptyState } from "@/components/dashboard/primitives";
+import { AIPage, AIPageHeader } from "@/components/dashboard/ai/AIPage";
+import { aiErrorCopy, creditsReassurance } from "@/features/ai/errorMessages";
 import { OptimizeSetupPanel } from "@/components/dashboard/optimizer/OptimizeSetupPanel";
 import { OptimizeConfirmDialog } from "@/components/dashboard/optimizer/OptimizeConfirmDialog";
 import { SuggestionReviewList } from "@/components/dashboard/optimizer/SuggestionReviewList";
@@ -108,14 +110,32 @@ function OptimizeResumePage() {
   );
 
   async function runOptimize() {
-    const res = await optimize.mutateAsync({
-      resumeId,
-      category,
-      customCategory: sanitizeCustomCategory(customCategory),
-      sections,
-    });
+    // `mutateAsync` REJECTS on a transport-level failure (offline, a dropped
+    // worker request) rather than returning a structured envelope. Without this
+    // catch the rejection is unhandled and nothing ever clears `isPending`, so
+    // the confirm dialog sits on its loading state forever with no way out.
+    let res;
+    try {
+      res = await optimize.mutateAsync({
+        resumeId,
+        category,
+        customCategory: sanitizeCustomCategory(customCategory),
+        sections,
+      });
+    } catch {
+      const copy = aiErrorCopy(undefined);
+      toast.error(copy.title, { description: copy.body });
+      setConfirmOpen(false);
+      return;
+    }
     if (!res.ok) {
-      toast.error(res.message || "Optimization failed.");
+      // Never `res.message` — the raw engine text can carry provider internals
+      // (rate-limit strings, model ids). Map the structured code instead, and
+      // state plainly when the run cost nothing.
+      const copy = aiErrorCopy(res.code);
+      toast.error(copy.title, {
+        description: [copy.body, creditsReassurance(res.creditsRefunded)].filter(Boolean).join(" "),
+      });
       // Keep the confirm dialog on a hard limit so the upgrade path is visible.
       if (res.code !== "ai_limit_reached") setConfirmOpen(false);
       return;
@@ -129,9 +149,20 @@ function OptimizeResumePage() {
     setConfirmOpen(false);
     setPhase("review");
     if (res.result.suggestions.length === 0) {
-      toast.info("No safe improvements were found for this selection.");
+      toast.info("No safe improvements were found", {
+        description:
+          "Your resume already holds up for this selection. Try another section or category.",
+      });
     } else if (res.result.cacheHit) {
-      toast.success("Loaded your previous optimization (no credit used).");
+      // "Reused" is the wording used everywhere in 6G — never "cache hit" — and
+      // the no-charge benefit is stated rather than left for the user to infer.
+      toast.success("Reused your earlier optimization", {
+        description: `${res.result.suggestions.length} suggestions ready. No credit was used.`,
+      });
+    } else {
+      toast.success("Optimization ready", {
+        description: `${res.result.suggestions.length} suggestions to review.`,
+      });
     }
   }
 
@@ -175,7 +206,11 @@ function OptimizeResumePage() {
     try {
       await downloadResume(savedDoc, savedVersion.name, format);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Download failed.");
+      // `downloadResume` throws only library errors (jsPDF / docx), whose text
+      // is developer-facing — so the user gets our own wording, not theirs.
+      toast.error("Couldn't build that file", {
+        description: "Try a different format, or download again in a moment.",
+      });
     }
   }
 
@@ -183,32 +218,21 @@ function OptimizeResumePage() {
   const resumeReady = resume?.parse_status === "ready";
 
   return (
-    <div className="mx-auto max-w-6xl space-y-5 pb-24">
-      {/* Header */}
-      <div>
-        <Link
-          to="/dashboard/resumes"
-          className="inline-flex items-center gap-1.5 text-sm text-[oklch(0.45_0.02_265)] transition-colors hover:text-[#2563EB]"
-        >
-          <ArrowLeft className="h-4 w-4" /> Resumes
-        </Link>
-        <div className="mt-2 flex items-center gap-2.5">
-          <div className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-[#2563EB]/10 to-[#7C3AED]/15 text-[#7C3AED]">
-            <Wand2 className="h-4.5 w-4.5" />
-          </div>
-          <div>
-            <h1 className="font-display text-[22px] font-semibold tracking-tight text-[oklch(0.2_0.02_265)]">
-              Resume Optimization Studio
-            </h1>
-            {resume && (
-              <p className="text-sm text-[oklch(0.45_0.02_265)]">
-                {resume.name}
-                {phase === "review" && result ? ` · optimized for ${result.categoryLabel}` : ""}
-              </p>
-            )}
-          </div>
-        </div>
-      </div>
+    // Shared AI frame (Module 6G): same measure and rhythm as the AI Hub and the
+    // Cover Letter Studio, so moving between AI features doesn't shift the page.
+    // `bottomGutter` clears the fixed review action bar below.
+    <AIPage bottomGutter>
+      <AIPageHeader
+        backTo="/dashboard/resumes"
+        backLabel="Resumes"
+        icon={Wand2}
+        title="Resume Optimization Studio"
+        subtitle={
+          resume
+            ? `${resume.name}${phase === "review" && result ? ` · optimized for ${result.categoryLabel}` : ""}`
+            : undefined
+        }
+      />
 
       {/* Body */}
       {resumesLoading ? (
@@ -393,6 +417,6 @@ function OptimizeResumePage() {
         onSave={(name) => void handleSave(name)}
         onCancel={() => setSaveOpen(false)}
       />
-    </div>
+    </AIPage>
   );
 }

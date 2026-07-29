@@ -64,7 +64,9 @@ function ForgotPassword() {
           ) : (
             <form onSubmit={handleSubmit} className="mt-6 space-y-3">
               <label className="block">
-                <span className="text-xs uppercase tracking-widest text-muted-foreground">Email</span>
+                <span className="text-xs uppercase tracking-widest text-muted-foreground">
+                  Email
+                </span>
                 <input
                   required
                   type="email"

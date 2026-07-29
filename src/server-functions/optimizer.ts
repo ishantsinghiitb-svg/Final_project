@@ -37,7 +37,13 @@ export const optimizeResume = createServerFn({ method: "POST" })
       forceRefresh: data.forceRefresh,
     });
     if (!res.ok) {
-      return { ok: false, code: res.code, message: res.message, credits: res.credits };
+      return {
+        ok: false,
+        code: res.code,
+        message: res.message,
+        credits: res.credits,
+        creditsRefunded: res.creditsRefunded,
+      };
     }
     return { ok: true, result: res.result, credits: res.credits };
   });

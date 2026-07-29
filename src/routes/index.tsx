@@ -1,5 +1,15 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowRight, CirclePlay as PlayCircle, Chromium as Chrome, Sparkles, Bookmark, BrainCircuit, Kanban, Trophy, Check } from "lucide-react";
+import {
+  ArrowRight,
+  CirclePlay as PlayCircle,
+  Chromium as Chrome,
+  Sparkles,
+  Bookmark,
+  BrainCircuit,
+  Kanban,
+  Trophy,
+  Check,
+} from "lucide-react";
 import { HeroComposition } from "@/components/site/HeroComposition";
 import { LogoRow } from "@/components/site/LogoRow";
 import { Section } from "@/components/site/Section";
@@ -57,12 +67,11 @@ function Hero() {
           <ArrowRight className="h-3 w-3" />
         </Link>
         <h1 className="mt-5 font-display text-5xl font-semibold tracking-tight md:text-6xl lg:text-7xl">
-          The workspace for your{" "}
-          <span className="text-gradient">next offer</span>.
+          The workspace for your <span className="text-gradient">next offer</span>.
         </h1>
         <p className="mx-auto mt-4 max-w-xl text-base text-muted-foreground md:text-lg">
-          Save jobs as you browse, tailor your resume with AI, track every
-          application, and walk into interviews ready.
+          Save jobs as you browse, tailor your resume with AI, track every application, and walk
+          into interviews ready.
         </p>
         <div className="mt-7 flex flex-col items-center justify-center gap-3 sm:flex-row">
           <ButtonLink to="/signup" size="lg">
@@ -126,25 +135,23 @@ function StorySteps() {
       <div className="space-y-16">
         {steps.map((s, i) => (
           <Reveal key={s.kicker} delay={i * 60}>
-          <div className="grid items-center gap-8 md:grid-cols-2 md:gap-12">
-            <div className={s.reverse ? "order-2 md:order-1" : ""}>
-              <div className="mb-3 flex items-center gap-2.5">
-                <span className="grid h-6 w-6 place-items-center rounded-full border border-white/10 bg-white/[0.03] text-[11px] font-semibold text-muted-foreground">
-                  {i + 1}
-                </span>
-                <span className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
-                  {s.kicker}
-                </span>
+            <div className="grid items-center gap-8 md:grid-cols-2 md:gap-12">
+              <div className={s.reverse ? "order-2 md:order-1" : ""}>
+                <div className="mb-3 flex items-center gap-2.5">
+                  <span className="grid h-6 w-6 place-items-center rounded-full border border-white/10 bg-white/[0.03] text-[11px] font-semibold text-muted-foreground">
+                    {i + 1}
+                  </span>
+                  <span className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                    {s.kicker}
+                  </span>
+                </div>
+                <h2 className="font-display text-2xl font-semibold tracking-tight md:text-3xl">
+                  {s.title}
+                </h2>
+                <p className="mt-3 text-sm text-muted-foreground md:text-base">{s.copy}</p>
               </div>
-              <h2 className="font-display text-2xl font-semibold tracking-tight md:text-3xl">
-                {s.title}
-              </h2>
-              <p className="mt-3 text-sm text-muted-foreground md:text-base">
-                {s.copy}
-              </p>
+              <div className={s.reverse ? "order-1 md:order-2" : ""}>{s.visual}</div>
             </div>
-            <div className={s.reverse ? "order-1 md:order-2" : ""}>{s.visual}</div>
-          </div>
           </Reveal>
         ))}
       </div>
@@ -165,7 +172,13 @@ function MiniCheck({ children }: { children: React.ReactNode }) {
 
 /* ------------------------------------------------------- Visuals */
 
-function Frame({ children, tone = "from-[#2563EB]/15 to-[#7C3AED]/10" }: { children: React.ReactNode; tone?: string }) {
+function Frame({
+  children,
+  tone = "from-[#2563EB]/15 to-[#7C3AED]/10",
+}: {
+  children: React.ReactNode;
+  tone?: string;
+}) {
   return (
     <div className="relative">
       <div className={`absolute -inset-6 -z-10 rounded-3xl bg-gradient-to-br ${tone} blur-3xl`} />
@@ -187,15 +200,22 @@ function SaveVisual() {
       <p className="px-1 pb-2 text-xs text-muted-foreground">Three platforms — one library.</p>
       <div className="space-y-2">
         {sources.map((s) => (
-          <div key={s.n} className="flex items-center gap-3 rounded-xl border border-white/5 bg-white/[0.02] p-2.5 transition-colors hover:border-white/10">
-            <div className={`grid h-7 w-7 place-items-center rounded-lg bg-gradient-to-br ${s.c} text-[10px] font-semibold text-white`}>
+          <div
+            key={s.n}
+            className="flex items-center gap-3 rounded-xl border border-white/5 bg-white/[0.02] p-2.5 transition-colors hover:border-white/10"
+          >
+            <div
+              className={`grid h-7 w-7 place-items-center rounded-lg bg-gradient-to-br ${s.c} text-[10px] font-semibold text-white`}
+            >
               {s.n[0]}
             </div>
             <div className="min-w-0 flex-1">
               <p className="truncate text-xs font-medium">{s.j}</p>
               <p className="text-[10px] text-muted-foreground">via {s.n}</p>
             </div>
-            <button className="rounded-md bg-gradient-to-br from-[#2563EB] to-[#7C3AED] px-2 py-1 text-[10px] font-medium text-white">Save</button>
+            <button className="rounded-md bg-gradient-to-br from-[#2563EB] to-[#7C3AED] px-2 py-1 text-[10px] font-medium text-white">
+              Save
+            </button>
           </div>
         ))}
       </div>
@@ -211,7 +231,9 @@ function TailorVisual() {
         <span className="rounded-full bg-[#22C55E]/15 px-2 py-0.5 text-[#22C55E]">Strong fit</span>
       </div>
       <div className="mt-3 flex items-end gap-2">
-        <p className="font-display text-4xl font-semibold">92<span className="text-xl text-muted-foreground">%</span></p>
+        <p className="font-display text-4xl font-semibold">
+          92<span className="text-xl text-muted-foreground">%</span>
+        </p>
         <p className="pb-1.5 text-[11px] text-muted-foreground">resume ↔ JD</p>
       </div>
       <div className="mt-4 space-y-2.5 text-xs">
@@ -220,9 +242,15 @@ function TailorVisual() {
           { l: "Keywords", v: 76 },
         ].map((r) => (
           <div key={r.l}>
-            <div className="flex justify-between text-muted-foreground"><span>{r.l}</span><span>{r.v}%</span></div>
+            <div className="flex justify-between text-muted-foreground">
+              <span>{r.l}</span>
+              <span>{r.v}%</span>
+            </div>
             <div className="mt-1 h-1.5 rounded-full bg-white/5">
-              <div className="h-full rounded-full bg-gradient-to-r from-[#2563EB] to-[#7C3AED]" style={{ width: `${r.v}%` }} />
+              <div
+                className="h-full rounded-full bg-gradient-to-r from-[#2563EB] to-[#7C3AED]"
+                style={{ width: `${r.v}%` }}
+              />
             </div>
           </div>
         ))}
@@ -274,7 +302,11 @@ function LandVisual() {
         </div>
       </div>
       <div className="mt-3 grid grid-cols-3 gap-2 text-center">
-        {[{ v: "68", l: "Saved" }, { v: "42", l: "Applied" }, { v: "2", l: "Offers" }].map((s) => (
+        {[
+          { v: "68", l: "Saved" },
+          { v: "42", l: "Applied" },
+          { v: "2", l: "Offers" },
+        ].map((s) => (
           <div key={s.l} className="rounded-lg border border-white/5 bg-white/[0.02] p-2">
             <p className="font-display text-lg font-semibold">{s.v}</p>
             <p className="text-[9px] text-muted-foreground">{s.l}</p>
@@ -296,34 +328,67 @@ function PipelinePreview() {
       description="Interested, applied, interviewing, offer — drag, drop, and always know what's next."
     >
       <Reveal>
-      <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-4 backdrop-blur">
-        <div className="grid gap-3 md:grid-cols-4">
-          {[
-            { title: "Interested", tone: "text-muted-foreground", items: [{ c: "Linear", r: "Sr. Product Designer" }, { c: "Notion", r: "Design Engineer" }] },
-            { title: "Applied", tone: "text-[#93C5FD]", items: [{ c: "Vercel", r: "Frontend Engineer" }, { c: "Raycast", r: "Design Engineer" }] },
-            { title: "Interview", tone: "text-[#A78BFA]", items: [{ c: "Stripe", r: "Design Systems" }, { c: "Anthropic", r: "Product Designer" }] },
-            { title: "Offer", tone: "text-[#22C55E]", items: [{ c: "Figma", r: "Sr. Frontend" }] },
-          ].map((col) => (
-            <div key={col.title} className="rounded-xl border border-white/5 bg-[oklch(0.19_0.03_265)]/50 p-3">
-              <div className="flex items-center justify-between px-1 pb-2 text-xs">
-                <span className={`font-semibold ${col.tone}`}>{col.title}</span>
-                <span className="text-muted-foreground">{col.items.length}</span>
-              </div>
-              <div className="space-y-2">
-                {col.items.map((it) => (
-                  <div key={it.c + it.r} className="rounded-lg border border-white/5 bg-white/[0.02] p-3 transition-transform hover:-translate-y-0.5">
-                    <div className="flex items-center gap-2">
-                      <div className="grid h-6 w-6 place-items-center rounded bg-white/10 text-[10px] font-semibold">{it.c[0]}</div>
-                      <p className="text-xs font-semibold">{it.c}</p>
+        <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-4 backdrop-blur">
+          <div className="grid gap-3 md:grid-cols-4">
+            {[
+              {
+                title: "Interested",
+                tone: "text-muted-foreground",
+                items: [
+                  { c: "Linear", r: "Sr. Product Designer" },
+                  { c: "Notion", r: "Design Engineer" },
+                ],
+              },
+              {
+                title: "Applied",
+                tone: "text-[#93C5FD]",
+                items: [
+                  { c: "Vercel", r: "Frontend Engineer" },
+                  { c: "Raycast", r: "Design Engineer" },
+                ],
+              },
+              {
+                title: "Interview",
+                tone: "text-[#A78BFA]",
+                items: [
+                  { c: "Stripe", r: "Design Systems" },
+                  { c: "Anthropic", r: "Product Designer" },
+                ],
+              },
+              {
+                title: "Offer",
+                tone: "text-[#22C55E]",
+                items: [{ c: "Figma", r: "Sr. Frontend" }],
+              },
+            ].map((col) => (
+              <div
+                key={col.title}
+                className="rounded-xl border border-white/5 bg-[oklch(0.19_0.03_265)]/50 p-3"
+              >
+                <div className="flex items-center justify-between px-1 pb-2 text-xs">
+                  <span className={`font-semibold ${col.tone}`}>{col.title}</span>
+                  <span className="text-muted-foreground">{col.items.length}</span>
+                </div>
+                <div className="space-y-2">
+                  {col.items.map((it) => (
+                    <div
+                      key={it.c + it.r}
+                      className="rounded-lg border border-white/5 bg-white/[0.02] p-3 transition-transform hover:-translate-y-0.5"
+                    >
+                      <div className="flex items-center gap-2">
+                        <div className="grid h-6 w-6 place-items-center rounded bg-white/10 text-[10px] font-semibold">
+                          {it.c[0]}
+                        </div>
+                        <p className="text-xs font-semibold">{it.c}</p>
+                      </div>
+                      <p className="mt-1.5 text-[11px] text-muted-foreground">{it.r}</p>
                     </div>
-                    <p className="mt-1.5 text-[11px] text-muted-foreground">{it.r}</p>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
-      </div>
       </Reveal>
       <div className="mt-6 text-center">
         <ButtonLink to="/features" variant="outline">
@@ -338,15 +403,33 @@ function PipelinePreview() {
 
 function TestimonialSection() {
   const quotes = [
-    { q: "I stopped spreadsheet-hunting. NextOffer runs my search now.", n: "Priya S.", r: "Product Designer" },
-    { q: "The match score alone paid for the year in one interview.", n: "Marcus L.", r: "Frontend Engineer" },
-    { q: "It feels like Linear, but for the worst part of career growth.", n: "Ada N.", r: "Engineering Manager" },
+    {
+      q: "I stopped spreadsheet-hunting. NextOffer runs my search now.",
+      n: "Priya S.",
+      r: "Product Designer",
+    },
+    {
+      q: "The match score alone paid for the year in one interview.",
+      n: "Marcus L.",
+      r: "Frontend Engineer",
+    },
+    {
+      q: "It feels like Linear, but for the worst part of career growth.",
+      n: "Ada N.",
+      r: "Engineering Manager",
+    },
   ];
   return (
-    <Section eyebrow="Trusted by careful job hunters" title="A calmer way to look for your next thing.">
+    <Section
+      eyebrow="Trusted by careful job hunters"
+      title="A calmer way to look for your next thing."
+    >
       <div className="grid gap-4 md:grid-cols-3">
         {quotes.map((q) => (
-          <figure key={q.n} className="card-hover rounded-2xl border border-white/8 bg-white/[0.02] p-6">
+          <figure
+            key={q.n}
+            className="card-hover rounded-2xl border border-white/8 bg-white/[0.02] p-6"
+          >
             <blockquote className="font-display text-lg leading-snug">"{q.q}"</blockquote>
             <figcaption className="mt-5 flex items-center gap-3">
               <div className="h-8 w-8 rounded-full bg-gradient-to-br from-[#2563EB] to-[#7C3AED]" />

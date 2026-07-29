@@ -81,10 +81,7 @@ export class JobRepository {
    */
   async findByIds(ids: string[]): Promise<GlobalJob[]> {
     if (ids.length === 0) return [];
-    const { data, error } = await supabase
-      .from("global_jobs")
-      .select(JOB_COLUMNS)
-      .in("id", ids);
+    const { data, error } = await supabase.from("global_jobs").select(JOB_COLUMNS).in("id", ids);
     if (error) throw error;
     return (data ?? []) as unknown as GlobalJob[];
   }
@@ -206,9 +203,7 @@ export class JobRepository {
 
     // Build the query with dynamic filters applied
     // Each Supabase filter method returns `this`, so reassignment is type-safe
-    let q = supabase
-      .from("global_jobs")
-      .select(JOB_COLUMNS, { count: "exact" });
+    let q = supabase.from("global_jobs").select(JOB_COLUMNS, { count: "exact" });
 
     // ── Discovery-feed visibility ──
     // The Jobs page is a discovery feed, not a dump of every global_jobs row.
@@ -256,9 +251,7 @@ export class JobRepository {
 
     // ── Work mode (single or array) ──
     if (filters.workMode !== undefined) {
-      const modes = Array.isArray(filters.workMode)
-        ? filters.workMode
-        : [filters.workMode];
+      const modes = Array.isArray(filters.workMode) ? filters.workMode : [filters.workMode];
       q = q.in("work_mode", modes);
     }
 
@@ -280,9 +273,7 @@ export class JobRepository {
 
     // ── Source (single or array) ──
     if (filters.source !== undefined) {
-      const sources = Array.isArray(filters.source)
-        ? filters.source
-        : [filters.source];
+      const sources = Array.isArray(filters.source) ? filters.source : [filters.source];
       q = q.in("source", sources);
     }
 
@@ -388,7 +379,10 @@ export class JobRepository {
     if (filters.location) c = c.ilike("location", `%${filters.location}%`);
     if (filters.remote !== undefined) c = c.eq("remote", filters.remote);
     if (filters.workMode !== undefined) {
-      c = c.in("work_mode", Array.isArray(filters.workMode) ? filters.workMode : [filters.workMode]);
+      c = c.in(
+        "work_mode",
+        Array.isArray(filters.workMode) ? filters.workMode : [filters.workMode],
+      );
     }
     if (filters.employmentType !== undefined) {
       c = c.in(
@@ -399,7 +393,9 @@ export class JobRepository {
     if (filters.experienceLevel !== undefined) {
       c = c.in(
         "experience_level",
-        Array.isArray(filters.experienceLevel) ? filters.experienceLevel : [filters.experienceLevel],
+        Array.isArray(filters.experienceLevel)
+          ? filters.experienceLevel
+          : [filters.experienceLevel],
       );
     }
     if (filters.source !== undefined) {
@@ -423,8 +419,7 @@ export class JobRepository {
       created_at: string | null;
     };
 
-    const recency = (row: Candidate) =>
-      Date.parse(row.posted_at ?? row.created_at ?? "") || 0;
+    const recency = (row: Candidate) => Date.parse(row.posted_at ?? row.created_at ?? "") || 0;
 
     // Score, then order by (relevance desc, recency desc, id asc) — the id
     // tiebreaker keeps pagination deterministic across requests.
@@ -564,7 +559,8 @@ export class JobRepository {
     // something relevant rather than nothing.
     const orParts: string[] = refKeywords.map((t) => `role.ilike.%${t}%`);
     if (orParts.length === 0) {
-      if (job.job_function) orParts.push(`job_function.ilike.%${job.job_function.replace(/[%_]/g, "\\$&")}%`);
+      if (job.job_function)
+        orParts.push(`job_function.ilike.%${job.job_function.replace(/[%_]/g, "\\$&")}%`);
       if (job.industry) orParts.push(`industry.ilike.%${job.industry.replace(/[%_]/g, "\\$&")}%`);
     }
     if (orParts.length === 0) return [];
@@ -678,11 +674,7 @@ export class JobRepository {
 
   // ── Save / Unsave ─────────────────────────────────────────────────────────
 
-  async saveJob(
-    userId: string,
-    jobId: string,
-    notes?: string,
-  ): Promise<SavedJob> {
+  async saveJob(userId: string, jobId: string, notes?: string): Promise<SavedJob> {
     const { data, error } = await supabase
       .from("saved_jobs")
       .insert({ user_id: userId, job_id: jobId, notes: notes ?? null })
@@ -756,9 +748,11 @@ export class JobRepository {
     if (supportsArchive) {
       savedQuery = savedQuery.eq("archived", archived);
     }
-    const { data: savedRows, error: savedError, count } = await savedQuery
-      .order("created_at", { ascending: false })
-      .range(from, to);
+    const {
+      data: savedRows,
+      error: savedError,
+      count,
+    } = await savedQuery.order("created_at", { ascending: false }).range(from, to);
 
     if (savedError) throw savedError;
 
@@ -855,9 +849,7 @@ export class JobRepository {
    * closed, expired, and >90-day-old rows that the list correctly hides.)
    */
   async countDiscoverable(): Promise<number> {
-    const base = supabase
-      .from("global_jobs")
-      .select("id", { count: "exact", head: true });
+    const base = supabase.from("global_jobs").select("id", { count: "exact", head: true });
     const { count, error } = await this.applyDiscoveryVisibility(base);
     if (error) throw error;
     return count ?? 0;
@@ -892,4 +884,3 @@ export class JobRepository {
     return count ?? 0;
   }
 }
-

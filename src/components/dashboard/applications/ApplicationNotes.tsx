@@ -66,7 +66,8 @@ export function ApplicationNotes({ application }: Props) {
           ) : application.notes_updated_at ? (
             <>
               <Check className="h-3 w-3 text-[#16A34A]" />
-              Saved {formatDistanceToNow(parseISO(application.notes_updated_at), { addSuffix: true })}
+              Saved{" "}
+              {formatDistanceToNow(parseISO(application.notes_updated_at), { addSuffix: true })}
             </>
           ) : null}
         </div>

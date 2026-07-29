@@ -300,8 +300,10 @@ export type ApplicationAttachment = {
 };
 
 // ── Cover Letter ──
-// Deliberately minimal — no separate versions table like Resume has, since
-// nothing produces cover-letter content today. One row per version.
+// Started (Module 3B) as an upload-only stub. Module 6E promotes it into the
+// Cover Letter Studio DOCUMENT: `content` is the editor's working buffer and
+// `cover_letter_versions` holds the append-only history. Uploaded rows keep
+// working unchanged — they simply have source = 'upload' and no content.
 export type CoverLetter = {
   id: string;
   user_id: string;
@@ -310,6 +312,48 @@ export type CoverLetter = {
   file_url?: string | null;
   created_at: string;
   updated_at: string;
+  // ── Module 6E: Studio fields ──
+  /** 'upload' | 'studio' */
+  source?: string;
+  content?: string | null;
+  job_id?: string | null;
+  resume_id?: string | null;
+  company_name?: string | null;
+  role_title?: string | null;
+  tone?: string | null;
+  length?: string | null;
+  custom_instructions?: string | null;
+  /** 'draft' | 'final' | 'downloaded' */
+  status?: string;
+  current_version_id?: string | null;
+  word_count?: number | null;
+  last_edited_at?: string | null;
+  downloaded_at?: string | null;
+  /** Non-null while a paid-for AI editing session is active on this document. */
+  ai_session_id?: string | null;
+  ai_session_started_at?: string | null;
+};
+
+/** One append-only snapshot of a Studio cover letter (Module 6E). */
+export type CoverLetterVersion = {
+  id: string;
+  cover_letter_id: string;
+  user_id: string;
+  version_number: number;
+  content: string;
+  label: string | null;
+  /** 'generate' | 'ai_action' | 'manual' | 'duplicate' | 'restore' */
+  source: string;
+  ai_action: string | null;
+  tone: string | null;
+  length: string | null;
+  custom_instructions: string | null;
+  analysis_id: string | null;
+  model: string | null;
+  prompt_version: string | null;
+  analysis_version: string | null;
+  word_count: number | null;
+  created_at: string;
 };
 
 // ── Resume ──

@@ -50,7 +50,10 @@ export function ArchivedApplicationsPanel({ open, onClose }: Props) {
 
         <div className="flex shrink-0 items-start justify-between border-b border-black/5 p-5">
           <div>
-            <h2 id="archived-apps-title" className="font-display text-base font-semibold text-[oklch(0.2_0.02_265)]">
+            <h2
+              id="archived-apps-title"
+              className="font-display text-base font-semibold text-[oklch(0.2_0.02_265)]"
+            >
               Archived Applications
             </h2>
             <p className="mt-1 text-sm text-muted-foreground">
@@ -75,7 +78,9 @@ export function ArchivedApplicationsPanel({ open, onClose }: Props) {
           ) : archived.length === 0 ? (
             <div className="flex flex-col items-center gap-2 py-16 text-center">
               <Inbox className="h-6 w-6 text-[oklch(0.7_0.02_265)]" />
-              <p className="text-sm font-medium text-[oklch(0.35_0.02_265)]">No archived applications</p>
+              <p className="text-sm font-medium text-[oklch(0.35_0.02_265)]">
+                No archived applications
+              </p>
               <p className="max-w-xs text-xs text-[oklch(0.55_0.02_265)]">
                 Applications you archive from the board or list will show up here.
               </p>
@@ -92,10 +97,19 @@ export function ArchivedApplicationsPanel({ open, onClose }: Props) {
                     key={app.id}
                     className="flex items-center gap-3 rounded-xl border border-black/5 bg-white p-3 hover:bg-[oklch(0.99_0.005_265)] transition-colors"
                   >
-                    <CompanyMark company={app.company_name} tone={tone} size={32} logoUrl={app.company_logo_url} />
+                    <CompanyMark
+                      company={app.company_name}
+                      tone={tone}
+                      size={32}
+                      logoUrl={app.company_logo_url}
+                    />
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium text-[oklch(0.2_0.02_265)]">{app.role}</p>
-                      <p className="truncate text-xs text-[oklch(0.5_0.02_265)]">{app.company_name}</p>
+                      <p className="truncate text-sm font-medium text-[oklch(0.2_0.02_265)]">
+                        {app.role}
+                      </p>
+                      <p className="truncate text-xs text-[oklch(0.5_0.02_265)]">
+                        {app.company_name}
+                      </p>
                       <div className="mt-1 flex items-center gap-2">
                         <StatusBadge status={app.status} />
                         {app.archived_at && (

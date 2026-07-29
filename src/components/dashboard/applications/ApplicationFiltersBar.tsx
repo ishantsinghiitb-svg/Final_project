@@ -60,8 +60,8 @@ export function ApplicationFiltersBar({
       const current = Array.isArray(filters.status)
         ? filters.status
         : filters.status
-        ? [filters.status]
-        : [];
+          ? [filters.status]
+          : [];
       const next = current.includes(status)
         ? current.filter((s) => s !== status)
         : [...current, status];
@@ -76,14 +76,14 @@ export function ApplicationFiltersBar({
   const activeStatuses = Array.isArray(filters.status)
     ? filters.status
     : filters.status
-    ? [filters.status]
-    : [];
+      ? [filters.status]
+      : [];
 
   const activeRoles = Array.isArray(filters.role)
     ? filters.role
     : filters.role
-    ? [filters.role]
-    : [];
+      ? [filters.role]
+      : [];
 
   const setRoles = useCallback(
     (roles: string[]) =>
@@ -107,7 +107,12 @@ export function ApplicationFiltersBar({
         return;
       }
       const { after, before } = dateRangeForPreset(p);
-      onFiltersChange({ ...filters, appliedDatePreset: p, appliedAfter: after, appliedBefore: before });
+      onFiltersChange({
+        ...filters,
+        appliedDatePreset: p,
+        appliedAfter: after,
+        appliedBefore: before,
+      });
     },
     [filters, onFiltersChange],
   );
@@ -125,14 +130,13 @@ export function ApplicationFiltersBar({
 
   const hasFilters = Boolean(
     filters.q ||
-      activeStatuses.length > 0 ||
-      filters.source ||
-      activeRoles.length > 0 ||
-      filters.appliedDatePreset,
+    activeStatuses.length > 0 ||
+    filters.source ||
+    activeRoles.length > 0 ||
+    filters.appliedDatePreset,
   );
 
-  const clearFilters = () =>
-    onFiltersChange({});
+  const clearFilters = () => onFiltersChange({});
 
   return (
     <div className="space-y-3">
@@ -159,14 +163,19 @@ export function ApplicationFiltersBar({
           >
             <SlidersHorizontal className="h-3.5 w-3.5" />
             {SORT_LABELS[sortOption]}
-            <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", sortOpen && "rotate-180")} />
+            <ChevronDown
+              className={cn("h-3.5 w-3.5 transition-transform", sortOpen && "rotate-180")}
+            />
           </button>
           {sortOpen && (
             <div className="absolute right-0 top-10 z-20 w-44 overflow-hidden rounded-xl border border-black/5 bg-white shadow-[0_12px_40px_-8px_rgba(0,0,0,0.18)]">
               {(Object.keys(SORT_LABELS) as ApplicationSortOption[]).map((opt) => (
                 <button
                   key={opt}
-                  onClick={() => { onSortChange(opt); setSortOpen(false); }}
+                  onClick={() => {
+                    onSortChange(opt);
+                    setSortOpen(false);
+                  }}
                   className={cn(
                     "flex w-full items-center gap-2 px-3 py-2 text-sm transition-colors",
                     sortOption === opt
@@ -258,7 +267,12 @@ export function ApplicationFiltersBar({
                   : "border-black/5 bg-white text-[oklch(0.5_0.02_265)] hover:border-black/10",
               )}
             >
-              <span className={cn("h-1.5 w-1.5 rounded-full", active ? meta.dot : "bg-current opacity-40")} />
+              <span
+                className={cn(
+                  "h-1.5 w-1.5 rounded-full",
+                  active ? meta.dot : "bg-current opacity-40",
+                )}
+              />
               {meta.label}
             </button>
           );

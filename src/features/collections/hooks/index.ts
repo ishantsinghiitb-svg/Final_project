@@ -174,12 +174,15 @@ export function useAddJobToCollection() {
         collectionKeys.allMemberships(userId),
       );
 
-      queryClient.setQueryData<Record<string, string[]>>(collectionKeys.allMemberships(userId), (old) => {
-        const prev = old ?? {};
-        const existing = prev[jobId] ?? [];
-        if (existing.includes(collectionId)) return prev;
-        return { ...prev, [jobId]: [...existing, collectionId] };
-      });
+      queryClient.setQueryData<Record<string, string[]>>(
+        collectionKeys.allMemberships(userId),
+        (old) => {
+          const prev = old ?? {};
+          const existing = prev[jobId] ?? [];
+          if (existing.includes(collectionId)) return prev;
+          return { ...prev, [jobId]: [...existing, collectionId] };
+        },
+      );
 
       return { previous };
     },
@@ -214,11 +217,14 @@ export function useRemoveJobFromCollection() {
         collectionKeys.allMemberships(userId),
       );
 
-      queryClient.setQueryData<Record<string, string[]>>(collectionKeys.allMemberships(userId), (old) => {
-        const prev = old ?? {};
-        const existing = prev[jobId] ?? [];
-        return { ...prev, [jobId]: existing.filter((id) => id !== collectionId) };
-      });
+      queryClient.setQueryData<Record<string, string[]>>(
+        collectionKeys.allMemberships(userId),
+        (old) => {
+          const prev = old ?? {};
+          const existing = prev[jobId] ?? [];
+          return { ...prev, [jobId]: existing.filter((id) => id !== collectionId) };
+        },
+      );
 
       return { previous };
     },

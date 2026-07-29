@@ -730,6 +730,27 @@ export type CoverLetterRow = {
   file_url: string | null;
   created_at: string;
   updated_at: string;
+  // ── Module 6E: Cover Letter Studio document metadata (additive, nullable/defaulted) ──
+  /** 'upload' (Module 3B) | 'studio' */
+  source: string;
+  content: string | null;
+  job_id: string | null;
+  resume_id: string | null;
+  company_name: string | null;
+  role_title: string | null;
+  tone: string | null;
+  length: string | null;
+  custom_instructions: string | null;
+  /** 'draft' | 'final' | 'downloaded' */
+  status: string;
+  current_version_id: string | null;
+  word_count: number | null;
+  last_edited_at: string | null;
+  downloaded_at: string | null;
+  // ── Module 6E: editing session model (foundation refinement) ──
+  /** Non-null while a paid-for AI editing session is active — see CoverLetterAIService. */
+  ai_session_id: string | null;
+  ai_session_started_at: string | null;
 };
 
 export type CoverLetterInsert = {
@@ -740,6 +761,65 @@ export type CoverLetterInsert = {
   file_url?: string | null;
   created_at?: string;
   updated_at?: string;
+  source?: string;
+  content?: string | null;
+  job_id?: string | null;
+  resume_id?: string | null;
+  company_name?: string | null;
+  role_title?: string | null;
+  tone?: string | null;
+  length?: string | null;
+  custom_instructions?: string | null;
+  status?: string;
+  current_version_id?: string | null;
+  word_count?: number | null;
+  last_edited_at?: string | null;
+  downloaded_at?: string | null;
+  ai_session_id?: string | null;
+  ai_session_started_at?: string | null;
+};
+
+// ── Module 6E: Cover Letter Studio version history (append-only) ──
+
+export type CoverLetterVersionRow = {
+  id: string;
+  cover_letter_id: string;
+  user_id: string;
+  version_number: number;
+  content: string;
+  label: string | null;
+  /** 'generate' | 'ai_action' | 'manual' | 'duplicate' | 'restore' */
+  source: string;
+  ai_action: string | null;
+  tone: string | null;
+  length: string | null;
+  custom_instructions: string | null;
+  analysis_id: string | null;
+  model: string | null;
+  prompt_version: string | null;
+  analysis_version: string | null;
+  word_count: number | null;
+  created_at: string;
+};
+
+export type CoverLetterVersionInsert = {
+  id?: string;
+  cover_letter_id: string;
+  user_id: string;
+  version_number: number;
+  content: string;
+  label?: string | null;
+  source?: string;
+  ai_action?: string | null;
+  tone?: string | null;
+  length?: string | null;
+  custom_instructions?: string | null;
+  analysis_id?: string | null;
+  model?: string | null;
+  prompt_version?: string | null;
+  analysis_version?: string | null;
+  word_count?: number | null;
+  created_at?: string;
 };
 
 export type ApplicationContactRow = {
@@ -1048,6 +1128,12 @@ export type Database = {
         Row: CoverLetterRow;
         Insert: CoverLetterInsert;
         Update: Partial<CoverLetterRow>;
+        Relationships: TableRelationship[];
+      };
+      cover_letter_versions: {
+        Row: CoverLetterVersionRow;
+        Insert: CoverLetterVersionInsert;
+        Update: Partial<CoverLetterVersionRow>;
         Relationships: TableRelationship[];
       };
       application_contacts: {

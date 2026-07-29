@@ -77,12 +77,7 @@ export type OptimizationResult = {
 
 export type OptimizeResumeResult =
   | { ok: true; result: OptimizationResult; credits: import("@/features/ai/types").AICreditStatus }
-  | {
-      ok: false;
-      code: string;
-      message: string;
-      credits?: import("@/features/ai/types").AICreditStatus;
-    };
+  | import("@/features/ai/types").AIFailure;
 
 /** A saved resume version produced by the studio (row in resume_versions). */
 export type SavedResumeVersion = {

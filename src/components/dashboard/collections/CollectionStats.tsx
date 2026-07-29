@@ -83,7 +83,10 @@ export function CollectionStats({ jobs }: Props) {
         ) : (
           <div className="flex flex-wrap gap-1.5">
             {workModes.map(([mode, count]) => (
-              <Chip key={mode} tone={mode === "Remote" ? "green" : mode === "Hybrid" ? "blue" : "default"}>
+              <Chip
+                key={mode}
+                tone={mode === "Remote" ? "green" : mode === "Hybrid" ? "blue" : "default"}
+              >
                 {mode} × {count}
               </Chip>
             ))}

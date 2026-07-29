@@ -1,7 +1,27 @@
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
-import { Activity, Bell, Bookmark, Briefcase, CalendarClock, ChevronRight, Command, FileText, FolderKanban, ChartLine as LineChart, Search, Settings, StickyNote, Target, X, Menu, LogOut } from "lucide-react";
+import {
+  Activity,
+  Bell,
+  Bookmark,
+  Briefcase,
+  CalendarClock,
+  ChevronRight,
+  Command,
+  FileText,
+  FolderKanban,
+  ChartLine as LineChart,
+  Mail,
+  Search,
+  Settings,
+  Sparkles,
+  StickyNote,
+  Target,
+  X,
+  Menu,
+  LogOut,
+} from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { CommandPalette } from "./CommandPalette";
@@ -22,17 +42,27 @@ type NavItem = {
 };
 
 const nav: NavItem[] = [
-  { to: "/dashboard",               label: "Overview",      icon: Activity,      exact: true },
-  { to: "/dashboard/jobs",          label: "Jobs",          icon: Briefcase,     badgeKey: "jobs" },
-  { to: "/dashboard/saved",         label: "Saved",         icon: Bookmark,      badgeKey: "saved" },
+  { to: "/dashboard", label: "Overview", icon: Activity, exact: true },
+  { to: "/dashboard/jobs", label: "Jobs", icon: Briefcase, badgeKey: "jobs" },
+  { to: "/dashboard/saved", label: "Saved", icon: Bookmark, badgeKey: "saved" },
   // Badge shows the number of COLLECTIONS the user has, not the jobs inside
   // them — same badgeKey-driven mechanism as Jobs/Saved/Applications.
-  { to: "/dashboard/collections",   label: "Collections",   icon: FolderKanban, badgeKey: "collections" },
-  { to: "/dashboard/applications",  label: "Applications",  icon: Target,        badgeKey: "applications" },
-  { to: "/dashboard/resumes",       label: "Resumes",       icon: FileText },
-  { to: "/dashboard/interviews",    label: "Interviews",    icon: CalendarClock },
-  { to: "/dashboard/notes",         label: "Notes",         icon: StickyNote },
-  { to: "/dashboard/analytics",     label: "Analytics",     icon: LineChart },
+  {
+    to: "/dashboard/collections",
+    label: "Collections",
+    icon: FolderKanban,
+    badgeKey: "collections",
+  },
+  { to: "/dashboard/applications", label: "Applications", icon: Target, badgeKey: "applications" },
+  { to: "/dashboard/resumes", label: "Resumes", icon: FileText },
+  { to: "/dashboard/cover-letters", label: "Cover Letters", icon: Mail },
+  // Sits directly under the AI surfaces it summarizes (Resumes → Cover
+  // Letters → AI Hub), so the group reads as one area rather than a stray
+  // analytics entry near the bottom.
+  { to: "/dashboard/ai", label: "AI Hub", icon: Sparkles },
+  { to: "/dashboard/interviews", label: "Interviews", icon: CalendarClock },
+  { to: "/dashboard/notes", label: "Notes", icon: StickyNote },
+  { to: "/dashboard/analytics", label: "Analytics", icon: LineChart },
 ];
 
 export function DashboardShell({ children }: { children: ReactNode }) {
@@ -47,7 +77,8 @@ export function DashboardShell({ children }: { children: ReactNode }) {
   const [notifOpen, setNotifOpen] = useState(false);
   const [mobileNav, setMobileNav] = useState(false);
 
-  const displayName = profile?.full_name || user?.email?.split("@")[0]?.replace(/[._-]/g, " ") || "Account";
+  const displayName =
+    profile?.full_name || user?.email?.split("@")[0]?.replace(/[._-]/g, " ") || "Account";
   const displayEmail = user?.email ?? "";
   const initials = displayName.slice(0, 2).toUpperCase();
 
@@ -113,7 +144,11 @@ export function DashboardShell({ children }: { children: ReactNode }) {
           )}
         >
           <div className="flex items-center justify-between">
-            <Link to="/" className="flex items-center gap-2 rounded-lg px-1" aria-label="NextOffer home">
+            <Link
+              to="/"
+              className="flex items-center gap-2 rounded-lg px-1"
+              aria-label="NextOffer home"
+            >
               <Logo size={26} wordmarkClassName="text-[15px] text-[oklch(0.2_0.02_265)]" />
             </Link>
             <button
@@ -136,7 +171,9 @@ export function DashboardShell({ children }: { children: ReactNode }) {
                 const basePath = n.to.replace(/\/$/, ""); // strip trailing slash for prefix check
                 const active = n.exact
                   ? pathname === n.to || pathname === basePath
-                  : pathname === n.to || pathname === basePath || pathname.startsWith(basePath + "/");
+                  : pathname === n.to ||
+                    pathname === basePath ||
+                    pathname.startsWith(basePath + "/");
                 const badgeValue = n.badgeKey ? counts[n.badgeKey] : undefined;
                 return (
                   <Link
@@ -278,7 +315,9 @@ export function DashboardShell({ children }: { children: ReactNode }) {
                   <div className="absolute right-0 top-11 w-[340px] overflow-hidden rounded-xl border border-black/10 bg-white shadow-[0_20px_60px_-20px_rgba(0,0,0,0.25)]">
                     <div className="flex items-center justify-between border-b border-black/5 px-4 py-3">
                       <p className="font-display text-sm font-semibold">Notifications</p>
-                      <button className="text-xs text-[#2563EB] hover:underline">Mark all read</button>
+                      <button className="text-xs text-[#2563EB] hover:underline">
+                        Mark all read
+                      </button>
                     </div>
                     <ul className="max-h-[60vh] overflow-y-auto">
                       {notifications.map((n) => (

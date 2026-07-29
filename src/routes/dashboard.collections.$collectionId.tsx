@@ -92,10 +92,17 @@ function CollectionDetailPage() {
   const { collectionId } = Route.useParams();
   const navigate = useNavigate();
 
-  const { data: collection, isLoading: collectionLoading, isError: collectionError } =
-    useCollection(collectionId);
-  const { data: jobs = [], isLoading: jobsLoading, isError: jobsError, error: jobsErrorObj } =
-    useCollectionJobs(collectionId);
+  const {
+    data: collection,
+    isLoading: collectionLoading,
+    isError: collectionError,
+  } = useCollection(collectionId);
+  const {
+    data: jobs = [],
+    isLoading: jobsLoading,
+    isError: jobsError,
+    error: jobsErrorObj,
+  } = useCollectionJobs(collectionId);
 
   const updateCollection = useUpdateCollection();
   const deleteCollection = useDeleteCollection();
@@ -136,19 +143,26 @@ function CollectionDetailPage() {
     // it here (instead of comparing raw slugs) is the fix — no new mapping.
     const normalized = normalizeFilters({
       workMode: workMode.length > 0 ? (workMode as JobFilters["workMode"]) : undefined,
-      employmentType: employmentType.length > 0 ? (employmentType as JobFilters["employmentType"]) : undefined,
-      experienceLevel: experienceLevel.length > 0 ? (experienceLevel as JobFilters["experienceLevel"]) : undefined,
+      employmentType:
+        employmentType.length > 0 ? (employmentType as JobFilters["employmentType"]) : undefined,
+      experienceLevel:
+        experienceLevel.length > 0 ? (experienceLevel as JobFilters["experienceLevel"]) : undefined,
     });
     const normWorkMode = (normalized.workMode as string[] | undefined) ?? [];
     const normEmploymentType = (normalized.employmentType as string[] | undefined) ?? [];
     const normExperienceLevel = (normalized.experienceLevel as string[] | undefined) ?? [];
 
     let list = jobs.filter((j) => matchesQuery(j, q));
-    if (normWorkMode.length > 0) list = list.filter((j) => j.work_mode && normWorkMode.includes(j.work_mode));
+    if (normWorkMode.length > 0)
+      list = list.filter((j) => j.work_mode && normWorkMode.includes(j.work_mode));
     if (normEmploymentType.length > 0)
-      list = list.filter((j) => j.employment_type && normEmploymentType.includes(j.employment_type));
+      list = list.filter(
+        (j) => j.employment_type && normEmploymentType.includes(j.employment_type),
+      );
     if (normExperienceLevel.length > 0)
-      list = list.filter((j) => j.experience_level && normExperienceLevel.includes(j.experience_level));
+      list = list.filter(
+        (j) => j.experience_level && normExperienceLevel.includes(j.experience_level),
+      );
     // Source values already match global_jobs.source exactly (see
     // SOURCE_OPTIONS's comment in features/jobs/constants) — no normalization needed.
     if (source.length > 0) list = list.filter((j) => source.includes(j.source));
@@ -186,7 +200,11 @@ function CollectionDetailPage() {
     if (selectedJob) handleApplyClick();
   }, [selectedJob, handleApplyClick]);
 
-  const handleEditSubmit = (fields: { name: string; description?: string; color: CollectionColor }) => {
+  const handleEditSubmit = (fields: {
+    name: string;
+    description?: string;
+    color: CollectionColor;
+  }) => {
     updateCollection.mutate(
       { id: collectionId, ...fields },
       {
@@ -194,7 +212,8 @@ function CollectionDetailPage() {
           toast.success("Collection updated.");
           setEditOpen(false);
         },
-        onError: (err) => toast.error(err instanceof Error ? err.message : "Failed to update collection."),
+        onError: (err) =>
+          toast.error(err instanceof Error ? err.message : "Failed to update collection."),
       },
     );
   };
@@ -202,7 +221,9 @@ function CollectionDetailPage() {
   const handleDelete = () => {
     if (!collection) return;
     if (
-      !confirm(`Delete "${collection.name}"? This removes the collection only — its jobs stay in Jobs/Saved.`)
+      !confirm(
+        `Delete "${collection.name}"? This removes the collection only — its jobs stay in Jobs/Saved.`,
+      )
     ) {
       return;
     }
@@ -267,7 +288,9 @@ function CollectionDetailPage() {
               {collection.name}
             </h1>
             {collection.description && (
-              <p className="mt-1 max-w-2xl text-sm text-[oklch(0.5_0.02_265)]">{collection.description}</p>
+              <p className="mt-1 max-w-2xl text-sm text-[oklch(0.5_0.02_265)]">
+                {collection.description}
+              </p>
             )}
             <p className="mt-2 text-xs text-[oklch(0.55_0.02_265)]">
               {jobs.length} {jobs.length === 1 ? "job" : "jobs"} · Updated{" "}
@@ -322,7 +345,12 @@ function CollectionDetailPage() {
               ))}
             </select>
 
-            <MultiSelectDropdown label="Work mode" options={WORK_MODE_OPTIONS} selected={workMode} onChange={setWorkMode} />
+            <MultiSelectDropdown
+              label="Work mode"
+              options={WORK_MODE_OPTIONS}
+              selected={workMode}
+              onChange={setWorkMode}
+            />
             <MultiSelectDropdown
               label="Employment type"
               options={EMPLOYMENT_TYPE_OPTIONS}
@@ -335,7 +363,12 @@ function CollectionDetailPage() {
               selected={experienceLevel}
               onChange={setExperienceLevel}
             />
-            <MultiSelectDropdown label="Source" options={SOURCE_OPTIONS} selected={source} onChange={setSource} />
+            <MultiSelectDropdown
+              label="Source"
+              options={SOURCE_OPTIONS}
+              selected={source}
+              onChange={setSource}
+            />
 
             {isFiltered && (
               <button
@@ -367,7 +400,9 @@ function CollectionDetailPage() {
             <AlertCircle className="h-8 w-8 text-rose-500" />
             <p className="font-display text-sm font-semibold">Failed to load jobs</p>
             <p className="max-w-xs text-xs text-[oklch(0.5_0.02_265)]">
-              {jobsErrorObj instanceof Error ? jobsErrorObj.message : "An unexpected error occurred."}
+              {jobsErrorObj instanceof Error
+                ? jobsErrorObj.message
+                : "An unexpected error occurred."}
             </p>
           </div>
         ) : jobs.length === 0 ? (
@@ -396,32 +431,32 @@ function CollectionDetailPage() {
             {visibleJobs.map((job) => {
               const isRemoving = removeJob.isPending && removeJob.variables?.jobId === job.id;
               return (
-              <JobCard
-                key={job.id}
-                job={job}
-                isSaved={savedIds.includes(job.id)}
-                onSave={() => saveJob.mutate({ jobId: job.id })}
-                onUnsave={() => unsaveJob.mutate({ jobId: job.id })}
-                onApply={(j) => setSelectedJob(j)}
-                extraAction={
-                  <>
-                    <AddToCollectionMenu job={job} />
-                    <button
-                      onClick={() => handleRemoveJob(job.id)}
-                      disabled={isRemoving}
-                      aria-label="Remove from this collection"
-                      title="Remove from this collection"
-                      className="grid h-8 w-8 place-items-center rounded-lg border border-black/5 bg-white text-[oklch(0.4_0.02_265)] transition-colors hover:bg-rose-50 hover:text-rose-600 disabled:cursor-not-allowed disabled:opacity-60"
-                    >
-                      {isRemoving ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <FolderMinus className="h-4 w-4" />
-                      )}
-                    </button>
-                  </>
-                }
-              />
+                <JobCard
+                  key={job.id}
+                  job={job}
+                  isSaved={savedIds.includes(job.id)}
+                  onSave={() => saveJob.mutate({ jobId: job.id })}
+                  onUnsave={() => unsaveJob.mutate({ jobId: job.id })}
+                  onApply={(j) => setSelectedJob(j)}
+                  extraAction={
+                    <>
+                      <AddToCollectionMenu job={job} />
+                      <button
+                        onClick={() => handleRemoveJob(job.id)}
+                        disabled={isRemoving}
+                        aria-label="Remove from this collection"
+                        title="Remove from this collection"
+                        className="grid h-8 w-8 place-items-center rounded-lg border border-black/5 bg-white text-[oklch(0.4_0.02_265)] transition-colors hover:bg-rose-50 hover:text-rose-600 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        {isRemoving ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <FolderMinus className="h-4 w-4" />
+                        )}
+                      </button>
+                    </>
+                  }
+                />
               );
             })}
           </ul>

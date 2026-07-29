@@ -33,7 +33,13 @@ import {
   useRecentlyViewedJobs,
   useSidebarCounts,
 } from "@/features/jobs/hooks";
-import type { JobFilters, JobSort, JobSortOption, JobsSearchParams, JobsView } from "@/features/jobs/types";
+import type {
+  JobFilters,
+  JobSort,
+  JobSortOption,
+  JobsSearchParams,
+  JobsView,
+} from "@/features/jobs/types";
 import type { PaginationParams, GlobalJob } from "@/types";
 import {
   DEFAULT_PAGINATION,
@@ -324,7 +330,11 @@ function JobsPage() {
   const setMultiFilter = useCallback(
     (key: keyof JobsSearchParams, values: string[]) => {
       void navigate({
-        search: (prev) => ({ ...prev, [key]: values.length > 0 ? values.join(",") : undefined, page: 1 }),
+        search: (prev) => ({
+          ...prev,
+          [key]: values.length > 0 ? values.join(",") : undefined,
+          page: 1,
+        }),
         replace: true,
       });
     },
@@ -387,153 +397,156 @@ function JobsPage() {
   return (
     <>
       <StickyPageHeader>
-      {/*
+        {/*
         No "Import job" button here for now — the manual-URL import feature
         (ManualImportService, JobRepository.upsertGlobalJob, the RPC, and the
         ImportJobDialog component) stays intact but disconnected from the UI
         per QA sign-off; it may be re-wired later.
       */}
-      <PageHeader
-        eyebrow="Jobs"
-        title="Discover roles worth your time."
-        subtitle="Browse every job in the global board. Use filters to narrow down by role, location, salary and more."
-        actions={
-          <div className="inline-flex items-center rounded-lg border border-black/5 bg-white p-0.5 text-xs font-medium">
-            <button
-              onClick={() => setView("all")}
-              className={
-                view === "all"
-                  ? "rounded-md bg-[oklch(0.95_0.02_265)] px-3 py-1.5 text-[#2563EB]"
-                  : "rounded-md px-3 py-1.5 text-[oklch(0.45_0.02_265)] hover:bg-black/[0.03]"
-              }
-            >
-              All Jobs{allJobsCount > 0 ? ` (${allJobsCount})` : ""}
-            </button>
-            <button
-              onClick={() => setView("recent")}
-              className={
-                view === "recent"
-                  ? "rounded-md bg-[oklch(0.95_0.02_265)] px-3 py-1.5 text-[#2563EB]"
-                  : "rounded-md px-3 py-1.5 text-[oklch(0.45_0.02_265)] hover:bg-black/[0.03]"
-              }
-            >
-              Recently Viewed{recentlyViewed.length > 0 ? ` (${recentlyViewed.length})` : ""}
-            </button>
-          </div>
-        }
-      />
+        <PageHeader
+          eyebrow="Jobs"
+          title="Discover roles worth your time."
+          subtitle="Browse every job in the global board. Use filters to narrow down by role, location, salary and more."
+          actions={
+            <div className="inline-flex items-center rounded-lg border border-black/5 bg-white p-0.5 text-xs font-medium">
+              <button
+                onClick={() => setView("all")}
+                className={
+                  view === "all"
+                    ? "rounded-md bg-[oklch(0.95_0.02_265)] px-3 py-1.5 text-[#2563EB]"
+                    : "rounded-md px-3 py-1.5 text-[oklch(0.45_0.02_265)] hover:bg-black/[0.03]"
+                }
+              >
+                All Jobs{allJobsCount > 0 ? ` (${allJobsCount})` : ""}
+              </button>
+              <button
+                onClick={() => setView("recent")}
+                className={
+                  view === "recent"
+                    ? "rounded-md bg-[oklch(0.95_0.02_265)] px-3 py-1.5 text-[#2563EB]"
+                    : "rounded-md px-3 py-1.5 text-[oklch(0.45_0.02_265)] hover:bg-black/[0.03]"
+                }
+              >
+                Recently Viewed{recentlyViewed.length > 0 ? ` (${recentlyViewed.length})` : ""}
+              </button>
+            </div>
+          }
+        />
 
-      <DashCard padded={false}>
-        {/* ── Filter bar ──────────────────────────────────────────────────── */}
-        <div className="flex flex-wrap items-center gap-2 p-3">
-          {/* Keyword search */}
-          <div className="flex h-9 flex-1 min-w-[220px] items-center gap-2 rounded-lg border border-black/5 bg-white px-3 text-sm">
-            <Search className="h-4 w-4 shrink-0 text-[oklch(0.5_0.02_265)]" />
-            <input
-              ref={searchInputRef}
-              defaultValue={q}
-              onChange={(e) => handleSearchChange(e.target.value)}
-              placeholder="Search role, company, location, type, skills…"
-              className="flex-1 bg-transparent outline-none placeholder:text-[oklch(0.55_0.02_265)] text-sm"
+        <DashCard padded={false}>
+          {/* ── Filter bar ──────────────────────────────────────────────────── */}
+          <div className="flex flex-wrap items-center gap-2 p-3">
+            {/* Keyword search */}
+            <div className="flex h-9 flex-1 min-w-[220px] items-center gap-2 rounded-lg border border-black/5 bg-white px-3 text-sm">
+              <Search className="h-4 w-4 shrink-0 text-[oklch(0.5_0.02_265)]" />
+              <input
+                ref={searchInputRef}
+                defaultValue={q}
+                onChange={(e) => handleSearchChange(e.target.value)}
+                placeholder="Search role, company, location, type, skills…"
+                className="flex-1 bg-transparent outline-none placeholder:text-[oklch(0.55_0.02_265)] text-sm"
+              />
+              {(view === "all" ? isFetching : recentlyViewedFetching) && (
+                <Loader2 className="h-3.5 w-3.5 animate-spin text-[oklch(0.5_0.02_265)]" />
+              )}
+            </div>
+
+            {/* Sort */}
+            <select
+              value={sortKey}
+              onChange={(e) => setFilter("sort", e.target.value)}
+              className="h-9 rounded-lg border border-black/5 bg-white px-3 text-sm"
+            >
+              {(Object.keys(SORT_OPTIONS) as JobSortOption[]).map((key) => (
+                <option key={key} value={key}>
+                  {SORT_OPTIONS[key].label}
+                </option>
+              ))}
+            </select>
+
+            {/* Work mode */}
+            <MultiSelectDropdown
+              label="Work mode"
+              options={WORK_MODE_OPTIONS}
+              selected={parseMultiOrEmpty(search.workMode)}
+              onChange={(v) => setMultiFilter("workMode", v)}
             />
-            {(view === "all" ? isFetching : recentlyViewedFetching) && (
-              <Loader2 className="h-3.5 w-3.5 animate-spin text-[oklch(0.5_0.02_265)]" />
+
+            {/* Employment type */}
+            <MultiSelectDropdown
+              label="Employment type"
+              options={EMPLOYMENT_TYPE_OPTIONS}
+              selected={parseMultiOrEmpty(search.employmentType)}
+              onChange={(v) => setMultiFilter("employmentType", v)}
+            />
+
+            {/* Experience level */}
+            <MultiSelectDropdown
+              label="Experience level"
+              options={EXPERIENCE_LEVEL_OPTIONS}
+              selected={parseMultiOrEmpty(search.experienceLevel)}
+              onChange={(v) => setMultiFilter("experienceLevel", v)}
+            />
+
+            {/* Role category */}
+            <MultiSelectDropdown
+              label="Role"
+              options={ROLE_CATEGORY_OPTIONS.map((r) => ({
+                value: r,
+                label: ROLE_CATEGORY_LABELS[r],
+              }))}
+              selected={parseMultiOrEmpty(search.roleCategory)}
+              onChange={(v) => setMultiFilter("roleCategory", v)}
+            />
+
+            {/* Source */}
+            <MultiSelectDropdown
+              label="Source"
+              options={SOURCE_OPTIONS}
+              selected={parseMultiOrEmpty(search.source)}
+              onChange={(v) => setMultiFilter("source", v)}
+            />
+
+            {/* Posted date — stores relative-day string in URL */}
+            <select
+              value={search.postedAfter ?? ""}
+              onChange={(e) => setFilter("postedAfter", e.target.value)}
+              className="h-9 rounded-lg border border-black/5 bg-white px-3 text-sm"
+            >
+              {POSTED_AFTER_OPTIONS.map((o) => (
+                <option key={o.label} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+
+            {/* Remote toggle */}
+            <label className="inline-flex h-9 items-center gap-2 rounded-lg border border-black/5 bg-white px-3 text-sm cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={Boolean(search.remote)}
+                onChange={(e) => setFilter("remote", e.target.checked ? true : undefined)}
+              />
+              Remote only
+            </label>
+
+            {/* Reset */}
+            {(isFiltered || activeFilterCount > 0) && (
+              <button
+                onClick={resetFilters}
+                className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-black/5 bg-white px-3 text-xs font-medium text-[oklch(0.4_0.02_265)] hover:bg-black/[0.03] transition-colors"
+              >
+                <X className="h-3.5 w-3.5" />
+                Reset
+                {activeFilterCount > 0 && (
+                  <span className="rounded-full bg-[#2563EB]/10 px-1.5 py-0.5 text-[10px] font-semibold text-[#2563EB]">
+                    {activeFilterCount}
+                  </span>
+                )}
+              </button>
             )}
           </div>
-
-          {/* Sort */}
-          <select
-            value={sortKey}
-            onChange={(e) => setFilter("sort", e.target.value)}
-            className="h-9 rounded-lg border border-black/5 bg-white px-3 text-sm"
-          >
-            {(Object.keys(SORT_OPTIONS) as JobSortOption[]).map((key) => (
-              <option key={key} value={key}>
-                {SORT_OPTIONS[key].label}
-              </option>
-            ))}
-          </select>
-
-          {/* Work mode */}
-          <MultiSelectDropdown
-            label="Work mode"
-            options={WORK_MODE_OPTIONS}
-            selected={parseMultiOrEmpty(search.workMode)}
-            onChange={(v) => setMultiFilter("workMode", v)}
-          />
-
-          {/* Employment type */}
-          <MultiSelectDropdown
-            label="Employment type"
-            options={EMPLOYMENT_TYPE_OPTIONS}
-            selected={parseMultiOrEmpty(search.employmentType)}
-            onChange={(v) => setMultiFilter("employmentType", v)}
-          />
-
-          {/* Experience level */}
-          <MultiSelectDropdown
-            label="Experience level"
-            options={EXPERIENCE_LEVEL_OPTIONS}
-            selected={parseMultiOrEmpty(search.experienceLevel)}
-            onChange={(v) => setMultiFilter("experienceLevel", v)}
-          />
-
-          {/* Role category */}
-          <MultiSelectDropdown
-            label="Role"
-            options={ROLE_CATEGORY_OPTIONS.map((r) => ({ value: r, label: ROLE_CATEGORY_LABELS[r] }))}
-            selected={parseMultiOrEmpty(search.roleCategory)}
-            onChange={(v) => setMultiFilter("roleCategory", v)}
-          />
-
-          {/* Source */}
-          <MultiSelectDropdown
-            label="Source"
-            options={SOURCE_OPTIONS}
-            selected={parseMultiOrEmpty(search.source)}
-            onChange={(v) => setMultiFilter("source", v)}
-          />
-
-          {/* Posted date — stores relative-day string in URL */}
-          <select
-            value={search.postedAfter ?? ""}
-            onChange={(e) => setFilter("postedAfter", e.target.value)}
-            className="h-9 rounded-lg border border-black/5 bg-white px-3 text-sm"
-          >
-            {POSTED_AFTER_OPTIONS.map((o) => (
-              <option key={o.label} value={o.value}>
-                {o.label}
-              </option>
-            ))}
-          </select>
-
-          {/* Remote toggle */}
-          <label className="inline-flex h-9 items-center gap-2 rounded-lg border border-black/5 bg-white px-3 text-sm cursor-pointer select-none">
-            <input
-              type="checkbox"
-              checked={Boolean(search.remote)}
-              onChange={(e) => setFilter("remote", e.target.checked ? true : undefined)}
-            />
-            Remote only
-          </label>
-
-          {/* Reset */}
-          {(isFiltered || activeFilterCount > 0) && (
-            <button
-              onClick={resetFilters}
-              className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-black/5 bg-white px-3 text-xs font-medium text-[oklch(0.4_0.02_265)] hover:bg-black/[0.03] transition-colors"
-            >
-              <X className="h-3.5 w-3.5" />
-              Reset
-              {activeFilterCount > 0 && (
-                <span className="rounded-full bg-[#2563EB]/10 px-1.5 py-0.5 text-[10px] font-semibold text-[#2563EB]">
-                  {activeFilterCount}
-                </span>
-              )}
-            </button>
-          )}
-        </div>
-      </DashCard>
+        </DashCard>
       </StickyPageHeader>
 
       <DashCard padded={false}>
@@ -611,7 +624,9 @@ function JobsPage() {
         ) : recentlyViewedError ? (
           <div className="flex flex-col items-center gap-3 py-16 text-center">
             <AlertCircle className="h-8 w-8 text-rose-500" />
-            <p className="font-display text-sm font-semibold">Failed to load recently viewed jobs</p>
+            <p className="font-display text-sm font-semibold">
+              Failed to load recently viewed jobs
+            </p>
             <p className="max-w-xs text-xs text-[oklch(0.5_0.02_265)]">
               {recentlyViewedErrorObj instanceof Error
                 ? recentlyViewedErrorObj.message

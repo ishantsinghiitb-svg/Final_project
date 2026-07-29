@@ -46,10 +46,7 @@ import type { GlobalJob } from "@/types";
 
 export const Route = createFileRoute("/dashboard/saved")({
   head: () => ({
-    meta: [
-      { title: "Saved jobs — NextOffer" },
-      { name: "robots", content: "noindex" },
-    ],
+    meta: [{ title: "Saved jobs — NextOffer" }, { name: "robots", content: "noindex" }],
   }),
   component: SavedPage,
 });
@@ -85,8 +82,7 @@ function formatSalary(job: GlobalJob): string {
       maximumFractionDigits: 0,
       notation: "compact",
     }).format(n);
-  if (job.salary_min && job.salary_max)
-    return `${fmt(job.salary_min)}–${fmt(job.salary_max)}`;
+  if (job.salary_min && job.salary_max) return `${fmt(job.salary_min)}–${fmt(job.salary_max)}`;
   if (job.salary_min) return `${fmt(job.salary_min)}+`;
   return `Up to ${fmt(job.salary_max!)}`;
 }
@@ -94,16 +90,18 @@ function formatSalary(job: GlobalJob): string {
 function SavedPage() {
   // Active vs. archived partition — "archive instead of delete" (decision #7).
   const [view, setView] = useState<"active" | "archived">("active");
-  const [pagination, setPagination] =
-    useState<PaginationParams>(DEFAULT_PAGINATION);
+  const [pagination, setPagination] = useState<PaginationParams>(DEFAULT_PAGINATION);
 
   const activeQuery = useSavedJobs(view === "active" ? pagination : DEFAULT_PAGINATION);
-  const archivedQuery = useArchivedSavedJobs(
-    view === "archived" ? pagination : DEFAULT_PAGINATION,
-  );
+  const archivedQuery = useArchivedSavedJobs(view === "archived" ? pagination : DEFAULT_PAGINATION);
 
-  const { data: result, isLoading, isError, error, isFetching } =
-    view === "active" ? activeQuery : archivedQuery;
+  const {
+    data: result,
+    isLoading,
+    isError,
+    error,
+    isFetching,
+  } = view === "active" ? activeQuery : archivedQuery;
 
   const { data: savedIds = [] } = useSavedJobIds();
   const { data: trackedIds = [] } = useTrackedJobIds();
@@ -159,42 +157,42 @@ function SavedPage() {
   return (
     <>
       <StickyPageHeader>
-      <PageHeader
-        eyebrow="Saved"
-        title="Everything you bookmarked, in one place."
-        subtitle="Jobs you saved from the extension, LinkedIn, Wellfound, or added manually — organized by when you saved them."
-        actions={
-          <div className="flex items-center gap-2">
-            {isFetching && (
-              <Loader2 className="h-4 w-4 animate-spin text-[oklch(0.5_0.02_265)]" />
-            )}
-            {archiveEnabled && (
-              <div className="inline-flex items-center rounded-lg border border-black/5 bg-white p-0.5 text-xs font-medium">
-                <button
-                  onClick={() => switchView("active")}
-                  className={
-                    view === "active"
-                      ? "rounded-md bg-[oklch(0.95_0.02_265)] px-3 py-1.5 text-[#2563EB]"
-                      : "rounded-md px-3 py-1.5 text-[oklch(0.45_0.02_265)] hover:bg-black/[0.03]"
-                  }
-                >
-                  Active{activeTotal > 0 ? ` (${activeTotal})` : ""}
-                </button>
-                <button
-                  onClick={() => switchView("archived")}
-                  className={
-                    view === "archived"
-                      ? "rounded-md bg-[oklch(0.95_0.02_265)] px-3 py-1.5 text-[#2563EB]"
-                      : "rounded-md px-3 py-1.5 text-[oklch(0.45_0.02_265)] hover:bg-black/[0.03]"
-                  }
-                >
-                  Archived{archivedTotal > 0 ? ` (${archivedTotal})` : ""}
-                </button>
-              </div>
-            )}
-          </div>
-        }
-      />
+        <PageHeader
+          eyebrow="Saved"
+          title="Everything you bookmarked, in one place."
+          subtitle="Jobs you saved from the extension, LinkedIn, Wellfound, or added manually — organized by when you saved them."
+          actions={
+            <div className="flex items-center gap-2">
+              {isFetching && (
+                <Loader2 className="h-4 w-4 animate-spin text-[oklch(0.5_0.02_265)]" />
+              )}
+              {archiveEnabled && (
+                <div className="inline-flex items-center rounded-lg border border-black/5 bg-white p-0.5 text-xs font-medium">
+                  <button
+                    onClick={() => switchView("active")}
+                    className={
+                      view === "active"
+                        ? "rounded-md bg-[oklch(0.95_0.02_265)] px-3 py-1.5 text-[#2563EB]"
+                        : "rounded-md px-3 py-1.5 text-[oklch(0.45_0.02_265)] hover:bg-black/[0.03]"
+                    }
+                  >
+                    Active{activeTotal > 0 ? ` (${activeTotal})` : ""}
+                  </button>
+                  <button
+                    onClick={() => switchView("archived")}
+                    className={
+                      view === "archived"
+                        ? "rounded-md bg-[oklch(0.95_0.02_265)] px-3 py-1.5 text-[#2563EB]"
+                        : "rounded-md px-3 py-1.5 text-[oklch(0.45_0.02_265)] hover:bg-black/[0.03]"
+                    }
+                  >
+                    Archived{archivedTotal > 0 ? ` (${archivedTotal})` : ""}
+                  </button>
+                </div>
+              )}
+            </div>
+          }
+        />
       </StickyPageHeader>
 
       {isLoading ? (
@@ -205,13 +203,9 @@ function SavedPage() {
       ) : isError ? (
         <div className="flex flex-col items-center gap-3 py-16 text-center">
           <AlertCircle className="h-8 w-8 text-rose-500" />
-          <p className="font-display text-sm font-semibold">
-            Failed to load saved jobs
-          </p>
+          <p className="font-display text-sm font-semibold">Failed to load saved jobs</p>
           <p className="max-w-xs text-xs text-[oklch(0.5_0.02_265)]">
-            {error instanceof Error
-              ? error.message
-              : "An unexpected error occurred."}
+            {error instanceof Error ? error.message : "An unexpected error occurred."}
           </p>
         </div>
       ) : jobs.length === 0 ? (
@@ -361,9 +355,7 @@ function SavedPage() {
 
                   {job.employment_type && (
                     <div className="mt-3 rounded-lg bg-[oklch(0.97_0.01_265)] px-3 py-2 text-xs">
-                      <span className="font-medium capitalize">
-                        {job.employment_type}
-                      </span>
+                      <span className="font-medium capitalize">{job.employment_type}</span>
                     </div>
                   )}
 
@@ -394,16 +386,12 @@ function SavedPage() {
           {totalPages > 1 && (
             <div className="flex items-center justify-between">
               <p className="text-xs text-[oklch(0.5_0.02_265)]">
-                Showing{" "}
-                {(pagination.page - 1) * pagination.pageSize + 1}–
-                {Math.min(pagination.page * pagination.pageSize, total)} of{" "}
-                {total} saved jobs
+                Showing {(pagination.page - 1) * pagination.pageSize + 1}–
+                {Math.min(pagination.page * pagination.pageSize, total)} of {total} saved jobs
               </p>
               <div className="flex items-center gap-1">
                 <button
-                  onClick={() =>
-                    setPagination((p) => ({ ...p, page: p.page - 1 }))
-                  }
+                  onClick={() => setPagination((p) => ({ ...p, page: p.page - 1 }))}
                   disabled={pagination.page <= 1}
                   className="grid h-8 w-8 place-items-center rounded-lg border border-black/5 bg-white text-[oklch(0.4_0.02_265)] hover:bg-black/[0.03] disabled:opacity-40 disabled:cursor-not-allowed"
                   aria-label="Previous page"
@@ -414,9 +402,7 @@ function SavedPage() {
                   {pagination.page} / {totalPages}
                 </span>
                 <button
-                  onClick={() =>
-                    setPagination((p) => ({ ...p, page: p.page + 1 }))
-                  }
+                  onClick={() => setPagination((p) => ({ ...p, page: p.page + 1 }))}
                   disabled={pagination.page >= totalPages}
                   className="grid h-8 w-8 place-items-center rounded-lg border border-black/5 bg-white text-[oklch(0.4_0.02_265)] hover:bg-black/[0.03] disabled:opacity-40 disabled:cursor-not-allowed"
                   aria-label="Next page"

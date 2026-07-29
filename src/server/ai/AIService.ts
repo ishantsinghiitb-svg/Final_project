@@ -212,6 +212,11 @@ export async function runCapability(params: RunCapabilityParams): Promise<AIResu
       code: code as AIErrorResult["code"],
       message: err instanceof Error ? err.message : "AI request failed",
       credits: status,
+      // Nothing charged, or the charge was refunded — either way this run cost
+      // the user nothing and the UI may say so. Left undefined when a charge
+      // was made but the refund exhausted its retries, so the error copy stays
+      // silent rather than promising something we can't confirm.
+      creditsRefunded: chargedCost === 0 || refunded ? true : undefined,
     };
     return errorResult;
   }
@@ -275,6 +280,10 @@ async function writeCache(
   cap: CapabilityDefinition,
   response: unknown,
 ): Promise<void> {
+  // The ONLY writer that reads `ttlSeconds`. The Cover Letter and Resume
+  // Optimizer orchestrations hardcode `expires_at: null` instead, so this
+  // branch is dead in practice — every capability's ttlSeconds is null. See the
+  // warning on CachePolicy.ttlSeconds before making it non-null anywhere.
   const expiresAt =
     cap.cachePolicy.ttlSeconds != null
       ? new Date(Date.now() + cap.cachePolicy.ttlSeconds * 1000).toISOString()

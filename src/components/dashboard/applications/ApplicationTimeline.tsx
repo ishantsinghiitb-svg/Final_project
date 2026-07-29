@@ -59,7 +59,10 @@ const DIFF_EVENT_TYPES = new Set<ApplicationTimelineEventType>([
 ]);
 
 /** Formats a raw previous/new value for display, per event type. */
-function formatDiffValue(eventType: ApplicationTimelineEventType, value: string | null): string | null {
+function formatDiffValue(
+  eventType: ApplicationTimelineEventType,
+  value: string | null,
+): string | null {
   if (!value) return null;
   if (eventType === "status_changed") {
     return STATUS_META[value as ApplicationStatus]?.label ?? value;
@@ -96,9 +99,7 @@ export function ApplicationTimeline({ applicationId }: Props) {
   }
 
   if (events.length === 0) {
-    return (
-      <p className="py-4 text-xs text-[oklch(0.55_0.02_265)]">No activity recorded yet.</p>
-    );
+    return <p className="py-4 text-xs text-[oklch(0.55_0.02_265)]">No activity recorded yet.</p>;
   }
 
   const hasMore = events.length > COLLAPSED_COUNT;
@@ -107,40 +108,40 @@ export function ApplicationTimeline({ applicationId }: Props) {
   return (
     <div>
       <ol className="relative space-y-5 py-1 pl-6 before:absolute before:left-[9px] before:top-1 before:bottom-1 before:w-px before:bg-black/10">
-      {visibleEvents.map((ev) => {
-        const meta = EVENT_META[ev.event_type] ?? DEFAULT_EVENT_META;
-        const Icon = meta.icon;
-        const showDiff =
-          DIFF_EVENT_TYPES.has(ev.event_type) && (ev.previous_value || ev.new_value);
+        {visibleEvents.map((ev) => {
+          const meta = EVENT_META[ev.event_type] ?? DEFAULT_EVENT_META;
+          const Icon = meta.icon;
+          const showDiff =
+            DIFF_EVENT_TYPES.has(ev.event_type) && (ev.previous_value || ev.new_value);
 
-        return (
-          <li key={ev.id} className="relative">
-            <span
-              className={cn(
-                "absolute -left-6 top-0 grid h-[18px] w-[18px] place-items-center rounded-full bg-white ring-2 ring-black/5",
-                meta.tone,
-              )}
-            >
-              <Icon className="h-3 w-3" />
-            </span>
+          return (
+            <li key={ev.id} className="relative">
+              <span
+                className={cn(
+                  "absolute -left-6 top-0 grid h-[18px] w-[18px] place-items-center rounded-full bg-white ring-2 ring-black/5",
+                  meta.tone,
+                )}
+              >
+                <Icon className="h-3 w-3" />
+              </span>
 
-            <p className="text-sm font-medium text-[oklch(0.2_0.02_265)]">{meta.label}</p>
-            <p className="mt-0.5 text-xs text-[oklch(0.55_0.02_265)]">
-              {format(parseISO(ev.created_at), "MMM d, yyyy 'at' h:mm a")}
-            </p>
-
-            {showDiff && (
-              <p className="mt-1.5 inline-flex items-center gap-1.5 rounded-lg bg-[oklch(0.97_0.01_265)] px-2 py-1 text-xs text-[oklch(0.4_0.02_265)]">
-                {formatDiffValue(ev.event_type, ev.previous_value) ?? "—"}
-                <ArrowRightLeft className="h-3 w-3 text-[oklch(0.6_0.02_265)]" />
-                <span className="font-medium text-[oklch(0.25_0.02_265)]">
-                  {formatDiffValue(ev.event_type, ev.new_value) ?? "—"}
-                </span>
+              <p className="text-sm font-medium text-[oklch(0.2_0.02_265)]">{meta.label}</p>
+              <p className="mt-0.5 text-xs text-[oklch(0.55_0.02_265)]">
+                {format(parseISO(ev.created_at), "MMM d, yyyy 'at' h:mm a")}
               </p>
-            )}
-          </li>
-        );
-      })}
+
+              {showDiff && (
+                <p className="mt-1.5 inline-flex items-center gap-1.5 rounded-lg bg-[oklch(0.97_0.01_265)] px-2 py-1 text-xs text-[oklch(0.4_0.02_265)]">
+                  {formatDiffValue(ev.event_type, ev.previous_value) ?? "—"}
+                  <ArrowRightLeft className="h-3 w-3 text-[oklch(0.6_0.02_265)]" />
+                  <span className="font-medium text-[oklch(0.25_0.02_265)]">
+                    {formatDiffValue(ev.event_type, ev.new_value) ?? "—"}
+                  </span>
+                </p>
+              )}
+            </li>
+          );
+        })}
       </ol>
 
       {hasMore && (
@@ -154,7 +155,8 @@ export function ApplicationTimeline({ applicationId }: Props) {
             </>
           ) : (
             <>
-              <ChevronDown className="h-3.5 w-3.5" /> Expand ({events.length - COLLAPSED_COUNT} more)
+              <ChevronDown className="h-3.5 w-3.5" /> Expand ({events.length - COLLAPSED_COUNT}{" "}
+              more)
             </>
           )}
         </button>

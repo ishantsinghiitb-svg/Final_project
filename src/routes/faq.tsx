@@ -13,7 +13,10 @@ export const Route = createFileRoute("/faq")({
           "Answers about resume matching, ATS scoring, AI usage, privacy, the Chrome extension, billing, and student plans.",
       },
       { property: "og:title", content: "FAQ — NextOffer" },
-      { property: "og:description", content: "Everything you might want to know before signing up." },
+      {
+        property: "og:description",
+        content: "Everything you might want to know before signing up.",
+      },
     ],
   }),
   component: FAQ,

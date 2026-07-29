@@ -1,16 +1,14 @@
-import {
-  useQuery,
-  useMutation,
-  useQueryClient,
-} from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/context/AuthContext";
 import { applicationService } from "@/services/ApplicationService";
 import type { Application, ApplicationStatus, GlobalJob } from "@/types";
-import type { ApplicationFilters, ApplicationSort, ManualApplicationInput } from "@/features/applications/types";
+import type {
+  ApplicationFilters,
+  ApplicationSort,
+  ManualApplicationInput,
+} from "@/features/applications/types";
 import type { PaginationParams } from "@/types";
-import {
-  DEFAULT_APPLICATION_SORT,
-} from "@/features/applications/constants";
+import { DEFAULT_APPLICATION_SORT } from "@/features/applications/constants";
 
 // ── Query key factory ────────────────────────────────────────────────────────
 
@@ -22,8 +20,12 @@ export const applicationKeys = {
     [...applicationKeys.all, "all", userId, archived] as const,
 
   lists: () => [...applicationKeys.all, "list"] as const,
-  list: (userId: string, filters: ApplicationFilters, sort: ApplicationSort, pagination: PaginationParams) =>
-    [...applicationKeys.lists(), userId, { filters, sort, pagination }] as const,
+  list: (
+    userId: string,
+    filters: ApplicationFilters,
+    sort: ApplicationSort,
+    pagination: PaginationParams,
+  ) => [...applicationKeys.lists(), userId, { filters, sort, pagination }] as const,
 
   details: () => [...applicationKeys.all, "detail"] as const,
   detail: (id: string) => [...applicationKeys.details(), id] as const,
@@ -33,7 +35,8 @@ export const applicationKeys = {
   statusCounts: (userId: string) => [...applicationKeys.all, "status-counts", userId] as const,
 
   /** Existing application (if any) for a given user + job pair. */
-  byJob: (userId: string, jobId: string) => [...applicationKeys.all, "by-job", userId, jobId] as const,
+  byJob: (userId: string, jobId: string) =>
+    [...applicationKeys.all, "by-job", userId, jobId] as const,
 };
 
 // ── useAllApplications ───────────────────────────────────────────────────────
@@ -70,8 +73,7 @@ export function useApplications(
   const { user } = useAuth();
   return useQuery({
     queryKey: applicationKeys.list(user?.id ?? "", filters, sort, pagination),
-    queryFn: () =>
-      applicationService.getApplications(user!.id, filters, sort, pagination),
+    queryFn: () => applicationService.getApplications(user!.id, filters, sort, pagination),
     enabled: Boolean(user),
     staleTime: 60 * 1_000,
   });
@@ -163,9 +165,7 @@ export function useCreateApplication() {
     onMutate: async ({ job }) => {
       await queryClient.cancelQueries({ queryKey: applicationKeys.allByUser(userId) });
 
-      const previous = queryClient.getQueryData<Application[]>(
-        applicationKeys.allByUser(userId),
-      );
+      const previous = queryClient.getQueryData<Application[]>(applicationKeys.allByUser(userId));
 
       // Optimistic application — will be replaced by server response on settle
       const optimistic: Application = {
@@ -186,10 +186,10 @@ export function useCreateApplication() {
         updated_at: new Date().toISOString(),
       };
 
-      queryClient.setQueryData<Application[]>(
-        applicationKeys.allByUser(userId),
-        (old) => [optimistic, ...(old ?? [])],
-      );
+      queryClient.setQueryData<Application[]>(applicationKeys.allByUser(userId), (old) => [
+        optimistic,
+        ...(old ?? []),
+      ]);
 
       return { previous };
     },
@@ -223,19 +223,13 @@ export function useUpdateApplicationStatus() {
     onMutate: async ({ id, status }) => {
       await queryClient.cancelQueries({ queryKey: applicationKeys.allByUser(userId) });
 
-      const previous = queryClient.getQueryData<Application[]>(
-        applicationKeys.allByUser(userId),
-      );
+      const previous = queryClient.getQueryData<Application[]>(applicationKeys.allByUser(userId));
 
       // Optimistically update the status in the allByUser cache
-      queryClient.setQueryData<Application[]>(
-        applicationKeys.allByUser(userId),
-        (old) =>
-          (old ?? []).map((app) =>
-            app.id === id
-              ? { ...app, status, updated_at: new Date().toISOString() }
-              : app,
-          ),
+      queryClient.setQueryData<Application[]>(applicationKeys.allByUser(userId), (old) =>
+        (old ?? []).map((app) =>
+          app.id === id ? { ...app, status, updated_at: new Date().toISOString() } : app,
+        ),
       );
 
       // Also update the detail cache if it exists
@@ -271,19 +265,15 @@ export function useDeleteApplication() {
   const userId = user?.id ?? "";
 
   return useMutation({
-    mutationFn: ({ id }: { id: string }) =>
-      applicationService.deleteApplication(id),
+    mutationFn: ({ id }: { id: string }) => applicationService.deleteApplication(id),
 
     onMutate: async ({ id }) => {
       await queryClient.cancelQueries({ queryKey: applicationKeys.allByUser(userId) });
 
-      const previous = queryClient.getQueryData<Application[]>(
-        applicationKeys.allByUser(userId),
-      );
+      const previous = queryClient.getQueryData<Application[]>(applicationKeys.allByUser(userId));
 
-      queryClient.setQueryData<Application[]>(
-        applicationKeys.allByUser(userId),
-        (old) => (old ?? []).filter((app) => app.id !== id),
+      queryClient.setQueryData<Application[]>(applicationKeys.allByUser(userId), (old) =>
+        (old ?? []).filter((app) => app.id !== id),
       );
 
       return { previous };
@@ -320,9 +310,7 @@ export function useCreateManualApplication() {
     onMutate: async (input) => {
       await queryClient.cancelQueries({ queryKey: applicationKeys.allByUser(userId) });
 
-      const previous = queryClient.getQueryData<Application[]>(
-        applicationKeys.allByUser(userId),
-      );
+      const previous = queryClient.getQueryData<Application[]>(applicationKeys.allByUser(userId));
 
       const optimistic: Application = {
         id: `optimistic-${Date.now()}`,
@@ -344,10 +332,10 @@ export function useCreateManualApplication() {
         updated_at: new Date().toISOString(),
       };
 
-      queryClient.setQueryData<Application[]>(
-        applicationKeys.allByUser(userId),
-        (old) => [optimistic, ...(old ?? [])],
-      );
+      queryClient.setQueryData<Application[]>(applicationKeys.allByUser(userId), (old) => [
+        optimistic,
+        ...(old ?? []),
+      ]);
 
       return { previous };
     },
@@ -384,9 +372,8 @@ export function useArchiveApplication() {
         applicationKeys.allByUser(userId, false),
       );
 
-      queryClient.setQueryData<Application[]>(
-        applicationKeys.allByUser(userId, false),
-        (old) => (old ?? []).filter((app) => app.id !== id),
+      queryClient.setQueryData<Application[]>(applicationKeys.allByUser(userId, false), (old) =>
+        (old ?? []).filter((app) => app.id !== id),
       );
 
       return { previous };
@@ -421,9 +408,8 @@ export function useRestoreApplication() {
         applicationKeys.allByUser(userId, true),
       );
 
-      queryClient.setQueryData<Application[]>(
-        applicationKeys.allByUser(userId, true),
-        (old) => (old ?? []).filter((app) => app.id !== id),
+      queryClient.setQueryData<Application[]>(applicationKeys.allByUser(userId, true), (old) =>
+        (old ?? []).filter((app) => app.id !== id),
       );
 
       return { previous };
@@ -524,7 +510,8 @@ export function useSetResume(id: string) {
 export function useSetCoverLetter(id: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (coverLetterId: string | null) => applicationService.setCoverLetter(id, coverLetterId),
+    mutationFn: (coverLetterId: string | null) =>
+      applicationService.setCoverLetter(id, coverLetterId),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: applicationKeys.detail(id) });
     },

@@ -31,7 +31,13 @@ type FormState = {
   notes: string;
 };
 
-const emptyForm: FormState = { type: "recruiter", name: "", email: "", linkedin_url: "", notes: "" };
+const emptyForm: FormState = {
+  type: "recruiter",
+  name: "",
+  email: "",
+  linkedin_url: "",
+  notes: "",
+};
 
 function ContactFormDialog({
   applicationId,
@@ -98,7 +104,10 @@ function ContactFormDialog({
       role="dialog"
       aria-modal="true"
     >
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200" onClick={onClose} />
+      <div
+        className="absolute inset-0 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200"
+        onClick={onClose}
+      />
 
       <div className="relative z-10 w-full max-w-md overflow-hidden rounded-2xl border border-black/5 bg-white shadow-[0_24px_80px_-12px_rgba(0,0,0,0.25)] animate-in slide-in-from-bottom-4 duration-300">
         <div className="h-1.5 w-full bg-gradient-to-r from-[#2563EB] to-[#7C3AED]" />
@@ -119,20 +128,28 @@ function ContactFormDialog({
           <form onSubmit={handleSubmit} className="mt-5 space-y-3.5">
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className={labelClass} htmlFor="contact-type">Type</label>
+                <label className={labelClass} htmlFor="contact-type">
+                  Type
+                </label>
                 <select
                   id="contact-type"
                   value={form.type}
-                  onChange={(e) => setForm((f) => ({ ...f, type: e.target.value as ApplicationContactType }))}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, type: e.target.value as ApplicationContactType }))
+                  }
                   className={inputClass}
                 >
                   {CONTACT_TYPE_OPTIONS.map((t) => (
-                    <option key={t} value={t}>{CONTACT_TYPE_LABELS[t]}</option>
+                    <option key={t} value={t}>
+                      {CONTACT_TYPE_LABELS[t]}
+                    </option>
                   ))}
                 </select>
               </div>
               <div>
-                <label className={labelClass} htmlFor="contact-name">Name</label>
+                <label className={labelClass} htmlFor="contact-name">
+                  Name
+                </label>
                 <input
                   id="contact-name"
                   type="text"
@@ -146,7 +163,9 @@ function ContactFormDialog({
             </div>
 
             <div>
-              <label className={labelClass} htmlFor="contact-email">Email <span className="text-[oklch(0.6_0.02_265)]">(optional)</span></label>
+              <label className={labelClass} htmlFor="contact-email">
+                Email <span className="text-[oklch(0.6_0.02_265)]">(optional)</span>
+              </label>
               <input
                 id="contact-email"
                 type="email"
@@ -158,7 +177,9 @@ function ContactFormDialog({
             </div>
 
             <div>
-              <label className={labelClass} htmlFor="contact-linkedin">LinkedIn URL <span className="text-[oklch(0.6_0.02_265)]">(optional)</span></label>
+              <label className={labelClass} htmlFor="contact-linkedin">
+                LinkedIn URL <span className="text-[oklch(0.6_0.02_265)]">(optional)</span>
+              </label>
               <input
                 id="contact-linkedin"
                 type="url"
@@ -170,7 +191,9 @@ function ContactFormDialog({
             </div>
 
             <div>
-              <label className={labelClass} htmlFor="contact-notes">Notes <span className="text-[oklch(0.6_0.02_265)]">(optional)</span></label>
+              <label className={labelClass} htmlFor="contact-notes">
+                Notes <span className="text-[oklch(0.6_0.02_265)]">(optional)</span>
+              </label>
               <textarea
                 id="contact-notes"
                 value={form.notes}
@@ -185,7 +208,13 @@ function ContactFormDialog({
               disabled={!isValid || isPending}
               className="relative inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-br from-[#2563EB] to-[#7C3AED] py-2.5 text-sm font-semibold text-white shadow-[inset_0_1px_0_0_rgba(255,255,255,0.25),0_6px_20px_-8px_rgba(37,99,235,0.7)] transition-all hover:-translate-y-px disabled:opacity-70 disabled:cursor-not-allowed disabled:translate-y-0"
             >
-              {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : editing ? "Save Changes" : "Add Contact"}
+              {isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : editing ? (
+                "Save Changes"
+              ) : (
+                "Add Contact"
+              )}
             </button>
           </form>
         </div>
@@ -206,8 +235,14 @@ export function ApplicationContacts({ applicationId }: { applicationId: string }
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<ApplicationContact | null>(null);
 
-  const openAdd = () => { setEditing(null); setDialogOpen(true); };
-  const openEdit = (c: ApplicationContact) => { setEditing(c); setDialogOpen(true); };
+  const openAdd = () => {
+    setEditing(null);
+    setDialogOpen(true);
+  };
+  const openEdit = (c: ApplicationContact) => {
+    setEditing(c);
+    setDialogOpen(true);
+  };
   const closeDialog = () => setDialogOpen(false);
 
   const handleDelete = (id: string) => {
@@ -254,19 +289,31 @@ export function ApplicationContacts({ applicationId }: { applicationId: string }
                 </div>
                 <div className="mt-1 flex flex-wrap items-center gap-3 text-[11px] text-[oklch(0.5_0.02_265)]">
                   {c.email && (
-                    <a href={`mailto:${c.email}`} className="flex items-center gap-1 hover:text-[#2563EB]">
+                    <a
+                      href={`mailto:${c.email}`}
+                      className="flex items-center gap-1 hover:text-[#2563EB]"
+                    >
                       <Mail className="h-3 w-3" /> {c.email}
                     </a>
                   )}
                   {c.linkedin_url && (
-                    <a href={c.linkedin_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 hover:text-[#2563EB]">
+                    <a
+                      href={c.linkedin_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-1 hover:text-[#2563EB]"
+                    >
                       <Linkedin className="h-3 w-3" /> LinkedIn
                     </a>
                   )}
                 </div>
                 {c.notes && <p className="mt-1 text-xs text-[oklch(0.5_0.02_265)]">{c.notes}</p>}
               </div>
-              <div className={cn("flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100")}>
+              <div
+                className={cn(
+                  "flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100",
+                )}
+              >
                 <button
                   onClick={() => openEdit(c)}
                   aria-label="Edit contact"

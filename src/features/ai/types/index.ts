@@ -31,12 +31,41 @@ export type AILimitReached = {
   credits: AICreditStatus;
 };
 
-export type AIErrorResult = {
+/**
+ * The ONE failure envelope shape for every AI path (Module 6 freeze).
+ *
+ * Before this, each service, server function, hook and feature module
+ * re-declared this object literal by hand — eight near-copies across nineteen
+ * files. Adding `creditsRefunded` in 6G meant editing every one of them, and a
+ * copy that had been missed would have silently dropped the field on the wire.
+ *
+ * Every field past `code` is optional, so a read-only path that has no credit
+ * context to report simply omits them and still shares the type.
+ *
+ * `TCode` is the escape hatch for the engine itself, which knows its codes
+ * exactly; the outer layers widen to `string` because they forward codes from
+ * several sources (the engine, resume/job guards, cover-letter session guards).
+ */
+export type AIFailure<TCode extends string = string> = {
   ok: false;
-  code: Exclude<AIResultCode, "ok" | "ai_limit_reached">;
+  code: TCode;
   message: string;
   credits?: AICreditStatus;
+  /**
+   * True when this run is known to have cost the user nothing — either no
+   * credit was ever charged, or the charge was refunded successfully.
+   * `undefined` means the engine could not confirm either way (a refund that
+   * exhausted its retries).
+   *
+   * Purely informational, added in Module 6G: the UI may only promise "no
+   * credit was used" when this is `true`, so the reassurance in an error
+   * message is never a guess. Nothing in the credits math reads it.
+   */
+  creditsRefunded?: boolean;
 };
+
+/** The engine's own failure, with its result codes narrowed to the known set. */
+export type AIErrorResult = AIFailure<Exclude<AIResultCode, "ok" | "ai_limit_reached">>;
 
 export type AISuccessMeta = {
   capability: AICapability;
@@ -66,6 +95,19 @@ export type AIResult<T> = AISuccessResult<T> | AILimitReached | AIErrorResult;
 
 export function isAILimitReached<T>(r: AIResult<T>): r is AILimitReached {
   return r.ok === false && r.code === "ai_limit_reached";
+}
+
+/**
+ * Whether a failed run is KNOWN to have cost the user nothing, for a service
+ * forwarding an engine failure into its own envelope (Module 6G).
+ *
+ * `undefined` for a success (nothing to say) and for a charge whose refund
+ * exhausted its retries. A limit-reached result is always `true`: it fails at
+ * the credit gate, before anything could be charged.
+ */
+export function creditsRefundedFor<T>(r: AIResult<T>): boolean | undefined {
+  if (r.ok) return undefined;
+  return r.code === "ai_limit_reached" ? true : r.creditsRefunded;
 }
 
 // ── AI Context primitives (built by ContextBuilder, reused by every capability) ──

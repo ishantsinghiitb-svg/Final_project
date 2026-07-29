@@ -1,14 +1,19 @@
+import { useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/context/AuthContext";
 import { aiClient } from "@/services/ai/AIClient";
 import { AI_CAPABILITIES } from "@/features/ai/constants";
+import { toActivityItem, type AIActivityItem } from "@/features/ai/activity";
 import { AnalysisRepository } from "@/repositories/AnalysisRepository";
+import { AIActivityRepository } from "@/repositories/AIActivityRepository";
 
 const analysisRepo = new AnalysisRepository();
+const activityRepo = new AIActivityRepository();
 
 export const aiKeys = {
   all: ["ai"] as const,
   credits: (userId: string) => [...aiKeys.all, "credits", userId] as const,
+  activity: (userId: string) => [...aiKeys.all, "activity", userId] as const,
   resumeMatch: (resumeId: string, jobId: string) =>
     [...aiKeys.all, "resume-match", resumeId, jobId] as const,
   resumeMatchHistory: (resumeId: string, jobId: string) =>
@@ -32,6 +37,40 @@ export function useAICredits() {
     enabled: Boolean(user),
     staleTime: 30 * 1_000,
   });
+}
+
+/**
+ * The AI Hub timeline — every capability's recent activity in one list
+ * (Module 6G). Read-only and credit-free: it reads the `ai_runs` audit log the
+ * engine already writes, so opening the Hub can never trigger or charge for an
+ * AI call.
+ *
+ * Mapping to display rows happens in a `useMemo` keyed on the query data, not
+ * inside the queryFn, so the capability filter in the UI re-filters a
+ * already-derived array instead of re-deriving the whole list on every
+ * keystroke or tab switch.
+ */
+export function useAIActivity() {
+  const { user } = useAuth();
+  const query = useQuery({
+    queryKey: aiKeys.activity(user?.id ?? ""),
+    queryFn: () => activityRepo.listRecent(),
+    enabled: Boolean(user),
+    // The log only changes when the user themselves runs something, and every
+    // such mutation invalidates this key explicitly — so there is nothing to
+    // gain from refetching on focus.
+    staleTime: 60 * 1_000,
+    refetchOnWindowFocus: false,
+  });
+
+  const items: AIActivityItem[] = useMemo(() => {
+    if (!query.data) return [];
+    return query.data.runs
+      .map((run) => toActivityItem(run, query.data.labels))
+      .filter((item): item is AIActivityItem => item !== null);
+  }, [query.data]);
+
+  return { ...query, items };
 }
 
 /**
@@ -87,6 +126,8 @@ export function useAnalyzeMatch(resumeId: string | undefined, jobId: string | un
         queryKey: aiKeys.resumeMatchHistory(resumeId ?? "", jobId ?? ""),
       });
       void queryClient.invalidateQueries({ queryKey: aiKeys.credits(user?.id ?? "") });
+      // The run is now in the audit log, so the Hub timeline is one row stale.
+      void queryClient.invalidateQueries({ queryKey: aiKeys.activity(user?.id ?? "") });
     },
   });
 }
@@ -145,6 +186,7 @@ export function useAnalyzeAts(resumeId: string | undefined, jobId: string | unde
         queryKey: aiKeys.atsScoreHistory(resumeId ?? "", jobId ?? ""),
       });
       void queryClient.invalidateQueries({ queryKey: aiKeys.credits(user?.id ?? "") });
+      void queryClient.invalidateQueries({ queryKey: aiKeys.activity(user?.id ?? "") });
     },
   });
 }

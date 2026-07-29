@@ -6,12 +6,7 @@ export type { RoleCategory };
 // ── Applied-date filter preset ───────────────────────────────────────────────
 
 export type AppliedDatePreset =
-  | "today"
-  | "last_7_days"
-  | "last_30_days"
-  | "last_90_days"
-  | "this_year"
-  | "custom";
+  "today" | "last_7_days" | "last_30_days" | "last_90_days" | "this_year" | "custom";
 
 // ── Application filter shape ─────────────────────────────────────────────────
 
@@ -39,11 +34,7 @@ export type ApplicationFilters = {
 // ── Sort shape ───────────────────────────────────────────────────────────────
 
 export type ApplicationSortField =
-  | "updated_at"
-  | "applied_at"
-  | "company_name"
-  | "status"
-  | "created_at";
+  "updated_at" | "applied_at" | "company_name" | "status" | "created_at";
 
 export type SortDirection = "asc" | "desc";
 
@@ -53,11 +44,7 @@ export type ApplicationSort = {
 };
 
 export type ApplicationSortOption =
-  | "recently_updated"
-  | "recently_applied"
-  | "company_az"
-  | "company_za"
-  | "status";
+  "recently_updated" | "recently_applied" | "company_az" | "company_za" | "status";
 
 // ── URL search params shape ──────────────────────────────────────────────────
 

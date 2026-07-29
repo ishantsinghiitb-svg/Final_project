@@ -1,7 +1,13 @@
 import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { Plus, Search, StickyNote } from "lucide-react";
-import { DashCard, PageHeader, Chip, EmptyState, StickyPageHeader } from "@/components/dashboard/primitives";
+import {
+  DashCard,
+  PageHeader,
+  Chip,
+  EmptyState,
+  StickyPageHeader,
+} from "@/components/dashboard/primitives";
 import { DashButton } from "@/components/dashboard/DashButton";
 import { notes, type Note } from "@/lib/dashboard-data";
 
@@ -28,16 +34,16 @@ function NotesPage() {
   return (
     <>
       <StickyPageHeader>
-      <PageHeader
-        eyebrow="Notes"
-        title="Everything worth remembering."
-        subtitle="Prep notes, follow-up drafts, questions to ask — kept next to the roles they belong to."
-        actions={
-          <DashButton>
-            <Plus className="h-4 w-4" /> New note
-          </DashButton>
-        }
-      />
+        <PageHeader
+          eyebrow="Notes"
+          title="Everything worth remembering."
+          subtitle="Prep notes, follow-up drafts, questions to ask — kept next to the roles they belong to."
+          actions={
+            <DashButton>
+              <Plus className="h-4 w-4" /> New note
+            </DashButton>
+          }
+        />
       </StickyPageHeader>
 
       {notes.length === 0 ? (
@@ -69,7 +75,9 @@ function NotesPage() {
                   <button
                     onClick={() => setActive(n.id)}
                     className={`block w-full px-4 py-3 text-left ${
-                      selected?.id === n.id ? "bg-[oklch(0.97_0.01_265)]" : "hover:bg-[oklch(0.98_0.005_265)]"
+                      selected?.id === n.id
+                        ? "bg-[oklch(0.97_0.01_265)]"
+                        : "hover:bg-[oklch(0.98_0.005_265)]"
                     }`}
                   >
                     <div className="flex items-center justify-between">
@@ -106,7 +114,9 @@ function NotesPage() {
                   className="mt-4 min-h-[280px] w-full resize-none rounded-xl border border-black/5 bg-[oklch(0.98_0.005_265)] p-4 text-sm leading-relaxed outline-none focus:border-[#2563EB]/30 focus:ring-2 focus:ring-[#2563EB]/10"
                 />
                 <div className="mt-3 flex justify-end gap-2">
-                  <button className="rounded-lg border border-black/5 bg-white px-3 py-1.5 text-xs font-medium hover:bg-black/[0.03]">Discard</button>
+                  <button className="rounded-lg border border-black/5 bg-white px-3 py-1.5 text-xs font-medium hover:bg-black/[0.03]">
+                    Discard
+                  </button>
                   <DashButton size="sm">Save note</DashButton>
                 </div>
               </>

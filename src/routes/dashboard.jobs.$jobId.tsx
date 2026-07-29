@@ -54,9 +54,44 @@ import { AddToCollectionMenu } from "@/components/dashboard/collections/AddToCol
 import { ResumeHealthSummaryCard } from "@/components/dashboard/jobs/ResumeHealthSummaryCard";
 import { ResumeMatchCard } from "@/components/dashboard/jobs/ResumeMatchCard";
 import { AtsCompatibilityCard } from "@/components/dashboard/jobs/AtsCompatibilityCard";
+import { CoverLetterJobCard } from "@/components/dashboard/cover-letters/CoverLetterJobCard";
 
 // ── Route definition ──────────────────────────────────────────────────────────
+//
+// The AI deep-link contract for this page, used by the browser extension
+// ("analyze the job I'm looking at") and by the AI Hub's "Run again" action.
+//
+// Declared as `validateSearch` in Module 6G. Before that, the two AI cards each
+// read `window.location.search` in a post-mount effect, because reading it
+// during render made SSR and the first client render disagree (hydration
+// mismatch). Parsing it here removes that class of bug entirely: the router
+// resolves the same values on both sides, so the cards can take plain props.
+//
+// `analyze` / `ats` only ever OPEN the credit confirmation. Nothing on this
+// page starts a charged AI request from a URL.
+export type JobDetailSearch = {
+  /** Analyze against this specific resume instead of the default. */
+  resume?: string;
+  /** Open the Resume Match credit confirmation on arrival. */
+  analyze?: boolean;
+  /** Open the ATS Compatibility credit confirmation on arrival. */
+  ats?: boolean;
+  /** Confirm as a RE-run (bypasses the cached result) rather than a first run. */
+  force?: boolean;
+};
+
+/** Accepts both `?analyze=1` (extension) and `?analyze=true` (router-generated). */
+function truthy(value: unknown): boolean | undefined {
+  return value === true || value === "true" || value === "1" ? true : undefined;
+}
+
 export const Route = createFileRoute("/dashboard/jobs/$jobId")({
+  validateSearch: (search: Record<string, unknown>): JobDetailSearch => ({
+    resume: typeof search.resume === "string" ? search.resume : undefined,
+    analyze: truthy(search.analyze),
+    ats: truthy(search.ats),
+    force: truthy(search.force),
+  }),
   head: () => ({
     meta: [{ title: "Job Details — NextOffer" }, { name: "robots", content: "noindex" }],
   }),
@@ -202,7 +237,23 @@ function SimilarJobCard({
 // ── Main page ─────────────────────────────────────────────────────────────────
 function JobDetailPage() {
   const { jobId } = Route.useParams();
+  const search = Route.useSearch();
   const navigate = useNavigate();
+
+  /**
+   * Drop the one-shot analyze intent from the URL once a card has acted on it,
+   * so a refresh or a back-navigation doesn't reopen the credit confirmation.
+   * `resume` is kept: it's a lasting preference for which resume this page
+   * shows, not an action. `replace` so it doesn't add a history entry.
+   */
+  const clearAnalyzeIntent = useCallback(() => {
+    void navigate({
+      to: "/dashboard/jobs/$jobId",
+      params: { jobId },
+      search: (prev) => ({ ...prev, analyze: undefined, ats: undefined, force: undefined }),
+      replace: true,
+    });
+  }, [navigate, jobId]);
 
   const { data: job, isLoading, isError, error } = useJob(jobId);
   const { data: skills = [] } = useJobSkills(jobId);
@@ -611,11 +662,20 @@ function JobDetailPage() {
           <JobMetadataSections job={job} />
         </div>
 
-        {/* ── Right: Resume Health, AI Match, Apply CTA + Copy URL ────── */}
+        {/* ── Right: Resume Health, AI Match, Cover Letter, Apply CTA + Copy URL ────── */}
         <div className="space-y-4">
           <ResumeHealthSummaryCard />
-          <ResumeMatchCard jobId={job.id} />
-          <AtsCompatibilityCard jobId={job.id} />
+          <ResumeMatchCard
+            jobId={job.id}
+            deepLink={{ resumeId: search.resume, analyze: search.analyze, force: search.force }}
+            onDeepLinkConsumed={clearAnalyzeIntent}
+          />
+          <AtsCompatibilityCard
+            jobId={job.id}
+            deepLink={{ resumeId: search.resume, analyze: search.ats, force: search.force }}
+            onDeepLinkConsumed={clearAnalyzeIntent}
+          />
+          <CoverLetterJobCard job={job} />
 
           <DashCard>
             <p className="font-display text-sm font-semibold">Ready to apply?</p>

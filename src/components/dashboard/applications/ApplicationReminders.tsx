@@ -32,7 +32,13 @@ const inputClass =
   "h-9 w-full rounded-lg border border-black/5 bg-white px-3 text-sm text-[oklch(0.2_0.02_265)] placeholder:text-[oklch(0.6_0.02_265)] focus:border-[#2563EB]/40 focus:outline-none focus:ring-2 focus:ring-[#2563EB]/10 transition-colors";
 const labelClass = "mb-1 block text-xs font-medium text-[oklch(0.4_0.02_265)]";
 
-function AddReminderDialog({ applicationId, onClose }: { applicationId: string; onClose: () => void }) {
+function AddReminderDialog({
+  applicationId,
+  onClose,
+}: {
+  applicationId: string;
+  onClose: () => void;
+}) {
   const [type, setType] = useState<ApplicationReminderType>("follow_up");
   const [title, setTitle] = useState("");
   const [date, setDate] = useState("");
@@ -63,8 +69,15 @@ function AddReminderDialog({ applicationId, onClose }: { applicationId: string; 
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true">
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200" onClick={onClose} />
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      role="dialog"
+      aria-modal="true"
+    >
+      <div
+        className="absolute inset-0 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200"
+        onClick={onClose}
+      />
 
       <div className="relative z-10 w-full max-w-md overflow-hidden rounded-2xl border border-black/5 bg-white shadow-[0_24px_80px_-12px_rgba(0,0,0,0.25)] animate-in slide-in-from-bottom-4 duration-300">
         <div className="h-1.5 w-full bg-gradient-to-r from-[#2563EB] to-[#7C3AED]" />
@@ -78,12 +91,16 @@ function AddReminderDialog({ applicationId, onClose }: { applicationId: string; 
             <X className="h-4 w-4" />
           </button>
 
-          <h2 className="font-display text-base font-semibold text-[oklch(0.2_0.02_265)]">Add Reminder</h2>
+          <h2 className="font-display text-base font-semibold text-[oklch(0.2_0.02_265)]">
+            Add Reminder
+          </h2>
 
           <form onSubmit={handleSubmit} className="mt-5 space-y-3.5">
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className={labelClass} htmlFor="reminder-type">Type</label>
+                <label className={labelClass} htmlFor="reminder-type">
+                  Type
+                </label>
                 <select
                   id="reminder-type"
                   value={type}
@@ -91,12 +108,16 @@ function AddReminderDialog({ applicationId, onClose }: { applicationId: string; 
                   className={inputClass}
                 >
                   {REMINDER_TYPE_OPTIONS.map((t) => (
-                    <option key={t} value={t}>{REMINDER_TYPE_LABELS[t]}</option>
+                    <option key={t} value={t}>
+                      {REMINDER_TYPE_LABELS[t]}
+                    </option>
                   ))}
                 </select>
               </div>
               <div>
-                <label className={labelClass} htmlFor="reminder-date">Date</label>
+                <label className={labelClass} htmlFor="reminder-date">
+                  Date
+                </label>
                 <input
                   id="reminder-date"
                   type="date"
@@ -109,7 +130,9 @@ function AddReminderDialog({ applicationId, onClose }: { applicationId: string; 
             </div>
 
             <div>
-              <label className={labelClass} htmlFor="reminder-title">Title</label>
+              <label className={labelClass} htmlFor="reminder-title">
+                Title
+              </label>
               <input
                 id="reminder-title"
                 type="text"
@@ -122,7 +145,9 @@ function AddReminderDialog({ applicationId, onClose }: { applicationId: string; 
             </div>
 
             <div>
-              <label className={labelClass} htmlFor="reminder-note">Note <span className="text-[oklch(0.6_0.02_265)]">(optional)</span></label>
+              <label className={labelClass} htmlFor="reminder-note">
+                Note <span className="text-[oklch(0.6_0.02_265)]">(optional)</span>
+              </label>
               <textarea
                 id="reminder-note"
                 value={note}
@@ -137,7 +162,11 @@ function AddReminderDialog({ applicationId, onClose }: { applicationId: string; 
               disabled={!isValid || createReminder.isPending}
               className="relative inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-br from-[#2563EB] to-[#7C3AED] py-2.5 text-sm font-semibold text-white shadow-[inset_0_1px_0_0_rgba(255,255,255,0.25),0_6px_20px_-8px_rgba(37,99,235,0.7)] transition-all hover:-translate-y-px disabled:opacity-70 disabled:cursor-not-allowed disabled:translate-y-0"
             >
-              {createReminder.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Add Reminder"}
+              {createReminder.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                "Add Reminder"
+              )}
             </button>
           </form>
         </div>
@@ -249,7 +278,9 @@ export function ApplicationReminders({ applicationId }: { applicationId: string 
   return (
     <div>
       <div className="flex items-center justify-between">
-        <p className="text-xs text-[oklch(0.55_0.02_265)]">Follow-ups, deadlines, and other dates to track.</p>
+        <p className="text-xs text-[oklch(0.55_0.02_265)]">
+          Follow-ups, deadlines, and other dates to track.
+        </p>
         <button
           onClick={() => setDialogOpen(true)}
           className="inline-flex items-center gap-1 rounded-lg border border-black/5 bg-white px-2.5 py-1.5 text-xs font-medium text-[#2563EB] hover:bg-[#2563EB]/5 transition-colors"
@@ -283,13 +314,23 @@ export function ApplicationReminders({ applicationId }: { applicationId: string 
               </button>
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-1.5">
-                  <p className={cn("text-sm font-medium", r.completed ? "text-[oklch(0.6_0.02_265)] line-through" : "text-[oklch(0.2_0.02_265)]")}>
+                  <p
+                    className={cn(
+                      "text-sm font-medium",
+                      r.completed
+                        ? "text-[oklch(0.6_0.02_265)] line-through"
+                        : "text-[oklch(0.2_0.02_265)]",
+                    )}
+                  >
                     {r.title}
                   </p>
-                  <Chip tone={r.completed ? "default" : "amber"}>{REMINDER_TYPE_LABELS[r.type]}</Chip>
+                  <Chip tone={r.completed ? "default" : "amber"}>
+                    {REMINDER_TYPE_LABELS[r.type]}
+                  </Chip>
                 </div>
                 <p className="mt-0.5 text-[11px] text-[oklch(0.55_0.02_265)]">
-                  {format(parseISO(r.remind_at), "MMM d, yyyy")} · {r.completed ? "Completed" : "Pending"}
+                  {format(parseISO(r.remind_at), "MMM d, yyyy")} ·{" "}
+                  {r.completed ? "Completed" : "Pending"}
                 </p>
                 {r.note && <p className="mt-1 text-xs text-[oklch(0.5_0.02_265)]">{r.note}</p>}
                 <ReminderAttachments applicationId={applicationId} reminderId={r.id} />
@@ -306,7 +347,9 @@ export function ApplicationReminders({ applicationId }: { applicationId: string 
         )}
       </div>
 
-      {dialogOpen && <AddReminderDialog applicationId={applicationId} onClose={() => setDialogOpen(false)} />}
+      {dialogOpen && (
+        <AddReminderDialog applicationId={applicationId} onClose={() => setDialogOpen(false)} />
+      )}
     </div>
   );
 }

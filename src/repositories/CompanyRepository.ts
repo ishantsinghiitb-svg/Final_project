@@ -50,10 +50,7 @@ export class CompanyRepository {
   }
 
   async findAll(): Promise<Company[]> {
-    const { data, error } = await supabase
-      .from("companies")
-      .select(COMPANY_COLUMNS)
-      .order("name");
+    const { data, error } = await supabase.from("companies").select(COMPANY_COLUMNS).order("name");
     if (error) throw error;
     return (data ?? []).map((row) => this.toCompany(row as unknown as CompanyRow));
   }
@@ -68,7 +65,7 @@ export class CompanyRepository {
     // Map domain field `location` → DB column `headquarters`
     const { location, ...rest } = company;
     const payload: CompanyInsert = {
-      name: rest.name ?? "",     // name is required in CompanyInsert
+      name: rest.name ?? "", // name is required in CompanyInsert
       id: rest.id,
       website: rest.website ?? null,
       logo_url: rest.logo_url ?? null,

@@ -10,16 +10,56 @@ export const AI_CAPABILITIES = {
   ATS_SCORE: "ats_score",
   RESUME_OPTIMIZER: "resume_optimizer",
   COVER_LETTER: "cover_letter",
+  // ⚠ EXPERIMENTAL — NOT A SHIPPED FEATURE. See EXPERIMENTAL_AI_CAPABILITIES.
   INTERVIEW_PREP: "interview_prep",
 } as const;
 
 export type AICapability = (typeof AI_CAPABILITIES)[keyof typeof AI_CAPABILITIES];
+
+// ── Shipped vs experimental (Module 6 freeze) ──
+//
+// `interview_prep` has a registry entry, a prompt template, an output schema
+// and version constants — but no server function, no client method and no UI.
+// It has never been reachable by a user. Because it sits in the same registry
+// as the four real capabilities, it read as shipped, and every
+// `Record<AICapability, …>` in the codebase had to invent a value for it (which
+// is how it acquired user-facing loading copy during 6G, for a screen that
+// does not exist).
+//
+// The split below makes the distinction explicit and enforceable rather than a
+// comment: anything user-facing is typed against `ShippedAICapability`, so
+// surfacing an experimental capability is a compile error, not a review catch.
+//
+// It is kept rather than deleted because removing it would mean editing the
+// frozen prompt module. Promoting it later = move the id into
+// SHIPPED_AI_CAPABILITIES and flip `experimental` in the registry.
+
+export const SHIPPED_AI_CAPABILITIES = [
+  AI_CAPABILITIES.RESUME_MATCH,
+  AI_CAPABILITIES.ATS_SCORE,
+  AI_CAPABILITIES.RESUME_OPTIMIZER,
+  AI_CAPABILITIES.COVER_LETTER,
+] as const;
+
+/** A capability a user can actually reach. Use this in any user-facing type. */
+export type ShippedAICapability = (typeof SHIPPED_AI_CAPABILITIES)[number];
+
+/** Registered but unreachable — no server function, no client, no UI. */
+export const EXPERIMENTAL_AI_CAPABILITIES = [AI_CAPABILITIES.INTERVIEW_PREP] as const;
+
+export type ExperimentalAICapability = (typeof EXPERIMENTAL_AI_CAPABILITIES)[number];
+
+export function isShippedCapability(id: AICapability): id is ShippedAICapability {
+  return (SHIPPED_AI_CAPABILITIES as readonly AICapability[]).includes(id);
+}
 
 export const AI_CAPABILITY_LABELS: Record<AICapability, string> = {
   resume_match: "Resume Match",
   ats_score: "ATS Score",
   resume_optimizer: "Resume Optimizer",
   cover_letter: "Cover Letter",
+  // Experimental — this label exists only so the registry entry can be built;
+  // it is never rendered, because nothing surfaces this capability.
   interview_prep: "Interview Preparation",
 };
 
@@ -65,7 +105,12 @@ export const AI_ANALYSIS_VERSIONS: Record<AICapability, string> = {
   // v7 (6E coach polish): career signals gain waysToBuild + exampleIsTemplate;
   // recruiter-outcome reasoning + no-fabricated-example rules. New output shape.
   resume_optimizer: "7",
-  cover_letter: "1",
+  // v2 (6E Phase 2 quality pass): the draft output shape changed — a
+  // free-length `paragraphs` list replaces the fixed opening/body/closing
+  // template, and an `internal` block carries the model's company/candidate/
+  // intersection/narrative analysis plus its pre-return checks. Bumped so
+  // pre-Phase-2 cached letters (old shape, generic quality) aren't reused.
+  cover_letter: "2",
   interview_prep: "1",
 };
 
@@ -98,7 +143,14 @@ export const AI_PROMPT_VERSIONS: Record<AICapability, string> = {
   // v7 (6E coach polish): waysToBuild + exampleIsTemplate; recruiter-outcome
   // `reason`; safe (never-fabricated) examples; stronger overlap-merge rule.
   resume_optimizer: "7",
-  cover_letter: "1",
+  // v2 (6E Phase 2 quality pass): the foundation-phase prompt is replaced by a
+  // 5-phase reasoning pipeline (understand company → understand candidate →
+  // find the intersection → choose ONE narrative → write), an explicit
+  // truthfulness > custom instructions > posting > résumé priority ladder,
+  // banned generic openings, anti-résumé-repetition rules, and a six-point
+  // self-check the model must pass before returning. Applies to generation and
+  // to every refinement action.
+  cover_letter: "2",
   interview_prep: "1",
 };
 

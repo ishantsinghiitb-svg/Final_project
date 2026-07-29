@@ -32,7 +32,13 @@ export function DashCard({
  * content scrolls underneath. Not for individual cards — only page-level
  * navigation/header controls should use this.
  */
-export function StickyPageHeader({ children, className }: { children: ReactNode; className?: string }) {
+export function StickyPageHeader({
+  children,
+  className,
+}: {
+  children: ReactNode;
+  className?: string;
+}) {
   return (
     <div
       className={cn(
@@ -67,9 +73,7 @@ export function PageHeader({
         <h1 className="mt-1 font-display text-[26px] font-semibold tracking-tight text-[oklch(0.2_0.02_265)]">
           {title}
         </h1>
-        {subtitle && (
-          <p className="mt-1 text-sm text-[oklch(0.45_0.02_265)]">{subtitle}</p>
-        )}
+        {subtitle && <p className="mt-1 text-sm text-[oklch(0.45_0.02_265)]">{subtitle}</p>}
       </div>
       {actions && <div className="flex items-center gap-2">{actions}</div>}
     </div>
@@ -175,7 +179,10 @@ export function CompanyMark({
 
   return (
     <div
-      className={cn("grid place-items-center rounded-lg bg-gradient-to-br text-white font-semibold", tone)}
+      className={cn(
+        "grid place-items-center rounded-lg bg-gradient-to-br text-white font-semibold",
+        tone,
+      )}
       style={{ width: size, height: size, fontSize: size * 0.42 }}
       aria-hidden
     >
@@ -346,7 +353,9 @@ export function MultiSelectDropdown({
 
           <div className="max-h-60 overflow-y-auto">
             {filteredOptions.length === 0 ? (
-              <p className="px-3 py-3 text-center text-xs text-[oklch(0.55_0.02_265)]">No matches</p>
+              <p className="px-3 py-3 text-center text-xs text-[oklch(0.55_0.02_265)]">
+                No matches
+              </p>
             ) : (
               filteredOptions.map((o) => {
                 const checked = selected.includes(o.value);

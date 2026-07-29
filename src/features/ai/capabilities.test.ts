@@ -1,0 +1,61 @@
+import { describe, expect, it } from "vitest";
+import { CAPABILITY_REGISTRY, getCapability } from "./capabilities";
+import {
+  AI_CAPABILITIES,
+  EXPERIMENTAL_AI_CAPABILITIES,
+  SHIPPED_AI_CAPABILITIES,
+  isShippedCapability,
+  type AICapability,
+} from "./constants";
+
+// ── Capability registry invariants (Module 6 freeze) ──
+//
+// Two facts about the registry are load-bearing but invisible at the call
+// site, so they are pinned here rather than left to a code reviewer noticing.
+
+const ALL_CAPABILITIES = Object.keys(CAPABILITY_REGISTRY) as AICapability[];
+
+describe("cache policy", () => {
+  it("leaves ttlSeconds null for every capability", () => {
+    // ttlSeconds is documented as intentionally unused: AIService.writeCache
+    // reads it, but the Cover Letter and Resume Optimizer orchestrations
+    // hardcode `expires_at: null`. Setting a TTL would therefore apply to
+    // Resume Match and ATS only — a policy silently half-applied across the
+    // platform. This test is the tripwire on that: if it fails, implement the
+    // TTL in all three writers before changing the registry.
+    for (const id of ALL_CAPABILITIES) {
+      expect(
+        getCapability(id).cachePolicy.ttlSeconds,
+        `${id} sets a cache TTL, but two of the three cache writers ignore it — see CachePolicy.ttlSeconds`,
+      ).toBeNull();
+    }
+  });
+
+  it("keeps caching enabled for every capability", () => {
+    for (const id of ALL_CAPABILITIES) {
+      expect(getCapability(id).cachePolicy.enabled).toBe(true);
+    }
+  });
+});
+
+describe("shipped vs experimental capabilities", () => {
+  it("marks exactly the non-shipped capabilities as experimental", () => {
+    for (const id of ALL_CAPABILITIES) {
+      expect(getCapability(id).experimental).toBe(!isShippedCapability(id));
+    }
+  });
+
+  it("keeps interview_prep experimental until it has a real surface", () => {
+    // It has a registry entry, a prompt and a schema, but no server function,
+    // no client method and no UI. If this is ever flipped, the promotion must
+    // be deliberate: move the id into SHIPPED_AI_CAPABILITIES, which will then
+    // force a Hub row (HUB_META is typed against ShippedAICapability) and a
+    // loading-phase script to exist for it.
+    expect(getCapability(AI_CAPABILITIES.INTERVIEW_PREP).experimental).toBe(true);
+  });
+
+  it("covers every registered capability as either shipped or experimental", () => {
+    const accounted = [...SHIPPED_AI_CAPABILITIES, ...EXPERIMENTAL_AI_CAPABILITIES];
+    expect([...accounted].sort()).toEqual([...ALL_CAPABILITIES].sort());
+  });
+});

@@ -1,5 +1,7 @@
 import { Link } from "@tanstack/react-router";
-import { Loader2, Sparkles, X } from "lucide-react";
+import { Sparkles, X } from "lucide-react";
+import { AIThinkingPanel } from "@/components/dashboard/ai/AIThinking";
+import { AI_CAPABILITIES } from "@/features/ai/constants";
 
 // ── OptimizeConfirmDialog (Module 6D) ──
 //
@@ -7,6 +9,11 @@ import { Loader2, Sparkles, X } from "lucide-react";
 // Deliberately the same fixed-overlay/gradient-strip convention as the frozen
 // Module 6B/6C analyze dialogs (a parallel copy, not a shared edit) so the
 // dashboard's modals keep feeling like one system.
+//
+// Module 6G: once confirmed, the dialog BECOMES the loading surface rather than
+// dimming a button behind a spinner. Optimization is the longest wait in the
+// product (an exhaustive audit plus a gap-fill pass), and a motionless modal
+// for that long reads as a hang — so the wait narrates itself instead.
 
 type Props = {
   open: boolean;
@@ -67,7 +74,17 @@ export function OptimizeConfirmDialog({
             {title}
           </h2>
 
-          {locked ? (
+          {isPending ? (
+            <>
+              <AIThinkingPanel
+                capability={AI_CAPABILITIES.RESUME_OPTIMIZER}
+                className="mt-3 border-0 bg-transparent p-0"
+              />
+              <p className="mt-4 text-xs text-[oklch(0.5_0.02_265)]">
+                This takes about a minute. You'll review every suggestion before anything is saved.
+              </p>
+            </>
+          ) : locked ? (
             <>
               <p className="mt-2 text-sm text-muted-foreground">
                 You're out of AI credits, so this can't run right now.
@@ -93,21 +110,13 @@ export function OptimizeConfirmDialog({
               <div className="mt-5 flex flex-col gap-2">
                 <button
                   onClick={onConfirm}
-                  disabled={isPending}
-                  className="relative inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-br from-[#2563EB] to-[#7C3AED] py-2.5 text-sm font-semibold text-white shadow-[0_4px_14px_-4px_rgba(37,99,235,0.6)] transition-all hover:-translate-y-px hover:shadow-[0_6px_20px_-4px_rgba(37,99,235,0.7)] disabled:opacity-70 disabled:cursor-not-allowed disabled:translate-y-0"
+                  className="relative inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-br from-[#2563EB] to-[#7C3AED] py-2.5 text-sm font-semibold text-white shadow-[0_4px_14px_-4px_rgba(37,99,235,0.6)] transition-all hover:-translate-y-px hover:shadow-[0_6px_20px_-4px_rgba(37,99,235,0.7)]"
                 >
-                  {isPending ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin" /> Optimizing…
-                    </>
-                  ) : (
-                    actionLabel
-                  )}
+                  {actionLabel}
                 </button>
                 <button
                   onClick={onCancel}
-                  disabled={isPending}
-                  className="inline-flex w-full items-center justify-center rounded-xl border border-black/5 bg-white py-2.5 text-sm font-medium text-[oklch(0.4_0.02_265)] transition-colors hover:bg-black/[0.03] disabled:opacity-50"
+                  className="inline-flex w-full items-center justify-center rounded-xl border border-black/5 bg-white py-2.5 text-sm font-medium text-[oklch(0.4_0.02_265)] transition-colors hover:bg-black/[0.03]"
                 >
                   Cancel
                 </button>

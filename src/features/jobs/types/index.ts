@@ -1,9 +1,4 @@
-import type {
-  WorkMode,
-  EmploymentType,
-  ExperienceLevel,
-  JobSource,
-} from "@/types";
+import type { WorkMode, EmploymentType, ExperienceLevel, JobSource } from "@/types";
 
 // ── Role category ────────────────────────────────────────────────────────────
 // Matched against a job's free-text `role` field — see
@@ -60,11 +55,7 @@ export type JobFilters = {
 // ── Sort shape ───────────────────────────────────────────────────────────────
 
 export type JobSortField =
-  | "posted_at"
-  | "created_at"
-  | "salary_min"
-  | "salary_max"
-  | "company_name";
+  "posted_at" | "created_at" | "salary_min" | "salary_max" | "company_name";
 
 export type SortDirection = "asc" | "desc";
 
@@ -78,12 +69,7 @@ export type JobSort = {
  * Each maps to a concrete JobSort object via SORT_OPTIONS in constants.
  */
 export type JobSortOption =
-  | "newest"
-  | "oldest"
-  | "salary_high"
-  | "salary_low"
-  | "company_az"
-  | "company_za";
+  "newest" | "oldest" | "salary_high" | "salary_low" | "company_az" | "company_za";
 
 /** Which dataset the Jobs page is displaying — the global board, or just the
  *  jobs the user has recently opened. Defaults to "all" when absent. */

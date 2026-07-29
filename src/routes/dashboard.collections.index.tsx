@@ -36,7 +36,8 @@ function CollectionsPage() {
         toast.success(`Created "${created.name}".`);
         setCreateOpen(false);
       },
-      onError: (err) => toast.error(err instanceof Error ? err.message : "Failed to create collection."),
+      onError: (err) =>
+        toast.error(err instanceof Error ? err.message : "Failed to create collection."),
     });
   };
 
@@ -49,7 +50,8 @@ function CollectionsPage() {
           toast.success("Collection updated.");
           setEditing(null);
         },
-        onError: (err) => toast.error(err instanceof Error ? err.message : "Failed to update collection."),
+        onError: (err) =>
+          toast.error(err instanceof Error ? err.message : "Failed to update collection."),
       },
     );
   };
@@ -123,7 +125,9 @@ function CollectionsPage() {
               collection={collection}
               onEdit={setEditing}
               onDelete={handleDelete}
-              isDeleting={deleteCollection.isPending && deleteCollection.variables?.id === collection.id}
+              isDeleting={
+                deleteCollection.isPending && deleteCollection.variables?.id === collection.id
+              }
             />
           ))}
         </div>

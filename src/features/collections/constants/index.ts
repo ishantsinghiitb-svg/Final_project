@@ -8,7 +8,11 @@ import type { CollectionColor } from "@/types";
 
 export const COLLECTION_COLOR_META: Record<
   CollectionColor,
-  { label: string; dot: string; chipTone: "default" | "blue" | "purple" | "green" | "amber" | "rose" }
+  {
+    label: string;
+    dot: string;
+    chipTone: "default" | "blue" | "purple" | "green" | "amber" | "rose";
+  }
 > = {
   default: { label: "Gray", dot: "bg-slate-400", chipTone: "default" },
   blue: { label: "Blue", dot: "bg-blue-500", chipTone: "blue" },

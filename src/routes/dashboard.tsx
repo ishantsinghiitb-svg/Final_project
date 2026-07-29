@@ -6,7 +6,11 @@ export const Route = createFileRoute("/dashboard")({
   head: () => ({
     meta: [
       { title: "Workspace — NextOffer" },
-      { name: "description", content: "Your NextOffer workspace: jobs, applications, interviews, and resumes in one place." },
+      {
+        name: "description",
+        content:
+          "Your NextOffer workspace: jobs, applications, interviews, and resumes in one place.",
+      },
       { name: "robots", content: "noindex" },
     ],
   }),

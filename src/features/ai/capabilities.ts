@@ -6,6 +6,7 @@ import {
   AI_CREDIT_COSTS,
   AI_ANALYSIS_VERSIONS,
   AI_PROMPT_VERSIONS,
+  isShippedCapability,
   type AICapability,
 } from "@/features/ai/constants";
 import {
@@ -27,8 +28,36 @@ import {
 // (prompts), a schema (schemas), and one entry here.
 
 export type CachePolicy = {
+  /** Honoured by all three orchestrations. Turning this off skips read + write. */
   enabled: boolean;
-  ttlSeconds: number | null; // null = no expiry
+  /**
+   * ⚠ INTENTIONALLY UNUSED — do not set this without reading all of the below
+   * (documented at the Module 6 freeze).
+   *
+   * Every capability uses `null` (no expiry), and the three AI orchestrations
+   * agree on that value only by coincidence, not by construction:
+   *
+   *   • `AIService.runCapability` READS this field and converts it to an
+   *     `expires_at` timestamp.
+   *   • `CoverLetterAIService` and `ResumeOptimizerService` are separate
+   *     orchestrations (see the note at the top of each) and hardcode
+   *     `expires_at: null` on their cache writes. They never read this field.
+   *
+   * So setting a non-null TTL today would take effect for Resume Match and ATS
+   * only, and be silently ignored for Cover Letter and Resume Optimizer — the
+   * registry would advertise an expiry policy that two of the four shipped
+   * capabilities do not implement.
+   *
+   * It is left in place rather than deleted because the read side (the
+   * `expires_at` check in all three `lookupCache` functions) is real and would
+   * correctly honour an expiry on any row that has one.
+   *
+   * BEFORE RELYING ON IT: implement it in all three writers, then delete this
+   * warning. `AIService.test.ts` guards the current state — it asserts every
+   * registered capability leaves this `null`, so a change here fails loudly
+   * instead of shipping a half-applied policy.
+   */
+  ttlSeconds: number | null;
 };
 
 export type CapabilityDefinition = {
@@ -43,8 +72,18 @@ export type CapabilityDefinition = {
   creditCost: number;
   outputSchema: z.ZodTypeAny;
   cachePolicy: CachePolicy;
+  /**
+   * True for a capability that is registered but NOT shipped — no server
+   * function, no client method, no UI (Module 6 freeze). It exists so the
+   * scaffolding stays warm, and must never be presented to a user. The
+   * enforcement is in the types: user-facing code is written against
+   * `ShippedAICapability`, so an experimental id cannot be passed to it.
+   */
+  experimental: boolean;
 };
 
+// Every capability uses this default — no entry overrides it. `ttlSeconds` is
+// null on purpose; see the warning on CachePolicy before changing it.
 const DEFAULT_CACHE: CachePolicy = { enabled: true, ttlSeconds: null };
 
 function define(
@@ -66,6 +105,9 @@ function define(
     creditCost: AI_CREDIT_COSTS[id],
     outputSchema,
     cachePolicy,
+    // Derived from the one list in constants rather than passed per entry, so
+    // promoting a capability is a single edit and the two can never disagree.
+    experimental: !isShippedCapability(id),
   };
 }
 
@@ -86,6 +128,9 @@ export const CAPABILITY_REGISTRY: Record<AICapability, CapabilityDefinition> = {
     "reasoning",
     CoverLetterResultSchema,
   ),
+  // ⚠ EXPERIMENTAL — registered but not shipped (`experimental: true`).
+  // No server function, no client method, no UI reaches this. Do not add one
+  // without moving the id into SHIPPED_AI_CAPABILITIES first.
   [AI_CAPABILITIES.INTERVIEW_PREP]: define(
     AI_CAPABILITIES.INTERVIEW_PREP,
     "reasoning",

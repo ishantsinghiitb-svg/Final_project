@@ -39,15 +39,7 @@ function cleanItems(value: string[]): string[] {
 }
 
 // ── Bulleted list card (responsibilities / requirements / preferred quals / benefits) ──
-function ListSection({
-  icon,
-  title,
-  items,
-}: {
-  icon: ReactNode;
-  title: string;
-  items: string[];
-}) {
+function ListSection({ icon, title, items }: { icon: ReactNode; title: string; items: string[] }) {
   return (
     <DashCard>
       <SectionTitle>
@@ -58,10 +50,7 @@ function ListSection({
       </SectionTitle>
       <ul className="mt-4 space-y-2">
         {cleanItems(items).map((item, i) => (
-          <li
-            key={i}
-            className="flex gap-2.5 text-sm leading-relaxed text-[oklch(0.3_0.02_265)]"
-          >
+          <li key={i} className="flex gap-2.5 text-sm leading-relaxed text-[oklch(0.3_0.02_265)]">
             <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[#2563EB]/60" />
             <span>{item}</span>
           </li>
@@ -72,15 +61,7 @@ function ListSection({
 }
 
 // ── Chip card (technologies / languages) ──
-function ChipSection({
-  icon,
-  title,
-  items,
-}: {
-  icon: ReactNode;
-  title: string;
-  items: string[];
-}) {
+function ChipSection({ icon, title, items }: { icon: ReactNode; title: string; items: string[] }) {
   return (
     <DashCard>
       <SectionTitle>
@@ -120,9 +101,7 @@ function DetailRow({
         <p className="text-[10px] font-medium uppercase tracking-wide text-[oklch(0.55_0.02_265)]">
           {label}
         </p>
-        <div className="mt-0.5 text-sm font-medium text-[oklch(0.25_0.02_265)]">
-          {children}
-        </div>
+        <div className="mt-0.5 text-sm font-medium text-[oklch(0.25_0.02_265)]">{children}</div>
       </div>
     </div>
   );
@@ -145,8 +124,7 @@ export function JobMetadataSections({ job }: { job: GlobalJob }) {
   const hasSalaryText = Boolean(job.salary_text?.trim());
   const hasExpiry = Boolean(expiryLabel);
 
-  const hasDetailCard =
-    hasRecruiter || hasCompanySize || hasIndustry || hasSalaryText || hasExpiry;
+  const hasDetailCard = hasRecruiter || hasCompanySize || hasIndustry || hasSalaryText || hasExpiry;
 
   return (
     <>

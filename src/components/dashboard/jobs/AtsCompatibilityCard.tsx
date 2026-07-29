@@ -15,7 +15,10 @@ import { cn } from "@/lib/utils";
 import { useResumes } from "@/features/resumes/hooks";
 import { useAtsScore, useAtsScoreHistory, useAnalyzeAts } from "@/features/ai/hooks";
 import { ATS_RATINGS, atsRatingForScore, type AtsRating } from "@/features/ai/atsRating";
-import { friendlyAIError } from "@/features/ai/errorMessages";
+import { AI_CAPABILITIES } from "@/features/ai/constants";
+import { AIThinkingPanel } from "@/components/dashboard/ai/AIThinking";
+import { AIErrorNotice } from "@/components/dashboard/ai/AIErrorNotice";
+import { AIMetaStrip, AIOutdatedNotice } from "@/components/dashboard/ai/AIMeta";
 import type { AtsScoreSummary } from "@/features/ai/types";
 import type { Resume } from "@/types";
 import { AnalyzeAtsDialog } from "./AnalyzeAtsDialog";
@@ -175,21 +178,29 @@ function AtsHistoryList({ resumeId, jobId }: { resumeId: string; jobId: string }
   );
 }
 
-export function AtsCompatibilityCard({ jobId }: { jobId: string }) {
+export function AtsCompatibilityCard({
+  jobId,
+  deepLink,
+  onDeepLinkConsumed,
+}: {
+  jobId: string;
+  /**
+   * Parsed `?resume=…&ats=1&force=1` from the route (Module 6G). Supplied by
+   * the page rather than read from `window` here, so SSR and the first client
+   * render agree and no post-mount effect is needed to avoid a hydration
+   * mismatch. `ats=1` is the AI Hub's "Run again" entry point — it opens the
+   * credit confirmation, never the request itself.
+   */
+  deepLink?: { resumeId?: string; analyze?: boolean; force?: boolean };
+  /** Called once the analyze intent has been acted on, so the page can clear it. */
+  onDeepLinkConsumed?: () => void;
+}) {
   const { data: resumes, isLoading: resumesLoading } = useResumes();
-  // null = "follow the default resume"; a concrete id = the user picked one.
-  // A `?resume=` deep-link preselects that resume, but it is read in the effect
-  // BELOW (post-mount), never in a render-phase initializer — reading `window`
-  // during the initial render makes SSR and the first client render disagree
-  // (hydration mismatch). Seeding to the SSR value and applying the param after
-  // mount keeps the first render identical on both.
-  const [selectedResumeId, setSelectedResumeId] = useState<string | null>(null);
-
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const resumeParam = params.get("resume");
-    if (resumeParam) setSelectedResumeId(resumeParam);
-  }, []);
+  // null = "follow the default resume"; a concrete id = a deep link or the
+  // user's own pick.
+  const [selectedResumeId, setSelectedResumeId] = useState<string | null>(
+    deepLink?.resumeId ?? null,
+  );
 
   const resume =
     resumes?.find((r) => r.id === selectedResumeId) ??
@@ -207,6 +218,21 @@ export function AtsCompatibilityCard({ jobId }: { jobId: string }) {
   // fast double-click could fire mutate() twice (two credits for one click). A
   // ref updates immediately, closing that window.
   const submittingRef = useRef(false);
+
+  // Auto-open the credit confirmation once when arriving from the AI Hub's
+  // "Run again" — mirrors the Resume Match card's deep-link handling, including
+  // the guard that it only fires after the resume is ready and the read (which
+  // carries the credit balance) has landed.
+  const autoOpenedRef = useRef(false);
+  const atsLoaded = atsQuery.data?.ok === true;
+  useEffect(() => {
+    if (autoOpenedRef.current || !deepLink?.analyze) return;
+    if (!resume || resume.parse_status !== "ready" || !atsLoaded) return;
+    autoOpenedRef.current = true;
+    setReAnalyze(Boolean(deepLink.force));
+    setConfirmOpen(true);
+    onDeepLinkConsumed?.();
+  }, [deepLink?.analyze, deepLink?.force, resume, atsLoaded, onDeepLinkConsumed]);
 
   // Switching resume clears any lingering analyze error from the previous
   // resume's mutation (a single shared instance, not keyed by resumeId). The
@@ -312,16 +338,20 @@ export function AtsCompatibilityCard({ jobId }: { jobId: string }) {
     });
   };
 
-  // Friendly error copy only — never the raw provider message.
-  const failureCode =
-    analyzeMutation.data && !analyzeMutation.data.ok ? analyzeMutation.data.code : null;
-  const errorText = failureCode
-    ? friendlyAIError(failureCode)
-    : analyzeMutation.isError
-      ? friendlyAIError(undefined)
-      : null;
-  const errorBanner = errorText && (
-    <div className="rounded-lg bg-rose-50 px-3 py-2 text-xs text-[#E11D48]">{errorText}</div>
+  // Friendly error copy only — never the raw provider message. Same shared
+  // notice as every other AI surface: mapped copy, a retry where retrying can
+  // help, and the credit reassurance only when the engine confirmed it.
+  const failed = analyzeMutation.data && !analyzeMutation.data.ok ? analyzeMutation.data : null;
+  const showError = Boolean(failed) || analyzeMutation.isError;
+  const errorBanner = showError && (
+    <AIErrorNotice
+      code={failed?.code}
+      creditsRefunded={failed?.creditsRefunded}
+      onRetry={() => openConfirm(reAnalyze)}
+      retryLabel="Try again"
+      retrying={analyzeMutation.isPending}
+      compact
+    />
   );
 
   const analysis = result.analysis;
@@ -346,7 +376,13 @@ export function AtsCompatibilityCard({ jobId }: { jobId: string }) {
         picker={picker}
         headerAction={reanalyzeHeaderButton}
       >
-        {!analysis || !insight ? (
+        {analyzeMutation.isPending ? (
+          <AIThinkingPanel
+            capability={AI_CAPABILITIES.ATS_SCORE}
+            title={analysis ? "Updating your ATS check" : "Checking ATS compatibility"}
+            className="border-0 bg-transparent p-0"
+          />
+        ) : !analysis || !insight ? (
           <div className="space-y-3">
             {errorBanner}
             <p className="text-sm text-[oklch(0.45_0.02_265)]">
@@ -355,23 +391,15 @@ export function AtsCompatibilityCard({ jobId }: { jobId: string }) {
             </p>
             <DashButton
               onClick={() => openConfirm(false)}
-              disabled={analyzeMutation.isPending || locked}
+              disabled={locked}
               className="w-full justify-between"
             >
-              {analyzeMutation.isPending ? (
-                <span className="flex items-center gap-1.5">
-                  <Loader2 className="h-4 w-4 animate-spin" /> Analyzing…
-                </span>
-              ) : (
-                <>
-                  <span className="flex items-center gap-1.5">
-                    <ShieldCheck className="h-4 w-4" /> Analyze ATS
-                  </span>
-                  <span className="rounded-full bg-white/15 px-2 py-0.5 text-[11px] font-medium">
-                    1 Credit
-                  </span>
-                </>
-              )}
+              <span className="flex items-center gap-1.5">
+                <ShieldCheck className="h-4 w-4" /> Analyze ATS
+              </span>
+              <span className="rounded-full bg-white/15 px-2 py-0.5 text-[11px] font-medium">
+                1 Credit
+              </span>
             </DashButton>
             {locked && (
               <p className="text-xs text-[oklch(0.5_0.02_265)]">
@@ -387,10 +415,12 @@ export function AtsCompatibilityCard({ jobId }: { jobId: string }) {
             {errorBanner}
 
             {result.stale && (
-              <div className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-[#B45309]">
-                Your resume or this job has changed since your last ATS check. Re-analyze to update
-                your result.
-              </div>
+              <AIOutdatedNotice
+                changed="either"
+                onRegenerate={() => openConfirm(true)}
+                regenerateLabel="Re-analyze"
+                busy={locked}
+              />
             )}
 
             {/* Score */}
@@ -433,6 +463,14 @@ export function AtsCompatibilityCard({ jobId }: { jobId: string }) {
             >
               <FileSearch className="h-3.5 w-3.5" /> View Full Report
             </DashButton>
+
+            {/* Where this score came from (Module 6G) — same strip, same
+                wording as the Resume Match card directly beside it. */}
+            <AIMetaStrip
+              generatedAt={analysis.createdAt}
+              reused={analyzeMutation.data?.ok === true && analyzeMutation.data.cacheHit}
+              className="border-t border-black/5 pt-3"
+            />
 
             <button
               onClick={() => setHistoryOpen((v) => !v)}

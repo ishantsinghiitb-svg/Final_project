@@ -1,9 +1,4 @@
-import {
-  useQuery,
-  useMutation,
-  useQueryClient,
-  keepPreviousData,
-} from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { useAuth } from "@/context/AuthContext";
 import { jobService } from "@/services/JobService";
 import { collectionService } from "@/services/CollectionService";
@@ -216,9 +211,7 @@ export function useSaveJob() {
       await queryClient.cancelQueries({ queryKey: jobKeys.savedIds(userId) });
 
       // Snapshot the current value so we can roll back on error
-      const previousIds = queryClient.getQueryData<string[]>(
-        jobKeys.savedIds(userId),
-      );
+      const previousIds = queryClient.getQueryData<string[]>(jobKeys.savedIds(userId));
 
       // Optimistically add the new ID
       queryClient.setQueryData<string[]>(jobKeys.savedIds(userId), (old) => [
@@ -261,9 +254,7 @@ export function useUnsaveJob() {
     onMutate: async ({ jobId }) => {
       await queryClient.cancelQueries({ queryKey: jobKeys.savedIds(userId) });
 
-      const previousIds = queryClient.getQueryData<string[]>(
-        jobKeys.savedIds(userId),
-      );
+      const previousIds = queryClient.getQueryData<string[]>(jobKeys.savedIds(userId));
 
       // Optimistically remove the ID
       queryClient.setQueryData<string[]>(jobKeys.savedIds(userId), (old) =>
@@ -359,28 +350,28 @@ export function useSidebarCounts(): SidebarCounts {
 
   const { data: jobsCount = 0 } = useQuery({
     queryKey: ["sidebar", "jobs-count"],
-    queryFn:  () => jobService.countDiscoverableJobs(),
+    queryFn: () => jobService.countDiscoverableJobs(),
     staleTime: 5 * 60 * 1_000,
   });
 
   const { data: savedCount = 0 } = useQuery({
     queryKey: ["sidebar", "saved-count", user?.id ?? ""],
-    queryFn:  () => jobService.countSavedJobs(user!.id),
-    enabled:   Boolean(user),
+    queryFn: () => jobService.countSavedJobs(user!.id),
+    enabled: Boolean(user),
     staleTime: 5 * 60 * 1_000,
   });
 
   const { data: applicationsCount = 0 } = useQuery({
     queryKey: ["sidebar", "applications-count", user?.id ?? ""],
-    queryFn:  () => jobService.countApplications(user!.id),
-    enabled:   Boolean(user),
+    queryFn: () => jobService.countApplications(user!.id),
+    enabled: Boolean(user),
     staleTime: 5 * 60 * 1_000,
   });
 
   const { data: collectionsCount = 0 } = useQuery({
     queryKey: ["sidebar", "collections-count", user?.id ?? ""],
-    queryFn:  () => collectionService.countCollections(user!.id),
-    enabled:   Boolean(user),
+    queryFn: () => collectionService.countCollections(user!.id),
+    enabled: Boolean(user),
     staleTime: 5 * 60 * 1_000,
   });
 

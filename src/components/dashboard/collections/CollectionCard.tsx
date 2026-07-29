@@ -24,11 +24,16 @@ type Props = {
  * list only.
  */
 export function CollectionCard({ collection, onEdit, onDelete, isDeleting }: Props) {
-  const colorMeta = COLLECTION_COLOR_META[collection.color ?? "default"] ?? COLLECTION_COLOR_META.default;
+  const colorMeta =
+    COLLECTION_COLOR_META[collection.color ?? "default"] ?? COLLECTION_COLOR_META.default;
 
   return (
     <DashCard className="group flex flex-col hover:shadow-md hover:-translate-y-0.5 transition-[box-shadow,transform] duration-200">
-      <Link to="/dashboard/collections/$collectionId" params={{ collectionId: collection.id }} className="flex-1">
+      <Link
+        to="/dashboard/collections/$collectionId"
+        params={{ collectionId: collection.id }}
+        className="flex-1"
+      >
         <div className="flex items-center gap-2">
           <span className={cn("h-2.5 w-2.5 shrink-0 rounded-full", colorMeta.dot)} aria-hidden />
           <p className="truncate font-display font-semibold text-[oklch(0.2_0.02_265)] transition-colors group-hover:text-[#2563EB]">
@@ -77,7 +82,11 @@ export function CollectionCard({ collection, onEdit, onDelete, isDeleting }: Pro
           disabled={isDeleting}
           className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-black/5 bg-white px-3 py-1.5 text-xs font-medium text-rose-600 transition-colors hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {isDeleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+          {isDeleting ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <Trash2 className="h-3.5 w-3.5" />
+          )}
           Delete
         </button>
       </div>

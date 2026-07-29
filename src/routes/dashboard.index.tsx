@@ -1,20 +1,35 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { ArrowUpRight, Briefcase, CalendarClock, CircleCheck as CheckCircle2, Circle, FileText, Flame, Plus, Sparkles, Target, TrendingUp } from "lucide-react";
-import { DashCard, PageHeader, SectionTitle, Chip, CompanyMark, StickyPageHeader } from "@/components/dashboard/primitives";
+import {
+  ArrowUpRight,
+  Briefcase,
+  CalendarClock,
+  CircleCheck as CheckCircle2,
+  Circle,
+  FileText,
+  Flame,
+  Plus,
+  Sparkles,
+  Target,
+  TrendingUp,
+} from "lucide-react";
+import {
+  DashCard,
+  PageHeader,
+  SectionTitle,
+  Chip,
+  CompanyMark,
+  StickyPageHeader,
+} from "@/components/dashboard/primitives";
 import { DashButtonLink } from "@/components/dashboard/DashButton";
 import { useAuth } from "@/context/AuthContext";
 import { useProfile } from "@/context/ProfileContext";
-import {
-  interviews,
-  jobs,
-  stats,
-  stageMeta,
-  onboardingSteps,
-} from "@/lib/dashboard-data";
+import { interviews, jobs, stats, stageMeta, onboardingSteps } from "@/lib/dashboard-data";
 
 export const Route = createFileRoute("/dashboard/")({
-  head: () => ({ meta: [{ title: "Overview — NextOffer" }, { name: "robots", content: "noindex" }] }),
+  head: () => ({
+    meta: [{ title: "Overview — NextOffer" }, { name: "robots", content: "noindex" }],
+  }),
   component: OverviewPage,
 });
 
@@ -30,29 +45,29 @@ function OverviewPage() {
   return (
     <>
       <StickyPageHeader>
-      <PageHeader
-        eyebrow="Overview"
-        title={`Good afternoon, ${firstName}.`}
-        subtitle={
-          onboardingComplete
-            ? "You're all set up. Here's what needs your attention today."
-            : "A few setup steps left, then your workspace is fully tuned. Here's what to do next."
-        }
-        actions={
-          <>
-            <DashButtonLink
-              to="/dashboard/interviews"
-              variant="outline"
-              className="hidden sm:inline-flex"
-            >
-              <CalendarClock className="h-4 w-4" /> This week
-            </DashButtonLink>
-            <DashButtonLink to="/dashboard/jobs/">
-              <Plus className="h-4 w-4" /> Add job
-            </DashButtonLink>
-          </>
-        }
-      />
+        <PageHeader
+          eyebrow="Overview"
+          title={`Good afternoon, ${firstName}.`}
+          subtitle={
+            onboardingComplete
+              ? "You're all set up. Here's what needs your attention today."
+              : "A few setup steps left, then your workspace is fully tuned. Here's what to do next."
+          }
+          actions={
+            <>
+              <DashButtonLink
+                to="/dashboard/interviews"
+                variant="outline"
+                className="hidden sm:inline-flex"
+              >
+                <CalendarClock className="h-4 w-4" /> This week
+              </DashButtonLink>
+              <DashButtonLink to="/dashboard/jobs/">
+                <Plus className="h-4 w-4" /> Add job
+              </DashButtonLink>
+            </>
+          }
+        />
       </StickyPageHeader>
 
       {/* Onboarding checklist — only while incomplete */}

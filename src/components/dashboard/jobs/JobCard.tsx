@@ -1,8 +1,21 @@
 import { memo, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
-import { Bookmark, BookmarkCheck, ArrowUpRight, MapPin, Briefcase, Clock, Banknote } from "lucide-react";
+import {
+  Bookmark,
+  BookmarkCheck,
+  ArrowUpRight,
+  MapPin,
+  Briefcase,
+  Clock,
+  Banknote,
+} from "lucide-react";
 import { Chip, CompanyMark } from "@/components/dashboard/primitives";
-import { formatSalary, formatPostedTime, formatSourceLabel, logoToneForCompany } from "@/features/jobs/utils";
+import {
+  formatSalary,
+  formatPostedTime,
+  formatSourceLabel,
+  logoToneForCompany,
+} from "@/features/jobs/utils";
 import type { GlobalJob } from "@/types";
 
 // ── Job Card ─────────────────────────────────────────────────────────────────
@@ -51,7 +64,12 @@ export const JobCard = memo(function JobCard({
         params={{ jobId: job.id }}
         className="flex flex-1 min-w-0 items-center gap-4"
       >
-        <CompanyMark company={job.company_name} tone={tone} size={46} logoUrl={job.company_logo_url} />
+        <CompanyMark
+          company={job.company_name}
+          tone={tone}
+          size={46}
+          logoUrl={job.company_logo_url}
+        />
 
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 flex-wrap">
@@ -112,7 +130,9 @@ export const JobCard = memo(function JobCard({
 
         {/* Source + time — desktop only */}
         <div className="hidden flex-col items-end gap-0.5 md:flex min-w-[80px]">
-          <span className="text-xs text-[oklch(0.55_0.02_265)]">{formatSourceLabel(job.source)}</span>
+          <span className="text-xs text-[oklch(0.55_0.02_265)]">
+            {formatSourceLabel(job.source)}
+          </span>
           {posted && (
             <span className="flex items-center gap-1 text-xs text-[oklch(0.55_0.02_265)]">
               <Clock className="h-3 w-3" /> {posted}

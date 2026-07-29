@@ -1,8 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { DashCard, PageHeader, SectionTitle, Chip, StickyPageHeader } from "@/components/dashboard/primitives";
+import {
+  DashCard,
+  PageHeader,
+  SectionTitle,
+  Chip,
+  StickyPageHeader,
+} from "@/components/dashboard/primitives";
 
 export const Route = createFileRoute("/dashboard/analytics")({
-  head: () => ({ meta: [{ title: "Analytics — NextOffer" }, { name: "robots", content: "noindex" }] }),
+  head: () => ({
+    meta: [{ title: "Analytics — NextOffer" }, { name: "robots", content: "noindex" }],
+  }),
   component: AnalyticsPage,
 });
 
@@ -21,11 +29,11 @@ function AnalyticsPage() {
   return (
     <>
       <StickyPageHeader>
-      <PageHeader
-        eyebrow="Analytics"
-        title="Signal, not vanity metrics."
-        subtitle="See what's actually moving the needle — where you're getting traction and where things are stalling."
-      />
+        <PageHeader
+          eyebrow="Analytics"
+          title="Signal, not vanity metrics."
+          subtitle="See what's actually moving the needle — where you're getting traction and where things are stalling."
+        />
       </StickyPageHeader>
 
       <div className="grid gap-4 md:grid-cols-4">
@@ -71,7 +79,10 @@ function AnalyticsPage() {
                   <span className="font-medium">{f.v}</span>
                 </div>
                 <div className="mt-1 h-2.5 overflow-hidden rounded-full bg-black/5">
-                  <div className={`h-full rounded-full bg-gradient-to-r ${f.tone}`} style={{ width: `${f.w}%` }} />
+                  <div
+                    className={`h-full rounded-full bg-gradient-to-r ${f.tone}`}
+                    style={{ width: `${f.w}%` }}
+                  />
                 </div>
               </div>
             ))}
@@ -96,7 +107,10 @@ function AnalyticsPage() {
                   <span className="text-[oklch(0.5_0.02_265)]">{r.pct}%</span>
                 </div>
                 <div className="mt-1 h-1.5 rounded-full bg-black/5">
-                  <div className="h-full rounded-full bg-gradient-to-r from-[#2563EB] to-[#7C3AED]" style={{ width: `${r.pct * 2}%` }} />
+                  <div
+                    className="h-full rounded-full bg-gradient-to-r from-[#2563EB] to-[#7C3AED]"
+                    style={{ width: `${r.pct * 2}%` }}
+                  />
                 </div>
               </li>
             ))}
@@ -108,15 +122,21 @@ function AnalyticsPage() {
           <ul className="mt-3 space-y-2 text-sm">
             <li className="flex items-start gap-2">
               <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[#16A34A]" />
-              <span>Resumes tailored with AI get <b>2.3× more responses</b> than your master resume.</span>
+              <span>
+                Resumes tailored with AI get <b>2.3× more responses</b> than your master resume.
+              </span>
             </li>
             <li className="flex items-start gap-2">
               <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[#2563EB]" />
-              <span>You apply fastest on <b>Tuesdays</b> — and Tuesday apps convert best too.</span>
+              <span>
+                You apply fastest on <b>Tuesdays</b> — and Tuesday apps convert best too.
+              </span>
             </li>
             <li className="flex items-start gap-2">
               <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[#7C3AED]" />
-              <span>Roles above <b>85% match</b> land you an interview 4× more often than 70–85%.</span>
+              <span>
+                Roles above <b>85% match</b> land you an interview 4× more often than 70–85%.
+              </span>
             </li>
             <li className="flex items-start gap-2">
               <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[#F59E0B]" />

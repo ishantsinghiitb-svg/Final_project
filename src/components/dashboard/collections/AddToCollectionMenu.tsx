@@ -54,7 +54,8 @@ export function AddToCollectionMenu({ job, className, label }: Props) {
   // Batched across every card on the page (Module 5C perf fix) — one request
   // for the whole page instead of one per job card; this component just
   // derives its own job's slice from the shared map.
-  const { data: allMemberships = {}, isLoading: membershipLoading } = useAllJobCollectionMemberships();
+  const { data: allMemberships = {}, isLoading: membershipLoading } =
+    useAllJobCollectionMemberships();
   const memberIds = allMemberships[job.id] ?? [];
   const addJob = useAddJobToCollection();
   const removeJob = useRemoveJobFromCollection();
@@ -199,7 +200,8 @@ export function AddToCollectionMenu({ job, className, label }: Props) {
         ) : (
           <ul className="max-h-64 overflow-y-auto py-1">
             {collections.map((c) => {
-              const colorMeta = COLLECTION_COLOR_META[c.color ?? "default"] ?? COLLECTION_COLOR_META.default;
+              const colorMeta =
+                COLLECTION_COLOR_META[c.color ?? "default"] ?? COLLECTION_COLOR_META.default;
               const checked = pending.has(c.id);
               return (
                 <li key={c.id}>
@@ -218,13 +220,18 @@ export function AddToCollectionMenu({ job, className, label }: Props) {
                     <span
                       className={cn(
                         "grid h-4 w-4 shrink-0 place-items-center rounded border transition-colors",
-                        checked ? "border-[#2563EB] bg-[#2563EB] text-white" : "border-black/20 bg-white",
+                        checked
+                          ? "border-[#2563EB] bg-[#2563EB] text-white"
+                          : "border-black/20 bg-white",
                       )}
                       aria-hidden
                     >
                       {checked && <Check className="h-3 w-3" />}
                     </span>
-                    <span className={cn("h-2 w-2 shrink-0 rounded-full", colorMeta.dot)} aria-hidden />
+                    <span
+                      className={cn("h-2 w-2 shrink-0 rounded-full", colorMeta.dot)}
+                      aria-hidden
+                    />
                     <span className="truncate">{c.name}</span>
                   </button>
                 </li>

@@ -6,7 +6,7 @@ import {
   StructuredResumeSchema,
   type StructuredResume,
 } from "@/features/ai/schemas";
-import type { AICreditStatus } from "@/features/ai/types";
+import type { AICreditStatus, AIFailure } from "@/features/ai/types";
 import {
   resolveCareerCategory,
   resolveTargetSections,
@@ -48,8 +48,7 @@ import { AIValidationError, toResultCode } from "./errors";
 // table. The charge/refund/cache flow mirrors runCapability exactly.
 
 export type AnalyzeOptimizeResult =
-  | { ok: true; result: OptimizationResult; cacheHit: boolean; credits: AICreditStatus }
-  | { ok: false; code: string; message: string; credits?: AICreditStatus };
+  { ok: true; result: OptimizationResult; cacheHit: boolean; credits: AICreditStatus } | AIFailure;
 
 type LoadedResume = {
   structured: StructuredResume;
@@ -267,6 +266,10 @@ async function writeCache(
       model,
       job_hash: null,
       response: response as Json,
+      // Hardcoded, NOT read from `cap.cachePolicy.ttlSeconds` — unlike
+      // AIService.writeCache. Identical in effect today (every capability's
+      // ttlSeconds is null), but a future non-null TTL would be silently
+      // ignored here. See the warning on CachePolicy.ttlSeconds.
       expires_at: null,
     },
     { onConflict: "user_id,capability,input_hash,prompt_version,analysis_version,model" },
@@ -650,6 +653,7 @@ export async function optimizeResume(
   } catch (err) {
     const code = toResultCode(err);
     let status: AICreditStatus | undefined;
+    let refunded = false;
     try {
       if (chargedCost > 0) {
         status = await withRetry(() => credits.refund(cap.id, chargedCost), {
@@ -657,6 +661,7 @@ export async function optimizeResume(
           baseDelayMs: 200,
           maxDelayMs: 1000,
         });
+        refunded = true;
       } else {
         status = await credits.getStatus();
       }
@@ -681,6 +686,7 @@ export async function optimizeResume(
       code,
       message: err instanceof Error ? err.message : "Resume optimization failed.",
       credits: status,
+      creditsRefunded: chargedCost === 0 || refunded ? true : undefined,
     };
   }
 }

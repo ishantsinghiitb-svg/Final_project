@@ -17,9 +17,11 @@ import {
   type ResumeHealth,
   type StructuredResume,
 } from "@/features/ai/schemas";
+import { creditsRefundedFor } from "@/features/ai/types";
 import type {
   AICreditStatus,
   AIContext,
+  AIFailure,
   AtsBreakdownItem,
   AtsScoreSummary,
 } from "@/features/ai/types";
@@ -50,8 +52,7 @@ export type GetAtsResult = {
 };
 
 export type AnalyzeAtsResult =
-  | { ok: true; analysis: AtsScoreSummary; cacheHit: boolean; credits: AICreditStatus }
-  | { ok: false; code: string; message: string; credits?: AICreditStatus };
+  { ok: true; analysis: AtsScoreSummary; cacheHit: boolean; credits: AICreditStatus } | AIFailure;
 
 // The stored `ai_analyses.result` blob for ATS is the fully-merged public
 // summary (deterministic + AI already combined and weighted at analysis time),
@@ -354,7 +355,13 @@ export async function analyzeAtsScore(
   });
 
   if (!result.ok) {
-    return { ok: false, code: result.code, message: result.message, credits: result.credits };
+    return {
+      ok: false,
+      code: result.code,
+      message: result.message,
+      credits: result.credits,
+      creditsRefunded: creditsRefundedFor(result),
+    };
   }
 
   const ai = result.data as AtsScoreResult;

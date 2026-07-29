@@ -36,7 +36,12 @@ export function PrioritySelector({ value, onChange, isPending }: Props) {
             <span className="text-[oklch(0.5_0.02_265)]">Priority</span>
           </>
         )}
-        <ChevronDown className={cn("h-3.5 w-3.5 text-[oklch(0.5_0.02_265)] transition-transform", open && "rotate-180")} />
+        <ChevronDown
+          className={cn(
+            "h-3.5 w-3.5 text-[oklch(0.5_0.02_265)] transition-transform",
+            open && "rotate-180",
+          )}
+        />
       </button>
 
       {open && (
@@ -46,7 +51,10 @@ export function PrioritySelector({ value, onChange, isPending }: Props) {
             return (
               <button
                 key={p}
-                onClick={() => { onChange(p); setOpen(false); }}
+                onClick={() => {
+                  onChange(p);
+                  setOpen(false);
+                }}
                 className={cn(
                   "flex w-full items-center gap-2.5 px-3 py-2.5 text-sm transition-colors",
                   p === value
@@ -61,7 +69,10 @@ export function PrioritySelector({ value, onChange, isPending }: Props) {
           })}
           {value && (
             <button
-              onClick={() => { onChange(null); setOpen(false); }}
+              onClick={() => {
+                onChange(null);
+                setOpen(false);
+              }}
               className="flex w-full items-center gap-2.5 border-t border-black/5 px-3 py-2.5 text-sm text-[oklch(0.5_0.02_265)] hover:bg-black/[0.03] transition-colors"
             >
               <X className="h-3.5 w-3.5" />

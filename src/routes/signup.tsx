@@ -95,7 +95,9 @@ function Signup() {
         successMessage="Check your email to verify your account."
         extra={
           <label className="block">
-            <span className="text-xs uppercase tracking-widest text-muted-foreground">Full name</span>
+            <span className="text-xs uppercase tracking-widest text-muted-foreground">
+              Full name
+            </span>
             <input
               required
               value={fullName}

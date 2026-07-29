@@ -166,7 +166,9 @@ export function AuthCard({
               >
                 {extra}
                 <label className="block">
-                  <span className="text-xs uppercase tracking-widest text-muted-foreground">Email</span>
+                  <span className="text-xs uppercase tracking-widest text-muted-foreground">
+                    Email
+                  </span>
                   <input
                     required
                     type="email"
@@ -178,7 +180,9 @@ export function AuthCard({
                   />
                 </label>
                 <label className="block">
-                  <span className="text-xs uppercase tracking-widest text-muted-foreground">Password</span>
+                  <span className="text-xs uppercase tracking-widest text-muted-foreground">
+                    Password
+                  </span>
                   <input
                     required
                     type="password"
@@ -213,9 +217,7 @@ export function AuthCard({
                     />
                   </label>
                 )}
-                {passwordError && (
-                  <p className="text-xs text-red-400">{passwordError}</p>
-                )}
+                {passwordError && <p className="text-xs text-red-400">{passwordError}</p>}
                 {showForgotPassword && (
                   <div className="text-right">
                     <Link

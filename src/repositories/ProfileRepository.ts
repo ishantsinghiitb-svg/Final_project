@@ -3,16 +3,11 @@ import type { Profile, ProfileUpdate } from "@/types";
 import type { ProfileInsert } from "@/types/database";
 
 const TABLE = "profiles";
-const COLUMNS =
-  "id, full_name, email, location, target_role, avatar_url, created_at, updated_at";
+const COLUMNS = "id, full_name, email, location, target_role, avatar_url, created_at, updated_at";
 
 export class ProfileRepository {
   async findById(id: string): Promise<Profile | null> {
-    const { data, error } = await supabase
-      .from(TABLE)
-      .select(COLUMNS)
-      .eq("id", id)
-      .maybeSingle();
+    const { data, error } = await supabase.from(TABLE).select(COLUMNS).eq("id", id).maybeSingle();
     if (error) throw error;
     return data as Profile | null;
   }

@@ -6,7 +6,8 @@ import {
   cleanImprovementPlan,
   type ResumeMatchResult,
 } from "@/features/ai/schemas";
-import type { AICreditStatus, AIContext, ResumeMatchSummary } from "@/features/ai/types";
+import { creditsRefundedFor } from "@/features/ai/types";
+import type { AICreditStatus, AIContext, AIFailure, ResumeMatchSummary } from "@/features/ai/types";
 import type { Json } from "@/types/database";
 import type { AuthedContext } from "@/server/supabase";
 import { ContextBuilder } from "./ContextBuilder";
@@ -29,7 +30,7 @@ export type GetMatchResult = {
 
 export type AnalyzeMatchResult =
   | { ok: true; analysis: ResumeMatchSummary; cacheHit: boolean; credits: AICreditStatus }
-  | { ok: false; code: string; message: string; credits?: AICreditStatus };
+  | AIFailure;
 
 function toSummary(row: { id: string; result: Json; created_at: string }): ResumeMatchSummary {
   // ai_analyses is a Module 6B table — every row was written by the current
@@ -169,7 +170,13 @@ export async function analyzeResumeMatch(
   });
 
   if (!result.ok) {
-    return { ok: false, code: result.code, message: result.message, credits: result.credits };
+    return {
+      ok: false,
+      code: result.code,
+      message: result.message,
+      credits: result.credits,
+      creditsRefunded: creditsRefundedFor(result),
+    };
   }
 
   // The AI call already succeeded — and unless this was a cache hit, the user

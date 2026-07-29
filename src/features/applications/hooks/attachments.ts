@@ -5,7 +5,8 @@ import type { ApplicationAttachmentKind } from "@/types";
 
 export const attachmentKeys = {
   all: ["application-attachments"] as const,
-  byApplication: (applicationId: string) => [...attachmentKeys.all, "by-application", applicationId] as const,
+  byApplication: (applicationId: string) =>
+    [...attachmentKeys.all, "by-application", applicationId] as const,
   byReminder: (reminderId: string) => [...attachmentKeys.all, "by-reminder", reminderId] as const,
 };
 

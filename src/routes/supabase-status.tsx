@@ -34,7 +34,9 @@ function SupabaseStatus() {
       <h1>Supabase Client Status</h1>
       <div style={{ fontSize: 24, fontWeight: 700, color }}>{label}</div>
       <ul style={{ marginTop: 16 }}>
-        <li>VITE_SUPABASE_URL: <code>{url || "(missing)"}</code></li>
+        <li>
+          VITE_SUPABASE_URL: <code>{url || "(missing)"}</code>
+        </li>
         <li>VITE_SUPABASE_ANON_KEY: {keyLen ? `${keyLen} chars loaded` : "(missing)"}</li>
       </ul>
       <p style={{ marginTop: 16, color }}>{detail}</p>

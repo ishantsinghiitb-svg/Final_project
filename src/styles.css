@@ -167,6 +167,35 @@
   animation: float-slower 9s ease-in-out infinite;
 }
 
+/* ── AI "thinking" motion (Module 6G) ─────────────────────────────────────
+   Used only by components/dashboard/ai/AIThinking.tsx. Deliberately slow and
+   low-contrast: the point is to signal careful work in progress, not to pull
+   the eye away from the page. All of it collapses to static under
+   prefers-reduced-motion (see the media query below). */
+@keyframes ai-sweep {
+  0%   { transform: translateX(-60%) scaleX(0.55); }
+  50%  { transform: translateX(20%)  scaleX(1); }
+  100% { transform: translateX(160%) scaleX(0.55); }
+}
+@keyframes ai-breathe {
+  0%, 100% { opacity: 0.55; transform: scale(0.92); }
+  50%      { opacity: 1;    transform: scale(1.06); }
+}
+@keyframes ai-phase-in {
+  from { opacity: 0; transform: translateY(5px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@utility animate-ai-sweep {
+  animation: ai-sweep 2.1s cubic-bezier(0.45, 0, 0.35, 1) infinite;
+}
+@utility animate-ai-breathe {
+  animation: ai-breathe 2.4s ease-in-out infinite;
+}
+@utility animate-ai-phase-in {
+  animation: ai-phase-in 0.42s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
 /* Scroll reveal — applied via IntersectionObserver in Reveal component */
 .reveal {
   opacity: 0;
@@ -178,6 +207,11 @@
 @media (prefers-reduced-motion: reduce) {
   .reveal { opacity: 1; animation: none !important; }
   .animate-float, .animate-float-slow { animation: none !important; }
+  /* AI loading stays fully legible without motion — the phase text still
+     advances, it just appears instead of sliding, and the sweep holds still. */
+  .animate-ai-sweep,
+  .animate-ai-breathe,
+  .animate-ai-phase-in { animation: none !important; opacity: 1; transform: none; }
 }
 
 ::selection { background: oklch(0.58 0.21 260 / 0.35); color: white; }

@@ -34,23 +34,17 @@ export function KanbanBoard({ applications, onStatusChange, onDelete, onArchive 
     {} as Record<ApplicationStatus, Application[]>,
   );
 
-  const handleDragStart = useCallback(
-    (e: React.DragEvent, id: string) => {
-      e.dataTransfer.setData("text/plain", id);
-      e.dataTransfer.effectAllowed = "move";
-      setDraggingId(id);
-    },
-    [],
-  );
+  const handleDragStart = useCallback((e: React.DragEvent, id: string) => {
+    e.dataTransfer.setData("text/plain", id);
+    e.dataTransfer.effectAllowed = "move";
+    setDraggingId(id);
+  }, []);
 
-  const handleDragOver = useCallback(
-    (e: React.DragEvent, col: ApplicationStatus) => {
-      e.preventDefault();
-      e.dataTransfer.dropEffect = "move";
-      setOverColumn(col);
-    },
-    [],
-  );
+  const handleDragOver = useCallback((e: React.DragEvent, col: ApplicationStatus) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    setOverColumn(col);
+  }, []);
 
   const handleDragLeave = useCallback(() => {
     setOverColumn(null);
@@ -83,11 +77,7 @@ export function KanbanBoard({ applications, onStatusChange, onDelete, onArchive 
         const isOver = overColumn === col;
 
         return (
-          <div
-            key={col}
-            className="flex shrink-0 flex-col"
-            style={{ width: 260 }}
-          >
+          <div key={col} className="flex shrink-0 flex-col" style={{ width: 260 }}>
             {/* Column header */}
             <div
               className={cn(
@@ -137,17 +127,13 @@ export function KanbanBoard({ applications, onStatusChange, onDelete, onArchive 
 
               {cards.length === 0 && !isOver && (
                 <div className="flex flex-1 items-center justify-center rounded-lg border border-dashed border-black/10 py-8">
-                  <p className="text-center text-[11px] text-[oklch(0.6_0.02_265)]">
-                    Drop here
-                  </p>
+                  <p className="text-center text-[11px] text-[oklch(0.6_0.02_265)]">Drop here</p>
                 </div>
               )}
 
               {isOver && (
                 <div className="flex items-center justify-center rounded-lg border-2 border-dashed border-[#2563EB]/40 bg-[#2563EB]/[0.04] py-8">
-                  <p className="text-center text-[11px] text-[#2563EB]">
-                    Move to {meta.label}
-                  </p>
+                  <p className="text-center text-[11px] text-[#2563EB]">Move to {meta.label}</p>
                 </div>
               )}
             </div>

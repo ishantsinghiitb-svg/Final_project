@@ -16,10 +16,7 @@ import {
   useDeleteApplication,
   useArchiveApplication,
 } from "@/features/applications/hooks";
-import {
-  SORT_OPTIONS,
-  DEFAULT_APPLICATION_SORT_OPTION,
-} from "@/features/applications/constants";
+import { SORT_OPTIONS, DEFAULT_APPLICATION_SORT_OPTION } from "@/features/applications/constants";
 import { roleMatchesAnyCategory } from "@/features/jobs/utils";
 import type { ApplicationFilters, ApplicationSortOption } from "@/features/applications/types";
 import type { ApplicationStatus } from "@/types";
@@ -28,10 +25,7 @@ import { cn } from "@/lib/utils";
 // ── Route definition ──────────────────────────────────────────────────────────
 export const Route = createFileRoute("/dashboard/applications/")({
   head: () => ({
-    meta: [
-      { title: "Applications — NextOffer" },
-      { name: "robots", content: "noindex" },
-    ],
+    meta: [{ title: "Applications — NextOffer" }, { name: "robots", content: "noindex" }],
   }),
   component: AppsPage,
 });
@@ -193,58 +187,58 @@ function AppsPage() {
   return (
     <>
       <StickyPageHeader>
-      <PageHeader
-        eyebrow="Applications"
-        title="Track every step, without losing the thread."
-        subtitle="Apply to jobs and confirm to start tracking. Drag cards between stages to update your pipeline."
-        actions={
-          <>
-            <DashButton
-              id="view-archived-applications"
-              variant="outline"
-              onClick={() => setArchiveOpen(true)}
-            >
-              <Archive className="h-4 w-4" /> Archived
-            </DashButton>
+        <PageHeader
+          eyebrow="Applications"
+          title="Track every step, without losing the thread."
+          subtitle="Apply to jobs and confirm to start tracking. Drag cards between stages to update your pipeline."
+          actions={
+            <>
+              <DashButton
+                id="view-archived-applications"
+                variant="outline"
+                onClick={() => setArchiveOpen(true)}
+              >
+                <Archive className="h-4 w-4" /> Archived
+              </DashButton>
 
-            <div className="inline-flex items-center rounded-lg border border-black/5 bg-white p-0.5 text-xs">
-              {(["board", "list"] as ViewMode[]).map((v) => (
-                <button
-                  key={v}
-                  id={`view-toggle-${v}`}
-                  onClick={() => setView(v)}
-                  className={cn(
-                    "inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 font-medium transition-all",
-                    view === v
-                      ? "bg-[oklch(0.95_0.02_265)] text-[#2563EB]"
-                      : "text-[oklch(0.5_0.02_265)] hover:text-[oklch(0.3_0.02_265)]",
-                  )}
-                >
-                  {v === "board" ? (
-                    <LayoutGrid className="h-3.5 w-3.5" />
-                  ) : (
-                    <List className="h-3.5 w-3.5" />
-                  )}
-                  {v === "board" ? "Board" : "List"}
-                </button>
-              ))}
-            </div>
+              <div className="inline-flex items-center rounded-lg border border-black/5 bg-white p-0.5 text-xs">
+                {(["board", "list"] as ViewMode[]).map((v) => (
+                  <button
+                    key={v}
+                    id={`view-toggle-${v}`}
+                    onClick={() => setView(v)}
+                    className={cn(
+                      "inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 font-medium transition-all",
+                      view === v
+                        ? "bg-[oklch(0.95_0.02_265)] text-[#2563EB]"
+                        : "text-[oklch(0.5_0.02_265)] hover:text-[oklch(0.3_0.02_265)]",
+                    )}
+                  >
+                    {v === "board" ? (
+                      <LayoutGrid className="h-3.5 w-3.5" />
+                    ) : (
+                      <List className="h-3.5 w-3.5" />
+                    )}
+                    {v === "board" ? "Board" : "List"}
+                  </button>
+                ))}
+              </div>
 
-            <DashButton onClick={() => setAddOpen(true)}>
-              <Plus className="h-4 w-4" /> Add Application
-            </DashButton>
-          </>
-        }
-      />
+              <DashButton onClick={() => setAddOpen(true)}>
+                <Plus className="h-4 w-4" /> Add Application
+              </DashButton>
+            </>
+          }
+        />
 
-      {/* Filters bar */}
-      <ApplicationFiltersBar
-        filters={filters}
-        sortOption={sortOption}
-        onFiltersChange={setFilters}
-        onSortChange={setSortOption}
-        totalCount={filtered.length}
-      />
+        {/* Filters bar */}
+        <ApplicationFiltersBar
+          filters={filters}
+          sortOption={sortOption}
+          onFiltersChange={setFilters}
+          onSortChange={setSortOption}
+          totalCount={filtered.length}
+        />
       </StickyPageHeader>
 
       {/* Metrics — always reflect the full active pipeline, unaffected by filters below */}

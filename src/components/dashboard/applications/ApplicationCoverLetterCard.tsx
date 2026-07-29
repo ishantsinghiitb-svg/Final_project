@@ -73,9 +73,12 @@ export function ApplicationCoverLetterCard({ applicationId, coverLetterId }: Pro
           <div className="flex items-start gap-2.5 rounded-xl bg-[oklch(0.97_0.01_265)] p-3">
             <FileText className="mt-0.5 h-4 w-4 shrink-0 text-[#7C3AED]" />
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium text-[oklch(0.2_0.02_265)]">{attached.name}</p>
+              <p className="truncate text-sm font-medium text-[oklch(0.2_0.02_265)]">
+                {attached.name}
+              </p>
               <p className="mt-0.5 text-[11px] text-[oklch(0.55_0.02_265)]">
-                Version {attached.version_number} · Updated {format(parseISO(attached.updated_at), "MMM d, yyyy")}
+                Version {attached.version_number} · Updated{" "}
+                {format(parseISO(attached.updated_at), "MMM d, yyyy")}
               </p>
             </div>
           </div>
@@ -86,7 +89,11 @@ export function ApplicationCoverLetterCard({ applicationId, coverLetterId }: Pro
                 disabled={viewLoading}
                 className="inline-flex items-center gap-1.5 rounded-lg border border-black/10 bg-white px-2.5 py-1.5 text-xs font-medium text-[oklch(0.3_0.02_265)] hover:bg-black/[0.03] transition-colors disabled:opacity-60"
               >
-                {viewLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <ExternalLink className="h-3 w-3" />}
+                {viewLoading ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : (
+                  <ExternalLink className="h-3 w-3" />
+                )}
                 View
               </button>
             )}
@@ -95,7 +102,11 @@ export function ApplicationCoverLetterCard({ applicationId, coverLetterId }: Pro
               disabled={isBusy}
               className="inline-flex items-center gap-1.5 rounded-lg border border-black/10 bg-white px-2.5 py-1.5 text-xs font-medium text-[oklch(0.3_0.02_265)] hover:bg-black/[0.03] transition-colors disabled:opacity-60"
             >
-              {isBusy ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+              {isBusy ? (
+                <Loader2 className="h-3 w-3 animate-spin" />
+              ) : (
+                <RefreshCw className="h-3 w-3" />
+              )}
               Replace
             </button>
           </div>

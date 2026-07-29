@@ -6,7 +6,10 @@ import { DashButton } from "@/components/dashboard/DashButton";
 import { useResumes } from "@/features/resumes/hooks";
 import { useResumeMatch, useAnalyzeMatch } from "@/features/ai/hooks";
 import { MATCH_LABELS, type MatchLabel } from "@/features/ai/matchLabel";
-import { friendlyAIError } from "@/features/ai/errorMessages";
+import { AI_CAPABILITIES } from "@/features/ai/constants";
+import { AIThinkingPanel } from "@/components/dashboard/ai/AIThinking";
+import { AIErrorNotice } from "@/components/dashboard/ai/AIErrorNotice";
+import { AIMetaStrip, AIOutdatedNotice } from "@/components/dashboard/ai/AIMeta";
 import type { Resume } from "@/types";
 import { AnalyzeMatchDialog } from "./AnalyzeMatchDialog";
 import { ResumeMatchReportDialog } from "./ResumeMatchReportDialog";
@@ -99,29 +102,33 @@ function ResumePicker({
   );
 }
 
-export function ResumeMatchCard({ jobId }: { jobId: string }) {
+export function ResumeMatchCard({
+  jobId,
+  deepLink,
+  onDeepLinkConsumed,
+}: {
+  jobId: string;
+  /**
+   * Parsed `?resume=…&analyze=1&force=1` from the route (Module 6G). Supplied
+   * by the page rather than read from `window` here: the router resolves the
+   * same values during SSR and the first client render, so the card no longer
+   * needs a post-mount effect to avoid a hydration mismatch (React #418).
+   */
+  deepLink?: { resumeId?: string; analyze?: boolean; force?: boolean };
+  /** Called once the analyze intent has been acted on, so the page can clear it. */
+  onDeepLinkConsumed?: () => void;
+}) {
   const { data: resumes, isLoading: resumesLoading } = useResumes();
-  // null = "follow the default resume"; a concrete id = the user picked one.
-  // A `?resume=` deep-link (the extension opening the dashboard on the resume
-  // the user was viewing) preselects that resume — but it is read in the effect
-  // BELOW, never in a render-phase initializer. Reading `window` during the
-  // initial render made SSR (null) and the first client render (the param)
-  // disagree → a hydration mismatch (React #418). Seeding to the SSR value here
-  // and applying the param after mount keeps the first render identical on both.
-  const [selectedResumeId, setSelectedResumeId] = useState<string | null>(null);
-  // One-shot analyze intent from the extension deep-link (`?analyze=1[&force=1]`).
-  const [autoAnalyze, setAutoAnalyze] = useState({ analyze: false, force: false });
-
-  // Client-only, post-hydration: read the deep-link params. Runs after the
-  // first render, so it can never cause a server/client render mismatch.
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const resumeParam = params.get("resume");
-    if (resumeParam) setSelectedResumeId(resumeParam);
-    if (params.get("analyze") === "1") {
-      setAutoAnalyze({ analyze: true, force: params.get("force") === "1" });
-    }
-  }, []);
+  // null = "follow the default resume"; a concrete id = a deep link or the
+  // user's own pick. Safe to seed from the deep link during render — it comes
+  // from the router, so server and client agree on it.
+  const [selectedResumeId, setSelectedResumeId] = useState<string | null>(
+    deepLink?.resumeId ?? null,
+  );
+  const autoAnalyze = {
+    analyze: Boolean(deepLink?.analyze),
+    force: Boolean(deepLink?.force),
+  };
 
   const resume =
     resumes?.find((r) => r.id === selectedResumeId) ??
@@ -141,10 +148,11 @@ export function ResumeMatchCard({ jobId }: { jobId: string }) {
   // immediately, closing that window.
   const submittingRef = useRef(false);
 
-  // Auto-open the credit confirmation once when arriving from the extension's
-  // "Analyze"/"Re-analyze" deep-link — only after the resume is ready and the
-  // read (which carries the credit balance) has loaded. Strips the params so a
-  // refresh or back-navigation doesn't re-trigger it.
+  // Auto-open the credit confirmation once when arriving from a deep link (the
+  // extension's "Analyze"/"Re-analyze", or the AI Hub's "Run again") — only
+  // after the resume is ready and the read (which carries the credit balance)
+  // has loaded. Strips the intent params afterwards so a refresh or a
+  // back-navigation doesn't re-open the dialog.
   const autoOpenedRef = useRef(false);
   const matchLoaded = matchQuery.data?.ok === true;
   useEffect(() => {
@@ -153,13 +161,8 @@ export function ResumeMatchCard({ jobId }: { jobId: string }) {
     autoOpenedRef.current = true;
     setReAnalyze(autoAnalyze.force);
     setConfirmOpen(true);
-    if (typeof window !== "undefined") {
-      const url = new URL(window.location.href);
-      url.searchParams.delete("analyze");
-      url.searchParams.delete("force");
-      window.history.replaceState({}, "", url.toString());
-    }
-  }, [autoAnalyze, resume, matchLoaded]);
+    onDeepLinkConsumed?.();
+  }, [autoAnalyze.analyze, autoAnalyze.force, resume, matchLoaded, onDeepLinkConsumed]);
 
   // Switching resume also clears any lingering analyze error/result from the
   // previous resume's mutation (which is a single shared instance, not keyed by
@@ -280,16 +283,20 @@ export function ResumeMatchCard({ jobId }: { jobId: string }) {
   };
 
   // Friendly error copy only — the raw server/provider message is never shown
-  // (it can carry OpenAI/rate-limit internals). Map by structured code instead.
-  const failureCode =
-    analyzeMutation.data && !analyzeMutation.data.ok ? analyzeMutation.data.code : null;
-  const errorText = failureCode
-    ? friendlyAIError(failureCode)
-    : analyzeMutation.isError
-      ? friendlyAIError(undefined)
-      : null;
-  const errorBanner = errorText && (
-    <div className="rounded-lg bg-rose-50 px-3 py-2 text-xs text-[#E11D48]">{errorText}</div>
+  // (it can carry OpenAI/rate-limit internals). AIErrorNotice maps the
+  // structured code to copy, offers a retry where retrying can help, and only
+  // claims "no credit was used" when the engine confirmed the refund.
+  const failed = analyzeMutation.data && !analyzeMutation.data.ok ? analyzeMutation.data : null;
+  const showError = Boolean(failed) || analyzeMutation.isError;
+  const errorBanner = showError && (
+    <AIErrorNotice
+      code={failed?.code}
+      creditsRefunded={failed?.creditsRefunded}
+      onRetry={() => openConfirm(reAnalyze)}
+      retryLabel="Try again"
+      retrying={analyzeMutation.isPending}
+      compact
+    />
   );
 
   const analysis = result.analysis;
@@ -300,7 +307,16 @@ export function ResumeMatchCard({ jobId }: { jobId: string }) {
   return (
     <>
       <MatchCardShell resumeName={result.resumeName ?? resume.name} picker={picker}>
-        {!analysis ? (
+        {analyzeMutation.isPending ? (
+          // A first analysis has nothing to show underneath, so the wait IS the
+          // card. A re-analysis keeps the existing result visible below (see
+          // the `analysis` branch) rather than blanking a usable score.
+          <AIThinkingPanel
+            capability={AI_CAPABILITIES.RESUME_MATCH}
+            title={analysis ? "Updating your match" : "Analyzing your match"}
+            className="border-0 bg-transparent p-0"
+          />
+        ) : !analysis ? (
           <div className="space-y-3">
             {errorBanner}
             <p className="text-sm text-[oklch(0.45_0.02_265)]">
@@ -309,23 +325,15 @@ export function ResumeMatchCard({ jobId }: { jobId: string }) {
             </p>
             <DashButton
               onClick={() => openConfirm(false)}
-              disabled={analyzeMutation.isPending || locked}
+              disabled={locked}
               className="w-full justify-between"
             >
-              {analyzeMutation.isPending ? (
-                <span className="flex items-center gap-1.5">
-                  <Loader2 className="h-4 w-4 animate-spin" /> Analyzing…
-                </span>
-              ) : (
-                <>
-                  <span className="flex items-center gap-1.5">
-                    <Sparkles className="h-4 w-4" /> Analyze Match
-                  </span>
-                  <span className="rounded-full bg-white/15 px-2 py-0.5 text-[11px] font-medium">
-                    1 Credit
-                  </span>
-                </>
-              )}
+              <span className="flex items-center gap-1.5">
+                <Sparkles className="h-4 w-4" /> Analyze Match
+              </span>
+              <span className="rounded-full bg-white/15 px-2 py-0.5 text-[11px] font-medium">
+                1 Credit
+              </span>
             </DashButton>
             {locked && (
               <p className="text-xs text-[oklch(0.5_0.02_265)]">
@@ -341,10 +349,12 @@ export function ResumeMatchCard({ jobId }: { jobId: string }) {
             {errorBanner}
 
             {result.stale && (
-              <div className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-[#B45309]">
-                Your resume or this job has changed since your last match. Re-analyze to update your
-                result.
-              </div>
+              <AIOutdatedNotice
+                changed="either"
+                onRegenerate={() => openConfirm(true)}
+                regenerateLabel="Re-analyze"
+                busy={locked}
+              />
             )}
 
             {/* Overall Match */}
@@ -385,6 +395,15 @@ export function ResumeMatchCard({ jobId }: { jobId: string }) {
             >
               <FileSearch className="h-3.5 w-3.5" /> View Full Report
             </DashButton>
+
+            {/* Where this number came from (Module 6G). The resume is already
+                named in the card header, so it isn't repeated here — only what
+                the header can't say: when it ran, and whether it cost a credit. */}
+            <AIMetaStrip
+              generatedAt={analysis.createdAt}
+              reused={analyzeMutation.data?.ok === true && analyzeMutation.data.cacheHit}
+              className="border-t border-black/5 pt-3"
+            />
           </div>
         )}
       </MatchCardShell>

@@ -1,5 +1,10 @@
 import { createServerFn } from "@tanstack/react-start";
-import type { AICreditStatus, AtsScoreSummary, ResumeMatchSummary } from "@/features/ai/types";
+import type {
+  AICreditStatus,
+  AIFailure,
+  AtsScoreSummary,
+  ResumeMatchSummary,
+} from "@/features/ai/types";
 import { requireUser } from "@/server/supabase";
 import { AICreditService } from "@/server/ai/AICreditService";
 import {
@@ -57,7 +62,7 @@ type GetResumeMatchResult =
       resumeName: string | null;
       credits: AICreditStatus;
     }
-  | { ok: false; code: string; message: string };
+  | AIFailure;
 
 export const getResumeMatch = createServerFn({ method: "POST" })
   .validator((data: GetResumeMatchInput) => data)
@@ -87,7 +92,7 @@ type AnalyzeResumeMatchInput = {
 
 type AnalyzeResumeMatchResult =
   | { ok: true; analysis: ResumeMatchSummary; cacheHit: boolean; credits: AICreditStatus }
-  | { ok: false; code: string; message: string; credits?: AICreditStatus };
+  | AIFailure;
 
 export const analyzeResumeMatch = createServerFn({ method: "POST" })
   .validator((data: AnalyzeResumeMatchInput) => data)
@@ -118,7 +123,7 @@ type GetAtsScoreResult =
       resumeName: string | null;
       credits: AICreditStatus;
     }
-  | { ok: false; code: string; message: string };
+  | AIFailure;
 
 export const getAtsScore = createServerFn({ method: "POST" })
   .validator((data: GetAtsScoreInput) => data)
@@ -147,8 +152,7 @@ type AnalyzeAtsScoreInput = {
 };
 
 type AnalyzeAtsScoreResult =
-  | { ok: true; analysis: AtsScoreSummary; cacheHit: boolean; credits: AICreditStatus }
-  | { ok: false; code: string; message: string; credits?: AICreditStatus };
+  { ok: true; analysis: AtsScoreSummary; cacheHit: boolean; credits: AICreditStatus } | AIFailure;
 
 export const analyzeAtsScore = createServerFn({ method: "POST" })
   .validator((data: AnalyzeAtsScoreInput) => data)

@@ -1,13 +1,21 @@
 import { useRef, useState, useEffect } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { toast } from "sonner";
-import { DashCard, PageHeader, SectionTitle, Chip, StickyPageHeader } from "@/components/dashboard/primitives";
+import {
+  DashCard,
+  PageHeader,
+  SectionTitle,
+  Chip,
+  StickyPageHeader,
+} from "@/components/dashboard/primitives";
 import { DashButton } from "@/components/dashboard/DashButton";
 import { useAuth } from "@/context/AuthContext";
 import { useProfile } from "@/context/ProfileContext";
 
 export const Route = createFileRoute("/dashboard/settings")({
-  head: () => ({ meta: [{ title: "Settings — NextOffer" }, { name: "robots", content: "noindex" }] }),
+  head: () => ({
+    meta: [{ title: "Settings — NextOffer" }, { name: "robots", content: "noindex" }],
+  }),
   component: SettingsPage,
 });
 
@@ -19,7 +27,11 @@ function SettingsPage() {
   return (
     <>
       <StickyPageHeader>
-      <PageHeader eyebrow="Settings" title="Make NextOffer yours." subtitle="Tune preferences, notifications, and integrations." />
+        <PageHeader
+          eyebrow="Settings"
+          title="Make NextOffer yours."
+          subtitle="Tune preferences, notifications, and integrations."
+        />
       </StickyPageHeader>
 
       <div className="flex flex-wrap gap-1 rounded-xl border border-black/5 bg-white p-0.5">
@@ -28,7 +40,9 @@ function SettingsPage() {
             key={t}
             onClick={() => setTab(t)}
             className={`rounded-lg px-3 py-1.5 text-xs ${
-              tab === t ? "bg-[oklch(0.95_0.02_265)] font-medium text-[#2563EB]" : "text-[oklch(0.45_0.02_265)] hover:bg-black/[0.03]"
+              tab === t
+                ? "bg-[oklch(0.95_0.02_265)] font-medium text-[#2563EB]"
+                : "text-[oklch(0.45_0.02_265)] hover:bg-black/[0.03]"
             }`}
           >
             {t}
@@ -45,7 +59,12 @@ function SettingsPage() {
 }
 
 function ProfileTab() {
-  const { profile, loading: profileLoading, update: updateProfileData, uploadAvatar: uploadProfileAvatar } = useProfile();
+  const {
+    profile,
+    loading: profileLoading,
+    update: updateProfileData,
+    uploadAvatar: uploadProfileAvatar,
+  } = useProfile();
   const { user } = useAuth();
   const [fullName, setFullName] = useState("");
   const [location, setLocation] = useState("");
@@ -134,9 +153,17 @@ function ProfileTab() {
         </button>
         <div>
           <p className="text-sm font-medium">Profile photo</p>
-          <p className="text-xs text-[oklch(0.5_0.02_265)]">Click to upload. PNG, JPG up to 5 MB.</p>
+          <p className="text-xs text-[oklch(0.5_0.02_265)]">
+            Click to upload. PNG, JPG up to 5 MB.
+          </p>
         </div>
-        <input ref={fileRef} type="file" accept="image/png,image/jpeg" onChange={handleAvatarChange} className="hidden" />
+        <input
+          ref={fileRef}
+          type="file"
+          accept="image/png,image/jpeg"
+          onChange={handleAvatarChange}
+          className="hidden"
+        />
       </div>
 
       <div className="mt-4 grid gap-4 md:grid-cols-2">
@@ -176,7 +203,9 @@ function ProfileTab() {
         </label>
       </div>
       <div className="mt-4 flex justify-end gap-2">
-        <button className="rounded-lg border border-black/5 bg-white px-3 py-1.5 text-xs">Cancel</button>
+        <button className="rounded-lg border border-black/5 bg-white px-3 py-1.5 text-xs">
+          Cancel
+        </button>
         <DashButton onClick={handleSave} disabled={saving}>
           {saving ? (
             <span className="flex items-center gap-2">
@@ -250,10 +279,14 @@ function BillingTab() {
       <SectionTitle>Billing</SectionTitle>
       <div className="mt-4 rounded-xl border border-black/5 bg-gradient-to-br from-[#2563EB]/[0.05] to-[#7C3AED]/[0.08] p-4">
         <p className="font-display font-semibold">Pro trial · 9 days left</p>
-        <p className="mt-1 text-xs text-[oklch(0.5_0.02_265)]">Unlimited AI, cover letters, and analytics.</p>
+        <p className="mt-1 text-xs text-[oklch(0.5_0.02_265)]">
+          Unlimited AI, cover letters, and analytics.
+        </p>
         <div className="mt-3 flex gap-2">
           <DashButton size="sm">Upgrade to Pro</DashButton>
-          <button className="rounded-lg border border-black/5 bg-white px-3 py-1.5 text-xs font-medium">Manage plan</button>
+          <button className="rounded-lg border border-black/5 bg-white px-3 py-1.5 text-xs font-medium">
+            Manage plan
+          </button>
         </div>
       </div>
       <div className="mt-4 text-sm text-[oklch(0.45_0.02_265)]">
@@ -271,7 +304,9 @@ function Toggle({ defaultOn }: { defaultOn: boolean }) {
       className={`relative h-5 w-9 rounded-full transition-colors ${on ? "bg-gradient-to-r from-[#2563EB] to-[#7C3AED]" : "bg-black/10"}`}
       aria-pressed={on}
     >
-      <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-all ${on ? "left-[18px]" : "left-0.5"}`} />
+      <span
+        className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-all ${on ? "left-[18px]" : "left-0.5"}`}
+      />
     </button>
   );
 }

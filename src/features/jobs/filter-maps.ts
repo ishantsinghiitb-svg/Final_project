@@ -33,53 +33,53 @@ import type { WorkMode, EmploymentType, ExperienceLevel } from "@/types";
 
 // ── Employment Type ──────────────────────────────────────────────────────────
 const EMPLOYMENT_TYPE_MAP: Record<string, EmploymentType> = {
-  "full-time":  "Full-Time",
-  "part-time":  "Part-Time",
-  "contract":   "Contract",
-  "internship": "Internship",
+  "full-time": "Full-Time",
+  "part-time": "Part-Time",
+  contract: "Contract",
+  internship: "Internship",
   // Pass-through for callers that already send DB values
-  "Full-Time":  "Full-Time",
-  "Part-Time":  "Part-Time",
-  "Contract":   "Contract",
-  "Internship": "Internship",
+  "Full-Time": "Full-Time",
+  "Part-Time": "Part-Time",
+  Contract: "Contract",
+  Internship: "Internship",
 };
 
 // ── Work Mode ────────────────────────────────────────────────────────────────
 const WORK_MODE_MAP: Record<string, WorkMode> = {
-  "remote": "Remote",
-  "hybrid": "Hybrid",
-  "onsite": "Onsite",
+  remote: "Remote",
+  hybrid: "Hybrid",
+  onsite: "Onsite",
   // Pass-through
-  "Remote": "Remote",
-  "Hybrid": "Hybrid",
-  "Onsite": "Onsite",
+  Remote: "Remote",
+  Hybrid: "Hybrid",
+  Onsite: "Onsite",
 };
 
 // ── Experience Level ─────────────────────────────────────────────────────────
 const EXPERIENCE_LEVEL_MAP: Record<string, ExperienceLevel> = {
   // User-specified slug → DB value mappings
-  "entry-level":  "Entry-Level",
-  "mid-level":    "Mid-Level",
+  "entry-level": "Entry-Level",
+  "mid-level": "Mid-Level",
   "senior-level": "Senior-Level",
-  "intern":       "Intern",
+  intern: "Intern",
   // Common alternative slugs
-  "junior":    "Junior",
-  "lead":      "Lead",
-  "staff":     "Staff",
-  "principal": "Principal",
+  junior: "Junior",
+  lead: "Lead",
+  staff: "Staff",
+  principal: "Principal",
   // Legacy slugs from old constants (safety net)
-  "entry":  "Entry-Level",
-  "mid":    "Mid-Level",
-  "senior": "Senior-Level",
+  entry: "Entry-Level",
+  mid: "Mid-Level",
+  senior: "Senior-Level",
   // Pass-through for callers that already send DB values
-  "Entry-Level":  "Entry-Level",
-  "Mid-Level":    "Mid-Level",
+  "Entry-Level": "Entry-Level",
+  "Mid-Level": "Mid-Level",
   "Senior-Level": "Senior-Level",
-  "Intern":       "Intern",
-  "Junior":       "Junior",
-  "Lead":         "Lead",
-  "Staff":        "Staff",
-  "Principal":    "Principal",
+  Intern: "Intern",
+  Junior: "Junior",
+  Lead: "Lead",
+  Staff: "Staff",
+  Principal: "Principal",
 };
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -112,10 +112,7 @@ function mapFilterField<T extends string>(
 export function normalizeFilters(filters: JobFilters): JobFilters {
   return {
     ...filters,
-    workMode: mapFilterField(
-      filters.workMode as WorkMode | WorkMode[] | undefined,
-      WORK_MODE_MAP,
-    ),
+    workMode: mapFilterField(filters.workMode as WorkMode | WorkMode[] | undefined, WORK_MODE_MAP),
     employmentType: mapFilterField(
       filters.employmentType as EmploymentType | EmploymentType[] | undefined,
       EMPLOYMENT_TYPE_MAP,

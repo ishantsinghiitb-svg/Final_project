@@ -1,6 +1,10 @@
 import { useEffect, useState } from "react";
 import { X, Loader2 } from "lucide-react";
-import { COLLECTION_COLOR_META, COLLECTION_COLOR_OPTIONS, DEFAULT_COLLECTION_COLOR } from "@/features/collections/constants";
+import {
+  COLLECTION_COLOR_META,
+  COLLECTION_COLOR_OPTIONS,
+  DEFAULT_COLLECTION_COLOR,
+} from "@/features/collections/constants";
 import type { CollectionColor } from "@/types";
 import { cn } from "@/lib/utils";
 
@@ -96,7 +100,10 @@ export function CollectionFormDialog({
             <X className="h-4 w-4" />
           </button>
 
-          <h2 id="collection-form-title" className="font-display text-base font-semibold text-[oklch(0.2_0.02_265)]">
+          <h2
+            id="collection-form-title"
+            className="font-display text-base font-semibold text-[oklch(0.2_0.02_265)]"
+          >
             {title}
           </h2>
 

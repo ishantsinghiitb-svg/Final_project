@@ -116,9 +116,7 @@ function computeRelativePostedTime(iso: string | null | undefined): string {
  * which page you were on. Falls back to computing from `posted_at` only when
  * no verbatim string was ever captured.
  */
-export function formatPostedTime(
-  job: Pick<GlobalJob, "posted_ago" | "posted_at">,
-): string {
+export function formatPostedTime(job: Pick<GlobalJob, "posted_ago" | "posted_at">): string {
   return job.posted_ago || computeRelativePostedTime(job.posted_at);
 }
 
@@ -228,13 +226,37 @@ const CATEGORY_KEYWORDS: Record<RoleCategory, string[]> = {
   full_stack: ["full stack", "full-stack", "fullstack"],
   mobile: ["mobile", "ios", "android", "flutter", "react native"],
   data: ["data", "analytics", "business intelligence"],
-  ml_ai: ["machine learning", "artificial intelligence", "deep learning", "computer vision", "nlp", "llm", "ai", "ml"],
-  devops: ["devops", "site reliability", "infrastructure", "platform engineer", "cloud engineer", "sre"],
+  ml_ai: [
+    "machine learning",
+    "artificial intelligence",
+    "deep learning",
+    "computer vision",
+    "nlp",
+    "llm",
+    "ai",
+    "ml",
+  ],
+  devops: [
+    "devops",
+    "site reliability",
+    "infrastructure",
+    "platform engineer",
+    "cloud engineer",
+    "sre",
+  ],
   design: ["design", "ux", "ui/ux"],
   marketing: ["marketing", "growth", "seo", "content strategist"],
   sales: ["sales", "account executive", "business development", "bdr", "sdr"],
   finance: ["finance", "accounting", "financial analyst"],
-  operations: ["operations", "program manager", "project manager", "people ops", "hr", "human resources", "ops"],
+  operations: [
+    "operations",
+    "program manager",
+    "project manager",
+    "people ops",
+    "hr",
+    "human resources",
+    "ops",
+  ],
   other: [],
 };
 
@@ -245,7 +267,17 @@ const REAL_CATEGORIES = (Object.keys(CATEGORY_KEYWORDS) as RoleCategory[]).filte
 // Short, ambiguous keywords need a word-boundary check — a plain substring
 // test would false-positive "ai" inside "Maintenance" or "ops" inside "Shops".
 const WORD_BOUNDARY_KEYWORDS = new Set([
-  "ai", "ml", "ux", "hr", "sre", "seo", "bdr", "sdr", "ops", "nlp", "llm",
+  "ai",
+  "ml",
+  "ux",
+  "hr",
+  "sre",
+  "seo",
+  "bdr",
+  "sdr",
+  "ops",
+  "nlp",
+  "llm",
 ]);
 
 function keywordInRole(role: string, keyword: string): boolean {
@@ -256,7 +288,10 @@ function keywordInRole(role: string, keyword: string): boolean {
 }
 
 /** Does this role belong to the given category? A role can match more than one. */
-export function roleMatchesCategory(role: string | null | undefined, category: RoleCategory): boolean {
+export function roleMatchesCategory(
+  role: string | null | undefined,
+  category: RoleCategory,
+): boolean {
   if (!role) return category === "other";
   if (category === "other") {
     return !REAL_CATEGORIES.some((c) => roleMatchesCategory(role, c));
@@ -277,9 +312,31 @@ export function roleMatchesAnyCategory(
 // letting "Product Manager", "Senior Product Manager" and "Associate Product
 // Manager" all share the same signal ("product", "manager").
 const ROLE_STOPWORDS = new Set([
-  "and", "the", "for", "of", "to", "in", "at", "with", "or", "a", "an",
-  "senior", "junior", "lead", "staff", "principal", "sr", "jr",
-  "associate", "entry", "mid", "level", "intern", "internship", "trainee",
+  "and",
+  "the",
+  "for",
+  "of",
+  "to",
+  "in",
+  "at",
+  "with",
+  "or",
+  "a",
+  "an",
+  "senior",
+  "junior",
+  "lead",
+  "staff",
+  "principal",
+  "sr",
+  "jr",
+  "associate",
+  "entry",
+  "mid",
+  "level",
+  "intern",
+  "internship",
+  "trainee",
 ]);
 
 /**
@@ -359,17 +416,23 @@ export function jobMatchesFilters(job: GlobalJob, filters: JobFilters): boolean 
   }
 
   if (normalized.employmentType) {
-    const types = Array.isArray(normalized.employmentType) ? normalized.employmentType : [normalized.employmentType];
+    const types = Array.isArray(normalized.employmentType)
+      ? normalized.employmentType
+      : [normalized.employmentType];
     if (!job.employment_type || !types.includes(job.employment_type)) return false;
   }
 
   if (normalized.experienceLevel) {
-    const levels = Array.isArray(normalized.experienceLevel) ? normalized.experienceLevel : [normalized.experienceLevel];
+    const levels = Array.isArray(normalized.experienceLevel)
+      ? normalized.experienceLevel
+      : [normalized.experienceLevel];
     if (!job.experience_level || !levels.includes(job.experience_level)) return false;
   }
 
   if (filters.roleCategory) {
-    const categories = Array.isArray(filters.roleCategory) ? filters.roleCategory : [filters.roleCategory];
+    const categories = Array.isArray(filters.roleCategory)
+      ? filters.roleCategory
+      : [filters.roleCategory];
     if (!roleMatchesAnyCategory(job.role, categories)) return false;
   }
 
@@ -378,11 +441,17 @@ export function jobMatchesFilters(job: GlobalJob, filters: JobFilters): boolean 
     if (!sources.includes(job.source)) return false;
   }
 
-  if (filters.salaryMin !== undefined && (job.salary_min == null || job.salary_min < filters.salaryMin)) {
+  if (
+    filters.salaryMin !== undefined &&
+    (job.salary_min == null || job.salary_min < filters.salaryMin)
+  ) {
     return false;
   }
 
-  if (filters.salaryMax !== undefined && (job.salary_max == null || job.salary_max > filters.salaryMax)) {
+  if (
+    filters.salaryMax !== undefined &&
+    (job.salary_max == null || job.salary_max > filters.salaryMax)
+  ) {
     return false;
   }
 

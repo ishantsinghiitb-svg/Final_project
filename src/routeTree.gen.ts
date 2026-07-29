@@ -28,13 +28,17 @@ import { Route as DashboardResumesRouteImport } from './routes/dashboard.resumes
 import { Route as DashboardNotesRouteImport } from './routes/dashboard.notes'
 import { Route as DashboardJobsRouteImport } from './routes/dashboard.jobs'
 import { Route as DashboardInterviewsRouteImport } from './routes/dashboard.interviews'
+import { Route as DashboardCoverLettersRouteImport } from './routes/dashboard.cover-letters'
 import { Route as DashboardCollectionsRouteImport } from './routes/dashboard.collections'
 import { Route as DashboardApplicationsRouteImport } from './routes/dashboard.applications'
 import { Route as DashboardAnalyticsRouteImport } from './routes/dashboard.analytics'
+import { Route as DashboardAiRouteImport } from './routes/dashboard.ai'
 import { Route as DashboardJobsIndexRouteImport } from './routes/dashboard.jobs.index'
+import { Route as DashboardCoverLettersIndexRouteImport } from './routes/dashboard.cover-letters.index'
 import { Route as DashboardCollectionsIndexRouteImport } from './routes/dashboard.collections.index'
 import { Route as DashboardApplicationsIndexRouteImport } from './routes/dashboard.applications.index'
 import { Route as DashboardJobsJobIdRouteImport } from './routes/dashboard.jobs.$jobId'
+import { Route as DashboardCoverLettersCoverLetterIdRouteImport } from './routes/dashboard.cover-letters.$coverLetterId'
 import { Route as DashboardCollectionsCollectionIdRouteImport } from './routes/dashboard.collections.$collectionId'
 import { Route as DashboardApplicationsApplicationIdRouteImport } from './routes/dashboard.applications.$applicationId'
 import { Route as DashboardResumesResumeIdOptimizeRouteImport } from './routes/dashboard.resumes_.$resumeId.optimize'
@@ -134,6 +138,11 @@ const DashboardInterviewsRoute = DashboardInterviewsRouteImport.update({
   path: '/interviews',
   getParentRoute: () => DashboardRoute,
 } as any)
+const DashboardCoverLettersRoute = DashboardCoverLettersRouteImport.update({
+  id: '/cover-letters',
+  path: '/cover-letters',
+  getParentRoute: () => DashboardRoute,
+} as any)
 const DashboardCollectionsRoute = DashboardCollectionsRouteImport.update({
   id: '/collections',
   path: '/collections',
@@ -149,11 +158,22 @@ const DashboardAnalyticsRoute = DashboardAnalyticsRouteImport.update({
   path: '/analytics',
   getParentRoute: () => DashboardRoute,
 } as any)
+const DashboardAiRoute = DashboardAiRouteImport.update({
+  id: '/ai',
+  path: '/ai',
+  getParentRoute: () => DashboardRoute,
+} as any)
 const DashboardJobsIndexRoute = DashboardJobsIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => DashboardJobsRoute,
 } as any)
+const DashboardCoverLettersIndexRoute =
+  DashboardCoverLettersIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => DashboardCoverLettersRoute,
+  } as any)
 const DashboardCollectionsIndexRoute =
   DashboardCollectionsIndexRouteImport.update({
     id: '/',
@@ -171,6 +191,12 @@ const DashboardJobsJobIdRoute = DashboardJobsJobIdRouteImport.update({
   path: '/$jobId',
   getParentRoute: () => DashboardJobsRoute,
 } as any)
+const DashboardCoverLettersCoverLetterIdRoute =
+  DashboardCoverLettersCoverLetterIdRouteImport.update({
+    id: '/$coverLetterId',
+    path: '/$coverLetterId',
+    getParentRoute: () => DashboardCoverLettersRoute,
+  } as any)
 const DashboardCollectionsCollectionIdRoute =
   DashboardCollectionsCollectionIdRouteImport.update({
     id: '/$collectionId',
@@ -203,9 +229,11 @@ export interface FileRoutesByFullPath {
   '/signup': typeof SignupRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/supabase-status': typeof SupabaseStatusRoute
+  '/dashboard/ai': typeof DashboardAiRoute
   '/dashboard/analytics': typeof DashboardAnalyticsRoute
   '/dashboard/applications': typeof DashboardApplicationsRouteWithChildren
   '/dashboard/collections': typeof DashboardCollectionsRouteWithChildren
+  '/dashboard/cover-letters': typeof DashboardCoverLettersRouteWithChildren
   '/dashboard/interviews': typeof DashboardInterviewsRoute
   '/dashboard/jobs': typeof DashboardJobsRouteWithChildren
   '/dashboard/notes': typeof DashboardNotesRoute
@@ -215,9 +243,11 @@ export interface FileRoutesByFullPath {
   '/dashboard/': typeof DashboardIndexRoute
   '/dashboard/applications/$applicationId': typeof DashboardApplicationsApplicationIdRoute
   '/dashboard/collections/$collectionId': typeof DashboardCollectionsCollectionIdRoute
+  '/dashboard/cover-letters/$coverLetterId': typeof DashboardCoverLettersCoverLetterIdRoute
   '/dashboard/jobs/$jobId': typeof DashboardJobsJobIdRoute
   '/dashboard/applications/': typeof DashboardApplicationsIndexRoute
   '/dashboard/collections/': typeof DashboardCollectionsIndexRoute
+  '/dashboard/cover-letters/': typeof DashboardCoverLettersIndexRoute
   '/dashboard/jobs/': typeof DashboardJobsIndexRoute
   '/dashboard/resumes/$resumeId/optimize': typeof DashboardResumesResumeIdOptimizeRoute
 }
@@ -233,6 +263,7 @@ export interface FileRoutesByTo {
   '/signup': typeof SignupRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/supabase-status': typeof SupabaseStatusRoute
+  '/dashboard/ai': typeof DashboardAiRoute
   '/dashboard/analytics': typeof DashboardAnalyticsRoute
   '/dashboard/interviews': typeof DashboardInterviewsRoute
   '/dashboard/notes': typeof DashboardNotesRoute
@@ -242,9 +273,11 @@ export interface FileRoutesByTo {
   '/dashboard': typeof DashboardIndexRoute
   '/dashboard/applications/$applicationId': typeof DashboardApplicationsApplicationIdRoute
   '/dashboard/collections/$collectionId': typeof DashboardCollectionsCollectionIdRoute
+  '/dashboard/cover-letters/$coverLetterId': typeof DashboardCoverLettersCoverLetterIdRoute
   '/dashboard/jobs/$jobId': typeof DashboardJobsJobIdRoute
   '/dashboard/applications': typeof DashboardApplicationsIndexRoute
   '/dashboard/collections': typeof DashboardCollectionsIndexRoute
+  '/dashboard/cover-letters': typeof DashboardCoverLettersIndexRoute
   '/dashboard/jobs': typeof DashboardJobsIndexRoute
   '/dashboard/resumes/$resumeId/optimize': typeof DashboardResumesResumeIdOptimizeRoute
 }
@@ -262,9 +295,11 @@ export interface FileRoutesById {
   '/signup': typeof SignupRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/supabase-status': typeof SupabaseStatusRoute
+  '/dashboard/ai': typeof DashboardAiRoute
   '/dashboard/analytics': typeof DashboardAnalyticsRoute
   '/dashboard/applications': typeof DashboardApplicationsRouteWithChildren
   '/dashboard/collections': typeof DashboardCollectionsRouteWithChildren
+  '/dashboard/cover-letters': typeof DashboardCoverLettersRouteWithChildren
   '/dashboard/interviews': typeof DashboardInterviewsRoute
   '/dashboard/jobs': typeof DashboardJobsRouteWithChildren
   '/dashboard/notes': typeof DashboardNotesRoute
@@ -274,9 +309,11 @@ export interface FileRoutesById {
   '/dashboard/': typeof DashboardIndexRoute
   '/dashboard/applications/$applicationId': typeof DashboardApplicationsApplicationIdRoute
   '/dashboard/collections/$collectionId': typeof DashboardCollectionsCollectionIdRoute
+  '/dashboard/cover-letters/$coverLetterId': typeof DashboardCoverLettersCoverLetterIdRoute
   '/dashboard/jobs/$jobId': typeof DashboardJobsJobIdRoute
   '/dashboard/applications/': typeof DashboardApplicationsIndexRoute
   '/dashboard/collections/': typeof DashboardCollectionsIndexRoute
+  '/dashboard/cover-letters/': typeof DashboardCoverLettersIndexRoute
   '/dashboard/jobs/': typeof DashboardJobsIndexRoute
   '/dashboard/resumes_/$resumeId/optimize': typeof DashboardResumesResumeIdOptimizeRoute
 }
@@ -295,9 +332,11 @@ export interface FileRouteTypes {
     | '/signup'
     | '/sitemap.xml'
     | '/supabase-status'
+    | '/dashboard/ai'
     | '/dashboard/analytics'
     | '/dashboard/applications'
     | '/dashboard/collections'
+    | '/dashboard/cover-letters'
     | '/dashboard/interviews'
     | '/dashboard/jobs'
     | '/dashboard/notes'
@@ -307,9 +346,11 @@ export interface FileRouteTypes {
     | '/dashboard/'
     | '/dashboard/applications/$applicationId'
     | '/dashboard/collections/$collectionId'
+    | '/dashboard/cover-letters/$coverLetterId'
     | '/dashboard/jobs/$jobId'
     | '/dashboard/applications/'
     | '/dashboard/collections/'
+    | '/dashboard/cover-letters/'
     | '/dashboard/jobs/'
     | '/dashboard/resumes/$resumeId/optimize'
   fileRoutesByTo: FileRoutesByTo
@@ -325,6 +366,7 @@ export interface FileRouteTypes {
     | '/signup'
     | '/sitemap.xml'
     | '/supabase-status'
+    | '/dashboard/ai'
     | '/dashboard/analytics'
     | '/dashboard/interviews'
     | '/dashboard/notes'
@@ -334,9 +376,11 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/dashboard/applications/$applicationId'
     | '/dashboard/collections/$collectionId'
+    | '/dashboard/cover-letters/$coverLetterId'
     | '/dashboard/jobs/$jobId'
     | '/dashboard/applications'
     | '/dashboard/collections'
+    | '/dashboard/cover-letters'
     | '/dashboard/jobs'
     | '/dashboard/resumes/$resumeId/optimize'
   id:
@@ -353,9 +397,11 @@ export interface FileRouteTypes {
     | '/signup'
     | '/sitemap.xml'
     | '/supabase-status'
+    | '/dashboard/ai'
     | '/dashboard/analytics'
     | '/dashboard/applications'
     | '/dashboard/collections'
+    | '/dashboard/cover-letters'
     | '/dashboard/interviews'
     | '/dashboard/jobs'
     | '/dashboard/notes'
@@ -365,9 +411,11 @@ export interface FileRouteTypes {
     | '/dashboard/'
     | '/dashboard/applications/$applicationId'
     | '/dashboard/collections/$collectionId'
+    | '/dashboard/cover-letters/$coverLetterId'
     | '/dashboard/jobs/$jobId'
     | '/dashboard/applications/'
     | '/dashboard/collections/'
+    | '/dashboard/cover-letters/'
     | '/dashboard/jobs/'
     | '/dashboard/resumes_/$resumeId/optimize'
   fileRoutesById: FileRoutesById
@@ -522,6 +570,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardInterviewsRouteImport
       parentRoute: typeof DashboardRoute
     }
+    '/dashboard/cover-letters': {
+      id: '/dashboard/cover-letters'
+      path: '/cover-letters'
+      fullPath: '/dashboard/cover-letters'
+      preLoaderRoute: typeof DashboardCoverLettersRouteImport
+      parentRoute: typeof DashboardRoute
+    }
     '/dashboard/collections': {
       id: '/dashboard/collections'
       path: '/collections'
@@ -543,12 +598,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardAnalyticsRouteImport
       parentRoute: typeof DashboardRoute
     }
+    '/dashboard/ai': {
+      id: '/dashboard/ai'
+      path: '/ai'
+      fullPath: '/dashboard/ai'
+      preLoaderRoute: typeof DashboardAiRouteImport
+      parentRoute: typeof DashboardRoute
+    }
     '/dashboard/jobs/': {
       id: '/dashboard/jobs/'
       path: '/'
       fullPath: '/dashboard/jobs/'
       preLoaderRoute: typeof DashboardJobsIndexRouteImport
       parentRoute: typeof DashboardJobsRoute
+    }
+    '/dashboard/cover-letters/': {
+      id: '/dashboard/cover-letters/'
+      path: '/'
+      fullPath: '/dashboard/cover-letters/'
+      preLoaderRoute: typeof DashboardCoverLettersIndexRouteImport
+      parentRoute: typeof DashboardCoverLettersRoute
     }
     '/dashboard/collections/': {
       id: '/dashboard/collections/'
@@ -570,6 +639,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/dashboard/jobs/$jobId'
       preLoaderRoute: typeof DashboardJobsJobIdRouteImport
       parentRoute: typeof DashboardJobsRoute
+    }
+    '/dashboard/cover-letters/$coverLetterId': {
+      id: '/dashboard/cover-letters/$coverLetterId'
+      path: '/$coverLetterId'
+      fullPath: '/dashboard/cover-letters/$coverLetterId'
+      preLoaderRoute: typeof DashboardCoverLettersCoverLetterIdRouteImport
+      parentRoute: typeof DashboardCoverLettersRoute
     }
     '/dashboard/collections/$collectionId': {
       id: '/dashboard/collections/$collectionId'
@@ -624,6 +700,22 @@ const DashboardCollectionsRouteChildren: DashboardCollectionsRouteChildren = {
 const DashboardCollectionsRouteWithChildren =
   DashboardCollectionsRoute._addFileChildren(DashboardCollectionsRouteChildren)
 
+interface DashboardCoverLettersRouteChildren {
+  DashboardCoverLettersCoverLetterIdRoute: typeof DashboardCoverLettersCoverLetterIdRoute
+  DashboardCoverLettersIndexRoute: typeof DashboardCoverLettersIndexRoute
+}
+
+const DashboardCoverLettersRouteChildren: DashboardCoverLettersRouteChildren = {
+  DashboardCoverLettersCoverLetterIdRoute:
+    DashboardCoverLettersCoverLetterIdRoute,
+  DashboardCoverLettersIndexRoute: DashboardCoverLettersIndexRoute,
+}
+
+const DashboardCoverLettersRouteWithChildren =
+  DashboardCoverLettersRoute._addFileChildren(
+    DashboardCoverLettersRouteChildren,
+  )
+
 interface DashboardJobsRouteChildren {
   DashboardJobsJobIdRoute: typeof DashboardJobsJobIdRoute
   DashboardJobsIndexRoute: typeof DashboardJobsIndexRoute
@@ -639,9 +731,11 @@ const DashboardJobsRouteWithChildren = DashboardJobsRoute._addFileChildren(
 )
 
 interface DashboardRouteChildren {
+  DashboardAiRoute: typeof DashboardAiRoute
   DashboardAnalyticsRoute: typeof DashboardAnalyticsRoute
   DashboardApplicationsRoute: typeof DashboardApplicationsRouteWithChildren
   DashboardCollectionsRoute: typeof DashboardCollectionsRouteWithChildren
+  DashboardCoverLettersRoute: typeof DashboardCoverLettersRouteWithChildren
   DashboardInterviewsRoute: typeof DashboardInterviewsRoute
   DashboardJobsRoute: typeof DashboardJobsRouteWithChildren
   DashboardNotesRoute: typeof DashboardNotesRoute
@@ -653,9 +747,11 @@ interface DashboardRouteChildren {
 }
 
 const DashboardRouteChildren: DashboardRouteChildren = {
+  DashboardAiRoute: DashboardAiRoute,
   DashboardAnalyticsRoute: DashboardAnalyticsRoute,
   DashboardApplicationsRoute: DashboardApplicationsRouteWithChildren,
   DashboardCollectionsRoute: DashboardCollectionsRouteWithChildren,
+  DashboardCoverLettersRoute: DashboardCoverLettersRouteWithChildren,
   DashboardInterviewsRoute: DashboardInterviewsRoute,
   DashboardJobsRoute: DashboardJobsRouteWithChildren,
   DashboardNotesRoute: DashboardNotesRoute,

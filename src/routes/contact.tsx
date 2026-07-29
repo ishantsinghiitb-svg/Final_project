@@ -10,7 +10,10 @@ export const Route = createFileRoute("/contact")({
       { title: "Contact — NextOffer" },
       { name: "description", content: "Get in touch with the NextOffer team." },
       { property: "og:title", content: "Contact — NextOffer" },
-      { property: "og:description", content: "Reach the NextOffer team for sales, support, or partnerships." },
+      {
+        property: "og:description",
+        content: "Reach the NextOffer team for sales, support, or partnerships.",
+      },
     ],
   }),
   component: Contact,
@@ -19,7 +22,12 @@ export const Route = createFileRoute("/contact")({
 function Contact() {
   const [sent, setSent] = useState(false);
   return (
-    <Section eyebrow="Contact" title="Say hello." description="A real human on the team replies within one business day." className="pt-20 md:pt-28 pb-16">
+    <Section
+      eyebrow="Contact"
+      title="Say hello."
+      description="A real human on the team replies within one business day."
+      className="pt-20 md:pt-28 pb-16"
+    >
       <div className="grid gap-8 md:grid-cols-[1fr_1.2fr]">
         <div className="space-y-4">
           {[
@@ -27,7 +35,10 @@ function Contact() {
             { i: MessageCircle, t: "sales@nextoffer.io", d: "Teams & partnerships" },
             { i: MapPin, t: "Remote — SF · Berlin · Bengaluru", d: "Distributed since day one" },
           ].map((r) => (
-            <div key={r.t} className="flex items-start gap-3 rounded-2xl border border-white/8 bg-white/[0.02] p-5">
+            <div
+              key={r.t}
+              className="flex items-start gap-3 rounded-2xl border border-white/8 bg-white/[0.02] p-5"
+            >
               <div className="grid h-9 w-9 place-items-center rounded-lg border border-white/10 text-[#93C5FD]">
                 <r.i className="h-4 w-4" />
               </div>
@@ -49,8 +60,12 @@ function Contact() {
             <div className="grid min-h-[280px] place-items-center text-center">
               <div>
                 <div className="mx-auto h-12 w-12 rounded-full bg-gradient-to-br from-[#22C55E] to-[#2563EB]" />
-                <p className="mt-4 font-display text-xl font-semibold">Thanks — we'll be in touch.</p>
-                <p className="mt-2 text-sm text-muted-foreground">Expect a reply within one business day.</p>
+                <p className="mt-4 font-display text-xl font-semibold">
+                  Thanks — we'll be in touch.
+                </p>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Expect a reply within one business day.
+                </p>
               </div>
             </div>
           ) : (
@@ -63,7 +78,9 @@ function Contact() {
                 <Field label="Subject" placeholder="What's this about?" />
               </div>
               <div className="mt-4">
-                <label className="text-xs uppercase tracking-widest text-muted-foreground">Message</label>
+                <label className="text-xs uppercase tracking-widest text-muted-foreground">
+                  Message
+                </label>
                 <textarea
                   required
                   rows={5}
@@ -82,7 +99,10 @@ function Contact() {
   );
 }
 
-function Field({ label, ...rest }: React.InputHTMLAttributes<HTMLInputElement> & { label: string }) {
+function Field({
+  label,
+  ...rest
+}: React.InputHTMLAttributes<HTMLInputElement> & { label: string }) {
   return (
     <label className="block">
       <span className="text-xs uppercase tracking-widest text-muted-foreground">{label}</span>

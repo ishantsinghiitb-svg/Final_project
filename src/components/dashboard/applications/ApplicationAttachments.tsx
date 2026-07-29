@@ -72,7 +72,9 @@ export function ApplicationAttachments({ applicationId }: { applicationId: strin
   return (
     <div>
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-xs text-[oklch(0.55_0.02_265)]">Offer letters, assignments, and other documents.</p>
+        <p className="text-xs text-[oklch(0.55_0.02_265)]">
+          Offer letters, assignments, and other documents.
+        </p>
         <div className="flex items-center gap-1.5">
           <select
             value={kind}
@@ -80,7 +82,9 @@ export function ApplicationAttachments({ applicationId }: { applicationId: strin
             className="h-8 rounded-lg border border-black/5 bg-white px-2 text-xs text-[oklch(0.4_0.02_265)] focus:border-[#2563EB]/40 focus:outline-none focus:ring-2 focus:ring-[#2563EB]/10"
           >
             {KIND_OPTIONS.map((k) => (
-              <option key={k} value={k}>{KIND_LABELS[k]}</option>
+              <option key={k} value={k}>
+                {KIND_LABELS[k]}
+              </option>
             ))}
           </select>
           <button
@@ -88,7 +92,11 @@ export function ApplicationAttachments({ applicationId }: { applicationId: strin
             disabled={uploadAttachment.isPending}
             className="inline-flex items-center gap-1 rounded-lg bg-[#2563EB] px-2.5 py-1.5 text-xs font-semibold text-white shadow-[0_2px_8px_-2px_rgba(37,99,235,0.5)] transition-colors hover:bg-[#1D4ED8] disabled:opacity-60"
           >
-            {uploadAttachment.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+            {uploadAttachment.isPending ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Upload className="h-3.5 w-3.5" />
+            )}
             Upload
           </button>
           <input ref={fileInputRef} type="file" onChange={handleFilePicked} className="hidden" />
@@ -124,7 +132,11 @@ export function ApplicationAttachments({ applicationId }: { applicationId: strin
                   aria-label="Download attachment"
                   className="grid h-7 w-7 place-items-center rounded-lg text-[oklch(0.5_0.02_265)] hover:bg-black/[0.05] hover:text-[#2563EB] transition-colors disabled:opacity-60"
                 >
-                  {downloadingId === a.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+                  {downloadingId === a.id ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Download className="h-3.5 w-3.5" />
+                  )}
                 </button>
                 <button
                   onClick={() => handleDelete(a.id)}

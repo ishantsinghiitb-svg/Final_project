@@ -7,6 +7,7 @@ import {
   CalendarClock,
   FileText,
   LineChart,
+  Mail,
   Plus,
   Search,
   Settings,
@@ -50,21 +51,115 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
       navigate({ to });
     };
     const nav: Command[] = [
-      { id: "n-overview", label: "Go to Overview", section: "Navigate", icon: Activity, run: go("/dashboard") },
-      { id: "n-jobs", label: "Go to Jobs", section: "Navigate", icon: Briefcase, run: go("/dashboard/jobs") },
-      { id: "n-saved", label: "Go to Saved", section: "Navigate", icon: Bookmark, run: go("/dashboard/saved") },
-      { id: "n-apps", label: "Go to Applications", section: "Navigate", icon: Target, run: go("/dashboard/applications") },
-      { id: "n-resumes", label: "Go to Resumes", section: "Navigate", icon: FileText, run: go("/dashboard/resumes") },
-      { id: "n-int", label: "Go to Interviews", section: "Navigate", icon: CalendarClock, run: go("/dashboard/interviews") },
-      { id: "n-notes", label: "Go to Notes", section: "Navigate", icon: StickyNote, run: go("/dashboard/notes") },
-      { id: "n-analytics", label: "Go to Analytics", section: "Navigate", icon: LineChart, run: go("/dashboard/analytics") },
-      { id: "n-settings", label: "Go to Settings", section: "Navigate", icon: Settings, run: go("/dashboard/settings") },
+      {
+        id: "n-overview",
+        label: "Go to Overview",
+        section: "Navigate",
+        icon: Activity,
+        run: go("/dashboard"),
+      },
+      {
+        id: "n-jobs",
+        label: "Go to Jobs",
+        section: "Navigate",
+        icon: Briefcase,
+        run: go("/dashboard/jobs"),
+      },
+      {
+        id: "n-saved",
+        label: "Go to Saved",
+        section: "Navigate",
+        icon: Bookmark,
+        run: go("/dashboard/saved"),
+      },
+      {
+        id: "n-apps",
+        label: "Go to Applications",
+        section: "Navigate",
+        icon: Target,
+        run: go("/dashboard/applications"),
+      },
+      {
+        id: "n-resumes",
+        label: "Go to Resumes",
+        section: "Navigate",
+        icon: FileText,
+        run: go("/dashboard/resumes"),
+      },
+      {
+        id: "n-cover-letters",
+        label: "Go to Cover Letters",
+        section: "Navigate",
+        icon: Mail,
+        run: go("/dashboard/cover-letters"),
+      },
+      {
+        id: "n-ai",
+        label: "Go to AI Hub",
+        hint: "Recent AI activity and credits",
+        section: "Navigate",
+        icon: Sparkles,
+        run: go("/dashboard/ai"),
+      },
+      {
+        id: "n-int",
+        label: "Go to Interviews",
+        section: "Navigate",
+        icon: CalendarClock,
+        run: go("/dashboard/interviews"),
+      },
+      {
+        id: "n-notes",
+        label: "Go to Notes",
+        section: "Navigate",
+        icon: StickyNote,
+        run: go("/dashboard/notes"),
+      },
+      {
+        id: "n-analytics",
+        label: "Go to Analytics",
+        section: "Navigate",
+        icon: LineChart,
+        run: go("/dashboard/analytics"),
+      },
+      {
+        id: "n-settings",
+        label: "Go to Settings",
+        section: "Navigate",
+        icon: Settings,
+        run: go("/dashboard/settings"),
+      },
     ];
     const actions: Command[] = [
-      { id: "a-add", label: "Add a job manually", hint: "Track a role from anywhere", section: "Actions", icon: Plus, run: go("/dashboard/jobs") },
-      { id: "a-tailor", label: "Tailor resume with AI", section: "Actions", icon: Sparkles, run: go("/dashboard/resumes") },
-      { id: "a-cover", label: "Generate cover letter", section: "Actions", icon: FileText, run: go("/dashboard/resumes") },
-      { id: "a-prep", label: "Prep for upcoming interview", section: "Actions", icon: CalendarClock, run: go("/dashboard/interviews") },
+      {
+        id: "a-add",
+        label: "Add a job manually",
+        hint: "Track a role from anywhere",
+        section: "Actions",
+        icon: Plus,
+        run: go("/dashboard/jobs"),
+      },
+      {
+        id: "a-tailor",
+        label: "Tailor resume with AI",
+        section: "Actions",
+        icon: Sparkles,
+        run: go("/dashboard/resumes"),
+      },
+      {
+        id: "a-cover",
+        label: "Generate cover letter",
+        section: "Actions",
+        icon: Mail,
+        run: go("/dashboard/cover-letters"),
+      },
+      {
+        id: "a-prep",
+        label: "Prep for upcoming interview",
+        section: "Actions",
+        icon: CalendarClock,
+        run: go("/dashboard/interviews"),
+      },
     ];
     const jobCommands: Command[] = jobs.slice(0, 8).map((j) => ({
       id: `j-${j.id}`,
@@ -78,7 +173,9 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
   }, [navigate, onClose]);
 
   const filtered = q
-    ? commands.filter((c) => (c.label + " " + (c.hint ?? "")).toLowerCase().includes(q.toLowerCase()))
+    ? commands.filter((c) =>
+        (c.label + " " + (c.hint ?? "")).toLowerCase().includes(q.toLowerCase()),
+      )
     : commands;
 
   const grouped = filtered.reduce<Record<string, Command[]>>((acc, c) => {
@@ -142,10 +239,12 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
         </div>
         <div className="flex items-center justify-between border-t border-black/5 bg-[oklch(0.98_0.005_265)] px-4 py-2 text-[11px] text-[oklch(0.5_0.02_265)]">
           <span className="flex items-center gap-2">
-            <Kbd>↑</Kbd><Kbd>↓</Kbd> to navigate
+            <Kbd>↑</Kbd>
+            <Kbd>↓</Kbd> to navigate
           </span>
           <span className="flex items-center gap-2">
-            <Kbd>⌘</Kbd><Kbd>K</Kbd> to toggle
+            <Kbd>⌘</Kbd>
+            <Kbd>K</Kbd> to toggle
           </span>
         </div>
       </div>

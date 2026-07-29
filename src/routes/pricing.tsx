@@ -14,7 +14,10 @@ export const Route = createFileRoute("/pricing")({
           "Free forever for casual job seekers. Pro for active searches — unlimited AI, cover letters, and analytics. 50% off for students.",
       },
       { property: "og:title", content: "Pricing — NextOffer" },
-      { property: "og:description", content: "Free forever, Pro for unlimited AI, 50% off for students. No hidden fees." },
+      {
+        property: "og:description",
+        content: "Free forever, Pro for unlimited AI, 50% off for students. No hidden fees.",
+      },
     ],
   }),
   component: Pricing,
@@ -28,7 +31,13 @@ const plans = [
     annual: 0,
     cta: "Start free",
     to: "/signup",
-    features: ["Chrome extension", "Up to 25 saved jobs", "1 resume", "10 AI actions / month", "Kanban tracker"],
+    features: [
+      "Chrome extension",
+      "Up to 25 saved jobs",
+      "1 resume",
+      "10 AI actions / month",
+      "Kanban tracker",
+    ],
   },
   {
     name: "Pro",
@@ -55,11 +64,25 @@ const plans = [
     annual: 29,
     cta: "Contact sales",
     to: "/contact",
-    features: ["Everything in Pro", "Up to 10 seats", "Shared job libraries", "Coach analytics", "Priority support"],
+    features: [
+      "Everything in Pro",
+      "Up to 10 seats",
+      "Shared job libraries",
+      "Coach analytics",
+      "Priority support",
+    ],
   },
 ];
 
-const comparison: { group: string; rows: { label: string; starter: string | boolean; pro: string | boolean; team: string | boolean }[] }[] = [
+const comparison: {
+  group: string;
+  rows: {
+    label: string;
+    starter: string | boolean;
+    pro: string | boolean;
+    team: string | boolean;
+  }[];
+}[] = [
   {
     group: "Saving & discovering",
     rows: [
@@ -143,9 +166,11 @@ function Pricing() {
               }`}
             >
               Annual
-              <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold transition-colors ${
-                annual ? "bg-white/20 text-white" : "bg-[#22C55E]/15 text-[#22C55E]"
-              }`}>
+              <span
+                className={`rounded px-1.5 py-0.5 text-[10px] font-semibold transition-colors ${
+                  annual ? "bg-white/20 text-white" : "bg-[#22C55E]/15 text-[#22C55E]"
+                }`}
+              >
                 −20%
               </span>
             </button>
@@ -178,7 +203,11 @@ function Pricing() {
                 {annual && p.price > 0 && (
                   <p className="mt-1 text-[11px] text-muted-foreground">Billed annually</p>
                 )}
-                <ButtonLink to={p.to} className="mt-6 w-full" variant={p.highlight ? "primary" : "outline"}>
+                <ButtonLink
+                  to={p.to}
+                  className="mt-6 w-full"
+                  variant={p.highlight ? "primary" : "outline"}
+                >
                   {p.cta} <ArrowRight className="h-4 w-4" />
                 </ButtonLink>
                 <ul className="mt-6 space-y-2.5 text-sm">
@@ -205,7 +234,9 @@ function Pricing() {
               <tr className="border-b border-white/8 text-left">
                 <th className="px-5 py-4 font-display font-semibold">Feature</th>
                 <th className="px-5 py-4 text-center font-display font-semibold">Starter</th>
-                <th className="px-5 py-4 text-center font-display font-semibold text-[#93C5FD]">Pro</th>
+                <th className="px-5 py-4 text-center font-display font-semibold text-[#93C5FD]">
+                  Pro
+                </th>
                 <th className="px-5 py-4 text-center font-display font-semibold">Team</th>
               </tr>
             </thead>
@@ -213,7 +244,10 @@ function Pricing() {
               {comparison.map((g) => (
                 <>
                   <tr key={g.group} className="border-b border-white/5 bg-white/[0.015]">
-                    <td colSpan={4} className="px-5 py-2 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
+                    <td
+                      colSpan={4}
+                      className="px-5 py-2 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground"
+                    >
                       {g.group}
                     </td>
                   </tr>
@@ -238,15 +272,22 @@ function Pricing() {
           <span className="mx-auto grid h-12 w-12 place-items-center rounded-xl bg-gradient-to-br from-[#2563EB] to-[#7C3AED]">
             <GraduationCap className="h-6 w-6 text-white" />
           </span>
-          <h3 className="mt-5 font-display text-2xl font-semibold md:text-3xl">50% off Pro for students</h3>
+          <h3 className="mt-5 font-display text-2xl font-semibold md:text-3xl">
+            50% off Pro for students
+          </h3>
           <p className="mt-3 text-muted-foreground">
-            Verify with a <span className="text-foreground">.edu</span> (or equivalent) email and get Pro for
-            <span className="text-foreground"> $6/mo billed annually</span>. The same unlimited AI, cover letters, and
-            analytics — half the price, while you're finding your first role.
+            Verify with a <span className="text-foreground">.edu</span> (or equivalent) email and
+            get Pro for
+            <span className="text-foreground"> $6/mo billed annually</span>. The same unlimited AI,
+            cover letters, and analytics — half the price, while you're finding your first role.
           </p>
           <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
-            <ButtonLink to="/signup" size="lg">Claim student pricing <ArrowRight className="h-4 w-4" /></ButtonLink>
-            <ButtonLink to="/faq" size="lg" variant="outline">How verification works</ButtonLink>
+            <ButtonLink to="/signup" size="lg">
+              Claim student pricing <ArrowRight className="h-4 w-4" />
+            </ButtonLink>
+            <ButtonLink to="/faq" size="lg" variant="outline">
+              How verification works
+            </ButtonLink>
           </div>
         </div>
       </Section>
@@ -255,12 +296,30 @@ function Pricing() {
       <Section className="pb-32 pt-0" align="center" title="Pricing questions, answered.">
         <div className="mx-auto max-w-4xl divide-y divide-white/5 rounded-2xl border border-white/8 bg-white/[0.02]">
           {[
-            { q: "Is there a free plan?", a: "Yes — Starter is free forever and includes the Chrome extension, up to 25 saved jobs, and the kanban tracker." },
-            { q: "Why upgrade to Pro?", a: "Pro removes the limits that matter during an active search: unlimited saved jobs, unlimited resumes, unlimited AI actions, ATS scoring, cover letters, interview prep, and analytics. Most people upgrade when they're applying to more than a handful of roles at once." },
-            { q: "Can I cancel any time?", a: "Absolutely. Cancel from your dashboard in one click — no email, no call, no retention theater. You keep access until the end of your billing period." },
-            { q: "Do you offer student discounts?", a: "Yes. 50% off Pro for verified .edu (or equivalent) addresses. Reach out from your school email after signing up." },
-            { q: "What happens to my data if I downgrade?", a: "Your data stays. You can export everything at any time. If you exceed the Starter limits after downgrading, some saved jobs will be read-only until you're back under the limit — but nothing is deleted." },
-            { q: "Is there a team plan for career coaches?", a: "Yes — Team includes everything in Pro for up to 10 seats, shared job libraries, coach analytics, and priority support. Contact us and we'll set it up." },
+            {
+              q: "Is there a free plan?",
+              a: "Yes — Starter is free forever and includes the Chrome extension, up to 25 saved jobs, and the kanban tracker.",
+            },
+            {
+              q: "Why upgrade to Pro?",
+              a: "Pro removes the limits that matter during an active search: unlimited saved jobs, unlimited resumes, unlimited AI actions, ATS scoring, cover letters, interview prep, and analytics. Most people upgrade when they're applying to more than a handful of roles at once.",
+            },
+            {
+              q: "Can I cancel any time?",
+              a: "Absolutely. Cancel from your dashboard in one click — no email, no call, no retention theater. You keep access until the end of your billing period.",
+            },
+            {
+              q: "Do you offer student discounts?",
+              a: "Yes. 50% off Pro for verified .edu (or equivalent) addresses. Reach out from your school email after signing up.",
+            },
+            {
+              q: "What happens to my data if I downgrade?",
+              a: "Your data stays. You can export everything at any time. If you exceed the Starter limits after downgrading, some saved jobs will be read-only until you're back under the limit — but nothing is deleted.",
+            },
+            {
+              q: "Is there a team plan for career coaches?",
+              a: "Yes — Team includes everything in Pro for up to 10 seats, shared job libraries, coach analytics, and priority support. Contact us and we'll set it up.",
+            },
           ].map((f) => (
             <div key={f.q} className="p-6 text-left">
               <p className="font-semibold">{f.q}</p>
@@ -288,5 +347,9 @@ function Cell({ value, highlight }: { value: string | boolean; highlight?: boole
       </td>
     );
   }
-  return <td className={`px-5 py-3 text-center ${highlight ? "text-[#93C5FD]" : "text-foreground"}`}>{value}</td>;
+  return (
+    <td className={`px-5 py-3 text-center ${highlight ? "text-[#93C5FD]" : "text-foreground"}`}>
+      {value}
+    </td>
+  );
 }
