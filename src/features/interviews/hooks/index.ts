@@ -28,6 +28,19 @@ export function useAllInterviews() {
   });
 }
 
+// ── useInterview ─────────────────────────────────────────────────────────────
+// A single interview — powers the Details page (Module 7B). The query key was
+// already reserved (`interviewKeys.detail`) but unused until that page existed.
+
+export function useInterview(id: string | undefined) {
+  return useQuery({
+    queryKey: interviewKeys.detail(id ?? ""),
+    queryFn: () => interviewService.getInterview(id!),
+    enabled: Boolean(id),
+    staleTime: 30 * 1_000,
+  });
+}
+
 // ── useInterviewsForApplication ──────────────────────────────────────────────
 
 export function useInterviewsForApplication(applicationId: string | undefined) {
@@ -91,6 +104,9 @@ export function useUpdateInterview() {
 
     onSettled: (data) => {
       void queryClient.invalidateQueries({ queryKey: interviewKeys.allByUser(userId) });
+      if (data) {
+        void queryClient.invalidateQueries({ queryKey: interviewKeys.detail(data.id) });
+      }
       if (data?.application_id) {
         void queryClient.invalidateQueries({
           queryKey: interviewKeys.byApplication(data.application_id),
@@ -133,6 +149,7 @@ export function useUpdateInterviewStatus() {
 
     onSettled: (_data, _err, { interview }) => {
       void queryClient.invalidateQueries({ queryKey: interviewKeys.allByUser(userId) });
+      void queryClient.invalidateQueries({ queryKey: interviewKeys.detail(interview.id) });
       if (interview.application_id) {
         void queryClient.invalidateQueries({
           queryKey: interviewKeys.byApplication(interview.application_id),

@@ -14,6 +14,7 @@ import { format, parseISO } from "date-fns";
 
 type Props = {
   interview: Interview;
+  onOpen: (interview: Interview) => void;
   onStatusChange: (interview: Interview, status: InterviewStatus) => void;
   onEdit: (interview: Interview) => void;
   onDelete: (id: string) => void;
@@ -22,10 +23,10 @@ type Props = {
 /**
  * InterviewCard
  *
- * No detail route — clicking the card opens the edit dialog directly.
- * The ⋮ menu offers a quick status change plus Edit/Delete.
+ * Clicking the card opens the Interview Details page (Module 7B) — Edit stays
+ * reachable from the ⋮ menu, alongside a quick status change and Delete.
  */
-export function InterviewCard({ interview, onStatusChange, onEdit, onDelete }: Props) {
+export function InterviewCard({ interview, onOpen, onStatusChange, onEdit, onDelete }: Props) {
   const tone = logoToneForCompany(interview.company_name);
   const statusMeta = INTERVIEW_STATUS_META[interview.status];
   const allowedStatuses = interview.application_id ? LINKED_STATUSES : STANDALONE_STATUSES;
@@ -45,7 +46,7 @@ export function InterviewCard({ interview, onStatusChange, onEdit, onDelete }: P
 
   return (
     <div
-      onClick={() => onEdit(interview)}
+      onClick={() => onOpen(interview)}
       className="group relative cursor-pointer rounded-xl border border-black/5 bg-white p-3.5 shadow-[0_1px_3px_rgba(0,0,0,0.04)] transition-all hover:border-black/10 hover:shadow-[0_2px_8px_rgba(0,0,0,0.07)]"
     >
       <div className="flex items-start gap-2.5">

@@ -982,6 +982,84 @@ export type InterviewInsert = {
   updated_at?: string;
 };
 
+// ── Module 7B: Interview Preparation ──
+
+export type InterviewPrepRow = {
+  id: string;
+  interview_id: string;
+  user_id: string;
+  manual_job_description: string | null;
+  manual_company_description: string | null;
+  additional_context: string | null;
+  content: Json | null;
+  reasoning: Json | null;
+  model: string | null;
+  prompt_version: string | null;
+  analysis_version: string | null;
+  resume_file_hash: string | null;
+  job_hash: string | null;
+  input_hash: string | null;
+  ai_session_id: string | null;
+  ai_session_started_at: string | null;
+  progress: Json;
+  generated_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type InterviewPrepInsert = {
+  id?: string;
+  interview_id: string;
+  user_id: string;
+  manual_job_description?: string | null;
+  manual_company_description?: string | null;
+  additional_context?: string | null;
+  content?: Json | null;
+  reasoning?: Json | null;
+  model?: string | null;
+  prompt_version?: string | null;
+  analysis_version?: string | null;
+  resume_file_hash?: string | null;
+  job_hash?: string | null;
+  input_hash?: string | null;
+  ai_session_id?: string | null;
+  ai_session_started_at?: string | null;
+  progress?: Json;
+  generated_at?: string | null;
+  created_at?: string;
+  updated_at?: string;
+};
+
+export type InterviewPrepAnswerRow = {
+  id: string;
+  interview_prep_id: string;
+  user_id: string;
+  question_id: string;
+  answer: string;
+  ai_generated: boolean;
+  last_generated_at: string | null;
+  edited_at: string | null;
+  model: string | null;
+  prompt_version: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type InterviewPrepAnswerInsert = {
+  id?: string;
+  interview_prep_id: string;
+  user_id: string;
+  question_id: string;
+  answer?: string;
+  ai_generated?: boolean;
+  last_generated_at?: string | null;
+  edited_at?: string | null;
+  model?: string | null;
+  prompt_version?: string | null;
+  created_at?: string;
+  updated_at?: string;
+};
+
 export type NotificationInsert = {
   id?: string;
   user_id: string;
@@ -1218,6 +1296,18 @@ export type Database = {
         Row: InterviewRow;
         Insert: InterviewInsert;
         Update: Partial<InterviewRow>;
+        Relationships: TableRelationship[];
+      };
+      interview_preps: {
+        Row: InterviewPrepRow;
+        Insert: InterviewPrepInsert;
+        Update: Partial<InterviewPrepRow>;
+        Relationships: TableRelationship[];
+      };
+      interview_prep_answers: {
+        Row: InterviewPrepAnswerRow;
+        Insert: InterviewPrepAnswerInsert;
+        Update: Partial<InterviewPrepAnswerRow>;
         Relationships: TableRelationship[];
       };
       notifications: {

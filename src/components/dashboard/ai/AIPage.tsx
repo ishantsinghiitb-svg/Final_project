@@ -64,13 +64,20 @@ export function AIPage({
  */
 export function AIPageHeader({
   backTo,
+  backParams,
   backLabel,
   icon: Icon,
   title,
   subtitle,
   actions,
 }: {
-  backTo: "/dashboard/resumes" | "/dashboard/cover-letters";
+  backTo:
+    | "/dashboard/resumes"
+    | "/dashboard/cover-letters"
+    | "/dashboard/interviews"
+    | "/dashboard/interviews/$interviewId";
+  /** Route params for a dynamic `backTo` (e.g. `{ interviewId }`). Omit for a static route. */
+  backParams?: Record<string, string>;
   backLabel: string;
   icon: React.ComponentType<{ className?: string }>;
   title: string;
@@ -81,6 +88,7 @@ export function AIPageHeader({
     <div>
       <Link
         to={backTo}
+        params={backParams}
         className="inline-flex items-center gap-1.5 text-sm text-[oklch(0.45_0.02_265)] transition-colors hover:text-[#2563EB]"
       >
         <ArrowLeft className="h-4 w-4" /> {backLabel}

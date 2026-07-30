@@ -10,7 +10,6 @@ export const AI_CAPABILITIES = {
   ATS_SCORE: "ats_score",
   RESUME_OPTIMIZER: "resume_optimizer",
   COVER_LETTER: "cover_letter",
-  // ⚠ EXPERIMENTAL — NOT A SHIPPED FEATURE. See EXPERIMENTAL_AI_CAPABILITIES.
   INTERVIEW_PREP: "interview_prep",
 } as const;
 
@@ -18,34 +17,36 @@ export type AICapability = (typeof AI_CAPABILITIES)[keyof typeof AI_CAPABILITIES
 
 // ── Shipped vs experimental (Module 6 freeze) ──
 //
-// `interview_prep` has a registry entry, a prompt template, an output schema
-// and version constants — but no server function, no client method and no UI.
-// It has never been reachable by a user. Because it sits in the same registry
-// as the four real capabilities, it read as shipped, and every
-// `Record<AICapability, …>` in the codebase had to invent a value for it (which
-// is how it acquired user-facing loading copy during 6G, for a screen that
-// does not exist).
+// A capability can be registered (id + version constants) without being
+// reachable by a user — no server function, no client method, no UI. Because
+// it would otherwise sit in the same registry as real capabilities, every
+// `Record<AICapability, …>` in the codebase would have to invent a value for
+// it, and it could leak user-facing copy for a screen that doesn't exist
+// (this happened to `interview_prep` during 6G, before it shipped in 7B).
 //
 // The split below makes the distinction explicit and enforceable rather than a
 // comment: anything user-facing is typed against `ShippedAICapability`, so
 // surfacing an experimental capability is a compile error, not a review catch.
 //
-// It is kept rather than deleted because removing it would mean editing the
-// frozen prompt module. Promoting it later = move the id into
-// SHIPPED_AI_CAPABILITIES and flip `experimental` in the registry.
+// Promoting a capability = move the id into SHIPPED_AI_CAPABILITIES (which
+// then requires a loading-phase script — see loadingPhases.ts) and build its
+// server function, client method and UI. `interview_prep` made this move in
+// Module 7B, as a dedicated orchestration (server/ai/InterviewPrepAIService.ts)
+// rather than the frozen generic engine — see CoverLetterAIService.ts for why.
 
 export const SHIPPED_AI_CAPABILITIES = [
   AI_CAPABILITIES.RESUME_MATCH,
   AI_CAPABILITIES.ATS_SCORE,
   AI_CAPABILITIES.RESUME_OPTIMIZER,
   AI_CAPABILITIES.COVER_LETTER,
+  AI_CAPABILITIES.INTERVIEW_PREP,
 ] as const;
 
 /** A capability a user can actually reach. Use this in any user-facing type. */
 export type ShippedAICapability = (typeof SHIPPED_AI_CAPABILITIES)[number];
 
 /** Registered but unreachable — no server function, no client, no UI. */
-export const EXPERIMENTAL_AI_CAPABILITIES = [AI_CAPABILITIES.INTERVIEW_PREP] as const;
+export const EXPERIMENTAL_AI_CAPABILITIES = [] as const;
 
 export type ExperimentalAICapability = (typeof EXPERIMENTAL_AI_CAPABILITIES)[number];
 
@@ -58,18 +59,27 @@ export const AI_CAPABILITY_LABELS: Record<AICapability, string> = {
   ats_score: "ATS Score",
   resume_optimizer: "Resume Optimizer",
   cover_letter: "Cover Letter",
-  // Experimental — this label exists only so the registry entry can be built;
-  // it is never rendered, because nothing surfaces this capability.
   interview_prep: "Interview Preparation",
 };
 
-/** Credits consumed per generation. Configurable per capability. */
+/**
+ * Credits consumed per generation. Configurable per capability.
+ *
+ * `interview_prep` costs 3, not 1 — a deliberate deviation (same category of
+ * decision as ATS's shared-pool deviation in 6C). One generation produces a
+ * complete workspace (overview, evaluation criteria, priority topics,
+ * personalized questions across five categories, resume weak areas, STAR
+ * story recommendations, checklist) with unlimited free reading, navigation
+ * and per-question answer generation/regeneration inside that session — see
+ * server/ai/InterviewPrepAIService.ts. Only Regenerate Entire Preparation
+ * charges again.
+ */
 export const AI_CREDIT_COSTS: Record<AICapability, number> = {
   resume_match: 1,
   ats_score: 1,
   resume_optimizer: 1,
   cover_letter: 1,
-  interview_prep: 1,
+  interview_prep: 3,
 };
 
 /**
@@ -111,7 +121,17 @@ export const AI_ANALYSIS_VERSIONS: Record<AICapability, string> = {
   // intersection/narrative analysis plus its pre-return checks. Bumped so
   // pre-Phase-2 cached letters (old shape, generic quality) aren't reused.
   cover_letter: "2",
-  interview_prep: "1",
+  // v1 was the unshipped 6A placeholder scaffold ({questions:[{question,
+  // category, suggestedAnswer}]}) — it never had a real service behind it.
+  // v2 (Module 7B) is the first real Interview Preparation implementation: a
+  // dedicated orchestration with its own schema (features/interview-prep/schema.ts),
+  // not the frozen registry placeholder. Bumped so the placeholder is never reused.
+  // v3 (Module 7B intelligence upgrade): output shape expanded — 12-step
+  // internal reasoning (was 7), questions gain `sourceTag`/`priority`/
+  // `difficulty`, priority topics gain `studyPoints`, category vocabulary
+  // grows from 5 to 29 AI-selected values. Bumped so pre-upgrade cached preps
+  // (old shape, missing fields) aren't reused.
+  interview_prep: "3",
 };
 
 /** Prompt version — bump when the prompt template text changes. */
@@ -151,7 +171,25 @@ export const AI_PROMPT_VERSIONS: Record<AICapability, string> = {
   // self-check the model must pass before returning. Applies to generation and
   // to every refinement action.
   cover_letter: "2",
-  interview_prep: "1",
+  // v1 was the unshipped 6A placeholder prompt ("Produce likely interview
+  // questions..."), never actually called by a service. v2 (Module 7B) is a
+  // 7-phase reasoning pipeline (understand the job → understand the candidate →
+  // interview objectives → predicted interviewer priorities → risky resume
+  // areas → highest-value question selection → preparation strategy), an
+  // explicit quality-over-quantity rule (no generic filler questions, no
+  // padding to hit a count) and a confidence gate on company-specific content
+  // (fewer questions, never invented culture/values/news, when the posting and
+  // optional company description don't support more).
+  // v3 (Module 7B intelligence upgrade): 12-phase reasoning pipeline (adds
+  // role, additional user context, and optional prior Resume Match / ATS /
+  // Optimizer / Cover Letter / interview-notes signal ahead of strategy);
+  // adaptive coverage guidance replaces the flat "prefer fewer questions"
+  // rule (count now scales with how much real material exists, no cap);
+  // expanded ~29-category vocabulary the model selects from; per-question
+  // `sourceTag`/`priority`/`difficulty` grounding; priority topics become a
+  // study roadmap via `studyPoints`; answer prompt deepened for teaching-
+  // quality, non-repetitive answers.
+  interview_prep: "3",
 };
 
 // ── Deterministic resume parser (independent of the AI engine) ──

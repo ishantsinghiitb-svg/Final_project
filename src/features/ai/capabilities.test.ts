@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { CAPABILITY_REGISTRY, getCapability } from "./capabilities";
 import {
-  AI_CAPABILITIES,
   EXPERIMENTAL_AI_CAPABILITIES,
   SHIPPED_AI_CAPABILITIES,
   isShippedCapability,
@@ -43,15 +42,6 @@ describe("shipped vs experimental capabilities", () => {
     for (const id of ALL_CAPABILITIES) {
       expect(getCapability(id).experimental).toBe(!isShippedCapability(id));
     }
-  });
-
-  it("keeps interview_prep experimental until it has a real surface", () => {
-    // It has a registry entry, a prompt and a schema, but no server function,
-    // no client method and no UI. If this is ever flipped, the promotion must
-    // be deliberate: move the id into SHIPPED_AI_CAPABILITIES, which will then
-    // force a Hub row (HUB_META is typed against ShippedAICapability) and a
-    // loading-phase script to exist for it.
-    expect(getCapability(AI_CAPABILITIES.INTERVIEW_PREP).experimental).toBe(true);
   });
 
   it("covers every registered capability as either shipped or experimental", () => {

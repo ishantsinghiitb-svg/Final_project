@@ -86,6 +86,28 @@ const COPY_BY_CODE: Record<string, AIErrorCopy> = {
     body: "Start a new generation to keep editing this letter with AI.",
     retryable: false,
   },
+
+  // ── Interview Preparation (Module 7B) ──
+  interview_not_found: {
+    title: "That interview is no longer available",
+    body: "It may have been deleted. Head back to your interviews list.",
+    retryable: false,
+  },
+  resume_required: {
+    title: "Pick a resume first",
+    body: "Interview preparation is personalized from your resume — choose one to continue.",
+    retryable: false,
+  },
+  job_description_required: {
+    title: "Add the job description first",
+    body: "This interview isn't linked to a tracked job, so preparation needs the job description to stay grounded and specific.",
+    retryable: false,
+  },
+  question_not_found: {
+    title: "That question is no longer available",
+    body: "It may have changed after a Regenerate. Refresh the page and try again.",
+    retryable: false,
+  },
 };
 
 const GENERIC: AIErrorCopy = {

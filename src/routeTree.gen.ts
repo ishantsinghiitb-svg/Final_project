@@ -33,14 +33,18 @@ import { Route as DashboardCollectionsRouteImport } from './routes/dashboard.col
 import { Route as DashboardApplicationsRouteImport } from './routes/dashboard.applications'
 import { Route as DashboardAnalyticsRouteImport } from './routes/dashboard.analytics'
 import { Route as DashboardJobsIndexRouteImport } from './routes/dashboard.jobs.index'
+import { Route as DashboardInterviewsIndexRouteImport } from './routes/dashboard.interviews.index'
 import { Route as DashboardCoverLettersIndexRouteImport } from './routes/dashboard.cover-letters.index'
 import { Route as DashboardCollectionsIndexRouteImport } from './routes/dashboard.collections.index'
 import { Route as DashboardApplicationsIndexRouteImport } from './routes/dashboard.applications.index'
 import { Route as DashboardJobsJobIdRouteImport } from './routes/dashboard.jobs.$jobId'
+import { Route as DashboardInterviewsInterviewIdRouteImport } from './routes/dashboard.interviews.$interviewId'
 import { Route as DashboardCoverLettersCoverLetterIdRouteImport } from './routes/dashboard.cover-letters.$coverLetterId'
 import { Route as DashboardCollectionsCollectionIdRouteImport } from './routes/dashboard.collections.$collectionId'
 import { Route as DashboardApplicationsApplicationIdRouteImport } from './routes/dashboard.applications.$applicationId'
+import { Route as DashboardInterviewsInterviewIdIndexRouteImport } from './routes/dashboard.interviews.$interviewId.index'
 import { Route as DashboardResumesResumeIdOptimizeRouteImport } from './routes/dashboard.resumes_.$resumeId.optimize'
+import { Route as DashboardInterviewsInterviewIdPrepRouteImport } from './routes/dashboard.interviews.$interviewId.prep'
 
 const SupabaseStatusRoute = SupabaseStatusRouteImport.update({
   id: '/supabase-status',
@@ -162,6 +166,12 @@ const DashboardJobsIndexRoute = DashboardJobsIndexRouteImport.update({
   path: '/',
   getParentRoute: () => DashboardJobsRoute,
 } as any)
+const DashboardInterviewsIndexRoute =
+  DashboardInterviewsIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => DashboardInterviewsRoute,
+  } as any)
 const DashboardCoverLettersIndexRoute =
   DashboardCoverLettersIndexRouteImport.update({
     id: '/',
@@ -185,6 +195,12 @@ const DashboardJobsJobIdRoute = DashboardJobsJobIdRouteImport.update({
   path: '/$jobId',
   getParentRoute: () => DashboardJobsRoute,
 } as any)
+const DashboardInterviewsInterviewIdRoute =
+  DashboardInterviewsInterviewIdRouteImport.update({
+    id: '/$interviewId',
+    path: '/$interviewId',
+    getParentRoute: () => DashboardInterviewsRoute,
+  } as any)
 const DashboardCoverLettersCoverLetterIdRoute =
   DashboardCoverLettersCoverLetterIdRouteImport.update({
     id: '/$coverLetterId',
@@ -203,11 +219,23 @@ const DashboardApplicationsApplicationIdRoute =
     path: '/$applicationId',
     getParentRoute: () => DashboardApplicationsRoute,
   } as any)
+const DashboardInterviewsInterviewIdIndexRoute =
+  DashboardInterviewsInterviewIdIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => DashboardInterviewsInterviewIdRoute,
+  } as any)
 const DashboardResumesResumeIdOptimizeRoute =
   DashboardResumesResumeIdOptimizeRouteImport.update({
     id: '/resumes_/$resumeId/optimize',
     path: '/resumes/$resumeId/optimize',
     getParentRoute: () => DashboardRoute,
+  } as any)
+const DashboardInterviewsInterviewIdPrepRoute =
+  DashboardInterviewsInterviewIdPrepRouteImport.update({
+    id: '/prep',
+    path: '/prep',
+    getParentRoute: () => DashboardInterviewsInterviewIdRoute,
   } as any)
 
 export interface FileRoutesByFullPath {
@@ -227,7 +255,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/applications': typeof DashboardApplicationsRouteWithChildren
   '/dashboard/collections': typeof DashboardCollectionsRouteWithChildren
   '/dashboard/cover-letters': typeof DashboardCoverLettersRouteWithChildren
-  '/dashboard/interviews': typeof DashboardInterviewsRoute
+  '/dashboard/interviews': typeof DashboardInterviewsRouteWithChildren
   '/dashboard/jobs': typeof DashboardJobsRouteWithChildren
   '/dashboard/notes': typeof DashboardNotesRoute
   '/dashboard/resumes': typeof DashboardResumesRoute
@@ -237,12 +265,16 @@ export interface FileRoutesByFullPath {
   '/dashboard/applications/$applicationId': typeof DashboardApplicationsApplicationIdRoute
   '/dashboard/collections/$collectionId': typeof DashboardCollectionsCollectionIdRoute
   '/dashboard/cover-letters/$coverLetterId': typeof DashboardCoverLettersCoverLetterIdRoute
+  '/dashboard/interviews/$interviewId': typeof DashboardInterviewsInterviewIdRouteWithChildren
   '/dashboard/jobs/$jobId': typeof DashboardJobsJobIdRoute
   '/dashboard/applications/': typeof DashboardApplicationsIndexRoute
   '/dashboard/collections/': typeof DashboardCollectionsIndexRoute
   '/dashboard/cover-letters/': typeof DashboardCoverLettersIndexRoute
+  '/dashboard/interviews/': typeof DashboardInterviewsIndexRoute
   '/dashboard/jobs/': typeof DashboardJobsIndexRoute
+  '/dashboard/interviews/$interviewId/prep': typeof DashboardInterviewsInterviewIdPrepRoute
   '/dashboard/resumes/$resumeId/optimize': typeof DashboardResumesResumeIdOptimizeRoute
+  '/dashboard/interviews/$interviewId/': typeof DashboardInterviewsInterviewIdIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -257,7 +289,6 @@ export interface FileRoutesByTo {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/supabase-status': typeof SupabaseStatusRoute
   '/dashboard/analytics': typeof DashboardAnalyticsRoute
-  '/dashboard/interviews': typeof DashboardInterviewsRoute
   '/dashboard/notes': typeof DashboardNotesRoute
   '/dashboard/resumes': typeof DashboardResumesRoute
   '/dashboard/saved': typeof DashboardSavedRoute
@@ -270,8 +301,11 @@ export interface FileRoutesByTo {
   '/dashboard/applications': typeof DashboardApplicationsIndexRoute
   '/dashboard/collections': typeof DashboardCollectionsIndexRoute
   '/dashboard/cover-letters': typeof DashboardCoverLettersIndexRoute
+  '/dashboard/interviews': typeof DashboardInterviewsIndexRoute
   '/dashboard/jobs': typeof DashboardJobsIndexRoute
+  '/dashboard/interviews/$interviewId/prep': typeof DashboardInterviewsInterviewIdPrepRoute
   '/dashboard/resumes/$resumeId/optimize': typeof DashboardResumesResumeIdOptimizeRoute
+  '/dashboard/interviews/$interviewId': typeof DashboardInterviewsInterviewIdIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -291,7 +325,7 @@ export interface FileRoutesById {
   '/dashboard/applications': typeof DashboardApplicationsRouteWithChildren
   '/dashboard/collections': typeof DashboardCollectionsRouteWithChildren
   '/dashboard/cover-letters': typeof DashboardCoverLettersRouteWithChildren
-  '/dashboard/interviews': typeof DashboardInterviewsRoute
+  '/dashboard/interviews': typeof DashboardInterviewsRouteWithChildren
   '/dashboard/jobs': typeof DashboardJobsRouteWithChildren
   '/dashboard/notes': typeof DashboardNotesRoute
   '/dashboard/resumes': typeof DashboardResumesRoute
@@ -301,12 +335,16 @@ export interface FileRoutesById {
   '/dashboard/applications/$applicationId': typeof DashboardApplicationsApplicationIdRoute
   '/dashboard/collections/$collectionId': typeof DashboardCollectionsCollectionIdRoute
   '/dashboard/cover-letters/$coverLetterId': typeof DashboardCoverLettersCoverLetterIdRoute
+  '/dashboard/interviews/$interviewId': typeof DashboardInterviewsInterviewIdRouteWithChildren
   '/dashboard/jobs/$jobId': typeof DashboardJobsJobIdRoute
   '/dashboard/applications/': typeof DashboardApplicationsIndexRoute
   '/dashboard/collections/': typeof DashboardCollectionsIndexRoute
   '/dashboard/cover-letters/': typeof DashboardCoverLettersIndexRoute
+  '/dashboard/interviews/': typeof DashboardInterviewsIndexRoute
   '/dashboard/jobs/': typeof DashboardJobsIndexRoute
+  '/dashboard/interviews/$interviewId/prep': typeof DashboardInterviewsInterviewIdPrepRoute
   '/dashboard/resumes_/$resumeId/optimize': typeof DashboardResumesResumeIdOptimizeRoute
+  '/dashboard/interviews/$interviewId/': typeof DashboardInterviewsInterviewIdIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -337,12 +375,16 @@ export interface FileRouteTypes {
     | '/dashboard/applications/$applicationId'
     | '/dashboard/collections/$collectionId'
     | '/dashboard/cover-letters/$coverLetterId'
+    | '/dashboard/interviews/$interviewId'
     | '/dashboard/jobs/$jobId'
     | '/dashboard/applications/'
     | '/dashboard/collections/'
     | '/dashboard/cover-letters/'
+    | '/dashboard/interviews/'
     | '/dashboard/jobs/'
+    | '/dashboard/interviews/$interviewId/prep'
     | '/dashboard/resumes/$resumeId/optimize'
+    | '/dashboard/interviews/$interviewId/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -357,7 +399,6 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/supabase-status'
     | '/dashboard/analytics'
-    | '/dashboard/interviews'
     | '/dashboard/notes'
     | '/dashboard/resumes'
     | '/dashboard/saved'
@@ -370,8 +411,11 @@ export interface FileRouteTypes {
     | '/dashboard/applications'
     | '/dashboard/collections'
     | '/dashboard/cover-letters'
+    | '/dashboard/interviews'
     | '/dashboard/jobs'
+    | '/dashboard/interviews/$interviewId/prep'
     | '/dashboard/resumes/$resumeId/optimize'
+    | '/dashboard/interviews/$interviewId'
   id:
     | '__root__'
     | '/'
@@ -400,12 +444,16 @@ export interface FileRouteTypes {
     | '/dashboard/applications/$applicationId'
     | '/dashboard/collections/$collectionId'
     | '/dashboard/cover-letters/$coverLetterId'
+    | '/dashboard/interviews/$interviewId'
     | '/dashboard/jobs/$jobId'
     | '/dashboard/applications/'
     | '/dashboard/collections/'
     | '/dashboard/cover-letters/'
+    | '/dashboard/interviews/'
     | '/dashboard/jobs/'
+    | '/dashboard/interviews/$interviewId/prep'
     | '/dashboard/resumes_/$resumeId/optimize'
+    | '/dashboard/interviews/$interviewId/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -593,6 +641,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardJobsIndexRouteImport
       parentRoute: typeof DashboardJobsRoute
     }
+    '/dashboard/interviews/': {
+      id: '/dashboard/interviews/'
+      path: '/'
+      fullPath: '/dashboard/interviews/'
+      preLoaderRoute: typeof DashboardInterviewsIndexRouteImport
+      parentRoute: typeof DashboardInterviewsRoute
+    }
     '/dashboard/cover-letters/': {
       id: '/dashboard/cover-letters/'
       path: '/'
@@ -621,6 +676,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardJobsJobIdRouteImport
       parentRoute: typeof DashboardJobsRoute
     }
+    '/dashboard/interviews/$interviewId': {
+      id: '/dashboard/interviews/$interviewId'
+      path: '/$interviewId'
+      fullPath: '/dashboard/interviews/$interviewId'
+      preLoaderRoute: typeof DashboardInterviewsInterviewIdRouteImport
+      parentRoute: typeof DashboardInterviewsRoute
+    }
     '/dashboard/cover-letters/$coverLetterId': {
       id: '/dashboard/cover-letters/$coverLetterId'
       path: '/$coverLetterId'
@@ -642,12 +704,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardApplicationsApplicationIdRouteImport
       parentRoute: typeof DashboardApplicationsRoute
     }
+    '/dashboard/interviews/$interviewId/': {
+      id: '/dashboard/interviews/$interviewId/'
+      path: '/'
+      fullPath: '/dashboard/interviews/$interviewId/'
+      preLoaderRoute: typeof DashboardInterviewsInterviewIdIndexRouteImport
+      parentRoute: typeof DashboardInterviewsInterviewIdRoute
+    }
     '/dashboard/resumes_/$resumeId/optimize': {
       id: '/dashboard/resumes_/$resumeId/optimize'
       path: '/resumes/$resumeId/optimize'
       fullPath: '/dashboard/resumes/$resumeId/optimize'
       preLoaderRoute: typeof DashboardResumesResumeIdOptimizeRouteImport
       parentRoute: typeof DashboardRoute
+    }
+    '/dashboard/interviews/$interviewId/prep': {
+      id: '/dashboard/interviews/$interviewId/prep'
+      path: '/prep'
+      fullPath: '/dashboard/interviews/$interviewId/prep'
+      preLoaderRoute: typeof DashboardInterviewsInterviewIdPrepRouteImport
+      parentRoute: typeof DashboardInterviewsInterviewIdRoute
     }
   }
 }
@@ -697,6 +773,38 @@ const DashboardCoverLettersRouteWithChildren =
     DashboardCoverLettersRouteChildren,
   )
 
+interface DashboardInterviewsInterviewIdRouteChildren {
+  DashboardInterviewsInterviewIdPrepRoute: typeof DashboardInterviewsInterviewIdPrepRoute
+  DashboardInterviewsInterviewIdIndexRoute: typeof DashboardInterviewsInterviewIdIndexRoute
+}
+
+const DashboardInterviewsInterviewIdRouteChildren: DashboardInterviewsInterviewIdRouteChildren =
+  {
+    DashboardInterviewsInterviewIdPrepRoute:
+      DashboardInterviewsInterviewIdPrepRoute,
+    DashboardInterviewsInterviewIdIndexRoute:
+      DashboardInterviewsInterviewIdIndexRoute,
+  }
+
+const DashboardInterviewsInterviewIdRouteWithChildren =
+  DashboardInterviewsInterviewIdRoute._addFileChildren(
+    DashboardInterviewsInterviewIdRouteChildren,
+  )
+
+interface DashboardInterviewsRouteChildren {
+  DashboardInterviewsInterviewIdRoute: typeof DashboardInterviewsInterviewIdRouteWithChildren
+  DashboardInterviewsIndexRoute: typeof DashboardInterviewsIndexRoute
+}
+
+const DashboardInterviewsRouteChildren: DashboardInterviewsRouteChildren = {
+  DashboardInterviewsInterviewIdRoute:
+    DashboardInterviewsInterviewIdRouteWithChildren,
+  DashboardInterviewsIndexRoute: DashboardInterviewsIndexRoute,
+}
+
+const DashboardInterviewsRouteWithChildren =
+  DashboardInterviewsRoute._addFileChildren(DashboardInterviewsRouteChildren)
+
 interface DashboardJobsRouteChildren {
   DashboardJobsJobIdRoute: typeof DashboardJobsJobIdRoute
   DashboardJobsIndexRoute: typeof DashboardJobsIndexRoute
@@ -716,7 +824,7 @@ interface DashboardRouteChildren {
   DashboardApplicationsRoute: typeof DashboardApplicationsRouteWithChildren
   DashboardCollectionsRoute: typeof DashboardCollectionsRouteWithChildren
   DashboardCoverLettersRoute: typeof DashboardCoverLettersRouteWithChildren
-  DashboardInterviewsRoute: typeof DashboardInterviewsRoute
+  DashboardInterviewsRoute: typeof DashboardInterviewsRouteWithChildren
   DashboardJobsRoute: typeof DashboardJobsRouteWithChildren
   DashboardNotesRoute: typeof DashboardNotesRoute
   DashboardResumesRoute: typeof DashboardResumesRoute
@@ -731,7 +839,7 @@ const DashboardRouteChildren: DashboardRouteChildren = {
   DashboardApplicationsRoute: DashboardApplicationsRouteWithChildren,
   DashboardCollectionsRoute: DashboardCollectionsRouteWithChildren,
   DashboardCoverLettersRoute: DashboardCoverLettersRouteWithChildren,
-  DashboardInterviewsRoute: DashboardInterviewsRoute,
+  DashboardInterviewsRoute: DashboardInterviewsRouteWithChildren,
   DashboardJobsRoute: DashboardJobsRouteWithChildren,
   DashboardNotesRoute: DashboardNotesRoute,
   DashboardResumesRoute: DashboardResumesRoute,

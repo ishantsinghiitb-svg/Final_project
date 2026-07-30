@@ -31,9 +31,7 @@ export type AILoadingPhase = {
  * the final line is a safe "still working" statement if the request runs long.
  *
  * Keyed by `ShippedAICapability`, not `AICapability`: user-facing copy must
- * only exist for capabilities a user can actually reach. (An earlier version
- * of this file carried a script for `interview_prep`, which has no screen —
- * copy written for a surface that does not exist.)
+ * only exist for capabilities a user can actually reach.
  */
 const PHASES: Record<ShippedAICapability, AILoadingPhase[]> = {
   [AI_CAPABILITIES.RESUME_MATCH]: [
@@ -65,6 +63,14 @@ const PHASES: Record<ShippedAICapability, AILoadingPhase[]> = {
     { label: "Choosing the story your letter should tell…", holdMs: 4000 },
     { label: "Writing your draft…", holdMs: 5000 },
     { label: "Reading it back for tone and honesty…", holdMs: 8000 },
+  ],
+  [AI_CAPABILITIES.INTERVIEW_PREP]: [
+    { label: "Reading the job posting…", holdMs: 2800 },
+    { label: "Reviewing your resume…", holdMs: 3000 },
+    { label: "Working out what this interviewer will focus on…", holdMs: 3600 },
+    { label: "Selecting the highest-value questions…", holdMs: 4000 },
+    { label: "Building your preparation strategy…", holdMs: 4200 },
+    { label: "Assembling your workspace…", holdMs: 8000 },
   ],
 };
 

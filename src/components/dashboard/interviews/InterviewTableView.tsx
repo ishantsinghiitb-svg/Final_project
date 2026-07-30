@@ -7,6 +7,7 @@ import { format, parseISO } from "date-fns";
 
 type Props = {
   interviews: Interview[];
+  onOpen: (interview: Interview) => void;
   onEdit: (interview: Interview) => void;
   onDelete: (id: string) => void;
 };
@@ -14,9 +15,10 @@ type Props = {
 /**
  * InterviewTableView
  *
- * Tabular list view — rows open the edit dialog directly (no detail route).
+ * Tabular list view — rows open the Interview Details page (Module 7B); the
+ * pencil icon opens the edit dialog directly.
  */
-export function InterviewTableView({ interviews, onEdit, onDelete }: Props) {
+export function InterviewTableView({ interviews, onOpen, onEdit, onDelete }: Props) {
   if (interviews.length === 0) {
     return (
       <div className="flex flex-col items-center gap-2 py-16 text-center">
@@ -50,7 +52,7 @@ export function InterviewTableView({ interviews, onEdit, onDelete }: Props) {
             return (
               <tr
                 key={interview.id}
-                onClick={() => onEdit(interview)}
+                onClick={() => onOpen(interview)}
                 className="group cursor-pointer transition-colors hover:bg-[oklch(0.99_0.005_265)]"
               >
                 <td className="px-4 py-3">
