@@ -35,6 +35,14 @@ const COPY_BY_CODE: Record<string, AIErrorCopy> = {
     body: "The result came back incomplete. Running it again normally fixes it.",
     retryable: true,
   },
+  // Separate from provider_error on purpose: nothing went wrong, it just took
+  // too long. The reassurance that no work was lost is the important half —
+  // that is what stops someone abandoning a half-finished interview.
+  timeout: {
+    title: "That took longer than expected",
+    body: "The AI didn't respond in time. Nothing you entered was lost — try again.",
+    retryable: true,
+  },
   config_error: {
     title: "AI is temporarily unavailable",
     body: "We're working on it. Please try again a little later.",
@@ -106,6 +114,58 @@ const COPY_BY_CODE: Record<string, AIErrorCopy> = {
   question_not_found: {
     title: "That question is no longer available",
     body: "It may have changed after a Regenerate. Refresh the page and try again.",
+    retryable: false,
+  },
+
+  // ── Mock Interview Studio (Module 7C) ──
+  invalid_interviewer_role: {
+    title: "That interviewer role isn't available",
+    body: "Pick a different interviewer and try again.",
+    retryable: false,
+  },
+  session_not_found: {
+    title: "That mock interview is no longer available",
+    body: "It may have been deleted. Head back to your interviews list.",
+    retryable: false,
+  },
+  session_paused: {
+    title: "This interview is paused",
+    body: "Resume the interview to continue.",
+    retryable: false,
+  },
+  session_ended: {
+    title: "This interview has already ended",
+    body: "Start a new mock interview to continue practicing.",
+    retryable: false,
+  },
+  session_not_active: {
+    title: "This interview isn't active",
+    body: "Refresh the page to see its current state.",
+    retryable: false,
+  },
+  session_not_paused: {
+    title: "This interview isn't paused",
+    body: "Refresh the page to see its current state.",
+    retryable: false,
+  },
+  session_not_concluded: {
+    title: "This interview hasn't ended yet",
+    body: "End the interview before generating a report.",
+    retryable: false,
+  },
+  turn_not_found: {
+    title: "That question is no longer available",
+    body: "Refresh the page and try again.",
+    retryable: false,
+  },
+  answer_required: {
+    title: "Add an answer first",
+    body: "Type or say an answer, or skip this question.",
+    retryable: false,
+  },
+  report_attempts_exhausted: {
+    title: "We couldn't generate this report",
+    body: "This has failed a few times in a row. Please contact support.",
     retryable: false,
   },
 };

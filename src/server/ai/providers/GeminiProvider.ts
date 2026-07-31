@@ -7,6 +7,9 @@ import type { AICompletionRaw, AICompletionRequest, AIProvider } from "./types";
 // Not used in the MVP. Exists so the architecture supports Gemini through the
 // SAME AIProvider interface — enabling it is a config change plus a real
 // implementation here.
+//
+// WHEN IMPLEMENTING: forward `req.signal` to the SDK/fetch call — see the same
+// note on AnthropicProvider and providers/withTimeout.ts.
 
 export class GeminiProvider implements AIProvider {
   readonly id: AIProviderId = AI_PROVIDERS.GEMINI;

@@ -9,6 +9,7 @@ import {
   FileText,
   Loader2,
   MapPin,
+  Mic,
   Pencil,
   Sparkles,
   Trash2,
@@ -26,6 +27,7 @@ import {
   useUpdateInterviewStatus,
 } from "@/features/interviews/hooks";
 import { useInterviewPrep } from "@/features/interview-prep/hooks";
+import { useMockInterviewSessions } from "@/features/mock-interview/hooks";
 import {
   INTERVIEW_STATUS_META,
   LINKED_STATUSES,
@@ -100,6 +102,7 @@ function InterviewDetailPage() {
   const navigate = useNavigate();
   const { data: interview, isLoading, isError } = useInterview(interviewId);
   const { data: prep } = useInterviewPrep(interviewId);
+  const { data: mockSessions = [] } = useMockInterviewSessions(interviewId);
   const { data: resumes = [] } = useResumes();
   const updateStatus = useUpdateInterviewStatus();
   const deleteInterview = useDeleteInterview();
@@ -120,10 +123,11 @@ function InterviewDetailPage() {
       <div className="flex flex-col items-center gap-3 py-24 text-center">
         <AlertCircle className="h-8 w-8 text-rose-500" />
         <p className="font-display text-sm font-semibold">Interview not found</p>
-        <p className="max-w-xs text-xs text-[oklch(0.5_0.02_265)]">
-          It may have been deleted.
-        </p>
-        <Link to="/dashboard/interviews" className="text-sm font-medium text-[#2563EB] hover:underline">
+        <p className="max-w-xs text-xs text-[oklch(0.5_0.02_265)]">It may have been deleted.</p>
+        <Link
+          to="/dashboard/interviews"
+          className="text-sm font-medium text-[#2563EB] hover:underline"
+        >
           Back to interviews
         </Link>
       </div>
@@ -216,7 +220,9 @@ function InterviewDetailPage() {
                 icon={interview.mode === "online" ? Video : MapPin}
                 label={interview.mode === "online" ? "Meeting link" : "Location"}
                 value={
-                  interview.mode === "online" ? interview.link || "Online" : interview.location || "Offline"
+                  interview.mode === "online"
+                    ? interview.link || "Online"
+                    : interview.location || "Offline"
                 }
               />
               {interview.interviewer && (
@@ -264,10 +270,42 @@ function InterviewDetailPage() {
               <Sparkles className="h-4 w-4" /> {prep ? "Open Preparation" : "Start Preparation"}
             </DashButton>
           </DashCard>
+
+          <DashCard className="border-[#2563EB]/15 bg-gradient-to-br from-[#2563EB]/[0.03] to-[#7C3AED]/[0.04]">
+            <div className="flex items-center gap-2">
+              <div className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-gradient-to-br from-[#2563EB]/15 to-[#7C3AED]/20 text-[#7C3AED]">
+                <Mic className="h-4 w-4" />
+              </div>
+              <p className="font-display text-sm font-semibold text-[oklch(0.2_0.02_265)]">
+                AI Mock Interview
+              </p>
+            </div>
+            <p className="mt-2 text-xs leading-relaxed text-[oklch(0.45_0.02_265)]">
+              {mockSessions.length > 0
+                ? "Practice a realistic, adaptive interview and get evaluated — pick up a past session or start a new one."
+                : prep
+                  ? "Put your preparation into practice — a real, adaptive interview with an AI interviewer that probes, challenges and evaluates you like a human would."
+                  : "Practice a realistic interview with an AI interviewer that adapts to your answers, then get a full evaluation report."}
+            </p>
+            <DashButton
+              className="mt-4 w-full"
+              onClick={() =>
+                void navigate({
+                  to: "/dashboard/interviews/$interviewId/mock",
+                  params: { interviewId: interview.id },
+                })
+              }
+            >
+              <Mic className="h-4 w-4" />{" "}
+              {mockSessions.length > 0 ? "Open Mock Interview" : "Start Mock Interview"}
+            </DashButton>
+          </DashCard>
         </div>
       </div>
 
-      {editing && <ScheduleInterviewDialog interview={interview} onClose={() => setEditing(false)} />}
+      {editing && (
+        <ScheduleInterviewDialog interview={interview} onClose={() => setEditing(false)} />
+      )}
 
       {deleting && (
         <ConfirmDeleteDialog
@@ -333,14 +371,19 @@ function ConfirmDeleteDialog({
       role="dialog"
       aria-modal="true"
     >
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={busy ? undefined : onCancel} />
+      <div
+        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+        onClick={busy ? undefined : onCancel}
+      />
       <div className="relative z-10 w-full max-w-sm rounded-2xl border border-black/5 bg-white p-6 shadow-[0_24px_80px_-12px_rgba(0,0,0,0.25)]">
         <h2 className="font-display text-base font-semibold text-[oklch(0.2_0.02_265)]">
           Delete this interview?
         </h2>
         <p className="mt-2 text-sm text-muted-foreground">
-          The interview with <span className="font-medium text-[oklch(0.3_0.02_265)]">{companyName}</span>
-          {" "}and any AI preparation for it will be permanently removed. This can't be undone.
+          The interview with{" "}
+          <span className="font-medium text-[oklch(0.3_0.02_265)]">{companyName}</span> and any AI
+          preparation, mock interviews and reports for it will be permanently removed. This can't be
+          undone.
         </p>
         <div className="mt-5 flex flex-col gap-2">
           <button

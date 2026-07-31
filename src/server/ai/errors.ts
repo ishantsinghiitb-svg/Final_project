@@ -34,6 +34,25 @@ export class AIValidationError extends AIError {
   }
 }
 
+/**
+ * The provider call was aborted for exceeding its deadline (see
+ * providers/withTimeout.ts).
+ *
+ * Marked retryable: a hung request says nothing about whether the same request
+ * would hang again, and the caller's own `withRetry` will re-issue it once
+ * with a fresh deadline. That is the whole point of distinguishing it from a
+ * non-retryable validation failure.
+ */
+export class AITimeoutError extends AIError {
+  constructor(timeoutMs: number) {
+    super(
+      AI_RESULT_CODES.TIMEOUT,
+      `The AI provider did not respond within ${Math.round(timeoutMs / 1000)}s.`,
+      true,
+    );
+  }
+}
+
 export function toResultCode(err: unknown): AIResultCode {
   if (err instanceof AIError) return err.code;
   return AI_RESULT_CODES.UNKNOWN_ERROR;

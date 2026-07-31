@@ -30,9 +30,14 @@ describe("cache policy", () => {
     }
   });
 
-  it("keeps caching enabled for every capability", () => {
+  it("keeps caching enabled for every capability except mock_interview", () => {
+    // mock_interview (Module 7C) is the one deliberate exception: caching a
+    // conversational turn would replay an identical question back to the
+    // candidate, and a hash over an ever-growing transcript would essentially
+    // never hit anyway. See the NO_CACHE comment in capabilities.ts.
     for (const id of ALL_CAPABILITIES) {
-      expect(getCapability(id).cachePolicy.enabled).toBe(true);
+      const expected = id !== "mock_interview";
+      expect(getCapability(id).cachePolicy.enabled).toBe(expected);
     }
   });
 });

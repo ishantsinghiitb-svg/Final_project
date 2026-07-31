@@ -3,6 +3,7 @@ import { zodResponseFormat } from "openai/helpers/zod";
 import type { z } from "zod";
 import { AI_PROVIDERS, type AIProviderId } from "@/config";
 import { AIConfigError, AIProviderError } from "../errors";
+import { isAbortError } from "./withTimeout";
 import type { AICompletionRaw, AICompletionRequest, AIProvider } from "./types";
 
 // ── OpenAI provider (default, MVP) ──
@@ -32,16 +33,26 @@ export class OpenAIProvider implements AIProvider {
 
     let completion;
     try {
-      completion = await client.chat.completions.create({
-        model: req.model,
-        messages: [
-          { role: "system", content: req.system },
-          { role: "user", content: req.user },
-        ],
-        response_format: zodResponseFormat(req.schema as z.ZodType, req.schemaName),
-        ...(req.maxOutputTokens ? { max_completion_tokens: req.maxOutputTokens } : {}),
-      });
+      completion = await client.chat.completions.create(
+        {
+          model: req.model,
+          messages: [
+            { role: "system", content: req.system },
+            { role: "user", content: req.user },
+          ],
+          response_format: zodResponseFormat(req.schema as z.ZodType, req.schemaName),
+          ...(req.maxOutputTokens ? { max_completion_tokens: req.maxOutputTokens } : {}),
+        },
+        // Forwarding the signal is what makes the deadline real: it cancels
+        // the underlying HTTP request instead of leaving it running while the
+        // caller walks away. See providers/withTimeout.ts.
+        { signal: req.signal },
+      );
     } catch (err) {
+      // An abort is the deadline firing, not an upstream failure. Rethrow it
+      // untouched so withTimeout can convert it into an AITimeoutError —
+      // wrapping it as a provider error here would lose that distinction.
+      if (isAbortError(err)) throw err;
       throw new AIProviderError(
         `OpenAI request failed: ${err instanceof Error ? err.message : String(err)}`,
       );

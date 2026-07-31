@@ -1060,6 +1060,116 @@ export type InterviewPrepAnswerInsert = {
   updated_at?: string;
 };
 
+// ── Module 7C: AI Mock Interview Studio ──
+
+export type MockInterviewSessionRow = {
+  id: string;
+  interview_id: string;
+  user_id: string;
+  client_key: string;
+  interviewer_role: string;
+  interviewer_role_label: string;
+  role_family: string;
+  round_label: string | null;
+  focus: string | null;
+  manual_job_description: string | null;
+  manual_company_description: string | null;
+  plan: Json | null;
+  plan_reasoning: Json | null;
+  status: string;
+  ended_reason: string | null;
+  started_at: string;
+  elapsed_ms: number;
+  last_resumed_at: string | null;
+  ended_at: string | null;
+  turn_count: number;
+  coverage: Json;
+  rolling_summary: string | null;
+  report: Json | null;
+  report_reasoning: Json | null;
+  report_generated_at: string | null;
+  report_attempts: number;
+  model: string | null;
+  prompt_version: string | null;
+  analysis_version: string | null;
+  resume_file_hash: string | null;
+  job_hash: string | null;
+  credits_charged: number;
+  created_at: string;
+  updated_at: string;
+};
+
+export type MockInterviewSessionInsert = {
+  id?: string;
+  interview_id: string;
+  user_id: string;
+  client_key: string;
+  interviewer_role: string;
+  interviewer_role_label: string;
+  role_family: string;
+  round_label?: string | null;
+  focus?: string | null;
+  manual_job_description?: string | null;
+  manual_company_description?: string | null;
+  plan?: Json | null;
+  plan_reasoning?: Json | null;
+  status?: string;
+  ended_reason?: string | null;
+  started_at?: string;
+  elapsed_ms?: number;
+  last_resumed_at?: string | null;
+  ended_at?: string | null;
+  turn_count?: number;
+  coverage?: Json;
+  rolling_summary?: string | null;
+  report?: Json | null;
+  report_reasoning?: Json | null;
+  report_generated_at?: string | null;
+  report_attempts?: number;
+  model?: string | null;
+  prompt_version?: string | null;
+  analysis_version?: string | null;
+  resume_file_hash?: string | null;
+  job_hash?: string | null;
+  credits_charged?: number;
+  created_at?: string;
+  updated_at?: string;
+};
+
+export type MockInterviewTurnRow = {
+  id: string;
+  session_id: string;
+  user_id: string;
+  turn_index: number;
+  interviewer_message: string;
+  action: string | null;
+  target_competency: string | null;
+  references_turn: number | null;
+  candidate_answer: string | null;
+  answer_input_mode: string | null;
+  answered_at: string | null;
+  evaluation: Json | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type MockInterviewTurnInsert = {
+  id?: string;
+  session_id: string;
+  user_id: string;
+  turn_index: number;
+  interviewer_message: string;
+  action?: string | null;
+  target_competency?: string | null;
+  references_turn?: number | null;
+  candidate_answer?: string | null;
+  answer_input_mode?: string | null;
+  answered_at?: string | null;
+  evaluation?: Json | null;
+  created_at?: string;
+  updated_at?: string;
+};
+
 export type NotificationInsert = {
   id?: string;
   user_id: string;
@@ -1308,6 +1418,18 @@ export type Database = {
         Row: InterviewPrepAnswerRow;
         Insert: InterviewPrepAnswerInsert;
         Update: Partial<InterviewPrepAnswerRow>;
+        Relationships: TableRelationship[];
+      };
+      mock_interview_sessions: {
+        Row: MockInterviewSessionRow;
+        Insert: MockInterviewSessionInsert;
+        Update: Partial<MockInterviewSessionRow>;
+        Relationships: TableRelationship[];
+      };
+      mock_interview_turns: {
+        Row: MockInterviewTurnRow;
+        Insert: MockInterviewTurnInsert;
+        Update: Partial<MockInterviewTurnRow>;
         Relationships: TableRelationship[];
       };
       notifications: {

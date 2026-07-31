@@ -1,0 +1,14 @@
+{
+  "cookies": [],
+  "origins": [
+    {
+      "origin": "http://localhost:8080",
+      "localStorage": [
+        {
+          "name": "sb-xpriusomwyshrfqfonkf-auth-token",
+          "value": "{\"access_token\":\"eyJhbGciOiJFUzI1NiIsImtpZCI6Ijk5NGRmZTQ5LWVkOGItNDU3Yy04ZTUyLWNiYjk2ZmU4Y2UyNCIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJodHRwczovL3hwcml1c29td3lzaHJmcWZvbmtmLnN1cGFiYXNlLmNvL2F1dGgvdjEiLCJzdWIiOiJiMmIzNWY5Yy02NGE2LTRhM2YtYjYxZC02ZGM5YzE1MTgyNGQiLCJhdWQiOiJhdXRoZW50aWNhdGVkIiwiZXhwIjoxNzg1NDk0ODg4LCJpYXQiOjE3ODU0OTEyODgsImVtYWlsIjoiY2xhdWRldGVzdDdjMTc4NTQ5MTI2MDQ1OEBnbWFpbC5jb20iLCJwaG9uZSI6IiIsImFwcF9tZXRhZGF0YSI6eyJwcm92aWRlciI6ImVtYWlsIiwicHJvdmlkZXJzIjpbImVtYWlsIl19LCJ1c2VyX21ldGFkYXRhIjp7ImVtYWlsIjoiY2xhdWRldGVzdDdjMTc4NTQ5MTI2MDQ1OEBnbWFpbC5jb20iLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwiZnVsbF9uYW1lIjoiUHJpeWEgU2hhcm1hIiwicGhvbmVfdmVyaWZpZWQiOmZhbHNlLCJzdWIiOiJiMmIzNWY5Yy02NGE2LTRhM2YtYjYxZC02ZGM5YzE1MTgyNGQifSwicm9sZSI6ImF1dGhlbnRpY2F0ZWQiLCJhYWwiOiJhYWwxIiwiYW1yIjpbeyJtZXRob2QiOiJwYXNzd29yZCIsInRpbWVzdGFtcCI6MTc4NTQ5MTI4OH1dLCJzZXNzaW9uX2lkIjoiOTdhZjc5NjktYTg5NC00ODg4LTliZTMtNTgyM2ViZjE2MDRmIiwiaXNfYW5vbnltb3VzIjpmYWxzZX0.b9HKT_H_d3WrdeKWVXWhpyA48AHOA6_XVijzs1rIMgh4R3j6AgXddBwXQsjj7mIcLx-aqfY0i3xe3xfBt36ZDg\",\"token_type\":\"bearer\",\"expires_in\":3600,\"expires_at\":1785494888,\"refresh_token\":\"bmcycwqa42wg\",\"user\":{\"id\":\"b2b35f9c-64a6-4a3f-b61d-6dc9c151824d\",\"aud\":\"authenticated\",\"role\":\"authenticated\",\"email\":\"claudetest7c1785491260458@gmail.com\",\"email_confirmed_at\":\"2026-07-31T09:48:08.598252263Z\",\"phone\":\"\",\"last_sign_in_at\":\"2026-07-31T09:48:08.608176687Z\",\"app_metadata\":{\"provider\":\"email\",\"providers\":[\"email\"]},\"user_metadata\":{\"email\":\"claudetest7c1785491260458@gmail.com\",\"email_verified\":true,\"full_name\":\"Priya Sharma\",\"phone_verified\":false,\"sub\":\"b2b35f9c-64a6-4a3f-b61d-6dc9c151824d\"},\"identities\":[{\"identity_id\":\"af370f85-114e-4d25-81d6-e4ab6f9a1988\",\"id\":\"b2b35f9c-64a6-4a3f-b61d-6dc9c151824d\",\"user_id\":\"b2b35f9c-64a6-4a3f-b61d-6dc9c151824d\",\"identity_data\":{\"email\":\"claudetest7c1785491260458@gmail.com\",\"email_verified\":true,\"full_name\":\"Priya Sharma\",\"phone_verified\":false,\"sub\":\"b2b35f9c-64a6-4a3f-b61d-6dc9c151824d\"},\"provider\":\"email\",\"last_sign_in_at\":\"2026-07-31T09:48:08.589367083Z\",\"created_at\":\"2026-07-31T09:48:08.589423Z\",\"updated_at\":\"2026-07-31T09:48:08.589423Z\",\"email\":\"claudetest7c1785491260458@gmail.com\"}],\"created_at\":\"2026-07-31T09:48:08.56082Z\",\"updated_at\":\"2026-07-31T09:48:08.620464Z\",\"is_anonymous\":false}}"
+        }
+      ]
+    }
+  ]
+}

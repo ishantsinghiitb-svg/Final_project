@@ -1,0 +1,9 @@
+{
+  "steps": [],
+  "consoleErrors": [],
+  "creditsBeforeFirstStart": 5,
+  "sessionId": "62bfd6f0-2ea0-47af-9c95-d089d10b2ebe",
+  "creditsBeforeSecondStart": null,
+  "ok": false,
+  "error": "locator.click: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: 'Start Mock Interview', exact: true })\u001b[22m\n"
+}

@@ -75,6 +75,22 @@ export const aiConfig = {
   // Default provider. Isomorphic (safe on client) — not a secret.
   defaultProvider: ((import.meta.env.VITE_AI_DEFAULT_PROVIDER as AIProviderId | undefined) ??
     AI_PROVIDERS.OPENAI) as AIProviderId,
+  /**
+   * Hard deadline for a single provider call, applied to EVERY capability by
+   * the provider registry (see server/ai/providers/withTimeout.ts).
+   *
+   * Without it a hung upstream request never settles: `withRetry` only reacts
+   * to a throw, so nothing retries, no ai_runs row is written, and the feature
+   * that made the call sits disabled forever with nothing shown to the user.
+   * That was observed live — a mock interview turn stopped responding after
+   * ~10s-typical calls, with no error and no audit row.
+   *
+   * 60s is chosen to sit comfortably above the slowest legitimate call
+   * measured (a ~21s planning call producing 1.3k output tokens) with room for
+   * a long report, while still failing fast enough that a person has not given
+   * up on the page. Raise it only with a measurement to justify it.
+   */
+  requestTimeoutMs: Number(import.meta.env.VITE_AI_REQUEST_TIMEOUT_MS ?? 60_000),
   providers: {
     [AI_PROVIDERS.OPENAI]: {
       enabled: true,
@@ -94,6 +110,7 @@ export const aiConfig = {
   },
 } as const satisfies {
   defaultProvider: AIProviderId;
+  requestTimeoutMs: number;
   providers: Record<
     AIProviderId,
     { enabled: boolean; defaultModel: string; models: Record<AIModelTier, string> }

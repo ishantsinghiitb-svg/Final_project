@@ -1,0 +1,46 @@
+[
+  {
+    "turn": 0,
+    "q": "Hi Priya, I'm the hiring manager here. I'd like this to feel like a conversation rather than an interrogation. Feel free to ask any clarifying questions as we go along. Why don't we start with you telling me about yourself?"
+  },
+  {
+    "turn": 1,
+    "answer": "Sure. I'm a product manager with about four years of experience, currently at Kuku Technologies where I own the referral and rewards product line for a consumer fintech app with around 2 million monthly actives. Before that I was an APM on the onboarding squad, and I started out as a product intern doing churn analysis. Most of my work has been growth and activation.",
+    "q": "Got it, Priya. Let's dig a bit deeper into your role at Kuku Technologies. You mentioned overseeing the referral and rewards product line. Can you walk me through a specific project you led there that had a significant impact? I'm particularly interested in the process you followed and the outcomes you achieved."
+  },
+  {
+    "turn": 2,
+    "answer": "The one I'm proudest of is the referral flow redesign. Our invite screen had a 41% drop-off, so I simplified it to a single step and added a progress tracker showing how close you were to the reward. We ran it as a 50/50 A/B test in Amplitude over two weeks and it grew monthly signups by 22%.",
+    "q": "Thanks for sharing that, Priya. It sounds like you made a substantial impact with the referral flow redesign. Let's talk a bit about your approach to execution. How do you manage to deliver features on time while ensuring quality? Could you walk me through a specific situation where you had to balance these priorities?"
+  },
+  {
+    "turn": 3,
+    "answer": "I owned the whole thing end to end — I wrote the PRD, ran the weekly prioritization with two engineering leads, and worked with one designer. The hardest call was cutting the social-sharing piece we'd originally scoped, because it would have added three weeks and we couldn't measure it cleanly.",
+    "q": "You've clearly demonstrated strong execution skills during your time at Kuku Technologies. Let's shift gears and talk about ownership. Can you provide an example of a project where you had to take full ownership, from ideation through to delivery? I'm particularly interested in how you navigated any significant challenges along the way."
+  },
+  {
+    "turn": 4,
+    "answer": "I use a RICE-style framework, but I weight confidence heavily for growth bets since a lot of our ideas come from qualitative feedback rather than hard data. I run it weekly with the engineering leads so the roadmap is a shared decision rather than something I hand down.",
+    "q": "That gives a solid picture of how you approach ownership and involvement in decision-making. Let's shift to managing trade-offs. In a fast-paced environment where priorities constantly evolve, how do you go about deciding what gets cut and what stays? Could you share an example where you had to make a tough trade-off decision?"
+  },
+  {
+    "turn": 5,
+    "answer": "I think this role is mostly about owning activation as a full funnel rather than individual features, and working closely with engineering and design without formal authority. That's basically what I've been doing, which is why it appealed to me.",
+    "q": "You touched on the idea of owning activation as a full funnel, which is interesting. Can you give me a specific example of when you faced a tough trade-off decision within this context and how you handled it?"
+  },
+  {
+    "turn": 6,
+    "answer": "Honestly, not much beyond what's in the posting.",
+    "q": "Let's shift over to stakeholder management for a moment. Can you describe a time when you had to align different stakeholders with varying priorities? How did you manage their expectations and ensure the project remained on track?"
+  },
+  {
+    "turn": 7,
+    "answer": "The KYC onboarding redesign. An engineering lead wanted to ship the whole redesign at once and I pushed for a phased rollout starting with the progress indicator, because it was lower risk and we could measure it. We disagreed for about a week. We ended up phasing it and drop-off fell from 41% to 26% over six weeks.",
+    "q": "Thanks for that detailed response. It really sheds light on your stakeholder management skills.\n\nNow, shifting focus a bit, let's talk more about the specific role you're applying for. Could you share your understanding of the key responsibilities and challenges in this role, and how your background has prepared you to handle them?"
+  },
+  {
+    "turn": 8,
+    "answer": "I'd start by segmenting where the drop is happening — which step, which platform, which user cohort — before assuming a cause. Then I'd look at whether anything shipped recently that correlates, check for instrumentation issues first since those are common, and only then start forming product hypotheses to test.",
+    "q": "Got it. It's good to hear how you'd approach diagnosing issues, with emphasis on identifying and understanding the problem first. \n\nThat said, I want to go back to the specific responsibilities and challenges in the role you're applying for here. Can you elaborate on what you believe these are and how your experience at Kuku Technologies has prepared you to meet them?"
+  }
+]

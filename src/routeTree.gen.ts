@@ -45,6 +45,10 @@ import { Route as DashboardApplicationsApplicationIdRouteImport } from './routes
 import { Route as DashboardInterviewsInterviewIdIndexRouteImport } from './routes/dashboard.interviews.$interviewId.index'
 import { Route as DashboardResumesResumeIdOptimizeRouteImport } from './routes/dashboard.resumes_.$resumeId.optimize'
 import { Route as DashboardInterviewsInterviewIdPrepRouteImport } from './routes/dashboard.interviews.$interviewId.prep'
+import { Route as DashboardInterviewsInterviewIdMockRouteImport } from './routes/dashboard.interviews.$interviewId.mock'
+import { Route as DashboardInterviewsInterviewIdMockIndexRouteImport } from './routes/dashboard.interviews.$interviewId.mock.index'
+import { Route as DashboardInterviewsInterviewIdMockSessionIdRouteImport } from './routes/dashboard_.interviews.$interviewId.mock.$sessionId'
+import { Route as DashboardInterviewsInterviewIdMockSessionIdReportRouteImport } from './routes/dashboard.interviews.$interviewId.mock.$sessionId.report'
 
 const SupabaseStatusRoute = SupabaseStatusRouteImport.update({
   id: '/supabase-status',
@@ -237,6 +241,30 @@ const DashboardInterviewsInterviewIdPrepRoute =
     path: '/prep',
     getParentRoute: () => DashboardInterviewsInterviewIdRoute,
   } as any)
+const DashboardInterviewsInterviewIdMockRoute =
+  DashboardInterviewsInterviewIdMockRouteImport.update({
+    id: '/mock',
+    path: '/mock',
+    getParentRoute: () => DashboardInterviewsInterviewIdRoute,
+  } as any)
+const DashboardInterviewsInterviewIdMockIndexRoute =
+  DashboardInterviewsInterviewIdMockIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => DashboardInterviewsInterviewIdMockRoute,
+  } as any)
+const DashboardInterviewsInterviewIdMockSessionIdRoute =
+  DashboardInterviewsInterviewIdMockSessionIdRouteImport.update({
+    id: '/dashboard_/interviews/$interviewId/mock/$sessionId',
+    path: '/dashboard/interviews/$interviewId/mock/$sessionId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const DashboardInterviewsInterviewIdMockSessionIdReportRoute =
+  DashboardInterviewsInterviewIdMockSessionIdReportRouteImport.update({
+    id: '/$sessionId/report',
+    path: '/$sessionId/report',
+    getParentRoute: () => DashboardInterviewsInterviewIdMockRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -272,9 +300,13 @@ export interface FileRoutesByFullPath {
   '/dashboard/cover-letters/': typeof DashboardCoverLettersIndexRoute
   '/dashboard/interviews/': typeof DashboardInterviewsIndexRoute
   '/dashboard/jobs/': typeof DashboardJobsIndexRoute
+  '/dashboard/interviews/$interviewId/mock': typeof DashboardInterviewsInterviewIdMockRouteWithChildren
   '/dashboard/interviews/$interviewId/prep': typeof DashboardInterviewsInterviewIdPrepRoute
   '/dashboard/resumes/$resumeId/optimize': typeof DashboardResumesResumeIdOptimizeRoute
   '/dashboard/interviews/$interviewId/': typeof DashboardInterviewsInterviewIdIndexRoute
+  '/dashboard/interviews/$interviewId/mock/$sessionId': typeof DashboardInterviewsInterviewIdMockSessionIdRoute
+  '/dashboard/interviews/$interviewId/mock/': typeof DashboardInterviewsInterviewIdMockIndexRoute
+  '/dashboard/interviews/$interviewId/mock/$sessionId/report': typeof DashboardInterviewsInterviewIdMockSessionIdReportRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -306,6 +338,9 @@ export interface FileRoutesByTo {
   '/dashboard/interviews/$interviewId/prep': typeof DashboardInterviewsInterviewIdPrepRoute
   '/dashboard/resumes/$resumeId/optimize': typeof DashboardResumesResumeIdOptimizeRoute
   '/dashboard/interviews/$interviewId': typeof DashboardInterviewsInterviewIdIndexRoute
+  '/dashboard/interviews/$interviewId/mock/$sessionId': typeof DashboardInterviewsInterviewIdMockSessionIdRoute
+  '/dashboard/interviews/$interviewId/mock': typeof DashboardInterviewsInterviewIdMockIndexRoute
+  '/dashboard/interviews/$interviewId/mock/$sessionId/report': typeof DashboardInterviewsInterviewIdMockSessionIdReportRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -342,9 +377,13 @@ export interface FileRoutesById {
   '/dashboard/cover-letters/': typeof DashboardCoverLettersIndexRoute
   '/dashboard/interviews/': typeof DashboardInterviewsIndexRoute
   '/dashboard/jobs/': typeof DashboardJobsIndexRoute
+  '/dashboard/interviews/$interviewId/mock': typeof DashboardInterviewsInterviewIdMockRouteWithChildren
   '/dashboard/interviews/$interviewId/prep': typeof DashboardInterviewsInterviewIdPrepRoute
   '/dashboard/resumes_/$resumeId/optimize': typeof DashboardResumesResumeIdOptimizeRoute
   '/dashboard/interviews/$interviewId/': typeof DashboardInterviewsInterviewIdIndexRoute
+  '/dashboard_/interviews/$interviewId/mock/$sessionId': typeof DashboardInterviewsInterviewIdMockSessionIdRoute
+  '/dashboard/interviews/$interviewId/mock/': typeof DashboardInterviewsInterviewIdMockIndexRoute
+  '/dashboard/interviews/$interviewId/mock/$sessionId/report': typeof DashboardInterviewsInterviewIdMockSessionIdReportRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -382,9 +421,13 @@ export interface FileRouteTypes {
     | '/dashboard/cover-letters/'
     | '/dashboard/interviews/'
     | '/dashboard/jobs/'
+    | '/dashboard/interviews/$interviewId/mock'
     | '/dashboard/interviews/$interviewId/prep'
     | '/dashboard/resumes/$resumeId/optimize'
     | '/dashboard/interviews/$interviewId/'
+    | '/dashboard/interviews/$interviewId/mock/$sessionId'
+    | '/dashboard/interviews/$interviewId/mock/'
+    | '/dashboard/interviews/$interviewId/mock/$sessionId/report'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -416,6 +459,9 @@ export interface FileRouteTypes {
     | '/dashboard/interviews/$interviewId/prep'
     | '/dashboard/resumes/$resumeId/optimize'
     | '/dashboard/interviews/$interviewId'
+    | '/dashboard/interviews/$interviewId/mock/$sessionId'
+    | '/dashboard/interviews/$interviewId/mock'
+    | '/dashboard/interviews/$interviewId/mock/$sessionId/report'
   id:
     | '__root__'
     | '/'
@@ -451,9 +497,13 @@ export interface FileRouteTypes {
     | '/dashboard/cover-letters/'
     | '/dashboard/interviews/'
     | '/dashboard/jobs/'
+    | '/dashboard/interviews/$interviewId/mock'
     | '/dashboard/interviews/$interviewId/prep'
     | '/dashboard/resumes_/$resumeId/optimize'
     | '/dashboard/interviews/$interviewId/'
+    | '/dashboard_/interviews/$interviewId/mock/$sessionId'
+    | '/dashboard/interviews/$interviewId/mock/'
+    | '/dashboard/interviews/$interviewId/mock/$sessionId/report'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -469,6 +519,7 @@ export interface RootRouteChildren {
   SignupRoute: typeof SignupRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   SupabaseStatusRoute: typeof SupabaseStatusRoute
+  DashboardInterviewsInterviewIdMockSessionIdRoute: typeof DashboardInterviewsInterviewIdMockSessionIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -725,6 +776,34 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardInterviewsInterviewIdPrepRouteImport
       parentRoute: typeof DashboardInterviewsInterviewIdRoute
     }
+    '/dashboard/interviews/$interviewId/mock': {
+      id: '/dashboard/interviews/$interviewId/mock'
+      path: '/mock'
+      fullPath: '/dashboard/interviews/$interviewId/mock'
+      preLoaderRoute: typeof DashboardInterviewsInterviewIdMockRouteImport
+      parentRoute: typeof DashboardInterviewsInterviewIdRoute
+    }
+    '/dashboard/interviews/$interviewId/mock/': {
+      id: '/dashboard/interviews/$interviewId/mock/'
+      path: '/'
+      fullPath: '/dashboard/interviews/$interviewId/mock/'
+      preLoaderRoute: typeof DashboardInterviewsInterviewIdMockIndexRouteImport
+      parentRoute: typeof DashboardInterviewsInterviewIdMockRoute
+    }
+    '/dashboard_/interviews/$interviewId/mock/$sessionId': {
+      id: '/dashboard_/interviews/$interviewId/mock/$sessionId'
+      path: '/dashboard/interviews/$interviewId/mock/$sessionId'
+      fullPath: '/dashboard/interviews/$interviewId/mock/$sessionId'
+      preLoaderRoute: typeof DashboardInterviewsInterviewIdMockSessionIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dashboard/interviews/$interviewId/mock/$sessionId/report': {
+      id: '/dashboard/interviews/$interviewId/mock/$sessionId/report'
+      path: '/$sessionId/report'
+      fullPath: '/dashboard/interviews/$interviewId/mock/$sessionId/report'
+      preLoaderRoute: typeof DashboardInterviewsInterviewIdMockSessionIdReportRouteImport
+      parentRoute: typeof DashboardInterviewsInterviewIdMockRoute
+    }
   }
 }
 
@@ -773,13 +852,34 @@ const DashboardCoverLettersRouteWithChildren =
     DashboardCoverLettersRouteChildren,
   )
 
+interface DashboardInterviewsInterviewIdMockRouteChildren {
+  DashboardInterviewsInterviewIdMockIndexRoute: typeof DashboardInterviewsInterviewIdMockIndexRoute
+  DashboardInterviewsInterviewIdMockSessionIdReportRoute: typeof DashboardInterviewsInterviewIdMockSessionIdReportRoute
+}
+
+const DashboardInterviewsInterviewIdMockRouteChildren: DashboardInterviewsInterviewIdMockRouteChildren =
+  {
+    DashboardInterviewsInterviewIdMockIndexRoute:
+      DashboardInterviewsInterviewIdMockIndexRoute,
+    DashboardInterviewsInterviewIdMockSessionIdReportRoute:
+      DashboardInterviewsInterviewIdMockSessionIdReportRoute,
+  }
+
+const DashboardInterviewsInterviewIdMockRouteWithChildren =
+  DashboardInterviewsInterviewIdMockRoute._addFileChildren(
+    DashboardInterviewsInterviewIdMockRouteChildren,
+  )
+
 interface DashboardInterviewsInterviewIdRouteChildren {
+  DashboardInterviewsInterviewIdMockRoute: typeof DashboardInterviewsInterviewIdMockRouteWithChildren
   DashboardInterviewsInterviewIdPrepRoute: typeof DashboardInterviewsInterviewIdPrepRoute
   DashboardInterviewsInterviewIdIndexRoute: typeof DashboardInterviewsInterviewIdIndexRoute
 }
 
 const DashboardInterviewsInterviewIdRouteChildren: DashboardInterviewsInterviewIdRouteChildren =
   {
+    DashboardInterviewsInterviewIdMockRoute:
+      DashboardInterviewsInterviewIdMockRouteWithChildren,
     DashboardInterviewsInterviewIdPrepRoute:
       DashboardInterviewsInterviewIdPrepRoute,
     DashboardInterviewsInterviewIdIndexRoute:
@@ -866,6 +966,8 @@ const rootRouteChildren: RootRouteChildren = {
   SignupRoute: SignupRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   SupabaseStatusRoute: SupabaseStatusRoute,
+  DashboardInterviewsInterviewIdMockSessionIdRoute:
+    DashboardInterviewsInterviewIdMockSessionIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -15,6 +15,7 @@ import {
   ResumeOptimizerResultSchema,
   CoverLetterResultSchema,
   InterviewPrepResultSchema,
+  MockInterviewResultSchema,
 } from "@/features/ai/schemas";
 
 // ── Capability Registry ──
@@ -86,6 +87,13 @@ export type CapabilityDefinition = {
 // null on purpose; see the warning on CachePolicy before changing it.
 const DEFAULT_CACHE: CachePolicy = { enabled: true, ttlSeconds: null };
 
+// Module 7C is the first (and so far only) capability to turn caching off.
+// A cached conversational turn would replay an identical question and break
+// the "the interviewer remembers everything" premise, and a hash over an
+// ever-growing transcript would essentially never hit anyway. Also keeps
+// mock_interview entirely clear of the ttlSeconds trap documented above.
+const NO_CACHE: CachePolicy = { enabled: false, ttlSeconds: null };
+
 function define(
   id: AICapability,
   tier: AIModelTier,
@@ -128,13 +136,19 @@ export const CAPABILITY_REGISTRY: Record<AICapability, CapabilityDefinition> = {
     "reasoning",
     CoverLetterResultSchema,
   ),
-  // ⚠ EXPERIMENTAL — registered but not shipped (`experimental: true`).
-  // No server function, no client method, no UI reaches this. Do not add one
-  // without moving the id into SHIPPED_AI_CAPABILITIES first.
   [AI_CAPABILITIES.INTERVIEW_PREP]: define(
     AI_CAPABILITIES.INTERVIEW_PREP,
     "reasoning",
     InterviewPrepResultSchema,
+  ),
+  // "reasoning" tier for all three phases (planning, live turns, report) —
+  // a "fast" model noticeably degrades probing/cross-referencing depth,
+  // which is this module's entire product. See MockInterviewAIService.ts.
+  [AI_CAPABILITIES.MOCK_INTERVIEW]: define(
+    AI_CAPABILITIES.MOCK_INTERVIEW,
+    "reasoning",
+    MockInterviewResultSchema,
+    NO_CACHE,
   ),
 };
 

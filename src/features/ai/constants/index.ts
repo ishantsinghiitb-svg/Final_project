@@ -11,6 +11,7 @@ export const AI_CAPABILITIES = {
   RESUME_OPTIMIZER: "resume_optimizer",
   COVER_LETTER: "cover_letter",
   INTERVIEW_PREP: "interview_prep",
+  MOCK_INTERVIEW: "mock_interview",
 } as const;
 
 export type AICapability = (typeof AI_CAPABILITIES)[keyof typeof AI_CAPABILITIES];
@@ -40,6 +41,7 @@ export const SHIPPED_AI_CAPABILITIES = [
   AI_CAPABILITIES.RESUME_OPTIMIZER,
   AI_CAPABILITIES.COVER_LETTER,
   AI_CAPABILITIES.INTERVIEW_PREP,
+  AI_CAPABILITIES.MOCK_INTERVIEW,
 ] as const;
 
 /** A capability a user can actually reach. Use this in any user-facing type. */
@@ -60,6 +62,7 @@ export const AI_CAPABILITY_LABELS: Record<AICapability, string> = {
   resume_optimizer: "Resume Optimizer",
   cover_letter: "Cover Letter",
   interview_prep: "Interview Preparation",
+  mock_interview: "Mock Interview",
 };
 
 /**
@@ -80,6 +83,15 @@ export const AI_CREDIT_COSTS: Record<AICapability, number> = {
   resume_optimizer: 1,
   cover_letter: 1,
   interview_prep: 3,
+  // ── Module 7C ──
+  // 5 credits starts ONE mock interview SESSION, not one question. Everything
+  // inside that session — every question, follow-up, probe, clarification,
+  // voice, typing, the final report and every reopen — is free. This is
+  // enforced by construction: AICreditService.consume is called at exactly
+  // one site in the whole module (MockInterviewAIService.startMockInterview);
+  // see the vitest guard "never calls consume outside startMockInterview".
+  // Only starting a brand-new mock interview charges again.
+  mock_interview: 5,
 };
 
 /**
@@ -132,6 +144,18 @@ export const AI_ANALYSIS_VERSIONS: Record<AICapability, string> = {
   // grows from 5 to 29 AI-selected values. Bumped so pre-upgrade cached preps
   // (old shape, missing fields) aren't reused.
   interview_prep: "3",
+  // v1 (Module 7C): first Mock Interview Studio implementation — a
+  // dedicated multi-call session (plan → N live turns → report), not the
+  // frozen registry placeholder.
+  // v2 (7C realism pass): output shape changed — the plan's `plannedArc`
+  // stages became a closed vocabulary (INTERVIEW_STAGES) and are now
+  // persisted into the stored plan, and each live turn's internal reasoning
+  // gained `currentStage`/`stageRationale`. Bumped so pre-arc sessions are
+  // never mistaken for arc-aware ones in the audit trail.
+  // v3 (7C final polish): the report gained `additionalQuestionsToPrepare`
+  // (8-10 role-typical questions the interview did not cover, de-duplicated
+  // server-side against what was actually asked).
+  mock_interview: "3",
 };
 
 /** Prompt version — bump when the prompt template text changes. */
@@ -190,6 +214,34 @@ export const AI_PROMPT_VERSIONS: Record<AICapability, string> = {
   // study roadmap via `studyPoints`; answer prompt deepened for teaching-
   // quality, non-repetitive answers.
   interview_prep: "3",
+  // v1 (Module 7C): three prompts, one per phase — Planning (14-step
+  // reasoning: resume → job → company → role → round → user context →
+  // Resume Match → ATS → Optimizer → Cover Letter → Interview Prep →
+  // interview notes → previous mock-interview answers → strategy), the Live
+  // Turn decision framework (evaluate the answer, then choose one of
+  // probe/challenge/clarify/example/cross_reference/follow_up/new_competency/
+  // answer_candidate_question/conclude), and the Final Report (evidence-first,
+  // every claim traceable to a turn_index).
+  // v2 (Module 7C live-test fix): the report prompt gained an explicit 0-100
+  // scoring scale with calibration bands. Caught live: without an anchor the
+  // model defaulted to a small familiar scale (e.g. scores clustered 2-4)
+  // while `hiringRecommendation.decision` stayed reasonable — a 3/100 score
+  // shown next to "Leaning Hire". Planning and live-turn prompts unchanged.
+  // v3 (7C realism pass): planning and live-turn prompts rewritten around the
+  // 9-stage INTERVIEW_ARC (greeting → candidate intro → résumé deep dive →
+  // role → company → role-specific → behavioral → deep dive → wrap-up), an
+  // opening that must greet/frame/ask exactly one "tell me about yourself"
+  // variant instead of opening cold on a hard question, per-session opening
+  // style variation (OPENING_STYLES), a hard 2-follow-up budget per main
+  // question stated as server-counted fact, explicit transition phrasing
+  // between topics, and 20-30 minute pacing (10-16 exchanges).
+  // v4 (7C final polish): coverage-first question selection (untouched CORE
+  // competencies are surfaced explicitly and become the default next move, so
+  // one area can no longer dominate), a much wider transition palette with an
+  // explicit ban on repeating "Let's shift", pacing restated as 8-10 main
+  // questions / 10-18 exchanges, and the report's new
+  // "Additional Questions You Should Prepare" section.
+  mock_interview: "4",
 };
 
 // ── Deterministic resume parser (independent of the AI engine) ──
@@ -206,6 +258,16 @@ export const AI_RESULT_CODES = {
   VALIDATION_ERROR: "validation_error",
   PROVIDER_ERROR: "provider_error",
   CONFIG_ERROR: "config_error",
+  /**
+   * The provider call exceeded `aiConfig.requestTimeoutMs` and was aborted.
+   *
+   * Distinct from `provider_error` on purpose: a provider error means the
+   * upstream said no, a timeout means it never said anything. They need
+   * different copy ("try again in a moment" vs "that took too long"), and
+   * separating them keeps the ai_runs audit log honest about which failure
+   * mode a run actually hit.
+   */
+  TIMEOUT: "timeout",
   UNKNOWN_ERROR: "unknown_error",
 } as const;
 

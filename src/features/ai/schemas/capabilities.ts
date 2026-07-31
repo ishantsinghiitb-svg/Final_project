@@ -182,3 +182,17 @@ export const InterviewPrepResultSchema = z.object({
   ),
 });
 export type InterviewPrepResult = z.infer<typeof InterviewPrepResultSchema>;
+
+// ── Mock Interview (Module 7C) ──
+//
+// A registry-completeness placeholder only, same relationship as
+// InterviewPrepResultSchema above: the real orchestration
+// (server/ai/MockInterviewAIService.ts) never reads this schema. It has THREE
+// distinct real schemas of its own (features/mock-interview/schema.ts —
+// planning, live turn, final report), one per phase, which don't fit a single
+// registry `outputSchema` slot. This exists so `getCapability("mock_interview")`
+// still returns a complete CapabilityDefinition for model/cost/version lookups.
+export const MockInterviewResultSchema = z.object({
+  message: z.string(),
+});
+export type MockInterviewResult = z.infer<typeof MockInterviewResultSchema>;

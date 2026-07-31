@@ -72,6 +72,17 @@ const PHASES: Record<ShippedAICapability, AILoadingPhase[]> = {
     { label: "Building your preparation strategy…", holdMs: 4200 },
     { label: "Assembling your workspace…", holdMs: 8000 },
   ],
+  // Used only for the Planning call in the mock interview launcher — the
+  // live turns and report use quieter, non-scripted "thinking" states inside
+  // the studio itself (a phase list would read as a machine mid-conversation
+  // there; see MockInterviewStudio's InterviewerStage).
+  [AI_CAPABILITIES.MOCK_INTERVIEW]: [
+    { label: "Reviewing your resume and the job posting…", holdMs: 2800 },
+    { label: "Reading your interview preparation, if you have one…", holdMs: 3000 },
+    { label: "Working out how this interviewer will run the room…", holdMs: 3600 },
+    { label: "Mapping what this round needs to cover…", holdMs: 4000 },
+    { label: "Preparing your opening question…", holdMs: 8000 },
+  ],
 };
 
 /** Phase script for a shipped capability. Never empty. */

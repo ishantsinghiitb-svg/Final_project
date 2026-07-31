@@ -287,6 +287,15 @@ export const PROMPT_REGISTRY: Record<AICapability, PromptTemplate> = {
     "You are an interview coach. Produce likely interview questions tailored to the candidate and role, with suggested answer directions.",
     (ctx) => `${renderResume(ctx)}\n\n${renderJob(ctx)}`,
   ),
+  // Placeholder only — never invoked. See MockInterviewResultSchema's comment;
+  // the real prompts (planning / live turn / report) live in
+  // features/mock-interview/prompt.ts, used directly by the dedicated
+  // orchestration (server/ai/MockInterviewAIService.ts), not PromptManager.
+  [AI_CAPABILITIES.MOCK_INTERVIEW]: template(
+    AI_CAPABILITIES.MOCK_INTERVIEW,
+    "You are an experienced interviewer conducting a realistic mock interview.",
+    (ctx) => `${renderResume(ctx)}\n\n${renderJob(ctx)}`,
+  ),
 };
 
 export function getPrompt(capability: AICapability): PromptTemplate {
