@@ -999,6 +999,8 @@ export type InterviewPrepRow = {
   resume_file_hash: string | null;
   job_hash: string | null;
   input_hash: string | null;
+  /** Frozen resume/job input that produced `content` — see InterviewPrepAIService's InterviewPrepInputSnapshot. Module 7E. */
+  input_snapshot: Json | null;
   ai_session_id: string | null;
   ai_session_started_at: string | null;
   progress: Json;
@@ -1022,6 +1024,7 @@ export type InterviewPrepInsert = {
   resume_file_hash?: string | null;
   job_hash?: string | null;
   input_hash?: string | null;
+  input_snapshot?: Json | null;
   ai_session_id?: string | null;
   ai_session_started_at?: string | null;
   progress?: Json;

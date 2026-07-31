@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ChevronDown, Search, SlidersHorizontal, X } from "lucide-react";
 import type {
   InterviewFilters,
@@ -44,6 +44,23 @@ export function InterviewFiltersBar({
   totalCount,
 }: Props) {
   const [sortOpen, setSortOpen] = useState(false);
+  const sortRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!sortOpen) return;
+    const handlePointer = (e: MouseEvent) => {
+      if (sortRef.current && !sortRef.current.contains(e.target as Node)) setSortOpen(false);
+    };
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setSortOpen(false);
+    };
+    document.addEventListener("mousedown", handlePointer);
+    document.addEventListener("keydown", handleKey);
+    return () => {
+      document.removeEventListener("mousedown", handlePointer);
+      document.removeEventListener("keydown", handleKey);
+    };
+  }, [sortOpen]);
 
   const setQ = (q: string) => onFiltersChange({ ...filters, q: q || undefined });
 
@@ -66,7 +83,7 @@ export function InterviewFiltersBar({
     <div className="space-y-3">
       {/* Row 1: Search + Round + Linked/Standalone + Sort */}
       <div className="flex flex-wrap items-center gap-2">
-        <div className="relative flex-1 min-w-[200px] max-w-sm">
+        <div className="relative w-full sm:min-w-[200px] sm:max-w-sm sm:flex-1">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[oklch(0.55_0.02_265)]" />
           <input
             id="interview-search"
@@ -78,9 +95,11 @@ export function InterviewFiltersBar({
           />
         </div>
 
-        <div className="relative">
+        <div ref={sortRef} className="relative">
           <button
             onClick={() => setSortOpen((o) => !o)}
+            aria-haspopup="listbox"
+            aria-expanded={sortOpen}
             className="flex h-9 items-center gap-1.5 rounded-lg border border-black/5 bg-white px-3 text-sm text-[oklch(0.4_0.02_265)] hover:border-black/10 hover:bg-black/[0.02] transition-colors"
           >
             <SlidersHorizontal className="h-3.5 w-3.5" />
@@ -90,10 +109,15 @@ export function InterviewFiltersBar({
             />
           </button>
           {sortOpen && (
-            <div className="absolute right-0 top-10 z-20 w-40 overflow-hidden rounded-xl border border-black/5 bg-white shadow-[0_12px_40px_-8px_rgba(0,0,0,0.18)]">
+            <div
+              role="listbox"
+              className="absolute right-0 top-10 z-20 w-40 overflow-hidden rounded-xl border border-black/5 bg-white shadow-[0_12px_40px_-8px_rgba(0,0,0,0.18)]"
+            >
               {(Object.keys(SORT_LABELS) as InterviewSortOption[]).map((opt) => (
                 <button
                   key={opt}
+                  role="option"
+                  aria-selected={sortOption === opt}
                   onClick={() => {
                     onSortChange(opt);
                     setSortOpen(false);

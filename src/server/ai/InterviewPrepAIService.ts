@@ -78,7 +78,8 @@ async function loadResume(
     .eq("id", resumeId)
     .maybeSingle();
   if (resumeErr) throw resumeErr;
-  if (!resumeRow) return { ok: false, code: "resume_not_found", message: "That resume is no longer available." };
+  if (!resumeRow)
+    return { ok: false, code: "resume_not_found", message: "That resume is no longer available." };
   if (resumeRow.parse_status !== "ready") {
     return {
       ok: false,
@@ -104,6 +105,24 @@ async function loadResume(
 
 type JobLoaded = { jobHash: string; snapshot: JobSnapshot };
 
+/**
+ * The exact resume/job content a prep's questions were generated from —
+ * frozen once at generation time (`runInterviewPrepGeneration`) and reused by
+ * every later `generateInterviewAnswer` call for that same prep, the same
+ * "freeze derived input once, never re-derive it" pattern
+ * `mock_interview_sessions.plan` already uses for Module 7C. Without this, an
+ * answer generated after the candidate re-parses their resume (or a linked
+ * job posting is edited) could be grounded in different material than the
+ * question it answers, with the two shown side by side as if consistent.
+ *
+ * `resume_file_hash`/`job_hash` (already on this row) stay fingerprints only
+ * — this is the actual content they fingerprint.
+ */
+type InterviewPrepInputSnapshot = {
+  resume: { structured: InterviewPrepPromptInput["structured"]; rawText: string };
+  job: JobLoaded;
+};
+
 /** Live job context for a linked interview, or a synthetic one built from manual text. */
 async function loadJob(
   sb: ServerSupabase,
@@ -114,7 +133,8 @@ async function loadJob(
   if (interview.job_id) {
     const builder = new ContextBuilder(sb);
     const jobCtx = await builder.buildJobContext(interview.job_id);
-    if (!jobCtx) return { ok: false, code: "job_not_found", message: "That job is no longer available." };
+    if (!jobCtx)
+      return { ok: false, code: "job_not_found", message: "That job is no longer available." };
     return { ok: true, job: { jobHash: jobCtx.jobHash, snapshot: jobCtx.snapshot } };
   }
 
@@ -138,7 +158,10 @@ async function loadJob(
     responsibilities: [],
     skills: [],
   };
-  const jobHash = await hashObject({ snapshot, companyDescription: manualCompanyDescription ?? null });
+  const jobHash = await hashObject({
+    snapshot,
+    companyDescription: manualCompanyDescription ?? null,
+  });
   return { ok: true, job: { jobHash, snapshot } };
 }
 
@@ -253,13 +276,19 @@ async function loadSupplementaryContext(
     ]);
 
     if (matchRes.data?.result) {
-      supplementary.resumeMatchSummary = summarizeAnalysisResult(matchRes.data.result, "resume_match");
+      supplementary.resumeMatchSummary = summarizeAnalysisResult(
+        matchRes.data.result,
+        "resume_match",
+      );
     }
     if (atsRes.data?.result) {
       supplementary.atsSummary = summarizeAnalysisResult(atsRes.data.result, "ats_score");
     }
     if (optimizerRes.data?.result) {
-      supplementary.optimizerSummary = summarizeAnalysisResult(optimizerRes.data.result, "resume_optimizer");
+      supplementary.optimizerSummary = summarizeAnalysisResult(
+        optimizerRes.data.result,
+        "resume_optimizer",
+      );
     }
     if (letterRes.data?.content) {
       supplementary.coverLetterSummary = String(letterRes.data.content).slice(0, 1200);
@@ -409,7 +438,9 @@ function mapPrepRow(row: Record<string, unknown>): InterviewPrep {
     // Defensive against a stored progress value that's truthy but incomplete
     // (an empty `{}` bypasses a plain `??` fallback since it's neither null
     // nor undefined) — normalize checklistChecked to an array unconditionally.
-    progress: { checklistChecked: (row.progress as InterviewPrepProgress | null)?.checklistChecked ?? [] },
+    progress: {
+      checklistChecked: (row.progress as InterviewPrepProgress | null)?.checklistChecked ?? [],
+    },
     generated_at: (row.generated_at as string | null) ?? null,
     created_at: row.created_at as string,
     updated_at: row.updated_at as string,
@@ -489,7 +520,9 @@ export async function runInterviewPrepGeneration(
     const { resume } = resumeResult;
 
     const manualJobDescription = (
-      params.manualJobDescription ?? existingPrep?.manual_job_description ?? ""
+      params.manualJobDescription ??
+      existingPrep?.manual_job_description ??
+      ""
     ).trim();
     const manualCompanyDescription =
       (params.manualCompanyDescription ?? existingPrep?.manual_company_description ?? "").trim() ||
@@ -625,6 +658,11 @@ export async function runInterviewPrepGeneration(
     const stableDraft = assignStableIds(draft);
     const { internal, ...content } = stableDraft;
 
+    const inputSnapshot: InterviewPrepInputSnapshot = {
+      resume: { structured: resume.structured, rawText: resume.rawText },
+      job,
+    };
+
     const newSessionId = crypto.randomUUID();
     const prepId = existingPrep?.id ?? crypto.randomUUID();
     const nowIso = new Date().toISOString();
@@ -647,6 +685,7 @@ export async function runInterviewPrepGeneration(
           resume_file_hash: resume.fileHash,
           job_hash: job.jobHash,
           input_hash: inputHash,
+          input_snapshot: inputSnapshot as unknown as Json,
           ai_session_id: newSessionId,
           ai_session_started_at: nowIso,
           // Reset on every generation: question/checklist ids are re-assigned
@@ -749,7 +788,8 @@ export async function runInterviewPrepGeneration(
         jobId: jobIdForLog,
         errorCode: code,
         errorMessage:
-          (err instanceof Error ? err.message : String(err)) + (refunded ? " (credit refunded)" : ""),
+          (err instanceof Error ? err.message : String(err)) +
+          (refunded ? " (credit refunded)" : ""),
       });
     } catch {
       /* best-effort */
@@ -789,7 +829,7 @@ export async function generateInterviewAnswer(
     const { data: prepRow, error: prepErr } = await sb
       .from("interview_preps")
       .select(
-        "id, interview_id, content, manual_job_description, manual_company_description, additional_context",
+        "id, interview_id, content, manual_job_description, manual_company_description, additional_context, input_snapshot",
       )
       .eq("id", params.interviewPrepId)
       .maybeSingle();
@@ -803,7 +843,11 @@ export async function generateInterviewAnswer(
       (q) => q.id === params.questionId,
     );
     if (!targetQuestion) {
-      return { ok: false, code: "question_not_found", message: "That question is no longer available." };
+      return {
+        ok: false,
+        code: "question_not_found",
+        message: "That question is no longer available.",
+      };
     }
 
     const { data: interview, error: interviewErr } = await sb
@@ -812,23 +856,39 @@ export async function generateInterviewAnswer(
       .eq("id", prepRow.interview_id)
       .maybeSingle();
     if (interviewErr) throw interviewErr;
-    if (!interview) return { ok: false, code: "interview_not_found", message: "Interview not found." };
+    if (!interview)
+      return { ok: false, code: "interview_not_found", message: "Interview not found." };
     if (!interview.resume_id) {
       return { ok: false, code: "resume_required", message: "Pick a resume to continue." };
     }
 
-    const resumeResult = await loadResume(sb, interview.resume_id);
-    if (!resumeResult.ok) return resumeResult;
-    const { resume } = resumeResult;
+    // Reuse the exact resume/job content the prep's questions were generated
+    // from, not whatever is live now — see InterviewPrepInputSnapshot. Only a
+    // prep generated before this snapshot existed falls back to a live load;
+    // that isn't a new inconsistency (it's the prior, unfixed behavior for
+    // rows that never captured one), and there is nothing to freeze
+    // retroactively for them.
+    const snapshot = prepRow.input_snapshot as unknown as InterviewPrepInputSnapshot | null;
+    let resume: { structured: InterviewPrepPromptInput["structured"]; rawText: string };
+    let job: JobLoaded;
 
-    const jobResult = await loadJob(
-      sb,
-      interview,
-      prepRow.manual_job_description ?? "",
-      prepRow.manual_company_description,
-    );
-    if (!jobResult.ok) return jobResult;
-    const { job } = jobResult;
+    if (snapshot) {
+      resume = snapshot.resume;
+      job = snapshot.job;
+    } else {
+      const resumeResult = await loadResume(sb, interview.resume_id);
+      if (!resumeResult.ok) return resumeResult;
+      resume = resumeResult.resume;
+
+      const jobResult = await loadJob(
+        sb,
+        interview,
+        prepRow.manual_job_description ?? "",
+        prepRow.manual_company_description,
+      );
+      if (!jobResult.ok) return jobResult;
+      job = jobResult.job;
+    }
 
     const supplementary = await loadSupplementaryContext(
       sb,
@@ -901,7 +961,8 @@ export async function generateInterviewAnswer(
             schemaName: `${cap.id}_answer`,
           });
           const parsed = InterviewAnswerSchema.safeParse(res.raw);
-          if (!parsed.success) throw new AIValidationError("Interview answer response was malformed.");
+          if (!parsed.success)
+            throw new AIValidationError("Interview answer response was malformed.");
           return { data: parsed.data, raw: res.raw, usage: res.usage };
         },
         { attempts: 2 },

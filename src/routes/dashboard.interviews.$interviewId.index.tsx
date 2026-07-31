@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import {
   AlertCircle,
@@ -21,6 +21,7 @@ import { format, parseISO } from "date-fns";
 import { DashCard, SectionTitle, Chip, CompanyMark } from "@/components/dashboard/primitives";
 import { DashButton } from "@/components/dashboard/DashButton";
 import { ScheduleInterviewDialog } from "@/components/dashboard/interviews/ScheduleInterviewDialog";
+import { useDialogA11y } from "@/hooks/useDialogA11y";
 import {
   useDeleteInterview,
   useInterview,
@@ -60,22 +61,48 @@ function StatusSelector({
 }) {
   const [open, setOpen] = useState(false);
   const meta = INTERVIEW_STATUS_META[status];
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  // Same outside-click convention InterviewCard's own "⋮" menu already uses,
+  // plus Escape — previously this dropdown had neither.
+  useEffect(() => {
+    if (!open) return;
+    const handlePointer = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setOpen(false);
+    };
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("mousedown", handlePointer);
+    document.addEventListener("keydown", handleKey);
+    return () => {
+      document.removeEventListener("mousedown", handlePointer);
+      document.removeEventListener("keydown", handleKey);
+    };
+  }, [open]);
 
   return (
-    <div className="relative">
+    <div ref={menuRef} className="relative">
       <button
         onClick={() => setOpen((o) => !o)}
         disabled={isPending}
+        aria-haspopup="listbox"
+        aria-expanded={open}
         className="inline-flex h-9 items-center gap-2 rounded-xl border border-black/5 bg-white px-3 text-sm font-medium text-[oklch(0.3_0.02_265)] transition-colors hover:border-black/10 disabled:opacity-60"
       >
         <Chip tone={meta.tone}>{meta.label}</Chip>
         <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", open && "rotate-180")} />
       </button>
       {open && (
-        <div className="absolute right-0 top-11 z-20 w-48 overflow-hidden rounded-xl border border-black/5 bg-white shadow-[0_12px_40px_-8px_rgba(0,0,0,0.18)]">
+        <div
+          role="listbox"
+          className="absolute right-0 top-11 z-20 w-48 overflow-hidden rounded-xl border border-black/5 bg-white shadow-[0_12px_40px_-8px_rgba(0,0,0,0.18)]"
+        >
           {allowed.map((s) => (
             <button
               key={s}
+              role="option"
+              aria-selected={s === status}
               onClick={() => {
                 onChange(s);
                 setOpen(false);
@@ -365,8 +392,13 @@ function ConfirmDeleteDialog({
   onCancel: () => void;
   onConfirm: () => void;
 }) {
+  const dialogRef = useDialogA11y<HTMLDivElement>(true, () => {
+    if (!busy) onCancel();
+  });
+
   return (
     <div
+      ref={dialogRef}
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
       role="dialog"
       aria-modal="true"

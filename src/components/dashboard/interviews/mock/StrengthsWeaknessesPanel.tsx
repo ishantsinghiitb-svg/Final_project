@@ -3,7 +3,18 @@ import { DashCard } from "@/components/dashboard/primitives";
 import type { MockInterviewReportContent } from "@/features/mock-interview/types";
 
 export function StrengthsWeaknessesPanel({ report }: { report: MockInterviewReportContent }) {
-  if (report.strengths.length === 0 && report.weaknesses.length === 0) return null;
+  // Neither array has a minimum-length guarantee (schema falls back to [] on
+  // any validation issue) — this section vanishing entirely from a report the
+  // candidate paid credits for would read as broken, not as "nothing to say."
+  if (report.strengths.length === 0 && report.weaknesses.length === 0) {
+    return (
+      <DashCard>
+        <p className="text-sm text-[oklch(0.5_0.02_265)]">
+          No strengths or weaknesses were generated for this session.
+        </p>
+      </DashCard>
+    );
+  }
 
   return (
     <div className="grid gap-3 md:grid-cols-2">

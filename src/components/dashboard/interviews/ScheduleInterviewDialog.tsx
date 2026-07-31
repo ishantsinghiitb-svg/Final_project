@@ -5,6 +5,7 @@ import { RichTextToolbar } from "@/components/shared/RichTextToolbar";
 import { applyRichTextCommand, type RichTextCommand } from "@/lib/richText";
 import { useCreateInterview, useUpdateInterview } from "@/features/interviews/hooks";
 import { useResumes } from "@/features/resumes/hooks";
+import { useDialogA11y } from "@/hooks/useDialogA11y";
 import { INTERVIEW_ROUND_PRESETS } from "@/features/interviews/constants";
 import type { ScheduleInterviewInput, StandaloneInterviewInput } from "@/features/interviews/types";
 import type { Interview, InterviewMode } from "@/types";
@@ -121,6 +122,8 @@ export function ScheduleInterviewDialog({
     onClose();
   };
 
+  const dialogRef = useDialogA11y<HTMLDivElement>(true, handleClose);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!isValid || isPending) return;
@@ -195,6 +198,7 @@ export function ScheduleInterviewDialog({
 
   return (
     <div
+      ref={dialogRef}
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
       role="dialog"
       aria-modal="true"
@@ -229,7 +233,7 @@ export function ScheduleInterviewDialog({
           </p>
 
           <form onSubmit={handleSubmit} className="mt-5 space-y-3.5">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
                 <label className={labelClass} htmlFor="interview-company">
                   Company
@@ -283,7 +287,7 @@ export function ScheduleInterviewDialog({
               </datalist>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
                 <label className={labelClass} htmlFor="interview-date">
                   Date

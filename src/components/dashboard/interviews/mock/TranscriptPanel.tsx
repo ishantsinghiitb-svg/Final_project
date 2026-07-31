@@ -18,7 +18,7 @@ export function TranscriptPanel({ turns }: { turns: MockInterviewTurn[] }) {
     <div className="mx-auto w-full max-w-4xl px-4 md:px-6">
       <button
         onClick={() => setOpen((o) => !o)}
-        className="flex items-center gap-1.5 py-2 text-xs font-medium text-white/40 transition-colors hover:text-white/70"
+        className="flex items-center gap-1.5 py-2 text-xs font-medium text-white/50 transition-colors hover:text-white/70"
       >
         <MessageSquare className="h-3.5 w-3.5" />
         Transcript ({answered.length} exchange{answered.length === 1 ? "" : "s"})
@@ -29,11 +29,11 @@ export function TranscriptPanel({ turns }: { turns: MockInterviewTurn[] }) {
           {answered.map((t) => (
             <div key={t.id} className="space-y-1 text-sm">
               <p className="text-white/70">
-                <span className="text-white/40">Interviewer:</span> {t.interviewer_message}
+                <span className="text-white/50">Interviewer:</span> {t.interviewer_message}
               </p>
               {t.candidate_answer && (
                 <p className="text-white/50">
-                  <span className="text-white/30">You:</span> {t.candidate_answer}
+                  <span className="text-white/50">You:</span> {t.candidate_answer}
                 </p>
               )}
             </div>

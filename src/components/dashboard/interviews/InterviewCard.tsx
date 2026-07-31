@@ -47,7 +47,20 @@ export function InterviewCard({ interview, onOpen, onStatusChange, onEdit, onDel
   return (
     <div
       onClick={() => onOpen(interview)}
-      className="group relative cursor-pointer rounded-xl border border-black/5 bg-white p-3.5 shadow-[0_1px_3px_rgba(0,0,0,0.04)] transition-all hover:border-black/10 hover:shadow-[0_2px_8px_rgba(0,0,0,0.07)]"
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        // Enter/Space only — a bare onClick here was keyboard-inaccessible;
+        // this is the only way to open an interview from the card grid at
+        // all (Edit/Delete live behind the ⋮ menu, which is a separate,
+        // already-focusable control).
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onOpen(interview);
+        }
+      }}
+      aria-label={`View interview details for ${interview.company_name}, ${interview.role}`}
+      className="group relative cursor-pointer rounded-xl border border-black/5 bg-white p-3.5 shadow-[0_1px_3px_rgba(0,0,0,0.04)] transition-all hover:border-black/10 hover:shadow-[0_2px_8px_rgba(0,0,0,0.07)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2563EB]/40"
     >
       <div className="flex items-start gap-2.5">
         <CompanyMark

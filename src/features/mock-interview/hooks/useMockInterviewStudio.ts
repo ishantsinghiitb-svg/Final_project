@@ -11,6 +11,7 @@ import {
 import { useInterviewTimer } from "./useInterviewTimer";
 import { useInterviewVoice } from "../voice/useInterviewVoice";
 import { formatElapsed } from "../timer";
+import { MOCK_INTERVIEW_MAX_REPORT_ATTEMPTS } from "../constants";
 import type { AnswerInputMode } from "../types";
 
 // ── useMockInterviewStudio (Module 7C) ──
@@ -164,6 +165,23 @@ export function useMockInterviewStudio(sessionId: string | undefined) {
   const submitFailure =
     submitAnswerMutation.data && !submitAnswerMutation.data.ok ? submitAnswerMutation.data : null;
   const reportFailure = reportMutation.data && !reportMutation.data.ok ? reportMutation.data : null;
+  // A thrown exception (dropped connection, tab backgrounded mid-request)
+  // previously surfaced nothing at all: `submitFailure` only covers a
+  // resolved `{ok:false}` envelope. The composer already safely reappears
+  // empty in this state (the turns cache was never touched, so the current
+  // turn still reads as unanswered) — this only adds the missing explanation.
+  // Deliberately no retry action wired to it: whether the server actually
+  // saved the answer before the connection dropped is unknown from here, and
+  // the reappeared composer is already the correct, safe way to try again.
+  const submitThrew = submitAnswerMutation.isError && !submitFailure;
+  const reportThrew = reportMutation.isError && !reportFailure;
+  // Once the server's retry cap is hit, offering an unconditional "Try again"
+  // on the concluding screen is a dead-end loop — it will fail identically
+  // forever on a route with no chrome to escape through. Mirrors the same
+  // check MockInterviewReport.tsx uses for the report page's own copy.
+  const reportAttemptsExhausted = Boolean(
+    session && session.report_attempts >= MOCK_INTERVIEW_MAX_REPORT_ATTEMPTS && !session.report,
+  );
 
   return {
     session,
@@ -180,6 +198,7 @@ export function useMockInterviewStudio(sessionId: string | undefined) {
     retryTurn,
     isSubmitting: submitAnswerMutation.isPending,
     submitFailure,
+    submitThrew,
     resetSubmitFailure: submitAnswerMutation.reset,
     pause,
     resume,
@@ -188,6 +207,8 @@ export function useMockInterviewStudio(sessionId: string | undefined) {
     endInterview,
     isEnding: endMutation.isPending,
     reportFailure,
+    reportThrew,
+    reportAttemptsExhausted,
     retryReport,
   };
 }

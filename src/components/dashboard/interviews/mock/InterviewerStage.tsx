@@ -40,10 +40,14 @@ export function InterviewerStage({
         </span>
       </div>
 
-      <div className="mt-3 flex items-center gap-1.5 text-xs font-medium text-white/60">
+      <div
+        className="mt-3 flex items-center gap-1.5 text-xs font-medium text-white/60"
+        role="status"
+        aria-live="polite"
+      >
         {interviewerLabel}
         {isSpeaking && <span className="text-[#7C9CFF]">· speaking</span>}
-        {isThinking && <span className="text-white/40">· thinking</span>}
+        {isThinking && <span className="text-white/50">· thinking</span>}
       </div>
 
       {isThinking ? (
@@ -54,7 +58,11 @@ export function InterviewerStage({
         </div>
       ) : (
         <>
-          <p className="mt-5 max-w-2xl text-balance font-display text-lg font-medium leading-snug text-white sm:text-xl md:mt-6 md:text-2xl">
+          <p
+            className="mt-5 max-w-2xl text-balance font-display text-lg font-medium leading-snug text-white sm:text-xl md:mt-6 md:text-2xl"
+            role="status"
+            aria-live="polite"
+          >
             {message}
           </p>
           {canReplay && (

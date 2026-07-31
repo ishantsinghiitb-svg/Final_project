@@ -5,6 +5,7 @@ import { format, parseISO } from "date-fns";
 import { CompanyMark, Chip } from "@/components/dashboard/primitives";
 import { roundTone } from "@/features/interviews/constants";
 import { logoToneForCompany } from "@/features/jobs/utils";
+import { useDialogA11y } from "@/hooks/useDialogA11y";
 import type { Interview } from "@/types";
 
 type Props = {
@@ -24,6 +25,9 @@ type Props = {
 export function InterviewPickerDialog({ interviews, onClose }: Props) {
   const navigate = useNavigate();
   const [query, setQuery] = useState("");
+  // No pending/busy state to guard here — unlike the credit-spending
+  // confirmations, this dialog can always be dismissed immediately.
+  const dialogRef = useDialogA11y<HTMLDivElement>(true, onClose);
 
   const sorted = useMemo(() => {
     return [...interviews].sort(
@@ -49,6 +53,7 @@ export function InterviewPickerDialog({ interviews, onClose }: Props) {
 
   return (
     <div
+      ref={dialogRef}
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
       role="dialog"
       aria-modal="true"

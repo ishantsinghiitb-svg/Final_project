@@ -223,10 +223,19 @@ function InterviewsPage() {
       {interviews.length > 0 &&
         view === "card" &&
         (filtered.length === 0 ? (
-          <div className="flex flex-col items-center gap-2 py-16 text-center">
-            <p className="text-sm font-medium text-[oklch(0.35_0.02_265)]">No interviews found</p>
-            <p className="text-xs text-[oklch(0.55_0.02_265)]">Try adjusting your filters.</p>
-          </div>
+          // Same wording/treatment as InterviewTableView's own empty state for
+          // this identical case (filters exclude everything) — previously each
+          // view hand-rolled its own slightly different copy.
+          <EmptyState
+            icon={CalendarClock}
+            title="No interviews found"
+            body="Try adjusting your filters."
+            cta={
+              <DashButton variant="outline" onClick={() => setFilters({})}>
+                Clear filters
+              </DashButton>
+            }
+          />
         ) : (
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {filtered.map((interview) => (
@@ -248,6 +257,7 @@ function InterviewsPage() {
           onOpen={handleOpen}
           onEdit={setEditing}
           onDelete={handleDelete}
+          onClearFilters={() => setFilters({})}
         />
       )}
 

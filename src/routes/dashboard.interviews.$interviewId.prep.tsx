@@ -35,8 +35,11 @@ export const Route = createFileRoute("/dashboard/interviews/$interviewId/prep")(
 
 function InterviewPrepWorkspace() {
   const { interviewId } = Route.useParams();
-  const { data: interview, isLoading: interviewLoading, isError: interviewError } =
-    useInterview(interviewId);
+  const {
+    data: interview,
+    isLoading: interviewLoading,
+    isError: interviewError,
+  } = useInterview(interviewId);
   const { data: prep, isLoading: prepLoading } = useInterviewPrep(interviewId);
   const { data: answers = [] } = useInterviewPrepAnswers(prep?.id);
   const { data: resumes = [] } = useResumes();
@@ -45,7 +48,9 @@ function InterviewPrepWorkspace() {
   const generatePrep = useGenerateInterviewPrep();
   const updateProgress = useUpdateInterviewPrepProgress();
 
-  const [manualJobDescription, setManualJobDescription] = useState(prep?.manual_job_description ?? "");
+  const [manualJobDescription, setManualJobDescription] = useState(
+    prep?.manual_job_description ?? "",
+  );
   const [manualCompanyDescription, setManualCompanyDescription] = useState(
     prep?.manual_company_description ?? "",
   );
@@ -61,7 +66,10 @@ function InterviewPrepWorkspace() {
     interview?.resume_id && (interview.job_id || manualJobDescription.trim().length > 0),
   );
 
-  const answeredCount = useMemo(() => answers.filter((a) => a.answer.trim().length > 0).length, [answers]);
+  const answeredCount = useMemo(
+    () => answers.filter((a) => a.answer.trim().length > 0).length,
+    [answers],
+  );
 
   function openGenerateDialog(isRegenerate: boolean) {
     setDialogIsRegenerate(isRegenerate);
@@ -73,7 +81,9 @@ function InterviewPrepWorkspace() {
     generatePrep.mutate(
       {
         interviewId: interview.id,
-        manualJobDescription: interview.job_id ? undefined : manualJobDescription.trim() || undefined,
+        manualJobDescription: interview.job_id
+          ? undefined
+          : manualJobDescription.trim() || undefined,
         manualCompanyDescription: interview.job_id
           ? undefined
           : manualCompanyDescription.trim() || undefined,
@@ -217,7 +227,25 @@ function InterviewPrepWorkspace() {
             onToggle={handleToggleChecklist}
           />
         </div>
-      ) : null}
+      ) : (
+        // A prep row exists but `content` is null — generation started and
+        // never completed (the AI call failed or the tab closed before it
+        // resolved). Previously this rendered nothing after the header, a
+        // dead blank screen with no way forward.
+        <div className="rounded-2xl border border-[#2563EB]/15 bg-gradient-to-br from-[#2563EB]/[0.03] to-[#7C3AED]/[0.04] p-6 text-center">
+          <p className="text-sm text-[oklch(0.4_0.02_265)]">
+            Generating this preparation didn't finish. Nothing was charged for an incomplete attempt
+            — try generating it again.
+          </p>
+          <DashButton
+            className="mt-4"
+            disabled={!canGenerate}
+            onClick={() => openGenerateDialog(false)}
+          >
+            <Sparkles className="h-4 w-4" /> Generate my preparation
+          </DashButton>
+        </div>
+      )}
 
       <GeneratePrepDialog
         open={dialogOpen}

@@ -1,4 +1,6 @@
-import { RefreshCw, Sparkles } from "lucide-react";
+import { Link } from "@tanstack/react-router";
+import { ArrowLeft, RefreshCw, Sparkles } from "lucide-react";
+import { aiErrorCopy } from "@/features/ai/errorMessages";
 
 // ── ConcludingScreen (Module 7C) ──
 //
@@ -9,9 +11,16 @@ import { RefreshCw, Sparkles } from "lucide-react";
 
 export function ConcludingScreen({
   hasError,
+  attemptsExhausted,
+  interviewId,
   onRetry,
 }: {
   hasError: boolean;
+  /** True once the server's retry cap is hit — retrying again would fail identically. */
+  attemptsExhausted: boolean;
+  /** This screen sits on a chrome-less full-screen route (no top bar, no back link) — the
+   *  exit path below is the only way out once attemptsExhausted makes retrying pointless. */
+  interviewId: string;
   onRetry: () => void;
 }) {
   return (
@@ -20,7 +29,24 @@ export function ConcludingScreen({
         <span className="absolute inset-0 rounded-full bg-gradient-to-br from-[#2563EB]/30 to-[#7C3AED]/40 animate-ai-breathe" />
         <Sparkles className="relative h-5 w-5 text-white" />
       </div>
-      {hasError ? (
+      {hasError && attemptsExhausted ? (
+        <>
+          <p className="font-display text-lg font-semibold text-white">
+            {aiErrorCopy("report_attempts_exhausted").title}
+          </p>
+          <p className="max-w-sm text-sm text-white/50">
+            {aiErrorCopy("report_attempts_exhausted").body} Your full transcript is safe and isn't
+            going anywhere.
+          </p>
+          <Link
+            to="/dashboard/interviews/$interviewId"
+            params={{ interviewId }}
+            className="mt-2 inline-flex items-center gap-2 rounded-xl border border-white/15 bg-white/5 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-white/10"
+          >
+            <ArrowLeft className="h-4 w-4" /> Back to interview details
+          </Link>
+        </>
+      ) : hasError ? (
         <>
           <p className="font-display text-lg font-semibold text-white">
             We hit a snag putting your report together

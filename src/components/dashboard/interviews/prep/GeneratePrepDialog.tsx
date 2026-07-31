@@ -3,6 +3,7 @@ import { Sparkles, X } from "lucide-react";
 import { AIThinkingPanel } from "@/components/dashboard/ai/AIThinking";
 import { AI_CAPABILITIES } from "@/features/ai/constants";
 import { INTERVIEW_PREP_CREDIT_COST } from "@/features/interview-prep/constants";
+import { useDialogA11y } from "@/hooks/useDialogA11y";
 import { RegeneratePrepWarning } from "./RegeneratePrepWarning";
 
 // ── GeneratePrepDialog (Module 7B) ──
@@ -34,6 +35,10 @@ export function GeneratePrepDialog({
   onConfirm,
   onCancel,
 }: Props) {
+  const dialogRef = useDialogA11y<HTMLDivElement>(open, () => {
+    if (!isPending) onCancel();
+  });
+
   if (!open) return null;
 
   // Not just "any credits at all" — this action costs 3, so 1 or 2 remaining
@@ -45,6 +50,7 @@ export function GeneratePrepDialog({
 
   return (
     <div
+      ref={dialogRef}
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
       role="dialog"
       aria-modal="true"
@@ -86,16 +92,16 @@ export function GeneratePrepDialog({
                 className="mt-3 border-0 bg-transparent p-0"
               />
               <p className="mt-4 text-xs text-[oklch(0.5_0.02_265)]">
-                This takes a little while — we're working through the job, your resume, and what this
-                round is likely to test.
+                This takes a little while — we're working through the job, your resume, and what
+                this round is likely to test.
               </p>
             </>
           ) : locked ? (
             <>
               <p className="mt-2 text-sm text-muted-foreground">
                 This needs {INTERVIEW_PREP_CREDIT_COST} AI Credits, and you have{" "}
-                <span className="font-medium">{creditsRemaining}</span> remaining — so this can't run
-                right now.
+                <span className="font-medium">{creditsRemaining}</span> remaining — so this can't
+                run right now.
               </p>
               <Link
                 to="/pricing"

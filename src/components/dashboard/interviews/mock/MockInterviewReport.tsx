@@ -1,4 +1,5 @@
 import { AlertCircle, Loader2, RotateCcw, Sparkles } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { AIPage, AIPageHeader } from "@/components/dashboard/ai/AIPage";
 import { AIMetaStrip } from "@/components/dashboard/ai/AIMeta";
 import { AIErrorNotice } from "@/components/dashboard/ai/AIErrorNotice";
@@ -65,6 +66,13 @@ export function MockInterviewReport({
 
   const attemptsExhausted =
     session.report_attempts >= MOCK_INTERVIEW_MAX_REPORT_ATTEMPTS && !session.report;
+  // A failed Regenerate previously left the OLD report on screen with zero
+  // indication anything went wrong — the structured-failure branch below only
+  // ever rendered while `!session.report`, which a regenerate (by definition)
+  // never is. `isError` covers a thrown exception the same way.
+  const regenerateFailed =
+    session.report && generateReport.data && !generateReport.data.ok ? generateReport.data : null;
+  const regenerateThrew = session.report && generateReport.isError && !regenerateFailed;
 
   return (
     <AIPage>
@@ -94,7 +102,10 @@ export function MockInterviewReport({
                 session.report_attempts >= MOCK_INTERVIEW_MAX_REPORT_ATTEMPTS
               }
             >
-              <RotateCcw className="h-3.5 w-3.5" /> Regenerate report
+              <RotateCcw
+                className={cn("h-3.5 w-3.5", generateReport.isPending && "animate-spin")}
+              />
+              {generateReport.isPending ? "Regenerating…" : "Regenerate report"}
             </DashButton>
           )
         }
@@ -102,6 +113,14 @@ export function MockInterviewReport({
 
       {session.report ? (
         <div className="space-y-4">
+          {(regenerateFailed || regenerateThrew) && (
+            <AIErrorNotice
+              code={regenerateFailed?.code}
+              creditsRefunded={regenerateFailed?.creditsRefunded}
+              onRetry={() => generateReport.mutate({ sessionId, regenerate: true })}
+              retrying={generateReport.isPending}
+            />
+          )}
           <AIMetaStrip generatedAt={session.report_generated_at} />
           <ReportHero session={session} />
           <StrengthsWeaknessesPanel report={session.report} />
@@ -124,13 +143,25 @@ export function MockInterviewReport({
             disabled={generateReport.isPending}
             onClick={() => generateReport.mutate({ sessionId })}
           >
-            <Sparkles className="h-4 w-4" /> Generate report
+            <Sparkles className={cn("h-4 w-4", generateReport.isPending && "animate-pulse")} />
+            {generateReport.isPending ? "Generating…" : "Generate report"}
           </DashButton>
           {generateReport.data && !generateReport.data.ok && (
             <div className="mt-4 text-left">
               <AIErrorNotice
                 code={generateReport.data.code}
                 creditsRefunded={generateReport.data.creditsRefunded}
+                onRetry={() => generateReport.mutate({ sessionId })}
+                retrying={generateReport.isPending}
+              />
+            </div>
+          )}
+          {generateReport.isError && !generateReport.data && (
+            <div className="mt-4 text-left">
+              <AIErrorNotice
+                code={undefined}
+                onRetry={() => generateReport.mutate({ sessionId })}
+                retrying={generateReport.isPending}
               />
             </div>
           )}

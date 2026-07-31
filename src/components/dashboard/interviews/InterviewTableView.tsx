@@ -1,6 +1,7 @@
-import { MapPin, Pencil, Trash2, Video } from "lucide-react";
+import { MapPin, Pencil, Search, Trash2, Video } from "lucide-react";
 import type { Interview } from "@/types";
-import { CompanyMark, Chip } from "@/components/dashboard/primitives";
+import { CompanyMark, Chip, EmptyState } from "@/components/dashboard/primitives";
+import { DashButton } from "@/components/dashboard/DashButton";
 import { INTERVIEW_STATUS_META, roundTone } from "@/features/interviews/constants";
 import { logoToneForCompany } from "@/features/jobs/utils";
 import { format, parseISO } from "date-fns";
@@ -10,6 +11,8 @@ type Props = {
   onOpen: (interview: Interview) => void;
   onEdit: (interview: Interview) => void;
   onDelete: (id: string) => void;
+  /** Only relevant when the empty list is caused by filters — see the parent's own identical `filtered.length === 0` case. */
+  onClearFilters?: () => void;
 };
 
 /**
@@ -18,20 +21,36 @@ type Props = {
  * Tabular list view — rows open the Interview Details page (Module 7B); the
  * pencil icon opens the edit dialog directly.
  */
-export function InterviewTableView({ interviews, onOpen, onEdit, onDelete }: Props) {
+export function InterviewTableView({
+  interviews,
+  onOpen,
+  onEdit,
+  onDelete,
+  onClearFilters,
+}: Props) {
   if (interviews.length === 0) {
+    // Same wording/treatment as the card view's own empty state for this
+    // identical case (the parent only renders this view once at least one
+    // interview exists at all, so an empty `interviews` here always means the
+    // current filters exclude everything — never "no interviews ever").
     return (
-      <div className="flex flex-col items-center gap-2 py-16 text-center">
-        <p className="text-sm font-medium text-[oklch(0.35_0.02_265)]">No interviews found</p>
-        <p className="text-xs text-[oklch(0.55_0.02_265)]">
-          Schedule one from an application, or add a standalone interview.
-        </p>
-      </div>
+      <EmptyState
+        icon={Search}
+        title="No interviews found"
+        body="Try adjusting your filters."
+        cta={
+          onClearFilters && (
+            <DashButton variant="outline" onClick={onClearFilters}>
+              Clear filters
+            </DashButton>
+          )
+        }
+      />
     );
   }
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-black/5 bg-white">
+    <div className="overflow-x-auto rounded-2xl border border-black/5 bg-white">
       <table className="w-full text-sm">
         <thead className="border-b border-black/5 text-left text-[10px] font-semibold uppercase tracking-widest text-[oklch(0.55_0.02_265)]">
           <tr>
@@ -53,7 +72,18 @@ export function InterviewTableView({ interviews, onOpen, onEdit, onDelete }: Pro
               <tr
                 key={interview.id}
                 onClick={() => onOpen(interview)}
-                className="group cursor-pointer transition-colors hover:bg-[oklch(0.99_0.005_265)]"
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  // Same keyboard-access gap as the card grid view of this
+                  // same list — the row-open action was mouse-only.
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    onOpen(interview);
+                  }
+                }}
+                aria-label={`View interview details for ${interview.company_name}, ${interview.role}`}
+                className="group cursor-pointer transition-colors hover:bg-[oklch(0.99_0.005_265)] focus-visible:outline-none focus-visible:bg-[oklch(0.98_0.005_265)] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#2563EB]/40"
               >
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-2.5">

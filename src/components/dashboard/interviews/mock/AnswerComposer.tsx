@@ -188,7 +188,11 @@ export function AnswerComposer({
           />
 
           {(voice.listening || voice.micError || overLimit) && (
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-2.5 pb-1.5 text-xs">
+            <div
+              className="flex flex-wrap items-center gap-x-3 gap-y-1 px-2.5 pb-1.5 text-xs"
+              role="status"
+              aria-live="polite"
+            >
               {voice.listening && (
                 <span className="inline-flex items-center gap-1.5 text-[#7C9CFF]">
                   <span className="relative flex h-1.5 w-1.5">
@@ -234,7 +238,7 @@ export function AnswerComposer({
                 )}
               </button>
             ) : (
-              <span className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.03] px-2.5 py-1.5 text-xs text-white/40">
+              <span className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.03] px-2.5 py-1.5 text-xs text-white/50">
                 <MicOff className="h-3.5 w-3.5" /> Voice input isn't supported in this browser
               </span>
             )}

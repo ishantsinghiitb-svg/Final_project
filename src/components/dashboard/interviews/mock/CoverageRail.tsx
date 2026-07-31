@@ -10,6 +10,12 @@ import { cn } from "@/lib/utils";
 // evaluation stays completely hidden, and a progress percentage here would
 // read as a disguised score.
 
+const STATUS_LABEL: Record<string, string> = {
+  covered: "covered",
+  in_progress: "in progress",
+  not_started: "not started yet",
+};
+
 export function CoverageRail({
   competencyMap,
   coverage,
@@ -24,14 +30,17 @@ export function CoverageRail({
   const list = core.length > 0 ? core : competencyMap;
 
   return (
-    <div className="flex items-center gap-1">
+    <div className="flex items-center gap-1" role="list" aria-label="Interview topic coverage">
       {list.map((c) => {
         const status = coverage.find((e) => e.competencyId === c.id)?.status ?? "not_started";
         const isCurrent = c.id === currentCompetencyId;
+        const label = COMPETENCY_LABELS[c.id] ?? c.id;
         return (
           <span
             key={c.id}
-            title={COMPETENCY_LABELS[c.id] ?? c.id}
+            title={label}
+            role="listitem"
+            aria-label={`${label}: ${STATUS_LABEL[status] ?? status}`}
             className={cn(
               "h-1.5 flex-1 rounded-full transition-colors",
               status === "covered"

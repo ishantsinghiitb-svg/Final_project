@@ -68,7 +68,14 @@ export function MockInterviewStudio({
   if (studio.phase === "concluding") {
     return (
       <div className="flex min-h-screen flex-col bg-[oklch(0.1_0.02_265)]">
-        <ConcludingScreen hasError={Boolean(studio.reportFailure)} onRetry={studio.retryReport} />
+        <ConcludingScreen
+          hasError={
+            Boolean(studio.reportFailure) || studio.reportThrew || studio.reportAttemptsExhausted
+          }
+          attemptsExhausted={studio.reportAttemptsExhausted}
+          interviewId={interview.id}
+          onRetry={studio.retryReport}
+        />
       </div>
     );
   }
@@ -131,6 +138,16 @@ export function MockInterviewStudio({
                   retryLabel="Try again"
                   retrying={studio.isSubmitting}
                 />
+              </div>
+            )}
+
+            {/* A thrown exception, not a structured failure — no retry button:
+                see useMockInterviewStudio's submitThrew for why re-issuing
+                from here isn't safe, and the composer below is already the
+                correct way to try again. */}
+            {studio.submitThrew && (
+              <div className="mx-auto w-full max-w-4xl px-4 md:px-6">
+                <AIErrorNotice code={undefined} />
               </div>
             )}
 

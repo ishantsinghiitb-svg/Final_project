@@ -82,6 +82,12 @@ export function MockInterviewLauncher({ interview }: { interview: Interview }) {
 
   const startResult = startMockInterview.data;
   const startFailed = startResult && !startResult.ok ? startResult : null;
+  // `startFailed` only covers a structured `{ok:false}` envelope. A thrown
+  // exception (a genuine network failure, not an AI/credit result) previously
+  // just closed the dialog with no message at all — the candidate saw the
+  // form reappear with zero explanation for what happened. `isError` is
+  // React Query's own flag for exactly that case.
+  const startThrew = startMockInterview.isError && !startFailed;
 
   return (
     <div className="space-y-4">
@@ -128,6 +134,13 @@ export function MockInterviewLauncher({ interview }: { interview: Interview }) {
 
       {startFailed && (
         <AIErrorNotice code={startFailed.code} creditsRefunded={startFailed.creditsRefunded} />
+      )}
+      {startThrew && (
+        <AIErrorNotice
+          code={undefined}
+          onRetry={handleConfirm}
+          retrying={startMockInterview.isPending}
+        />
       )}
 
       {sessions.length > 0 && (

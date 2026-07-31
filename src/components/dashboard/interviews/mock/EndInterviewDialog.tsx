@@ -1,4 +1,5 @@
 import { X } from "lucide-react";
+import { useDialogA11y } from "@/hooks/useDialogA11y";
 
 // ── EndInterviewDialog (Module 7C) ──
 //
@@ -18,10 +19,15 @@ export function EndInterviewDialog({
   onConfirm: () => void;
   onCancel: () => void;
 }) {
+  const dialogRef = useDialogA11y<HTMLDivElement>(open, () => {
+    if (!isPending) onCancel();
+  });
+
   if (!open) return null;
 
   return (
     <div
+      ref={dialogRef}
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
       role="dialog"
       aria-modal="true"

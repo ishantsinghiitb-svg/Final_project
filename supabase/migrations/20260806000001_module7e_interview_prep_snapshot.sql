@@ -1,0 +1,28 @@
+-- ── Module 7E: Interview Prep input snapshot ──
+--
+-- Purely additive. One nullable column, no renames, no drops.
+--
+-- Bug fixed: generateInterviewAnswer (per-question "Generate Answer") re-read
+-- LIVE resume/job data via interview.resume_id/job_id, instead of the exact
+-- resume/job content that produced the prep's questions. If the resume is
+-- re-parsed (or the linked job posting edited) after the prep is generated,
+-- an answer could be grounded in different material than the question it
+-- answers, with no drift detection anywhere.
+--
+-- input_snapshot freezes exactly what runInterviewPrepGeneration fed the
+-- model — { resume: { structured, rawText }, job: JobSnapshot,
+-- manualCompanyDescription } — the same "freeze derived input once, reuse it
+-- for every later step" pattern mock_interview_sessions.plan already uses for
+-- Module 7C. resume_file_hash/job_hash (added in the original 7B migration)
+-- stay as fingerprints only; this is the actual content they fingerprint.
+--
+-- Does NOT duplicate "which resume/job" — that stays solely on `interviews`
+-- per the original 7B migration's own stated design (see its header comment).
+-- This freezes CONTENT at a point in time, not identity, exactly as `plan`
+-- does for 7C.
+--
+-- Nullable and read with a fallback to a live load for any prep row generated
+-- before this migration shipped — those rows never captured a snapshot, so
+-- there is nothing to freeze retroactively; this does not reintroduce drift
+-- for rows generated AFTER this ships.
+ALTER TABLE interview_preps ADD COLUMN IF NOT EXISTS input_snapshot jsonb;

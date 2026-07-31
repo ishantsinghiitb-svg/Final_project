@@ -3,6 +3,7 @@ import { Sparkles, X } from "lucide-react";
 import { AIThinkingPanel } from "@/components/dashboard/ai/AIThinking";
 import { AI_CAPABILITIES } from "@/features/ai/constants";
 import { MOCK_INTERVIEW_CREDIT_COST } from "@/features/mock-interview/constants";
+import { useDialogA11y } from "@/hooks/useDialogA11y";
 
 // ── StartMockInterviewDialog (Module 7C) ──
 //
@@ -28,12 +29,19 @@ export function StartMockInterviewDialog({
   onConfirm,
   onCancel,
 }: Props) {
+  // Mirrors the backdrop-click/X-button guard below — Escape shouldn't close
+  // the dialog out from under an in-flight charge.
+  const dialogRef = useDialogA11y<HTMLDivElement>(open, () => {
+    if (!isPending) onCancel();
+  });
+
   if (!open) return null;
 
   const locked = creditsRemaining < MOCK_INTERVIEW_CREDIT_COST;
 
   return (
     <div
+      ref={dialogRef}
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
       role="dialog"
       aria-modal="true"
