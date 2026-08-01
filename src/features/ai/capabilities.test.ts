@@ -30,13 +30,18 @@ describe("cache policy", () => {
     }
   });
 
-  it("keeps caching enabled for every capability except mock_interview", () => {
-    // mock_interview (Module 7C) is the one deliberate exception: caching a
+  it("keeps caching enabled for every capability except mock_interview and recommendations", () => {
+    // mock_interview (Module 7C) is one deliberate exception: caching a
     // conversational turn would replay an identical question back to the
     // candidate, and a hash over an ever-growing transcript would essentially
-    // never hit anyway. See the NO_CACHE comment in capabilities.ts.
+    // never hit anyway. recommendations (Module 8B) is the other: per its
+    // explicit "always reflect current data" requirement, a cached AI
+    // response could describe data that has since changed — see the
+    // RecommendationsService.ts header comment. See the NO_CACHE comment in
+    // capabilities.ts.
+    const NO_CACHE_CAPABILITIES = new Set(["mock_interview", "recommendations"]);
     for (const id of ALL_CAPABILITIES) {
-      const expected = id !== "mock_interview";
+      const expected = !NO_CACHE_CAPABILITIES.has(id);
       expect(getCapability(id).cachePolicy.enabled).toBe(expected);
     }
   });

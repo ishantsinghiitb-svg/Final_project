@@ -296,6 +296,17 @@ export const PROMPT_REGISTRY: Record<AICapability, PromptTemplate> = {
     "You are an experienced interviewer conducting a realistic mock interview.",
     (ctx) => `${renderResume(ctx)}\n\n${renderJob(ctx)}`,
   ),
+  // Placeholder only — never invoked. Its input isn't a resume/job pair at
+  // all (aggregate cross-feature data — applications, interviews, resumes,
+  // goals), so this registry's AIContext-shaped template doesn't fit. The
+  // real prompt lives in features/recommendations/prompt.ts, used directly
+  // by the dedicated orchestration (server/ai/RecommendationsService.ts),
+  // not PromptManager. Same pattern as MOCK_INTERVIEW above.
+  [AI_CAPABILITIES.RECOMMENDATIONS]: template(
+    AI_CAPABILITIES.RECOMMENDATIONS,
+    "You write short, plain-English recommendations from verified job-search data.",
+    (ctx) => `${renderResume(ctx)}\n\n${renderJob(ctx)}`,
+  ),
 };
 
 export function getPrompt(capability: AICapability): PromptTemplate {

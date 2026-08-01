@@ -135,44 +135,62 @@ describe("computeOverview", () => {
 });
 
 // ── computeFunnel ─────────────────────────────────────────────────────────
+// Current-status pipeline snapshot (matches the Applications Kanban), not a
+// historical "ever reached" funnel.
 
 describe("computeFunnel", () => {
-  const baseOverview = {
-    applications: 10,
-    hasAssessmentStage: false,
-    assessments: 0,
-    assessmentRate: 0,
-    applicationsWithInterview: 4,
-    interviewRate: 0.4,
-    interviewOpportunities: 5,
-    interviewOpportunitiesUpcoming: 1,
-    interviewOpportunitiesCompleted: 4,
-    offers: 0,
-    offerRate: 0,
-    accepted: 0,
-    progressed: 4,
-    progressedRate: 0.4,
-  };
-
-  it("omits the Assessments stage when the user's pipeline never used it, and stops at Offers", () => {
-    const funnel = computeFunnel(baseOverview);
-    expect(funnel.map((s) => s.key)).toEqual(["applications", "interviews", "offers"]);
-  });
-
-  it("includes Assessments, in order, when it was reached", () => {
-    const funnel = computeFunnel({ ...baseOverview, hasAssessmentStage: true, assessments: 6 });
+  it("always shows all 4 stages, even at zero, matching the Kanban's own columns", () => {
+    const funnel = computeFunnel([{ id: "a1", status: "applied" }]);
     expect(funnel.map((s) => s.key)).toEqual([
       "applications",
       "assessments",
       "interviews",
       "offers",
     ]);
+    expect(funnel.find((s) => s.key === "assessments")!.count).toBe(0);
+  });
+
+  it("counts each stage by CURRENT status only, not by history", () => {
+    const funnel = computeFunnel([
+      { id: "a1", status: "applied" },
+      { id: "a2", status: "online_assessment" },
+      { id: "a3", status: "interview" },
+      { id: "a4", status: "interview" },
+      { id: "a5", status: "offer" },
+    ]);
+    expect(funnel.find((s) => s.key === "applications")!.count).toBe(5);
+    expect(funnel.find((s) => s.key === "assessments")!.count).toBe(1);
+    expect(funnel.find((s) => s.key === "interviews")!.count).toBe(2);
+    expect(funnel.find((s) => s.key === "offers")!.count).toBe(1);
+  });
+
+  it("moves an application's count between stages the instant its status changes — no double counting", () => {
+    const before = computeFunnel([{ id: "a1", status: "online_assessment" }]);
+    expect(before.find((s) => s.key === "assessments")!.count).toBe(1);
+    expect(before.find((s) => s.key === "interviews")!.count).toBe(0);
+
+    const after = computeFunnel([{ id: "a1", status: "interview" }]);
+    expect(after.find((s) => s.key === "assessments")!.count).toBe(0);
+    expect(after.find((s) => s.key === "interviews")!.count).toBe(1);
+  });
+
+  it("excludes accepted applications from every stage, including Offers", () => {
+    const funnel = computeFunnel([
+      { id: "a1", status: "offer" },
+      { id: "a2", status: "accepted" },
+    ]);
+    expect(funnel.find((s) => s.key === "offers")!.count).toBe(1);
   });
 
   it("returns null pctOfPrevious when the previous stage's count is 0, never NaN/Infinity", () => {
-    const funnel = computeFunnel({ ...baseOverview, applicationsWithInterview: 0 });
+    const funnel = computeFunnel([{ id: "a1", status: "offer" }]);
     const offers = funnel.find((s) => s.key === "offers")!;
     expect(offers.pctOfPrevious).toBeNull();
+  });
+
+  it("returns an all-zero funnel for no applications", () => {
+    const funnel = computeFunnel([]);
+    expect(funnel.every((s) => s.count === 0 && s.pctOfFirst === 0)).toBe(true);
   });
 });
 

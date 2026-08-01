@@ -5,7 +5,6 @@ import {
   Award,
   Briefcase,
   CalendarClock,
-  CheckCircle2,
   ClipboardCheck,
   FileText,
   type LucideIcon,
@@ -18,6 +17,7 @@ import {
   EmptyState,
 } from "@/components/dashboard/primitives";
 import { DashButton, DashButtonLink } from "@/components/dashboard/DashButton";
+import { AIRecommendationsCard } from "@/components/dashboard/analytics/AIRecommendationsCard";
 import { cn } from "@/lib/utils";
 import { useAnalytics, useAnalyticsGoals, type GoalUpdates } from "@/features/analytics/hooks";
 import {
@@ -25,17 +25,9 @@ import {
   RANGE_PRESET_OPTIONS,
   RESUME_MIN_SAMPLE,
 } from "@/features/analytics/constants";
-import {
-  buildFocusAreas,
-  buildGoalProgress,
-  computeGoalFocusArea,
-  formatPercent,
-  fractionSentence,
-  type GoalTargets,
-} from "@/features/analytics/utils";
+import { buildGoalProgress, formatPercent, type GoalTargets } from "@/features/analytics/utils";
 import type {
   AnalyticsData,
-  AnalyticsOverview,
   AnalyticsRangePreset,
   FunnelStage,
   FunnelStageKey,
@@ -44,8 +36,6 @@ import type {
   ResumePerformance,
   SearchHealth,
   SearchHealthTone,
-  StuckInsight,
-  StuckInsightTone,
 } from "@/features/analytics/types";
 
 export const Route = createFileRoute("/dashboard/analytics")({
@@ -152,14 +142,11 @@ function AnalyticsContent({
     overview,
     health,
     funnel,
-    stuckInsights,
     resumePerformance,
     unlinkedApplicationCount,
     totalResumeCount,
   } = data;
   const goals = buildGoalProgress(overview, targets);
-  const goalInsight = computeGoalFocusArea(goals);
-  const focusAreas = buildFocusAreas(goalInsight ? [...stuckInsights, goalInsight] : stuckInsights);
 
   const kpiTiles: { label: string; value: number }[] = [
     { label: "Applications", value: overview.applications },
@@ -194,7 +181,7 @@ function AnalyticsContent({
         })}
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-[1fr_1.4fr]">
+      <div className="grid gap-4 lg:grid-cols-2">
         <DashCard>
           <SectionTitle>Application funnel</SectionTitle>
           <div className="mt-4 space-y-3">
@@ -204,18 +191,16 @@ function AnalyticsContent({
           </div>
         </DashCard>
 
-        <FocusAreasCard items={focusAreas} />
+        <AIRecommendationsCard />
       </div>
 
-      <ResumePerformanceCard
-        performance={resumePerformance}
-        unlinkedCount={unlinkedApplicationCount}
-        totalResumeCount={totalResumeCount}
-      />
-
       <div className="grid gap-4 lg:grid-cols-2">
+        <ResumePerformanceCard
+          performance={resumePerformance}
+          unlinkedCount={unlinkedApplicationCount}
+          totalResumeCount={totalResumeCount}
+        />
         <GoalsCard goals={goals} onSave={setGoals} />
-        <ActionSummaryCard overview={overview} />
       </div>
     </>
   );
@@ -243,33 +228,40 @@ const HEALTH_OPPORTUNITY_TONE: Record<SearchHealthTone, string> = {
 
 function HealthCard({ health }: { health: SearchHealth }) {
   return (
-    <DashCard className={HEALTH_CARD_TONE[health.tone]}>
-      <div className="flex items-center gap-2.5">
-        <span className={cn("h-2.5 w-2.5 shrink-0 rounded-full", HEALTH_DOT_TONE[health.tone])} />
-        <p className="font-display text-xl font-bold tracking-tight">{health.label}</p>
-      </div>
-      <p className="mt-1 text-sm text-[oklch(0.45_0.02_265)]">{health.summary}</p>
+    <DashCard className={cn("p-4", HEALTH_CARD_TONE[health.tone])}>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <span className={cn("h-2 w-2 shrink-0 rounded-full", HEALTH_DOT_TONE[health.tone])} />
+            <p className="font-display text-lg font-bold tracking-tight">{health.label}</p>
+          </div>
+          <p className="mt-0.5 text-xs text-[oklch(0.45_0.02_265)]">{health.summary}</p>
 
-      <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1">
-        {health.stats.map((s) => (
-          <span key={s.label} className="text-sm">
-            <span className="font-display text-base font-bold text-[oklch(0.2_0.02_265)]">
-              {s.value}
-            </span>{" "}
-            <span className="text-[oklch(0.5_0.02_265)]">{s.label}</span>
-          </span>
-        ))}
-      </div>
+          <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1">
+            {health.stats.map((s) => (
+              <span key={s.label} className="text-xs">
+                <span className="font-display text-sm font-bold text-[oklch(0.2_0.02_265)]">
+                  {s.value}
+                </span>{" "}
+                <span className="text-[oklch(0.5_0.02_265)]">{s.label}</span>
+              </span>
+            ))}
+          </div>
+        </div>
 
-      <div
-        className={cn("mt-3 rounded-xl border px-3.5 py-2.5", HEALTH_OPPORTUNITY_TONE[health.tone])}
-      >
-        <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[oklch(0.5_0.02_265)]">
-          Your biggest opportunity
-        </p>
-        <p className="mt-0.5 text-sm font-medium text-[oklch(0.25_0.02_265)]">
-          {health.opportunity}
-        </p>
+        <div
+          className={cn(
+            "shrink-0 rounded-xl border px-3.5 py-2.5 sm:max-w-70",
+            HEALTH_OPPORTUNITY_TONE[health.tone],
+          )}
+        >
+          <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[oklch(0.5_0.02_265)]">
+            Your biggest opportunity
+          </p>
+          <p className="mt-0.5 text-sm font-medium text-[oklch(0.25_0.02_265)]">
+            {health.opportunity}
+          </p>
+        </div>
       </div>
     </DashCard>
   );
@@ -308,46 +300,10 @@ function FunnelBar({ stage }: { stage: FunnelStage }) {
   );
 }
 
-// ── Focus areas ───────────────────────────────────────────────────────────
-// Deterministic action cards answering "what should I do next?" — every rule
-// is a plain fact from real application/interview/goal data (see
-// computeStuckInsights/computeGoalFocusArea/buildFocusAreas). Never fewer
-// than a handful of cards: fixed, generic guidance fills any remaining slots
-// so the panel never looks sparse.
-
-const FOCUS_TONE: Record<StuckInsightTone, { bg: string; text: string }> = {
-  warning: { bg: "bg-[#F59E0B]/15", text: "text-[#D97706]" },
-  neutral: { bg: "bg-[#2563EB]/10", text: "text-[#2563EB]" },
-  good: { bg: "bg-[#16A34A]/15", text: "text-[#16A34A]" },
-};
-
-function FocusAreasCard({ items }: { items: StuckInsight[] }) {
-  return (
-    <DashCard>
-      <SectionTitle>Focus Areas</SectionTitle>
-      <div className="mt-4 grid gap-2.5 sm:grid-cols-2">
-        {items.map((item) => (
-          <div
-            key={item.id}
-            className="flex items-start gap-2.5 rounded-xl border border-black/5 bg-[oklch(0.98_0.005_265)] p-3"
-          >
-            <span
-              className={cn(
-                "mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full",
-                FOCUS_TONE[item.tone].bg,
-              )}
-            >
-              <CheckCircle2 className={cn("h-3 w-3", FOCUS_TONE[item.tone].text)} />
-            </span>
-            <p className="text-sm text-[oklch(0.3_0.02_265)]">{item.text}</p>
-          </div>
-        ))}
-      </div>
-    </DashCard>
-  );
-}
-
 // ── Resume performance ───────────────────────────────────────────────────
+// AI Recommendations (see components/dashboard/analytics/AIRecommendationsCard)
+// is now the one place telling the user what to do next — Focus Areas was
+// removed so there's a single source of truth, not two overlapping ones.
 
 function ResumePerformanceCard({
   performance,
@@ -400,10 +356,7 @@ function ResumePerformanceCard({
     <DashCard>
       <SectionTitle>Resume performance</SectionTitle>
       <div
-        className={cn(
-          "mt-4 grid gap-3",
-          solo ? "mx-auto max-w-sm grid-cols-1" : "sm:grid-cols-2 xl:grid-cols-3",
-        )}
+        className={cn("mt-4 grid gap-3", solo ? "mx-auto max-w-sm grid-cols-1" : "sm:grid-cols-2")}
       >
         {performance.map((r) => (
           <ResumeRow key={r.resumeId} resume={r} solo={solo} />
@@ -425,57 +378,40 @@ function ResumeRow({ resume, solo }: { resume: ResumePerformance; solo: boolean 
   return (
     <div
       className={cn(
-        "rounded-xl border border-black/5 bg-[oklch(0.98_0.005_265)]",
-        solo ? "p-5" : "p-3",
+        "rounded-xl border border-black/5 bg-[oklch(0.98_0.005_265)] p-3",
+        solo && "p-4",
       )}
     >
       <p className={cn("truncate font-medium", solo ? "text-base" : "text-sm")}>
         {resume.resumeName}
       </p>
-      <p className="mt-0.5 text-[11px] text-[oklch(0.55_0.02_265)]">
-        Used in {resume.applications} application{resume.applications === 1 ? "" : "s"}
-      </p>
 
       {resume.isSignificant ? (
         <>
-          <div className={cn("mt-3 grid grid-cols-2 gap-3", solo && "max-w-xs")}>
+          <p className="mt-0.5 text-[11px] text-[oklch(0.55_0.02_265)]">
+            {resume.applications} applications
+          </p>
+          <div className={cn("mt-2.5 grid grid-cols-2 gap-3", solo && "max-w-xs")}>
             <div>
-              <p className="text-xs text-[oklch(0.5_0.02_265)]">Interview rate</p>
-              <p className="mt-0.5 font-display text-lg font-semibold">
+              <p className="text-[11px] text-[oklch(0.5_0.02_265)]">Interview rate</p>
+              <p className="mt-0.5 font-display text-base font-semibold">
                 {formatPercent(resume.interviewRate)}
               </p>
             </div>
             <div>
-              <p className="text-xs text-[oklch(0.5_0.02_265)]">Offer rate</p>
-              <p className="mt-0.5 font-display text-lg font-semibold">
+              <p className="text-[11px] text-[oklch(0.5_0.02_265)]">Offer rate</p>
+              <p className="mt-0.5 font-display text-base font-semibold">
                 {formatPercent(resume.offerRate)}
               </p>
             </div>
           </div>
-          <p className="mt-2.5 text-[11px] text-[oklch(0.55_0.02_265)]">
-            Based on {resume.applications} applications — enough data to trust these rates.
-          </p>
         </>
       ) : (
-        <div className="mt-3">
-          <div className="flex items-baseline justify-between text-[11px]">
-            <span className="text-[oklch(0.5_0.02_265)]">Progress to compare performance</span>
-            <span className="text-[oklch(0.5_0.02_265)]">
-              {resume.applications} of {RESUME_MIN_SAMPLE}
-            </span>
-          </div>
-          <div className="mt-1 h-1.5 rounded-full bg-black/5">
-            <div
-              className="h-full rounded-full bg-gradient-to-r from-[#2563EB] to-[#7C3AED]"
-              style={{
-                width: `${Math.min(100, (resume.applications / RESUME_MIN_SAMPLE) * 100)}%`,
-              }}
-            />
-          </div>
-          <p className="mt-1.5 text-[11px] text-[oklch(0.55_0.02_265)]">
-            {remaining} more application{remaining === 1 ? "" : "s"} needed to unlock comparison.
-          </p>
-        </div>
+        <p className="mt-1 text-[11px] text-[oklch(0.55_0.02_265)]">
+          Used in {resume.applications} application{resume.applications === 1 ? "" : "s"}
+          <br />
+          Need {remaining} more application{remaining === 1 ? "" : "s"} before comparison.
+        </p>
       )}
     </div>
   );
@@ -582,48 +518,6 @@ function GoalsCard({
           ))}
         </div>
       )}
-    </DashCard>
-  );
-}
-
-// ── What this means ───────────────────────────────────────────────────────
-// Plain-English fractions, no percentages, no tone judgment (that's the
-// Health card's one job) — just the fact, stated in numbers a first-time
-// visitor can read at a glance.
-
-function ActionSummaryCard({ overview }: { overview: AnalyticsOverview }) {
-  const rows: string[] = [];
-  if (overview.hasAssessmentStage) {
-    rows.push(
-      fractionSentence(
-        overview.assessments,
-        overview.applications,
-        "applications reached an assessment.",
-      ),
-    );
-  }
-  rows.push(
-    fractionSentence(
-      overview.applicationsWithInterview,
-      overview.applications,
-      "applications resulted in an interview opportunity.",
-    ),
-  );
-  rows.push(
-    fractionSentence(overview.offers, overview.applications, "applications resulted in an offer."),
-  );
-
-  return (
-    <DashCard>
-      <SectionTitle>What this means</SectionTitle>
-      <ul className="mt-3 space-y-2.5 text-sm">
-        {rows.map((text) => (
-          <li key={text} className="flex items-start gap-2">
-            <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[oklch(0.6_0.02_265)]" />
-            <span>{text}</span>
-          </li>
-        ))}
-      </ul>
     </DashCard>
   );
 }

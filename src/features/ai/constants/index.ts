@@ -12,6 +12,7 @@ export const AI_CAPABILITIES = {
   COVER_LETTER: "cover_letter",
   INTERVIEW_PREP: "interview_prep",
   MOCK_INTERVIEW: "mock_interview",
+  RECOMMENDATIONS: "recommendations",
 } as const;
 
 export type AICapability = (typeof AI_CAPABILITIES)[keyof typeof AI_CAPABILITIES];
@@ -42,6 +43,7 @@ export const SHIPPED_AI_CAPABILITIES = [
   AI_CAPABILITIES.COVER_LETTER,
   AI_CAPABILITIES.INTERVIEW_PREP,
   AI_CAPABILITIES.MOCK_INTERVIEW,
+  AI_CAPABILITIES.RECOMMENDATIONS,
 ] as const;
 
 /** A capability a user can actually reach. Use this in any user-facing type. */
@@ -63,6 +65,7 @@ export const AI_CAPABILITY_LABELS: Record<AICapability, string> = {
   cover_letter: "Cover Letter",
   interview_prep: "Interview Preparation",
   mock_interview: "Mock Interview",
+  recommendations: "AI Recommendations",
 };
 
 /**
@@ -92,6 +95,14 @@ export const AI_CREDIT_COSTS: Record<AICapability, number> = {
   // see the vitest guard "never calls consume outside startMockInterview".
   // Only starting a brand-new mock interview charges again.
   mock_interview: 5,
+  // ── Module 8B ──
+  // Deliberately free. Recommendations are computed from data the user
+  // already generated (applications, interviews, resumes, other AI
+  // features' own history) and are auto-refreshed on every Analytics page
+  // load, never behind a "Generate" button — charging for that would be the
+  // one paid element on an otherwise free analytics page. See
+  // server/ai/RecommendationsService.ts.
+  recommendations: 0,
 };
 
 /**
@@ -156,6 +167,8 @@ export const AI_ANALYSIS_VERSIONS: Record<AICapability, string> = {
   // (8-10 role-typical questions the interview did not cover, de-duplicated
   // server-side against what was actually asked).
   mock_interview: "3",
+  // v1 (Module 8B): first AI Recommendations implementation.
+  recommendations: "1",
 };
 
 /** Prompt version — bump when the prompt template text changes. */
@@ -242,6 +255,10 @@ export const AI_PROMPT_VERSIONS: Record<AICapability, string> = {
   // questions / 10-18 exchanges, and the report's new
   // "Additional Questions You Should Prepare" section.
   mock_interview: "4",
+  // v1 (Module 8B): first AI Recommendations prompt — phrases pre-selected,
+  // pre-verified candidates using only the exact numbers/names given to it;
+  // see features/recommendations/prompt.ts.
+  recommendations: "1",
 };
 
 // ── Deterministic resume parser (independent of the AI engine) ──

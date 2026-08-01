@@ -38,7 +38,7 @@ export class AnalyticsService {
     const applicationsWithInterviewIds = new Set(interviews.map((i) => i.application_id));
 
     const overview = computeOverview(applications, history, interviews);
-    const funnel = computeFunnel(overview);
+    const funnel = computeFunnel(applications);
     const health = computeSearchHealth(overview);
     const { performance: resumePerformance, unlinkedCount } = computeResumePerformance(
       applications,

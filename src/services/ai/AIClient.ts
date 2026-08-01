@@ -7,6 +7,7 @@ import {
   analyzeAtsScore,
 } from "@/server-functions/ai";
 import { parseResume } from "@/server-functions/resume";
+import { getRecommendations } from "@/server-functions/recommendations";
 import type { AICreditStatus } from "@/features/ai/types";
 
 // ── AIClient (Module 6A · client facade) ──
@@ -55,5 +56,10 @@ export const aiClient = {
     return analyzeAtsScore({
       data: { accessToken: await accessToken(), resumeId, jobId, forceRefresh },
     });
+  },
+
+  /** AI Recommendations for the Analytics page — free, always computed fresh, no confirmation needed. */
+  async getRecommendations() {
+    return getRecommendations({ data: { accessToken: await accessToken() } });
   },
 };

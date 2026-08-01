@@ -17,6 +17,7 @@ import {
   InterviewPrepResultSchema,
   MockInterviewResultSchema,
 } from "@/features/ai/schemas";
+import { RecommendationsDraftSchema } from "@/features/recommendations/schema";
 
 // ── Capability Registry ──
 //
@@ -148,6 +149,18 @@ export const CAPABILITY_REGISTRY: Record<AICapability, CapabilityDefinition> = {
     AI_CAPABILITIES.MOCK_INTERVIEW,
     "reasoning",
     MockInterviewResultSchema,
+    NO_CACHE,
+  ),
+  // "fast" tier — this capability only phrases pre-decided facts, not deep
+  // reasoning (matches ATS Score's tier choice for a similarly bounded
+  // task). NO_CACHE: per Module 8B's explicit "always fresh" requirement,
+  // RecommendationsService never reads or writes ai_cache at all — this
+  // cachePolicy value is present only for CapabilityDefinition shape
+  // consistency and is not consulted by the recommendations orchestration.
+  [AI_CAPABILITIES.RECOMMENDATIONS]: define(
+    AI_CAPABILITIES.RECOMMENDATIONS,
+    "fast",
+    RecommendationsDraftSchema,
     NO_CACHE,
   ),
 };

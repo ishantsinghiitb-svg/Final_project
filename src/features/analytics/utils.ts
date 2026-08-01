@@ -167,34 +167,35 @@ export function computeOverview(
   };
 }
 
-/**
- * Applications → [Assessments] → Interviews → Offers. Assessments only
- * appears when this user's pipeline actually reached it in range — an
- * always-empty stage is worse than no stage at all. Stops at Offers —
- * Accepted isn't useful for this dashboard's funnel view.
- */
-export function computeFunnel(overview: AnalyticsOverview): FunnelStage[] {
-  const order: FunnelStageKey[] = overview.hasAssessmentStage
-    ? ["applications", "assessments", "interviews", "offers"]
-    : ["applications", "interviews", "offers"];
+const FUNNEL_ORDER: FunnelStageKey[] = ["applications", "assessments", "interviews", "offers"];
 
+/**
+ * Applications → Assessments → Interviews → Offers, using each
+ * application's CURRENT status only — the exact same snapshot the
+ * Applications Kanban shows, never a historical "ever reached" count. This
+ * is a live pipeline view, not a classic cumulative conversion funnel: if an
+ * application moves from Assessment to Interview, Assessment drops by one
+ * and Interview rises by one, with no double counting. All 4 stages always
+ * show (matching the Kanban's own columns, always visible regardless of
+ * count) — a stage reading 0 is a real, current fact, not noise to hide.
+ * "Accepted" is a terminal status past this funnel's 4 active stages and is
+ * deliberately excluded, not merged into Offers.
+ */
+export function computeFunnel(applications: OverviewApplication[]): FunnelStage[] {
   const countOf = (key: FunnelStageKey): number => {
-    switch (key) {
-      case "applications":
-        return overview.applications;
-      case "assessments":
-        return overview.assessments;
-      case "interviews":
-        return overview.applicationsWithInterview;
-      case "offers":
-        return overview.offers;
-    }
+    if (key === "applications") return applications.length;
+    const statusByKey: Record<Exclude<FunnelStageKey, "applications">, string> = {
+      assessments: "online_assessment",
+      interviews: "interview",
+      offers: "offer",
+    };
+    return applications.filter((a) => a.status === statusByKey[key]).length;
   };
 
-  const first = overview.applications;
-  return order.map((key, i) => {
+  const first = applications.length;
+  return FUNNEL_ORDER.map((key, i) => {
     const count = countOf(key);
-    const prevCount = i === 0 ? null : countOf(order[i - 1]);
+    const prevCount = i === 0 ? null : countOf(FUNNEL_ORDER[i - 1]);
     return {
       key,
       label: FUNNEL_STAGE_LABELS[key],
@@ -282,6 +283,27 @@ export function computeSearchHealth(overview: AnalyticsOverview): SearchHealth {
 // genuine rules fire, buildFocusAreas pads with fixed, generic guidance
 // (below) so the panel never looks sparse or half-empty.
 
+/**
+ * Applications sitting in "Applied" with no movement in over
+ * STUCK_APPLIED_DAYS. Its own export (not inlined in computeStuckInsights)
+ * so Module 8B's "stale applications" recommendation detector reads the
+ * exact same count as the Focus Areas card, never a second definition of
+ * "stale" that could drift out of sync.
+ */
+export function countStaleApplications(
+  applications: OverviewApplication[],
+  lastActivityAt: Map<string, string>,
+  now: Date = new Date(),
+): number {
+  const staleMs = STUCK_APPLIED_DAYS * 24 * 60 * 60 * 1000;
+  const nowMs = now.getTime();
+  return applications.filter((app) => {
+    if (app.status !== "applied") return false;
+    const lastActivity = lastActivityAt.get(app.id);
+    return Boolean(lastActivity) && nowMs - new Date(lastActivity!).getTime() > staleMs;
+  }).length;
+}
+
 export function computeStuckInsights(
   applications: OverviewApplication[],
   lastActivityAt: Map<string, string>,
@@ -290,15 +312,9 @@ export function computeStuckInsights(
   now: Date = new Date(),
 ): StuckInsight[] {
   const insights: StuckInsight[] = [];
-  const nowMs = now.getTime();
 
   // 1. Stale in Applied — no movement in over STUCK_APPLIED_DAYS.
-  const staleMs = STUCK_APPLIED_DAYS * 24 * 60 * 60 * 1000;
-  const staleCount = applications.filter((app) => {
-    if (app.status !== "applied") return false;
-    const lastActivity = lastActivityAt.get(app.id);
-    return Boolean(lastActivity) && nowMs - new Date(lastActivity!).getTime() > staleMs;
-  }).length;
+  const staleCount = countStaleApplications(applications, lastActivityAt, now);
   if (staleCount > 0) {
     insights.push({
       id: "stale-applied",
@@ -463,7 +479,7 @@ export function emptyAnalyticsData(
     range,
     overview,
     health: computeSearchHealth(overview),
-    funnel: computeFunnel(overview),
+    funnel: computeFunnel([]),
     stuckInsights: [],
     resumePerformance: [],
     unlinkedApplicationCount: 0,

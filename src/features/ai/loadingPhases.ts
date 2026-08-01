@@ -83,6 +83,13 @@ const PHASES: Record<ShippedAICapability, AILoadingPhase[]> = {
     { label: "Mapping what this round needs to cover…", holdMs: 4000 },
     { label: "Preparing your opening question…", holdMs: 8000 },
   ],
+  // Short — this is a compact, passive corner of the Analytics page (shown
+  // via AIThinkingInline, not the full panel), and the underlying call is a
+  // bounded "fast" tier phrasing pass, not deep reasoning.
+  [AI_CAPABILITIES.RECOMMENDATIONS]: [
+    { label: "Reviewing your recent activity…", holdMs: 2200 },
+    { label: "Checking what's actually working…", holdMs: 4000 },
+  ],
 };
 
 /** Phase script for a shipped capability. Never empty. */
