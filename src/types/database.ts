@@ -37,6 +37,10 @@ export type ProfileRow = {
   location: string | null;
   target_role: string | null;
   avatar_url: string | null;
+  /** Module 8A goal targets — null means "use the recommended default". */
+  goal_applications: number | null;
+  goal_interviews: number | null;
+  goal_offers: number | null;
   created_at: string;
   updated_at: string;
 };
@@ -539,6 +543,9 @@ export type ProfileInsert = {
   location?: string | null;
   target_role?: string | null;
   avatar_url?: string | null;
+  goal_applications?: number | null;
+  goal_interviews?: number | null;
+  goal_offers?: number | null;
   created_at?: string;
   updated_at?: string;
 };

@@ -3,7 +3,8 @@ import type { Profile, ProfileUpdate } from "@/types";
 import type { ProfileInsert } from "@/types/database";
 
 const TABLE = "profiles";
-const COLUMNS = "id, full_name, email, location, target_role, avatar_url, created_at, updated_at";
+const COLUMNS =
+  "id, full_name, email, location, target_role, avatar_url, goal_applications, goal_interviews, goal_offers, created_at, updated_at";
 
 export class ProfileRepository {
   async findById(id: string): Promise<Profile | null> {

@@ -19,12 +19,25 @@ export type Profile = {
   location: string | null;
   target_role: string | null;
   avatar_url: string | null;
+  /** Module 8A goal targets — null means "use the recommended default". */
+  goal_applications: number | null;
+  goal_interviews: number | null;
+  goal_offers: number | null;
   created_at: string;
   updated_at: string;
 };
 
 export type ProfileUpdate = Partial<
-  Pick<Profile, "full_name" | "location" | "target_role" | "avatar_url">
+  Pick<
+    Profile,
+    | "full_name"
+    | "location"
+    | "target_role"
+    | "avatar_url"
+    | "goal_applications"
+    | "goal_interviews"
+    | "goal_offers"
+  >
 >;
 
 export type Preference = {
@@ -451,25 +464,6 @@ export type Notification = {
   title: string;
   body: string;
   read: boolean;
-  created_at: string;
-};
-
-// ── Analytics ──
-export type Analytics = {
-  active_applications: number;
-  interviews: number;
-  match_avg: number;
-  offers: number;
-  weekly_goal: number;
-  weekly_done: number;
-};
-
-export type Activity = {
-  id: string;
-  user_id: string;
-  kind: "match" | "interview" | "offer" | "saved" | "resume" | "reject";
-  text: string;
-  when: string;
   created_at: string;
 };
 
