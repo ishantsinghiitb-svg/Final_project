@@ -323,9 +323,9 @@ describe("buildRecommendationCandidates", () => {
     expect(typesOf(ctx)).not.toContain("resume_linking");
   });
 
-  // ── Registry: priority ordering + cap at 3 ──
+  // ── Registry: priority ordering, no cap ──
 
-  it("caps at 3 and shows the highest-priority candidates first when more than 3 qualify", () => {
+  it("returns every qualifying candidate, sorted by priority, with no cap", () => {
     const everything: RecommendationContext = {
       resumePerformance: [
         {
@@ -384,11 +384,15 @@ describe("buildRecommendationCandidates", () => {
     };
 
     const candidates = buildRecommendationCandidates(everything);
-    expect(candidates).toHaveLength(3);
+    expect(candidates).toHaveLength(7);
     expect(candidates.map((c) => c.type)).toEqual([
       "resume_performance",
       "stale_applications",
       "interview_prep",
+      "mock_interview",
+      "goal_progress",
+      "ats_improvement",
+      "resume_linking",
     ]);
   });
 });

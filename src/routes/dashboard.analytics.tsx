@@ -2,11 +2,14 @@ import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { toast } from "sonner";
 import {
+  Activity,
+  AlertTriangle,
   Award,
   Briefcase,
   CalendarClock,
   ClipboardCheck,
   FileText,
+  TrendingUp,
   type LucideIcon,
 } from "lucide-react";
 import {
@@ -114,18 +117,35 @@ function AnalyticsSkeleton() {
 
 // ── Main content ──────────────────────────────────────────────────────────
 
-const KPI_GRID_COLS: Record<number, string> = {
-  3: "md:grid-cols-3",
-  4: "md:grid-cols-4",
-  5: "md:grid-cols-5",
-};
-
 const KPI_TONE: Record<string, { icon: LucideIcon; iconBg: string; iconColor: string }> = {
   Applications: { icon: Briefcase, iconBg: "bg-[#2563EB]/10", iconColor: "text-[#2563EB]" },
   Assessments: { icon: ClipboardCheck, iconBg: "bg-[#7C3AED]/10", iconColor: "text-[#7C3AED]" },
-  Interviews: { icon: CalendarClock, iconBg: "bg-[#F59E0B]/15", iconColor: "text-[#D97706]" },
+  "Interview Sessions": {
+    icon: CalendarClock,
+    iconBg: "bg-[#F59E0B]/15",
+    iconColor: "text-[#D97706]",
+  },
   Offers: { icon: Award, iconBg: "bg-[#22C55E]/15", iconColor: "text-[#16A34A]" },
 };
+
+/**
+ * The current-status pipeline counts, keyed for easy reuse — sourced
+ * entirely from `funnel` (already current-status-only, see
+ * features/analytics/utils.ts#computeFunnel), never recomputed. KPI tiles
+ * and the Health card's metric chips both read from this SAME object, so
+ * "Assessments" (or any stage) can never show a different number in two
+ * places on this page — there is only one number per stage, period. An
+ * application currently at Offer is counted in Offers only, never also in
+ * Assessments or Interviews (see computeFunnel's own tests for the pure-
+ * function guarantee this relies on).
+ */
+type PipelineCounts = Record<FunnelStageKey, number>;
+
+function pipelineCountsFromFunnel(funnel: FunnelStage[]): PipelineCounts {
+  const counts = { applications: 0, assessments: 0, interviews: 0, offers: 0 };
+  for (const stage of funnel) counts[stage.key] = stage.count;
+  return counts;
+}
 
 function AnalyticsContent({
   data,
@@ -147,19 +167,27 @@ function AnalyticsContent({
     totalResumeCount,
   } = data;
   const goals = buildGoalProgress(overview, targets);
+  const pipeline = pipelineCountsFromFunnel(funnel);
 
+  // "Interview Sessions" is deliberately NOT pipeline.interviews — it's the
+  // real Interviews module (Module 7A's `interviews` table, every round
+  // counted), a genuinely different metric from "applications currently at
+  // the Interview stage." Labeled differently on purpose (not just
+  // "Interviews," which the Current Pipeline card and Health chips already
+  // use for the pipeline-stage count) so two different numbers never sit
+  // under the exact same word anywhere on this page.
   const kpiTiles: { label: string; value: number }[] = [
-    { label: "Applications", value: overview.applications },
-    ...(overview.hasAssessmentStage ? [{ label: "Assessments", value: overview.assessments }] : []),
-    { label: "Interviews", value: overview.interviewOpportunities },
-    { label: "Offers", value: overview.offers },
+    { label: "Applications", value: pipeline.applications },
+    { label: "Assessments", value: pipeline.assessments },
+    { label: "Interview Sessions", value: overview.interviewOpportunities },
+    { label: "Offers", value: pipeline.offers },
   ];
 
   return (
     <>
-      <HealthCard health={health} />
+      <HealthCard health={health} pipeline={pipeline} />
 
-      <div className={cn("grid gap-3", KPI_GRID_COLS[kpiTiles.length] ?? "md:grid-cols-4")}>
+      <div className="grid gap-3 md:grid-cols-4">
         {kpiTiles.map((s) => {
           const tone = KPI_TONE[s.label];
           const Icon = tone.icon;
@@ -182,31 +210,42 @@ function AnalyticsContent({
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <DashCard>
-          <SectionTitle>Application funnel</SectionTitle>
-          <div className="mt-4 space-y-3">
-            {funnel.map((stage) => (
-              <FunnelBar key={stage.key} stage={stage} />
-            ))}
-          </div>
-        </DashCard>
+        <div className="flex flex-col gap-4">
+          <DashCard className="p-4">
+            <SectionTitle>Current Pipeline</SectionTitle>
+            <div className="mt-3 space-y-2.5">
+              {funnel.map((stage) => (
+                <FunnelBar key={stage.key} stage={stage} />
+              ))}
+            </div>
+          </DashCard>
 
-        <AIRecommendationsCard />
+          <GoalsCard goals={goals} onSave={setGoals} />
+        </div>
+
+        <AIRecommendationsCard className="h-full" />
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <ResumePerformanceCard
-          performance={resumePerformance}
-          unlinkedCount={unlinkedApplicationCount}
-          totalResumeCount={totalResumeCount}
-        />
-        <GoalsCard goals={goals} onSave={setGoals} />
-      </div>
+      <ResumePerformanceCard
+        performance={resumePerformance}
+        unlinkedCount={unlinkedApplicationCount}
+        totalResumeCount={totalResumeCount}
+      />
     </>
   );
 }
 
 // ── Job Search Health ─────────────────────────────────────────────────────
+// Status is the primary element (a large color-coded tone badge + icon for
+// 2-3s recognition), Applications/Interviews/Offers run inline beneath the
+// summary as bold, icon-led numbers (not a boxed metric grid — that reads as
+// its own dashboard-within-a-dashboard and pushed the card too tall), and
+// "Your biggest opportunity" sits on the right to keep the card's height
+// minimal. Scoring/tone logic (computeSearchHealth) is untouched — only what
+// is displayed changed. The 3 inline numbers still come from `pipeline`
+// (current-status, same as the KPI tiles/Current Pipeline), not the older
+// ever-reached `health.stats` — that's what keeps this card from ever
+// disagreeing with the Kanban.
 
 const HEALTH_CARD_TONE: Record<SearchHealthTone, string> = {
   good: "border-[#22C55E]/20 bg-gradient-to-br from-[#22C55E]/[0.07] to-[#16A34A]/[0.02]",
@@ -214,11 +253,12 @@ const HEALTH_CARD_TONE: Record<SearchHealthTone, string> = {
   warning: "border-[#F59E0B]/25 bg-gradient-to-br from-[#F59E0B]/[0.08] to-[#F59E0B]/[0.02]",
 };
 
-const HEALTH_DOT_TONE: Record<SearchHealthTone, string> = {
-  good: "bg-[#16A34A]",
-  neutral: "bg-[#2563EB]",
-  warning: "bg-[#F59E0B]",
-};
+const HEALTH_BADGE_TONE: Record<SearchHealthTone, { bg: string; text: string; icon: LucideIcon }> =
+  {
+    good: { bg: "bg-[#16A34A]/15", text: "text-[#16A34A]", icon: TrendingUp },
+    neutral: { bg: "bg-[#2563EB]/12", text: "text-[#2563EB]", icon: Activity },
+    warning: { bg: "bg-[#F59E0B]/15", text: "text-[#B45309]", icon: AlertTriangle },
+  };
 
 const HEALTH_OPPORTUNITY_TONE: Record<SearchHealthTone, string> = {
   good: "border-[#16A34A]/15 bg-[#16A34A]/[0.06]",
@@ -226,24 +266,43 @@ const HEALTH_OPPORTUNITY_TONE: Record<SearchHealthTone, string> = {
   warning: "border-[#F59E0B]/20 bg-[#F59E0B]/[0.08]",
 };
 
-function HealthCard({ health }: { health: SearchHealth }) {
+const HEALTH_INLINE_STATS: {
+  key: "applications" | "interviews" | "offers";
+  label: string;
+  icon: LucideIcon;
+  color: string;
+}[] = [
+  { key: "applications", label: "Applications", icon: Briefcase, color: "text-[#2563EB]" },
+  { key: "interviews", label: "Interviews", icon: CalendarClock, color: "text-[#D97706]" },
+  { key: "offers", label: "Offers", icon: Award, color: "text-[#16A34A]" },
+];
+
+function HealthCard({ health, pipeline }: { health: SearchHealth; pipeline: PipelineCounts }) {
+  const badge = HEALTH_BADGE_TONE[health.tone];
+  const BadgeIcon = badge.icon;
+
   return (
     <DashCard className={cn("p-4", HEALTH_CARD_TONE[health.tone])}>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <span className={cn("h-2 w-2 shrink-0 rounded-full", HEALTH_DOT_TONE[health.tone])} />
-            <p className="font-display text-lg font-bold tracking-tight">{health.label}</p>
+          <div className="flex items-center gap-2.5">
+            <span className={cn("grid h-9 w-9 shrink-0 place-items-center rounded-xl", badge.bg)}>
+              <BadgeIcon className={cn("h-4.5 w-4.5", badge.text)} />
+            </span>
+            <div className="min-w-0">
+              <p className="font-display text-lg font-bold tracking-tight">{health.label}</p>
+              <p className="text-xs text-[oklch(0.45_0.02_265)]">{health.summary}</p>
+            </div>
           </div>
-          <p className="mt-0.5 text-xs text-[oklch(0.45_0.02_265)]">{health.summary}</p>
 
-          <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1">
-            {health.stats.map((s) => (
-              <span key={s.label} className="text-xs">
-                <span className="font-display text-sm font-bold text-[oklch(0.2_0.02_265)]">
-                  {s.value}
-                </span>{" "}
-                <span className="text-[oklch(0.5_0.02_265)]">{s.label}</span>
+          <div className="mt-2.5 flex flex-wrap items-center gap-x-4 gap-y-1.5">
+            {HEALTH_INLINE_STATS.map((s) => (
+              <span key={s.key} className="inline-flex items-center gap-1.5">
+                <s.icon className={cn("h-3.5 w-3.5", s.color)} />
+                <span className="font-display text-sm font-bold text-[oklch(0.15_0.02_265)]">
+                  {pipeline[s.key]}
+                </span>
+                <span className="text-xs text-[oklch(0.5_0.02_265)]">{s.label}</span>
               </span>
             ))}
           </div>
@@ -290,7 +349,7 @@ function FunnelBar({ stage }: { stage: FunnelStage }) {
           )}
         </span>
       </div>
-      <div className="mt-1 h-2.5 overflow-hidden rounded-full bg-black/5">
+      <div className="mt-1 h-3.5 overflow-hidden rounded-full bg-black/5">
         <div
           className={cn("h-full rounded-full bg-gradient-to-r", FUNNEL_TONE[stage.key])}
           style={{ width: `${stage.pctOfFirst}%` }}
@@ -350,16 +409,12 @@ function ResumePerformanceCard({
     );
   }
 
-  const solo = performance.length === 1;
-
   return (
     <DashCard>
       <SectionTitle>Resume performance</SectionTitle>
-      <div
-        className={cn("mt-4 grid gap-3", solo ? "mx-auto max-w-sm grid-cols-1" : "sm:grid-cols-2")}
-      >
+      <div className="mt-2 divide-y divide-black/5">
         {performance.map((r) => (
-          <ResumeRow key={r.resumeId} resume={r} solo={solo} />
+          <ResumeRow key={r.resumeId} resume={r} />
         ))}
       </div>
       {unlinkedCount > 0 && (
@@ -372,47 +427,48 @@ function ResumePerformanceCard({
   );
 }
 
-function ResumeRow({ resume, solo }: { resume: ResumePerformance; solo: boolean }) {
+/**
+ * One horizontal row per resume — built for scanning several resumes at
+ * once, not for a single resume's own detail. Usage/interviews/offers are
+ * real counts, always meaningful regardless of sample size. Comparison-
+ * readiness (the rate percentages, which need volume to mean anything) is
+ * secondary: a rate caption once there's enough data, or a short
+ * "N more needed" note when there isn't — never the row's main focus, and
+ * never a progress bar.
+ */
+function ResumeRow({ resume }: { resume: ResumePerformance }) {
   const remaining = RESUME_MIN_SAMPLE - resume.applications;
 
   return (
-    <div
-      className={cn(
-        "rounded-xl border border-black/5 bg-[oklch(0.98_0.005_265)] p-3",
-        solo && "p-4",
-      )}
-    >
-      <p className={cn("truncate font-medium", solo ? "text-base" : "text-sm")}>
-        {resume.resumeName}
-      </p>
-
-      {resume.isSignificant ? (
-        <>
+    <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2 py-3 first:pt-0 last:pb-0">
+      <div className="min-w-40 flex-1">
+        <p className="truncate text-sm font-medium">{resume.resumeName}</p>
+        {resume.isSignificant ? (
           <p className="mt-0.5 text-[11px] text-[oklch(0.55_0.02_265)]">
-            {resume.applications} applications
+            Interview rate {formatPercent(resume.interviewRate)} · Offer rate{" "}
+            {formatPercent(resume.offerRate)}
           </p>
-          <div className={cn("mt-2.5 grid grid-cols-2 gap-3", solo && "max-w-xs")}>
-            <div>
-              <p className="text-[11px] text-[oklch(0.5_0.02_265)]">Interview rate</p>
-              <p className="mt-0.5 font-display text-base font-semibold">
-                {formatPercent(resume.interviewRate)}
-              </p>
-            </div>
-            <div>
-              <p className="text-[11px] text-[oklch(0.5_0.02_265)]">Offer rate</p>
-              <p className="mt-0.5 font-display text-base font-semibold">
-                {formatPercent(resume.offerRate)}
-              </p>
-            </div>
-          </div>
-        </>
-      ) : (
-        <p className="mt-1 text-[11px] text-[oklch(0.55_0.02_265)]">
-          Used in {resume.applications} application{resume.applications === 1 ? "" : "s"}
-          <br />
-          Need {remaining} more application{remaining === 1 ? "" : "s"} before comparison.
-        </p>
-      )}
+        ) : (
+          <p className="mt-0.5 text-[11px] text-[oklch(0.6_0.02_265)]">
+            {remaining} more application{remaining === 1 ? "" : "s"} for rate comparison
+          </p>
+        )}
+      </div>
+
+      <div className="flex items-center gap-6 sm:gap-9">
+        <ResumeStat label="Applications" value={resume.applications} />
+        <ResumeStat label="Interviews" value={resume.interviews} />
+        <ResumeStat label="Offers" value={resume.offers} />
+      </div>
+    </div>
+  );
+}
+
+function ResumeStat({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="min-w-16 text-center">
+      <p className="font-display text-base font-semibold text-[oklch(0.15_0.02_265)]">{value}</p>
+      <p className="text-[10px] text-[oklch(0.5_0.02_265)]">{label}</p>
     </div>
   );
 }

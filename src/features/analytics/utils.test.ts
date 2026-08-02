@@ -182,6 +182,20 @@ describe("computeFunnel", () => {
     expect(funnel.find((s) => s.key === "offers")!.count).toBe(1);
   });
 
+  it("never counts a single application in more than one stage — a job currently at Offer counts only in Offers, not also in Assessments or Interviews", () => {
+    // This is the Kanban-consistency guarantee: computeFunnel buckets on
+    // current `status` alone (a single field), so an application that
+    // historically passed through Assessment and Interview before reaching
+    // Offer is counted exactly once, at its current stage — never
+    // simultaneously in three KPI tiles the way "ever reached" history-based
+    // counting used to. The KPI tiles and Health card's metric chips
+    // (dashboard.analytics.tsx) both read these same counts, so this
+    // guarantee holds everywhere those numbers are shown, not just here.
+    const funnel = computeFunnel([{ id: "a1", status: "offer" }]);
+    const countByKey = Object.fromEntries(funnel.map((s) => [s.key, s.count]));
+    expect(countByKey).toEqual({ applications: 1, assessments: 0, interviews: 0, offers: 1 });
+  });
+
   it("returns null pctOfPrevious when the previous stage's count is 0, never NaN/Infinity", () => {
     const funnel = computeFunnel([{ id: "a1", status: "offer" }]);
     const offers = funnel.find((s) => s.key === "offers")!;

@@ -39,7 +39,10 @@ const { getAIRecommendations } = await import("./RecommendationsService");
 
 const USER_ID = "user-1";
 
-function authedWith(seed: FakeRecommendationsSeed): { authed: AuthedContext; runInserts: Record<string, unknown>[] } {
+function authedWith(seed: FakeRecommendationsSeed): {
+  authed: AuthedContext;
+  runInserts: Record<string, unknown>[];
+} {
   const fake = createFakeRecommendationsSupabase(seed);
   const authed = {
     supabase: fake.client,
@@ -98,6 +101,44 @@ function resumePerformanceSeed(): FakeRecommendationsSeed {
   };
 }
 
+/** Builds on resumePerformanceSeed() to also qualify resume_linking, mock_interview, and ats_improvement — 4 candidates total, proving the engine no longer caps at 3. */
+function multiCandidateSeed(): FakeRecommendationsSeed {
+  const base = resumePerformanceSeed();
+  const unlinkedApplications = Array.from({ length: 3 }, (_, i) => ({
+    id: `unlinked-app-${i}`,
+    resume_id: null,
+    status: "applied",
+    applied_at: "2020-01-01T00:00:00Z",
+  }));
+
+  return {
+    ...base,
+    applications: [...(base.applications ?? []), ...unlinkedApplications],
+    mockSessions: [
+      {
+        report: {
+          competencyScores: [
+            { competencyId: "behavioral", label: "Behavioral", score: 90 },
+            { competencyId: "product_sense", label: "Product Sense", score: 60 },
+          ],
+        },
+      },
+      {
+        report: {
+          competencyScores: [
+            { competencyId: "behavioral", label: "Behavioral", score: 88 },
+            { competencyId: "product_sense", label: "Product Sense", score: 55 },
+          ],
+        },
+      },
+    ],
+    atsRows: [
+      { resume_id: "r1", score: 60, created_at: "2026-01-01T00:00:00Z" },
+      { resume_id: "r2", score: 75, created_at: "2026-02-01T00:00:00Z" },
+    ],
+  };
+}
+
 describe("getAIRecommendations", () => {
   it("returns no items and never calls the provider when no candidate qualifies", async () => {
     const { authed } = authedWith({ profile: { id: USER_ID } });
@@ -151,7 +192,8 @@ describe("getAIRecommendations", () => {
           {
             type: "resume_performance",
             title: "Resume performance",
-            explanation: "Your Product Resume has a 95% interview rate — far ahead of your General Resume.",
+            explanation:
+              "Your Product Resume has a 95% interview rate — far ahead of your General Resume.",
             action: "Use Product Resume for similar roles.",
           },
         ],
@@ -186,6 +228,28 @@ describe("getAIRecommendations", () => {
     expect(result.items[0].source).toBe("template");
 
     expect(runInserts.some((r) => r.status === "error")).toBe(true);
+  });
+
+  it("returns more than 3 items when more than 3 candidates qualify — no artificial cap", async () => {
+    const { authed } = authedWith(multiCandidateSeed());
+    complete.mockClear();
+    // Provider failure keeps this test focused on the count, not on
+    // constructing a precise 4-item AI payload — every item falls back to
+    // its template, which is exactly as valid a proof that all 4 qualifying
+    // candidates were returned, not just the first 3.
+    complete.mockRejectedValue(new Error("provider unavailable"));
+
+    const result = await getAIRecommendations(authed);
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.items.length).toBeGreaterThan(3);
+    expect(result.items.map((i) => i.type)).toEqual([
+      "resume_performance",
+      "mock_interview",
+      "ats_improvement",
+      "resume_linking",
+    ]);
   });
 
   it("stamps generatedAt with the time of this call", async () => {

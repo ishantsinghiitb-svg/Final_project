@@ -262,7 +262,12 @@ export const RECOMMENDATION_DETECTORS: RecommendationDetector[] = [
   { type: "resume_linking", priority: 7, detect: resumeLinkingDetector },
 ];
 
-/** Runs every registered detector, drops the ones with insufficient evidence, and caps at 3 by priority. */
+/**
+ * Runs every registered detector, drops the ones with insufficient evidence,
+ * and sorts the rest by priority. No cap here — the UI decides how many to
+ * show inline vs. behind "Show all" (see AIRecommendationsCard.tsx); this
+ * function's job is only "what qualifies," never "how many to display."
+ */
 export function buildRecommendationCandidates(
   ctx: RecommendationContext,
 ): RecommendationCandidate[] {
@@ -271,6 +276,5 @@ export function buildRecommendationCandidates(
     return result ? { ...result, priority: d.priority } : null;
   })
     .filter((c): c is RecommendationCandidate => c !== null)
-    .sort((a, b) => a.priority - b.priority)
-    .slice(0, 3);
+    .sort((a, b) => a.priority - b.priority);
 }

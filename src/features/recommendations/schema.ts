@@ -20,7 +20,13 @@ const RecommendationDraftItemSchema = z.object({
 });
 
 export const RecommendationsDraftSchema = z.object({
-  items: z.array(RecommendationDraftItemSchema).max(3).catch([]),
+  // Bounded by the number of registered detector types, not a fixed 3 — the
+  // engine no longer caps how many qualifying candidates it phrases; the UI
+  // decides the top-3-then-"Show all" split (see AIRecommendationsCard.tsx).
+  items: z
+    .array(RecommendationDraftItemSchema)
+    .max(RECOMMENDATION_CANDIDATE_TYPES.length)
+    .catch([]),
 });
 
 export type RecommendationDraftItem = z.infer<typeof RecommendationDraftItemSchema>;

@@ -26,7 +26,7 @@ export type RecommendationCandidateType = (typeof RECOMMENDATION_CANDIDATE_TYPES
 
 export type RecommendationCandidate = {
   type: RecommendationCandidateType;
-  /** Lower shows first when capping at 3 — see RECOMMENDATION_DETECTORS order in candidates.ts. */
+  /** Lower shows first (both inline and in "Show all") — see RECOMMENDATION_DETECTORS order in candidates.ts. */
   priority: number;
   /** The ONLY numbers the AI may state for this candidate. */
   facts: Record<string, number>;
