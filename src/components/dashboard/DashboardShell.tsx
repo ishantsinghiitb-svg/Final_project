@@ -11,6 +11,7 @@ import {
   Command,
   FileText,
   FolderKanban,
+  Inbox,
   ChartLine as LineChart,
   Mail,
   Search,
@@ -30,6 +31,7 @@ import { Logo } from "@/components/site/Logo";
 import { useAuth } from "@/context/AuthContext";
 import { useProfile } from "@/context/ProfileContext";
 import { useSidebarCounts } from "@/features/jobs/hooks";
+import { useGmailAutoSyncOnOpen } from "@/features/gmail/hooks";
 
 type NavItem = {
   to: string;
@@ -37,7 +39,7 @@ type NavItem = {
   icon: React.ComponentType<{ className?: string }>;
   exact?: boolean;
   /** badge key — looked up dynamically from useSidebarCounts() */
-  badgeKey?: "jobs" | "saved" | "applications" | "collections";
+  badgeKey?: "jobs" | "saved" | "applications" | "collections" | "gmailSuggestions";
 };
 
 const nav: NavItem[] = [
@@ -56,6 +58,9 @@ const nav: NavItem[] = [
   { to: "/dashboard/resumes", label: "Resumes", icon: FileText },
   { to: "/dashboard/cover-letters", label: "Cover Letters", icon: Mail },
   { to: "/dashboard/interviews", label: "Interviews", icon: CalendarClock },
+  // Module 9A — pending Gmail suggestions review queue. Uses Inbox (not Mail
+  // — that icon's already claimed by Cover Letters above).
+  { to: "/dashboard/inbox", label: "Inbox", icon: Inbox, badgeKey: "gmailSuggestions" },
   { to: "/dashboard/notes", label: "Notes", icon: StickyNote },
   { to: "/dashboard/analytics", label: "Analytics", icon: LineChart },
 ];
@@ -67,6 +72,10 @@ export function DashboardShell({ children }: { children: ReactNode }) {
   const { user, signOut } = useAuth();
   const { profile } = useProfile();
   const counts = useSidebarCounts();
+  // Module 9A "app open" sync trigger — fires the cheap due-check once per
+  // session mount; no-ops unless a sync is actually due. See the hook's own
+  // comment for why there's no platform-level background execution here.
+  useGmailAutoSyncOnOpen();
   const [signingOut, setSigningOut] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);

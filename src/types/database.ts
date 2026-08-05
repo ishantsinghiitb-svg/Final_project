@@ -206,7 +206,7 @@ export type ApplicationRow = {
   url: string | null;
   archived: boolean;
   archived_at: string | null;
-  /** How this row was created — 'apply_flow' (via a GlobalJob) or 'manual'. */
+  /** How this row was created — 'apply_flow' (via a GlobalJob), 'manual', or 'gmail'. */
   created_via: string;
   /** Free-form extension point (recruiter, hiring manager, referral, reminder, etc.) — see Module 3A schema notes. */
   metadata: Json;
@@ -214,6 +214,8 @@ export type ApplicationRow = {
   priority: string | null;
   resume_id: string | null;
   cover_letter_id: string | null;
+  /** Module 9A — the Gmail suggestion that created/updated this row, if any. */
+  source_gmail_suggestion_id: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -464,6 +466,8 @@ export type InterviewRow = {
   resume_name_snapshot: string | null;
   job_id: string | null;
   notes: string | null;
+  /** Module 9A — the Gmail suggestion that created/updated this row, if any. */
+  source_gmail_suggestion_id: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -717,6 +721,7 @@ export type ApplicationInsert = {
   priority?: string | null;
   resume_id?: string | null;
   cover_letter_id?: string | null;
+  source_gmail_suggestion_id?: string | null;
   created_at?: string;
   updated_at?: string;
 };
@@ -873,6 +878,8 @@ export type ApplicationReminderRow = {
   note: string | null;
   completed: boolean;
   completed_at: string | null;
+  /** Module 9A — the Gmail suggestion that created this row, if any. */
+  source_gmail_suggestion_id: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -887,6 +894,7 @@ export type ApplicationReminderInsert = {
   note?: string | null;
   completed?: boolean;
   completed_at?: string | null;
+  source_gmail_suggestion_id?: string | null;
   created_at?: string;
   updated_at?: string;
 };
@@ -904,6 +912,8 @@ export type ApplicationAttachmentRow = {
   mime_type: string | null;
   /** Optional link to application_reminders — NULL means a general application attachment. */
   reminder_id: string | null;
+  /** Module 9A — the Gmail suggestion that created this row, if any. */
+  source_gmail_suggestion_id: string | null;
   created_at: string;
 };
 
@@ -917,7 +927,135 @@ export type ApplicationAttachmentInsert = {
   size_bytes?: number | null;
   mime_type?: string | null;
   reminder_id?: string | null;
+  source_gmail_suggestion_id?: string | null;
   created_at?: string;
+};
+
+// ── Module 9A: Gmail Intelligence ──
+
+export type GmailConnectionRow = {
+  id: string;
+  user_id: string;
+  google_email: string;
+  scope: string;
+  /** Never select this in a client-facing query — ciphertext only, decrypted server-side via TokenCrypto.ts. */
+  refresh_token_ciphertext: string;
+  refresh_token_nonce: string;
+  /** Target checkpoint captured at connect time — only valid as an incremental sync starting point once backfill_complete is true. */
+  history_id: string | null;
+  backfill_complete: boolean;
+  backfill_page_token: string | null;
+  /** 'connected' | 'syncing' | 'disconnected' | 'error' | 'needs_reauth' */
+  status: string;
+  auto_sync_enabled: boolean;
+  last_synced_at: string | null;
+  last_sync_error: string | null;
+  next_sync_at: string | null;
+  sync_lock_acquired_at: string | null;
+  connected_at: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export type GmailConnectionInsert = {
+  id?: string;
+  user_id: string;
+  google_email: string;
+  scope: string;
+  refresh_token_ciphertext: string;
+  refresh_token_nonce: string;
+  history_id?: string | null;
+  backfill_complete?: boolean;
+  backfill_page_token?: string | null;
+  status?: string;
+  auto_sync_enabled?: boolean;
+  last_synced_at?: string | null;
+  last_sync_error?: string | null;
+  next_sync_at?: string | null;
+  sync_lock_acquired_at?: string | null;
+  connected_at?: string;
+  created_at?: string;
+  updated_at?: string;
+};
+
+export type GmailMessageRow = {
+  id: string;
+  user_id: string;
+  gmail_message_id: string;
+  gmail_thread_id: string;
+  from_address: string;
+  from_domain: string;
+  subject: string | null;
+  /** Gmail's own pre-truncated snippet — the full email body is never persisted. */
+  snippet: string | null;
+  company_name: string | null;
+  internal_date: string;
+  /** one of the 10 classification categories, or 'unknown' */
+  category: string;
+  confidence: number;
+  /** 'rule' | 'ai' */
+  classified_by: string;
+  matched_application_id: string | null;
+  /** Gmail UNREAD state at first sync — a snapshot, not live. NULL = predates the column. */
+  is_unread: boolean | null;
+  processed_at: string;
+  created_at: string;
+};
+
+export type GmailMessageInsert = {
+  id?: string;
+  user_id: string;
+  gmail_message_id: string;
+  gmail_thread_id: string;
+  from_address: string;
+  from_domain: string;
+  subject?: string | null;
+  snippet?: string | null;
+  company_name?: string | null;
+  internal_date: string;
+  category?: string;
+  confidence?: number;
+  classified_by: string;
+  matched_application_id?: string | null;
+  is_unread?: boolean | null;
+  processed_at?: string;
+  created_at?: string;
+};
+
+export type GmailSuggestionRow = {
+  id: string;
+  user_id: string;
+  gmail_message_id: string;
+  /** 'create_application' | 'update_application' | 'create_interview' | 'add_reminder' | 'import_attachment' */
+  type: string;
+  /** 'pending' | 'accepted' | 'dismissed' | 'expired' | 'superseded' */
+  status: string;
+  confidence: number;
+  /** Human-readable "why this was detected" — always shown in the UI. */
+  explanation: string;
+  target_application_id: string | null;
+  suggested_payload: Json;
+  resolved_at: string | null;
+  /** 'accepted' | 'dismissed' | null */
+  resolved_action: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type GmailSuggestionInsert = {
+  id?: string;
+  user_id: string;
+  gmail_message_id: string;
+  type: string;
+  status?: string;
+  confidence?: number;
+  explanation: string;
+  target_application_id?: string | null;
+  suggested_payload?: Json;
+  resolved_at?: string | null;
+  resolved_action?: string | null;
+  created_at?: string;
+  updated_at?: string;
 };
 
 export type ResumeInsert = {
@@ -985,6 +1123,7 @@ export type InterviewInsert = {
   resume_name_snapshot?: string | null;
   job_id?: string | null;
   notes?: string | null;
+  source_gmail_suggestion_id?: string | null;
   created_at?: string;
   updated_at?: string;
 };
@@ -1362,6 +1501,24 @@ export type Database = {
         Row: ApplicationAttachmentRow;
         Insert: ApplicationAttachmentInsert;
         Update: Partial<ApplicationAttachmentRow>;
+        Relationships: TableRelationship[];
+      };
+      gmail_connections: {
+        Row: GmailConnectionRow;
+        Insert: GmailConnectionInsert;
+        Update: Partial<GmailConnectionRow>;
+        Relationships: TableRelationship[];
+      };
+      gmail_messages: {
+        Row: GmailMessageRow;
+        Insert: GmailMessageInsert;
+        Update: Partial<GmailMessageRow>;
+        Relationships: TableRelationship[];
+      };
+      gmail_suggestions: {
+        Row: GmailSuggestionRow;
+        Insert: GmailSuggestionInsert;
+        Update: Partial<GmailSuggestionRow>;
         Relationships: TableRelationship[];
       };
       resumes: {

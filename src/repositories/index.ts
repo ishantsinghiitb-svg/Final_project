@@ -10,3 +10,4 @@ export { ContactRepository } from "./ContactRepository";
 export { ReminderRepository } from "./ReminderRepository";
 export { AttachmentRepository } from "./AttachmentRepository";
 export { AnalysisRepository } from "./AnalysisRepository";
+export { GmailRepository } from "./GmailRepository";

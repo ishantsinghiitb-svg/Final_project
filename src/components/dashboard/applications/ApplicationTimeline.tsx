@@ -13,11 +13,15 @@ import {
   UserPlus,
   BellPlus,
   BellRing,
+  Mail,
+  ExternalLink,
   ChevronDown,
   ChevronUp,
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { useApplicationTimeline } from "@/features/applications/hooks";
+import { useGmailConnection } from "@/features/gmail/hooks";
+import { gmailDeepLink } from "@/features/gmail/utils";
 import { STATUS_META, PRIORITY_META } from "@/features/applications/constants";
 import type { ApplicationPriority, ApplicationStatus, ApplicationTimelineEventType } from "@/types";
 import { cn } from "@/lib/utils";
@@ -43,6 +47,11 @@ const EVENT_META: Record<ApplicationTimelineEventType, EventMeta> = {
   contact_added: { label: "Contact Added", icon: UserPlus, tone: "text-[#7C3AED]" },
   reminder_created: { label: "Reminder Created", icon: BellPlus, tone: "text-[#2563EB]" },
   reminder_completed: { label: "Reminder Completed", icon: BellRing, tone: "text-[#16A34A]" },
+  // Module 9A: a Gmail message was classified and matched to this
+  // application — logged regardless of whether the resulting suggestion was
+  // accepted or dismissed. Renders an "Open Original Email" link below,
+  // built from ev.metadata.gmail_message_id (Gmail's own external id).
+  email_received: { label: "Email Received", icon: Mail, tone: "text-[#2563EB]" },
 };
 
 const DEFAULT_EVENT_META: EventMeta = {
@@ -73,6 +82,13 @@ function formatDiffValue(
   return value;
 }
 
+/** Reads `gmail_message_id` (Gmail's own external id) out of an email_received row's jsonb metadata. */
+function extractGmailMessageId(metadata: unknown): string | null {
+  if (!metadata || typeof metadata !== "object") return null;
+  const id = (metadata as Record<string, unknown>).gmail_message_id;
+  return typeof id === "string" ? id : null;
+}
+
 type Props = {
   applicationId: string;
 };
@@ -87,6 +103,9 @@ type Props = {
  */
 export function ApplicationTimeline({ applicationId }: Props) {
   const { data: events = [], isLoading } = useApplicationTimeline(applicationId);
+  // Only fetched for the "Open Original Email" link on email_received rows —
+  // harmless/unused when Gmail isn't connected (link simply doesn't render).
+  const { data: gmailConnection } = useGmailConnection();
   const [expanded, setExpanded] = useState(false);
 
   if (isLoading) {
@@ -113,6 +132,8 @@ export function ApplicationTimeline({ applicationId }: Props) {
           const Icon = meta.icon;
           const showDiff =
             DIFF_EVENT_TYPES.has(ev.event_type) && (ev.previous_value || ev.new_value);
+          const gmailMessageId =
+            ev.event_type === "email_received" ? extractGmailMessageId(ev.metadata) : null;
 
           return (
             <li key={ev.id} className="relative">
@@ -138,6 +159,17 @@ export function ApplicationTimeline({ applicationId }: Props) {
                     {formatDiffValue(ev.event_type, ev.new_value) ?? "—"}
                   </span>
                 </p>
+              )}
+
+              {gmailMessageId && gmailConnection?.google_email && (
+                <a
+                  href={gmailDeepLink(gmailConnection.google_email, gmailMessageId)}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mt-1.5 inline-flex items-center gap-1 text-xs font-medium text-[#2563EB] hover:underline"
+                >
+                  Open Original Email <ExternalLink className="h-3 w-3" />
+                </a>
               )}
             </li>
           );

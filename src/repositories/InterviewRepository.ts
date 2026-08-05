@@ -4,7 +4,7 @@ import type { Interview, InterviewStatus } from "@/types";
 // `prep` (the original placeholder notes column) is intentionally excluded —
 // superseded by `notes`, see supabase/migrations/20260801000001_module7a_interview_workspace.sql.
 const INTERVIEW_COLUMNS =
-  "id, user_id, application_id, company_name, role, scheduled_at, interviewer, type, status, link, mode, location, resume_id, resume_name_snapshot, job_id, notes, created_at, updated_at";
+  "id, user_id, application_id, company_name, role, scheduled_at, interviewer, type, status, link, mode, location, resume_id, resume_name_snapshot, job_id, notes, source_gmail_suggestion_id, created_at, updated_at";
 
 export class InterviewRepository {
   // ── Read ──────────────────────────────────────────────────────────────────

@@ -2,6 +2,8 @@ import { useQuery, useMutation, useQueryClient, keepPreviousData } from "@tansta
 import { useAuth } from "@/context/AuthContext";
 import { jobService } from "@/services/JobService";
 import { collectionService } from "@/services/CollectionService";
+import { gmailService } from "@/services/GmailService";
+import { gmailKeys } from "@/features/gmail/hooks";
 import { manualImportService, type ManualImportInput } from "@/services/ManualImportService";
 import type { JobFilters, JobSort } from "@/features/jobs/types";
 import type { GlobalJob, PaginationParams } from "@/types";
@@ -334,16 +336,26 @@ export function useImportJob() {
 }
 
 // ── useSidebarCounts ─────────────────────────────────────────────────────────
-// Returns live counts for the four sidebar badges: Jobs, Saved, Applications,
-// Collections. Uses Supabase head-only count queries (no row data transferred).
-// staleTime = 5 minutes — these don't need to be real-time.
+// Returns live counts for the sidebar badges: Jobs, Saved, Applications,
+// Collections, Inbox. Uses Supabase head-only count queries (no row data
+// transferred). staleTime = 5 minutes — these don't need to be real-time.
 //
 // The Collections count reuses collectionService (Module 5B) the same way
 // this hook already reuses jobService for the Saved/Applications counts — a
 // single "sidebar chrome" hook covering every badge, not a bespoke query per
 // nav item, so every badge stays visually and architecturally consistent.
+// Inbox (Module 9A) is the newest addition — its query key matches
+// gmailKeys.pendingCount exactly, so a suggestion resolve/sync mutation's
+// broad `gmailKeys.all` invalidation refreshes this badge too, same as every
+// other Gmail-related view.
 
-type SidebarCounts = { jobs: number; saved: number; applications: number; collections: number };
+type SidebarCounts = {
+  jobs: number;
+  saved: number;
+  applications: number;
+  collections: number;
+  gmailSuggestions: number;
+};
 
 export function useSidebarCounts(): SidebarCounts {
   const { user } = useAuth();
@@ -375,10 +387,18 @@ export function useSidebarCounts(): SidebarCounts {
     staleTime: 5 * 60 * 1_000,
   });
 
+  const { data: gmailSuggestionsCount = 0 } = useQuery({
+    queryKey: gmailKeys.pendingCount(user?.id ?? ""),
+    queryFn: () => gmailService.getPendingCount(user!.id),
+    enabled: Boolean(user),
+    staleTime: 5 * 60 * 1_000,
+  });
+
   return {
     jobs: jobsCount,
     saved: savedCount,
     applications: applicationsCount,
     collections: collectionsCount,
+    gmailSuggestions: gmailSuggestionsCount,
   };
 }

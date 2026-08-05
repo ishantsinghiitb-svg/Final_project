@@ -28,6 +28,7 @@ export class InterviewService {
     userId: string,
     applicationId: string,
     input: ScheduleInterviewInput,
+    options?: { sourceGmailSuggestionId?: string },
   ): Promise<Interview> {
     const application = await applicationService.getApplication(applicationId);
     if (!application) throw new Error("Application not found");
@@ -47,6 +48,7 @@ export class InterviewService {
       resume_name_snapshot: await this.snapshotResumeName(input.resume_id),
       job_id: application.job_id ?? null,
       notes: input.notes ?? null,
+      source_gmail_suggestion_id: options?.sourceGmailSuggestionId ?? null,
     });
   }
 

@@ -1,5 +1,15 @@
-import type { Application, ApplicationStatus, GlobalJob, PaginationParams, PaginatedResult } from "@/types";
-import type { ApplicationFilters, ApplicationSort, ManualApplicationInput } from "@/features/applications/types";
+import type {
+  Application,
+  ApplicationStatus,
+  GlobalJob,
+  PaginationParams,
+  PaginatedResult,
+} from "@/types";
+import type {
+  ApplicationFilters,
+  ApplicationSort,
+  ManualApplicationInput,
+} from "@/features/applications/types";
 import { ALL_STATUSES, DEFAULT_APPLICATION_SORT } from "@/features/applications/constants";
 import { ApplicationRepository } from "@/repositories/ApplicationRepository";
 import { jobService } from "@/services/JobService";
@@ -44,12 +54,18 @@ export class ApplicationService {
   }
 
   /**
-   * Called from "+ Add Application". Looks for an existing GlobalJob that
+   * Called from "+ Add Application" (and, with `options.createdVia:"gmail"`,
+   * from accepting a `create_application` Gmail suggestion — see
+   * src/services/GmailService.ts). Looks for an existing GlobalJob that
    * matches the entered company + role (+ location) and reuses it instead of
    * creating a duplicate; falls back to a job-less application otherwise.
    * `source` reflects the matched job's origin when reused, or "Manual" when not.
    */
-  async createManual(userId: string, input: ManualApplicationInput): Promise<Application> {
+  async createManual(
+    userId: string,
+    input: ManualApplicationInput,
+    options?: { createdVia?: "manual" | "gmail"; sourceGmailSuggestionId?: string },
+  ): Promise<Application> {
     const company = input.company_name.trim();
     const role = input.role.trim();
     const location = input.location?.trim() || undefined;
@@ -69,7 +85,8 @@ export class ApplicationService {
       source: matched?.source ?? "Manual",
       url: input.url?.trim() || matched?.url || null,
       notes: input.notes?.trim() || null,
-      created_via: "manual",
+      created_via: options?.createdVia ?? "manual",
+      source_gmail_suggestion_id: options?.sourceGmailSuggestionId ?? null,
     });
   }
 

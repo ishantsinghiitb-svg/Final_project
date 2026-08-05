@@ -18,6 +18,7 @@ import {
   MockInterviewResultSchema,
 } from "@/features/ai/schemas";
 import { RecommendationsDraftSchema } from "@/features/recommendations/schema";
+import { GmailClassificationSchema } from "@/features/gmail/schema";
 
 // ── Capability Registry ──
 //
@@ -161,6 +162,19 @@ export const CAPABILITY_REGISTRY: Record<AICapability, CapabilityDefinition> = {
     AI_CAPABILITIES.RECOMMENDATIONS,
     "fast",
     RecommendationsDraftSchema,
+    NO_CACHE,
+  ),
+  // "fast" tier — a single-field classification of a short facts block, not
+  // deep reasoning (same tier choice as ATS Score/Recommendations for a
+  // similarly bounded task). NO_CACHE: gmail_messages' UNIQUE(user_id,
+  // gmail_message_id) means a given email is only ever classified once,
+  // ever — GmailSyncService's dedup precheck skips it entirely on any later
+  // sync, so a cache would never hit anyway (see the Module 9A plan's Email
+  // Classification Pipeline section).
+  [AI_CAPABILITIES.GMAIL_CLASSIFIER]: define(
+    AI_CAPABILITIES.GMAIL_CLASSIFIER,
+    "fast",
+    GmailClassificationSchema,
     NO_CACHE,
   ),
 };

@@ -2,7 +2,7 @@ import { supabase } from "@/lib/supabase";
 import type { ApplicationReminder, ApplicationReminderType } from "@/types";
 
 const REMINDER_COLUMNS =
-  "id, application_id, user_id, type, title, remind_at, note, completed, completed_at, created_at, updated_at";
+  "id, application_id, user_id, type, title, remind_at, note, completed, completed_at, source_gmail_suggestion_id, created_at, updated_at";
 
 export class ReminderRepository {
   async findByApplication(applicationId: string): Promise<ApplicationReminder[]> {
@@ -23,6 +23,8 @@ export class ReminderRepository {
       title: string;
       remind_at: string;
       note?: string | null;
+      /** Module 9A — set when this reminder was created by accepting a Gmail suggestion. */
+      source_gmail_suggestion_id?: string | null;
     },
   ): Promise<ApplicationReminder> {
     const { data, error } = await supabase

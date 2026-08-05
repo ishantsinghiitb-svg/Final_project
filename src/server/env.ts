@@ -23,6 +23,17 @@ export const serverEnv = {
   openaiApiKey: fromProcess("OPENAI_API_KEY"),
   anthropicApiKey: fromProcess("ANTHROPIC_API_KEY"),
   geminiApiKey: fromProcess("GEMINI_API_KEY"),
+
+  // ── Module 9A: Gmail Intelligence (server-only) ──
+  googleClientId: fromProcess("GOOGLE_CLIENT_ID"),
+  googleClientSecret: fromProcess("GOOGLE_CLIENT_SECRET"),
+  googleOAuthRedirectUri: fromProcess("GOOGLE_OAUTH_REDIRECT_URI"),
+  // Encrypts the stored Gmail refresh token at rest (AES-256-GCM) — kept
+  // separate from gmailOAuthStateSecret on purpose, one secret per purpose.
+  gmailTokenEncryptionKey: fromProcess("GMAIL_TOKEN_ENCRYPTION_KEY"),
+  // Signs the stateless OAuth `state` CSRF parameter (see
+  // src/server/gmail/OAuthState.ts) — never reused for token encryption.
+  gmailOAuthStateSecret: fromProcess("GMAIL_OAUTH_STATE_SECRET"),
 } as const;
 
 export function requireEnv(name: string, value: string): string {

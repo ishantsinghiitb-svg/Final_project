@@ -307,6 +307,17 @@ export const PROMPT_REGISTRY: Record<AICapability, PromptTemplate> = {
     "You write short, plain-English recommendations from verified job-search data.",
     (ctx) => `${renderResume(ctx)}\n\n${renderJob(ctx)}`,
   ),
+  // Placeholder only — never invoked. Its input isn't a resume/job pair
+  // either (an email's sender/subject/snippet facts), so this registry's
+  // AIContext-shaped template doesn't fit. The real prompt lives in
+  // features/gmail/prompt.ts, used directly by the dedicated orchestration
+  // (server/gmail/EmailClassifierAI.ts), not PromptManager. Same pattern as
+  // MOCK_INTERVIEW/RECOMMENDATIONS above.
+  [AI_CAPABILITIES.GMAIL_CLASSIFIER]: template(
+    AI_CAPABILITIES.GMAIL_CLASSIFIER,
+    "You classify a single job-search-related email into one category from a fixed list.",
+    (ctx) => `${renderResume(ctx)}\n\n${renderJob(ctx)}`,
+  ),
 };
 
 export function getPrompt(capability: AICapability): PromptTemplate {

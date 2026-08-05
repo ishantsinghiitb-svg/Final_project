@@ -28,6 +28,7 @@ import { Route as DashboardResumesRouteImport } from './routes/dashboard.resumes
 import { Route as DashboardNotesRouteImport } from './routes/dashboard.notes'
 import { Route as DashboardJobsRouteImport } from './routes/dashboard.jobs'
 import { Route as DashboardInterviewsRouteImport } from './routes/dashboard.interviews'
+import { Route as DashboardInboxRouteImport } from './routes/dashboard.inbox'
 import { Route as DashboardCoverLettersRouteImport } from './routes/dashboard.cover-letters'
 import { Route as DashboardCollectionsRouteImport } from './routes/dashboard.collections'
 import { Route as DashboardApplicationsRouteImport } from './routes/dashboard.applications'
@@ -42,6 +43,7 @@ import { Route as DashboardInterviewsInterviewIdRouteImport } from './routes/das
 import { Route as DashboardCoverLettersCoverLetterIdRouteImport } from './routes/dashboard.cover-letters.$coverLetterId'
 import { Route as DashboardCollectionsCollectionIdRouteImport } from './routes/dashboard.collections.$collectionId'
 import { Route as DashboardApplicationsApplicationIdRouteImport } from './routes/dashboard.applications.$applicationId'
+import { Route as AuthGmailCallbackRouteImport } from './routes/auth.gmail.callback'
 import { Route as DashboardInterviewsInterviewIdIndexRouteImport } from './routes/dashboard.interviews.$interviewId.index'
 import { Route as DashboardResumesResumeIdOptimizeRouteImport } from './routes/dashboard.resumes_.$resumeId.optimize'
 import { Route as DashboardInterviewsInterviewIdPrepRouteImport } from './routes/dashboard.interviews.$interviewId.prep'
@@ -145,6 +147,11 @@ const DashboardInterviewsRoute = DashboardInterviewsRouteImport.update({
   path: '/interviews',
   getParentRoute: () => DashboardRoute,
 } as any)
+const DashboardInboxRoute = DashboardInboxRouteImport.update({
+  id: '/inbox',
+  path: '/inbox',
+  getParentRoute: () => DashboardRoute,
+} as any)
 const DashboardCoverLettersRoute = DashboardCoverLettersRouteImport.update({
   id: '/cover-letters',
   path: '/cover-letters',
@@ -223,6 +230,11 @@ const DashboardApplicationsApplicationIdRoute =
     path: '/$applicationId',
     getParentRoute: () => DashboardApplicationsRoute,
   } as any)
+const AuthGmailCallbackRoute = AuthGmailCallbackRouteImport.update({
+  id: '/auth/gmail/callback',
+  path: '/auth/gmail/callback',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DashboardInterviewsInterviewIdIndexRoute =
   DashboardInterviewsInterviewIdIndexRouteImport.update({
     id: '/',
@@ -283,6 +295,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/applications': typeof DashboardApplicationsRouteWithChildren
   '/dashboard/collections': typeof DashboardCollectionsRouteWithChildren
   '/dashboard/cover-letters': typeof DashboardCoverLettersRouteWithChildren
+  '/dashboard/inbox': typeof DashboardInboxRoute
   '/dashboard/interviews': typeof DashboardInterviewsRouteWithChildren
   '/dashboard/jobs': typeof DashboardJobsRouteWithChildren
   '/dashboard/notes': typeof DashboardNotesRoute
@@ -290,6 +303,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/saved': typeof DashboardSavedRoute
   '/dashboard/settings': typeof DashboardSettingsRoute
   '/dashboard/': typeof DashboardIndexRoute
+  '/auth/gmail/callback': typeof AuthGmailCallbackRoute
   '/dashboard/applications/$applicationId': typeof DashboardApplicationsApplicationIdRoute
   '/dashboard/collections/$collectionId': typeof DashboardCollectionsCollectionIdRoute
   '/dashboard/cover-letters/$coverLetterId': typeof DashboardCoverLettersCoverLetterIdRoute
@@ -321,11 +335,13 @@ export interface FileRoutesByTo {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/supabase-status': typeof SupabaseStatusRoute
   '/dashboard/analytics': typeof DashboardAnalyticsRoute
+  '/dashboard/inbox': typeof DashboardInboxRoute
   '/dashboard/notes': typeof DashboardNotesRoute
   '/dashboard/resumes': typeof DashboardResumesRoute
   '/dashboard/saved': typeof DashboardSavedRoute
   '/dashboard/settings': typeof DashboardSettingsRoute
   '/dashboard': typeof DashboardIndexRoute
+  '/auth/gmail/callback': typeof AuthGmailCallbackRoute
   '/dashboard/applications/$applicationId': typeof DashboardApplicationsApplicationIdRoute
   '/dashboard/collections/$collectionId': typeof DashboardCollectionsCollectionIdRoute
   '/dashboard/cover-letters/$coverLetterId': typeof DashboardCoverLettersCoverLetterIdRoute
@@ -360,6 +376,7 @@ export interface FileRoutesById {
   '/dashboard/applications': typeof DashboardApplicationsRouteWithChildren
   '/dashboard/collections': typeof DashboardCollectionsRouteWithChildren
   '/dashboard/cover-letters': typeof DashboardCoverLettersRouteWithChildren
+  '/dashboard/inbox': typeof DashboardInboxRoute
   '/dashboard/interviews': typeof DashboardInterviewsRouteWithChildren
   '/dashboard/jobs': typeof DashboardJobsRouteWithChildren
   '/dashboard/notes': typeof DashboardNotesRoute
@@ -367,6 +384,7 @@ export interface FileRoutesById {
   '/dashboard/saved': typeof DashboardSavedRoute
   '/dashboard/settings': typeof DashboardSettingsRoute
   '/dashboard/': typeof DashboardIndexRoute
+  '/auth/gmail/callback': typeof AuthGmailCallbackRoute
   '/dashboard/applications/$applicationId': typeof DashboardApplicationsApplicationIdRoute
   '/dashboard/collections/$collectionId': typeof DashboardCollectionsCollectionIdRoute
   '/dashboard/cover-letters/$coverLetterId': typeof DashboardCoverLettersCoverLetterIdRoute
@@ -404,6 +422,7 @@ export interface FileRouteTypes {
     | '/dashboard/applications'
     | '/dashboard/collections'
     | '/dashboard/cover-letters'
+    | '/dashboard/inbox'
     | '/dashboard/interviews'
     | '/dashboard/jobs'
     | '/dashboard/notes'
@@ -411,6 +430,7 @@ export interface FileRouteTypes {
     | '/dashboard/saved'
     | '/dashboard/settings'
     | '/dashboard/'
+    | '/auth/gmail/callback'
     | '/dashboard/applications/$applicationId'
     | '/dashboard/collections/$collectionId'
     | '/dashboard/cover-letters/$coverLetterId'
@@ -442,11 +462,13 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/supabase-status'
     | '/dashboard/analytics'
+    | '/dashboard/inbox'
     | '/dashboard/notes'
     | '/dashboard/resumes'
     | '/dashboard/saved'
     | '/dashboard/settings'
     | '/dashboard'
+    | '/auth/gmail/callback'
     | '/dashboard/applications/$applicationId'
     | '/dashboard/collections/$collectionId'
     | '/dashboard/cover-letters/$coverLetterId'
@@ -480,6 +502,7 @@ export interface FileRouteTypes {
     | '/dashboard/applications'
     | '/dashboard/collections'
     | '/dashboard/cover-letters'
+    | '/dashboard/inbox'
     | '/dashboard/interviews'
     | '/dashboard/jobs'
     | '/dashboard/notes'
@@ -487,6 +510,7 @@ export interface FileRouteTypes {
     | '/dashboard/saved'
     | '/dashboard/settings'
     | '/dashboard/'
+    | '/auth/gmail/callback'
     | '/dashboard/applications/$applicationId'
     | '/dashboard/collections/$collectionId'
     | '/dashboard/cover-letters/$coverLetterId'
@@ -519,6 +543,7 @@ export interface RootRouteChildren {
   SignupRoute: typeof SignupRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   SupabaseStatusRoute: typeof SupabaseStatusRoute
+  AuthGmailCallbackRoute: typeof AuthGmailCallbackRoute
   DashboardInterviewsInterviewIdMockSessionIdRoute: typeof DashboardInterviewsInterviewIdMockSessionIdRoute
 }
 
@@ -657,6 +682,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardInterviewsRouteImport
       parentRoute: typeof DashboardRoute
     }
+    '/dashboard/inbox': {
+      id: '/dashboard/inbox'
+      path: '/inbox'
+      fullPath: '/dashboard/inbox'
+      preLoaderRoute: typeof DashboardInboxRouteImport
+      parentRoute: typeof DashboardRoute
+    }
     '/dashboard/cover-letters': {
       id: '/dashboard/cover-letters'
       path: '/cover-letters'
@@ -754,6 +786,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/dashboard/applications/$applicationId'
       preLoaderRoute: typeof DashboardApplicationsApplicationIdRouteImport
       parentRoute: typeof DashboardApplicationsRoute
+    }
+    '/auth/gmail/callback': {
+      id: '/auth/gmail/callback'
+      path: '/auth/gmail/callback'
+      fullPath: '/auth/gmail/callback'
+      preLoaderRoute: typeof AuthGmailCallbackRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/dashboard/interviews/$interviewId/': {
       id: '/dashboard/interviews/$interviewId/'
@@ -924,6 +963,7 @@ interface DashboardRouteChildren {
   DashboardApplicationsRoute: typeof DashboardApplicationsRouteWithChildren
   DashboardCollectionsRoute: typeof DashboardCollectionsRouteWithChildren
   DashboardCoverLettersRoute: typeof DashboardCoverLettersRouteWithChildren
+  DashboardInboxRoute: typeof DashboardInboxRoute
   DashboardInterviewsRoute: typeof DashboardInterviewsRouteWithChildren
   DashboardJobsRoute: typeof DashboardJobsRouteWithChildren
   DashboardNotesRoute: typeof DashboardNotesRoute
@@ -939,6 +979,7 @@ const DashboardRouteChildren: DashboardRouteChildren = {
   DashboardApplicationsRoute: DashboardApplicationsRouteWithChildren,
   DashboardCollectionsRoute: DashboardCollectionsRouteWithChildren,
   DashboardCoverLettersRoute: DashboardCoverLettersRouteWithChildren,
+  DashboardInboxRoute: DashboardInboxRoute,
   DashboardInterviewsRoute: DashboardInterviewsRouteWithChildren,
   DashboardJobsRoute: DashboardJobsRouteWithChildren,
   DashboardNotesRoute: DashboardNotesRoute,
@@ -966,6 +1007,7 @@ const rootRouteChildren: RootRouteChildren = {
   SignupRoute: SignupRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   SupabaseStatusRoute: SupabaseStatusRoute,
+  AuthGmailCallbackRoute: AuthGmailCallbackRoute,
   DashboardInterviewsInterviewIdMockSessionIdRoute:
     DashboardInterviewsInterviewIdMockSessionIdRoute,
 }

@@ -30,16 +30,22 @@ describe("cache policy", () => {
     }
   });
 
-  it("keeps caching enabled for every capability except mock_interview and recommendations", () => {
+  it("keeps caching enabled for every capability except mock_interview, recommendations, and gmail_classifier", () => {
     // mock_interview (Module 7C) is one deliberate exception: caching a
     // conversational turn would replay an identical question back to the
     // candidate, and a hash over an ever-growing transcript would essentially
-    // never hit anyway. recommendations (Module 8B) is the other: per its
+    // never hit anyway. recommendations (Module 8B) is another: per its
     // explicit "always reflect current data" requirement, a cached AI
     // response could describe data that has since changed — see the
-    // RecommendationsService.ts header comment. See the NO_CACHE comment in
-    // capabilities.ts.
-    const NO_CACHE_CAPABILITIES = new Set(["mock_interview", "recommendations"]);
+    // RecommendationsService.ts header comment. gmail_classifier (Module 9A)
+    // is the third: gmail_messages' UNIQUE(user_id, gmail_message_id) means a
+    // given email is only ever classified once, ever, so a cache would never
+    // hit anyway. See the NO_CACHE comment in capabilities.ts.
+    const NO_CACHE_CAPABILITIES = new Set([
+      "mock_interview",
+      "recommendations",
+      "gmail_classifier",
+    ]);
     for (const id of ALL_CAPABILITIES) {
       const expected = !NO_CACHE_CAPABILITIES.has(id);
       expect(getCapability(id).cachePolicy.enabled).toBe(expected);

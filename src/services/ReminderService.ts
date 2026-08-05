@@ -11,7 +11,14 @@ export class ReminderService {
   async createReminder(
     userId: string,
     applicationId: string,
-    input: { type: ApplicationReminderType; title: string; remind_at: string; note?: string | null },
+    input: {
+      type: ApplicationReminderType;
+      title: string;
+      remind_at: string;
+      note?: string | null;
+      /** Module 9A — set when this reminder was created by accepting a Gmail suggestion. */
+      source_gmail_suggestion_id?: string | null;
+    },
   ): Promise<ApplicationReminder> {
     return reminderRepo.create(userId, { application_id: applicationId, ...input });
   }

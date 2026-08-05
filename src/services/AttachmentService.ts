@@ -29,6 +29,8 @@ export class AttachmentService {
     kind: ApplicationAttachmentKind,
     file: File,
     reminderId?: string,
+    /** Module 9A — set when this upload came from accepting a Gmail suggestion. */
+    sourceGmailSuggestionId?: string,
   ): Promise<ApplicationAttachment> {
     const id = crypto.randomUUID();
     const path = await documentStorage.upload(userId, id, file);
@@ -41,6 +43,7 @@ export class AttachmentService {
       size_bytes: file.size,
       mime_type: file.type || null,
       reminder_id: reminderId ?? null,
+      source_gmail_suggestion_id: sourceGmailSuggestionId ?? null,
     });
   }
 

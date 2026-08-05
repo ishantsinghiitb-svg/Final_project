@@ -15,6 +15,25 @@ export class ContactRepository {
     return (data ?? []) as unknown as ApplicationContact[];
   }
 
+  /**
+   * All of a user's contacts with this email, across every application —
+   * unlike findByApplication, not scoped to one application. Used by
+   * Module 9A's ApplicationMatcher to match an inbound Gmail sender address
+   * to existing applications via their recruiter/hiring-manager contact.
+   * Case-insensitive exact match (no wildcards) — mirrors
+   * CompanyRepository.findByName's `.ilike(col, value)` convention.
+   */
+  async findByEmail(userId: string, email: string): Promise<ApplicationContact[]> {
+    const { data, error } = await supabase
+      .from("application_contacts")
+      .select(CONTACT_COLUMNS)
+      .eq("user_id", userId)
+      .ilike("email", email)
+      .order("created_at", { ascending: false });
+    if (error) throw error;
+    return (data ?? []) as unknown as ApplicationContact[];
+  }
+
   async create(
     userId: string,
     input: {

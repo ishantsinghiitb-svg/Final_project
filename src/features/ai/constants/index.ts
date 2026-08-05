@@ -13,6 +13,8 @@ export const AI_CAPABILITIES = {
   INTERVIEW_PREP: "interview_prep",
   MOCK_INTERVIEW: "mock_interview",
   RECOMMENDATIONS: "recommendations",
+  // Module 9A: internal-only — see EXPERIMENTAL_AI_CAPABILITIES below.
+  GMAIL_CLASSIFIER: "gmail_classifier",
 } as const;
 
 export type AICapability = (typeof AI_CAPABILITIES)[keyof typeof AI_CAPABILITIES];
@@ -49,8 +51,19 @@ export const SHIPPED_AI_CAPABILITIES = [
 /** A capability a user can actually reach. Use this in any user-facing type. */
 export type ShippedAICapability = (typeof SHIPPED_AI_CAPABILITIES)[number];
 
-/** Registered but unreachable — no server function, no client, no UI. */
-export const EXPERIMENTAL_AI_CAPABILITIES = [] as const;
+/**
+ * Registered but unreachable — no server function, no client, no UI.
+ *
+ * `gmail_classifier` (Module 9A) is a genuinely different case from the
+ * historical "not shipped yet" meaning of this list: it's fully implemented
+ * and actively used (called internally by GmailSyncService's Stage 2
+ * fallback, see src/server/gmail/EmailClassifierAI.ts) — it's "experimental"
+ * in the sense that matters here, not in the sense of incomplete: no user
+ * ever directly triggers it, sees a credits cost for it (it's free), or sees
+ * its raw output — the classification result only ever surfaces indirectly,
+ * as a `gmail_messages.category`/`gmail_suggestions` row the user reviews.
+ */
+export const EXPERIMENTAL_AI_CAPABILITIES = [AI_CAPABILITIES.GMAIL_CLASSIFIER] as const;
 
 export type ExperimentalAICapability = (typeof EXPERIMENTAL_AI_CAPABILITIES)[number];
 
@@ -66,6 +79,7 @@ export const AI_CAPABILITY_LABELS: Record<AICapability, string> = {
   interview_prep: "Interview Preparation",
   mock_interview: "Mock Interview",
   recommendations: "AI Recommendations",
+  gmail_classifier: "Gmail Email Classification",
 };
 
 /**
@@ -103,6 +117,14 @@ export const AI_CREDIT_COSTS: Record<AICapability, number> = {
   // one paid element on an otherwise free analytics page. See
   // server/ai/RecommendationsService.ts.
   recommendations: 0,
+  // ── Module 9A ──
+  // Never charges — Gmail Intelligence is a platform feature, not a
+  // user-paid one (explicit product requirement), and this is only ever
+  // Stage 2 of a deterministic-first pipeline: Stage 0/1 (RelevanceFilter,
+  // EmailClassifier) handle the large majority of mail with zero AI calls;
+  // this only runs for the sub-threshold-confidence tail. See
+  // src/server/gmail/EmailClassifierAI.ts.
+  gmail_classifier: 0,
 };
 
 /**
@@ -169,6 +191,8 @@ export const AI_ANALYSIS_VERSIONS: Record<AICapability, string> = {
   mock_interview: "3",
   // v1 (Module 8B): first AI Recommendations implementation.
   recommendations: "1",
+  // v1 (Module 9A): first Gmail Stage-2 fallback classification implementation.
+  gmail_classifier: "1",
 };
 
 /** Prompt version — bump when the prompt template text changes. */
@@ -259,6 +283,11 @@ export const AI_PROMPT_VERSIONS: Record<AICapability, string> = {
   // pre-verified candidates using only the exact numbers/names given to it;
   // see features/recommendations/prompt.ts.
   recommendations: "1",
+  // v1 (Module 9A): first Gmail Stage-2 fallback classification prompt — a
+  // fixed facts block (domain/display name/subject/snippet/meeting-link/ics
+  // flags), explicit untrusted-content framing, and an explicit
+  // prefer-unknown-over-guessing instruction; see features/gmail/prompt.ts.
+  gmail_classifier: "1",
 };
 
 // ── Deterministic resume parser (independent of the AI engine) ──

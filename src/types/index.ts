@@ -213,7 +213,9 @@ export type Application = {
   archived?: boolean;
   archived_at?: string | null;
   /** How this application was created. */
-  created_via?: "apply_flow" | "manual";
+  created_via?: "apply_flow" | "manual" | "gmail";
+  /** Module 9A — set when this application was created/updated by accepting a Gmail suggestion. More precise than created_via='gmail' alone (names the exact suggestion). Data collection only; no analytics UI yet. */
+  source_gmail_suggestion_id?: string | null;
   /** Free-form extension point (recruiter, hiring manager, referral, reminder, etc.). */
   metadata?: Json;
   /** Set alongside `notes` whenever it's saved — see ApplicationService.updateNotes. */
@@ -244,7 +246,12 @@ export type ApplicationTimelineEventType =
   | "resume_changed"
   | "contact_added"
   | "reminder_created"
-  | "reminder_completed";
+  | "reminder_completed"
+  // Module 9A: Gmail Intelligence — a classified email was matched to this
+  // application. Logged regardless of whether the resulting suggestion is
+  // later accepted or dismissed (an email that arrived is a real fact);
+  // metadata carries { gmail_message_id, category, confidence }.
+  | "email_received";
 
 export type ApplicationTimelineEvent = {
   id: string;
@@ -289,6 +296,8 @@ export type ApplicationReminder = {
   note?: string | null;
   completed: boolean;
   completed_at?: string | null;
+  /** Module 9A — set when this reminder was created by accepting a Gmail suggestion. Data collection only; no analytics UI yet. */
+  source_gmail_suggestion_id?: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -309,6 +318,8 @@ export type ApplicationAttachment = {
   mime_type?: string | null;
   /** Optional link to a reminder — NULL means a general application attachment. */
   reminder_id?: string | null;
+  /** Module 9A — set when this attachment was imported by accepting a Gmail suggestion. Data collection only; no analytics UI yet. */
+  source_gmail_suggestion_id?: string | null;
   created_at: string;
 };
 
@@ -439,6 +450,8 @@ export type Interview = {
   resume_name_snapshot?: string | null;
   job_id?: string | null;
   notes?: string | null;
+  /** Module 9A — set when this interview was created/updated by accepting a Gmail suggestion. Data collection only; no analytics UI yet. */
+  source_gmail_suggestion_id?: string | null;
   /**
    * The linked global_job's stored logo, attached at read time by
    * `InterviewRepository.attachLogos` (not a persisted `interviews` column) —
