@@ -116,6 +116,12 @@ export type GlobalJobRow = {
   extraction_warnings: string[] | null;
   // ── Module 4A QA fix: discovery-feed visibility flag ──
   is_manual_import: boolean;
+  // ── Module 10A: Job Intelligence Foundation additions ──
+  tags: string[] | null;
+  normalized_company: string | null;
+  normalized_role: string | null;
+  /** Generated tsvector column — read-only, only meaningful server-side via full-text queries. */
+  search_vector: unknown | null;
   created_at: string;
   updated_at: string;
 };
@@ -632,6 +638,11 @@ export type GlobalJobInsert = {
   extraction_warnings?: string[] | null;
   // ── Module 4A QA fix: discovery-feed visibility flag ──
   is_manual_import?: boolean;
+  // ── Module 10A: Job Intelligence Foundation additions ──
+  tags?: string[] | null;
+  normalized_company?: string | null;
+  normalized_role?: string | null;
+  // search_vector is GENERATED ALWAYS — never insertable.
   created_at?: string;
   updated_at?: string;
 };
@@ -641,6 +652,31 @@ export type SkillInsert = {
   name: string;
   category?: string | null;
   created_at?: string;
+};
+
+// ── Module 10A: job_sources ──
+// Retains every contributing platform's (source, source_job_id, source_url,
+// url) for a canonical global_jobs row — see the Module 10A migration.
+export type JobSourceRow = {
+  id: string;
+  job_id: string;
+  source: string;
+  source_job_id: string | null;
+  source_url: string | null;
+  url: string | null;
+  first_seen_at: string;
+  last_seen_at: string;
+};
+
+export type JobSourceInsert = {
+  id?: string;
+  job_id: string;
+  source: string;
+  source_job_id?: string | null;
+  source_url?: string | null;
+  url?: string | null;
+  first_seen_at?: string;
+  last_seen_at?: string;
 };
 
 export type RoleInsert = {
@@ -1589,6 +1625,12 @@ export type Database = {
         Update: Partial<JobSkillRow>;
         Relationships: TableRelationship[];
       };
+      job_sources: {
+        Row: JobSourceRow;
+        Insert: JobSourceInsert;
+        Update: Partial<JobSourceRow>;
+        Relationships: TableRelationship[];
+      };
       saved_jobs: {
         Row: SavedJobRow;
         Insert: SavedJobInsert;
@@ -1832,6 +1874,11 @@ export type Database = {
       refund_ai_credit: {
         Args: { p_capability: string; p_cost: number };
         Returns: Json;
+      };
+      // ── Module 10A: admin-only manual crawl write path (service_role only) ──
+      admin_upsert_global_job: {
+        Args: { payload: Json };
+        Returns: Json; // { id: string; created: boolean }
       };
     };
   };

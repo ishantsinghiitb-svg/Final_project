@@ -42,6 +42,15 @@ export const serverEnv = {
   // Renamed from GMAIL_OAUTH_STATE_SECRET in Module 9B, same fallback.
   googleOAuthStateSecret:
     fromProcess("GOOGLE_OAUTH_STATE_SECRET") || fromProcess("GMAIL_OAUTH_STATE_SECRET"),
+
+  // ── Module 10A: Job Intelligence Foundation (admin-only manual crawl) ──
+  // Comma-separated allowlist of admin email addresses — see
+  // src/server/jobIntelligence/adminAuth.ts#requireAdmin. There is no
+  // `is_admin` DB column/role in this project; gating an operator-only
+  // capability via a small env allowlist (checked against the authenticated
+  // caller's verified email) is intentionally simple and matches the "no
+  // scheduling, no cron, no user-triggered crawling" scope of this module.
+  adminEmails: fromProcess("ADMIN_EMAILS"),
 } as const;
 
 export function requireEnv(name: string, value: string): string {
