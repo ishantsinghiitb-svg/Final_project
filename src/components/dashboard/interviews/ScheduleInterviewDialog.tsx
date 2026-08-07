@@ -141,6 +141,21 @@ export function ScheduleInterviewDialog({
     };
 
     if (interview) {
+      // Locking rule (Module 9B §1.5): the moment a user hand-edits any of
+      // these 4 calendar-managed fields on a calendar/both-sourced
+      // interview, the lock flips true so a later sync never silently
+      // overwrites what they just typed. Editing interviewer alone doesn't
+      // lock — it's already empty-only on the sync side, nothing to protect.
+      const calendarManagedFieldsChanged =
+        shared.scheduled_at !== interview.scheduled_at ||
+        shared.mode !== interview.mode ||
+        (shared.link ?? null) !== (interview.link ?? null) ||
+        (shared.location ?? null) !== (interview.location ?? null);
+      const shouldLock =
+        calendarManagedFieldsChanged &&
+        (interview.source === "calendar" || interview.source === "both") &&
+        !interview.calendar_fields_locked;
+
       updateInterview.mutate(
         {
           id: interview.id,
@@ -154,6 +169,7 @@ export function ScheduleInterviewDialog({
             resume_id: shared.resume_id,
             notes: shared.notes,
             ...(isLinked ? {} : { company_name: companyName.trim(), role: role.trim() }),
+            ...(shouldLock ? { calendar_fields_locked: true } : {}),
           },
         },
         {

@@ -240,8 +240,14 @@ export const JOB_KEYWORDS = [
   "hr round",
 ];
 
-/** Word-boundary keyword match — see the JOB_KEYWORDS header comment for why this isn't plain `.includes()`. */
-function keywordMatch(lowerSubject: string, keyword: string): boolean {
+/**
+ * Word-boundary keyword match — see the JOB_KEYWORDS header comment for why
+ * this isn't plain `.includes()`. Exported (Module 9B) for
+ * CalendarRelevanceFilter.ts, which needs the identical word-boundary
+ * semantics against event titles/descriptions — pure text-vocabulary logic,
+ * no Gmail coupling.
+ */
+export function keywordMatch(lowerSubject: string, keyword: string): boolean {
   const escaped = keyword.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   return new RegExp(`\\b${escaped}\\b`, "i").test(lowerSubject);
 }

@@ -214,8 +214,8 @@ export type Application = {
   archived_at?: string | null;
   /** How this application was created. */
   created_via?: "apply_flow" | "manual" | "gmail";
-  /** Module 9A — set when this application was created/updated by accepting a Gmail suggestion. More precise than created_via='gmail' alone (names the exact suggestion). Data collection only; no analytics UI yet. */
-  source_gmail_suggestion_id?: string | null;
+  /** Module 9A/9B — set when this application was created/updated by accepting a suggestion (Gmail- or Calendar-derived). More precise than created_via='gmail' alone (names the exact suggestion). Data collection only; no analytics UI yet. */
+  source_suggestion_id?: string | null;
   /** Free-form extension point (recruiter, hiring manager, referral, reminder, etc.). */
   metadata?: Json;
   /** Set alongside `notes` whenever it's saved — see ApplicationService.updateNotes. */
@@ -251,7 +251,12 @@ export type ApplicationTimelineEventType =
   // application. Logged regardless of whether the resulting suggestion is
   // later accepted or dismissed (an email that arrived is a real fact);
   // metadata carries { gmail_message_id, category, confidence }.
-  | "email_received";
+  | "email_received"
+  // Module 9B: Calendar Intelligence — logged passively regardless of review
+  // outcome, same philosophy as email_received.
+  | "calendar_event_linked"
+  | "interview_rescheduled"
+  | "calendar_event_cancelled";
 
 export type ApplicationTimelineEvent = {
   id: string;
@@ -288,7 +293,10 @@ export type ApplicationReminderType =
 
 export type ApplicationReminder = {
   id: string;
-  application_id: string;
+  /** Module 9B — nullable now that a reminder can hang off a standalone interview instead. At least one of application_id/interview_id is always set. */
+  application_id: string | null;
+  /** Module 9B — direct link for reminders on a standalone (non-application-linked) interview. */
+  interview_id?: string | null;
   user_id: string;
   type: ApplicationReminderType;
   title: string;
@@ -296,8 +304,8 @@ export type ApplicationReminder = {
   note?: string | null;
   completed: boolean;
   completed_at?: string | null;
-  /** Module 9A — set when this reminder was created by accepting a Gmail suggestion. Data collection only; no analytics UI yet. */
-  source_gmail_suggestion_id?: string | null;
+  /** Module 9A/9B — set when this reminder was created by accepting a suggestion (Gmail- or Calendar-derived). Data collection only; no analytics UI yet. */
+  source_suggestion_id?: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -318,8 +326,8 @@ export type ApplicationAttachment = {
   mime_type?: string | null;
   /** Optional link to a reminder — NULL means a general application attachment. */
   reminder_id?: string | null;
-  /** Module 9A — set when this attachment was imported by accepting a Gmail suggestion. Data collection only; no analytics UI yet. */
-  source_gmail_suggestion_id?: string | null;
+  /** Module 9A/9B — set when this attachment was imported by accepting a suggestion (Gmail- or Calendar-derived). Data collection only; no analytics UI yet. */
+  source_suggestion_id?: string | null;
   created_at: string;
 };
 
@@ -433,6 +441,9 @@ export type InterviewMode = "online" | "offline";
 // enforced by InterviewService.updateStatus.
 export type InterviewStatus = "scheduled" | "completed" | "passed" | "rejected";
 
+/** Which product surface(s) this interview traces back to — drives the source chip. 'both' means a Gmail suggestion and a calendar event independently corroborated the same interview. */
+export type InterviewSource = "manual" | "gmail" | "calendar" | "both";
+
 export type Interview = {
   id: string;
   user_id: string;
@@ -450,15 +461,29 @@ export type Interview = {
   resume_name_snapshot?: string | null;
   job_id?: string | null;
   notes?: string | null;
-  /** Module 9A — set when this interview was created/updated by accepting a Gmail suggestion. Data collection only; no analytics UI yet. */
-  source_gmail_suggestion_id?: string | null;
+  /** Module 9A/9B — set when this interview was created/updated by accepting a suggestion (Gmail- or Calendar-derived). Data collection only; no analytics UI yet. */
+  source_suggestion_id?: string | null;
+  /** Module 9B — the calendar_events row this interview is linked to, if any. */
+  calendar_event_id?: string | null;
+  source: InterviewSource;
+  /** Module 9B — true once the user hand-edits scheduled_at/mode/link/location on a calendar/both-sourced interview; sync then stops silently overwriting those 4 fields and raises a review item on conflict instead. Cleared by "Resync from calendar". */
+  calendar_fields_locked?: boolean;
+  last_calendar_sync_at?: string | null;
   /**
    * The linked global_job's stored logo, attached at read time by
-   * `InterviewRepository.attachLogos` (not a persisted `interviews` column) —
-   * mirrors `Application.company_logo_url`. `null`/absent → `CompanyMark`
-   * falls back to initials.
+   * `InterviewRepository`'s enrichment step (not a persisted `interviews`
+   * column) — mirrors `Application.company_logo_url`. `null`/absent →
+   * `CompanyMark` falls back to initials.
    */
   company_logo_url?: string | null;
+  /**
+   * Module 9B — true when this interview's linked calendar event has been
+   * cancelled or dismissed on the Google side (read-time-only, derived from
+   * the linked calendar_events row, never a persisted `interviews` column).
+   * Drives the "Removed from your calendar" card treatment; the interview
+   * itself is never auto-deleted (Q50).
+   */
+  is_calendar_event_stale?: boolean;
   created_at: string;
   updated_at: string;
 };

@@ -26,9 +26,9 @@ import {
   attachmentKindLabel,
   formatBytes,
 } from "@/features/gmail/preview";
-import type { GmailSuggestionListItem } from "@/repositories/GmailRepository";
+import type { SuggestionListItem } from "@/repositories/SuggestionRepository";
 
-// ── ReviewPanel (Module 9A) ──
+// ── ReviewPanel (Module 9A/9B) ──
 //
 // "The user should never have to leave NextOffer to understand an email."
 // The old Review surface was a small centred dialog showing only the edit
@@ -43,12 +43,17 @@ import type { GmailSuggestionListItem } from "@/repositories/GmailRepository";
 // cost of one request per opened email, which is why it's keyed and cached
 // by react-query rather than refetched on every render.
 //
+// A calendar-sourced suggestion has no email to fetch at all — its details
+// are shown straight from the already-stored calendar_events row
+// (suggestion.calendarEvent), no live API call needed for display, since
+// nothing beyond what's already stored is shown.
+//
 // The body renders as TEXT, never HTML. A recruiter's email is untrusted
 // input; rendering its markup would put arbitrary sender-controlled content
 // into the dashboard's DOM.
 
 type Props = {
-  suggestion: GmailSuggestionListItem;
+  suggestion: SuggestionListItem;
   googleEmail: string | null;
   onClose: () => void;
   onAccept: () => void;
@@ -78,16 +83,21 @@ export function ReviewPanel({
   const summary = readSuggestionSummary(suggestion);
   const tier = confidenceTier(suggestion.confidence);
 
+  const gmailMessageRowId = suggestion.gmail_message_id;
+
   const bodyQuery = useQuery({
-    queryKey: ["gmail", "message-body", suggestion.gmail_message_id],
+    queryKey: ["gmail", "message-body", gmailMessageRowId],
     queryFn: () =>
       fetchGmailMessageBody({
         data: {
           accessToken: session?.access_token ?? "",
-          gmailMessageRowId: suggestion.gmail_message_id,
+          // Non-null by construction — `enabled` below gates this query on
+          // gmailMessageRowId being present, so this closure never runs
+          // for a calendar-only suggestion.
+          gmailMessageRowId: gmailMessageRowId ?? "",
         },
       }),
-    enabled: Boolean(session?.access_token),
+    enabled: Boolean(session?.access_token) && Boolean(gmailMessageRowId),
     staleTime: 5 * 60 * 1000,
     retry: false,
   });
@@ -106,13 +116,15 @@ export function ReviewPanel({
     filename: string;
     mimeType: string;
   }) {
-    if (!session?.access_token) return;
+    // Attachments only ever come from a Gmail message — this button is only
+    // ever rendered when `body` (the fetched Gmail message) is loaded.
+    if (!session?.access_token || !gmailMessageRowId) return;
     setDownloadingId(attachment.gmailAttachmentId);
     try {
       const result = await fetchGmailAttachmentBytes({
         data: {
           accessToken: session.access_token,
-          gmailMessageRowId: suggestion.gmail_message_id,
+          gmailMessageRowId,
           gmailAttachmentId: attachment.gmailAttachmentId,
         },
       });
@@ -200,9 +212,47 @@ export function ReviewPanel({
             <Fact
               icon={AlarmClock}
               label="Classification"
-              value={suggestion.category.replace(/_/g, " ")}
+              value={suggestion.category?.replace(/_/g, " ") ?? null}
             />
           </dl>
+
+          {/* Calendar event details — shown straight from the already-stored
+              calendar_events row, no live API call, for a calendar-sourced
+              (or 'both') suggestion. */}
+          {suggestion.calendarEvent && (
+            <div className="mt-4 rounded-xl border border-black/5 bg-black/[0.012] px-3.5 py-3">
+              <p className="text-[11px] font-medium uppercase tracking-wide text-[oklch(0.5_0.02_265)]">
+                Calendar event
+              </p>
+              {suggestion.calendarEvent.title && (
+                <p className="mt-1.5 text-sm font-medium text-[oklch(0.25_0.02_265)]">
+                  {suggestion.calendarEvent.title}
+                </p>
+              )}
+              <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5 text-sm">
+                <Fact
+                  icon={CalendarClock}
+                  label="When"
+                  value={
+                    suggestion.calendarEvent.isAllDay
+                      ? "All day — pick a time before accepting"
+                      : new Date(suggestion.calendarEvent.startsAt).toLocaleString()
+                  }
+                />
+                <Fact icon={Link2} label="Location" value={suggestion.calendarEvent.location} />
+                <Fact
+                  icon={ExternalLink}
+                  label="Meeting link"
+                  value={suggestion.calendarEvent.meetingLink}
+                />
+              </dl>
+              {suggestion.calendarEvent.selfResponseStatus === "tentative" && (
+                <p className="mt-2 text-[11px] text-[#B45309]">
+                  Unconfirmed — you haven't accepted this invite in Google Calendar yet.
+                </p>
+              )}
+            </div>
+          )}
 
           {/* The per-suggestion confidence evidence ("Detected because…") is
               deliberately NOT rendered. It's a classifier-debugging aid, and
@@ -213,67 +263,69 @@ export function ReviewPanel({
               space on it. The confidence tier in the header is the part that
               actually informs a decision. */}
 
-          {/* Email preview */}
-          <div className="mt-5">
-            <div className="flex items-center justify-between">
-              <p className="text-[11px] font-medium uppercase tracking-wide text-[oklch(0.5_0.02_265)]">
-                Original email
-              </p>
-              {googleEmail && suggestion.externalMessageId && (
-                <a
-                  href={gmailDeepLink(googleEmail, suggestion.externalMessageId)}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center gap-1 text-xs font-medium text-[#2563EB] hover:underline"
-                >
-                  Open in Gmail <ExternalLink className="h-3 w-3" />
-                </a>
-              )}
-            </div>
-
-            {suggestion.subject && (
-              <p className="mt-1.5 text-sm font-medium text-[oklch(0.25_0.02_265)]">
-                {suggestion.subject}
-              </p>
-            )}
-
-            <div className="mt-2 rounded-xl border border-black/5 bg-black/[0.012] px-3.5 py-3">
-              {bodyQuery.isLoading ? (
-                <p className="flex items-center gap-2 text-xs text-[oklch(0.55_0.02_265)]">
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading email…
+          {/* Email preview — only for a Gmail-sourced (or 'both') suggestion. */}
+          {gmailMessageRowId && (
+            <div className="mt-5">
+              <div className="flex items-center justify-between">
+                <p className="text-[11px] font-medium uppercase tracking-wide text-[oklch(0.5_0.02_265)]">
+                  Original email
                 </p>
-              ) : bodyError || bodyQuery.isError ? (
-                <p className="flex items-start gap-1.5 text-xs text-[#B45309]">
-                  <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-                  {bodyError ?? "Couldn't load this email from Gmail."} You can still open it in
-                  Gmail above.
-                </p>
-              ) : body ? (
-                <div className="space-y-1">
-                  {body.bodyText.split("\n").map((line, i) =>
-                    line.trim().length === 0 ? (
-                      <div key={i} className="h-2" />
-                    ) : (
-                      <p
-                        key={i}
-                        className={
-                          isHighlightLine(line)
-                            ? "rounded bg-[#F59E0B]/10 px-1.5 py-0.5 text-xs font-medium text-[oklch(0.25_0.02_265)]"
-                            : "text-xs leading-relaxed text-[oklch(0.4_0.02_265)]"
-                        }
-                      >
-                        {line}
-                      </p>
-                    ),
-                  )}
-                </div>
-              ) : (
-                <p className="text-xs text-[oklch(0.55_0.02_265)]">
-                  {suggestion.subject ? "No preview available." : "Nothing to preview."}
+                {googleEmail && suggestion.externalMessageId && (
+                  <a
+                    href={gmailDeepLink(googleEmail, suggestion.externalMessageId)}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1 text-xs font-medium text-[#2563EB] hover:underline"
+                  >
+                    Open in Gmail <ExternalLink className="h-3 w-3" />
+                  </a>
+                )}
+              </div>
+
+              {suggestion.subject && (
+                <p className="mt-1.5 text-sm font-medium text-[oklch(0.25_0.02_265)]">
+                  {suggestion.subject}
                 </p>
               )}
+
+              <div className="mt-2 rounded-xl border border-black/5 bg-black/[0.012] px-3.5 py-3">
+                {bodyQuery.isLoading ? (
+                  <p className="flex items-center gap-2 text-xs text-[oklch(0.55_0.02_265)]">
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading email…
+                  </p>
+                ) : bodyError || bodyQuery.isError ? (
+                  <p className="flex items-start gap-1.5 text-xs text-[#B45309]">
+                    <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                    {bodyError ?? "Couldn't load this email from Gmail."} You can still open it in
+                    Gmail above.
+                  </p>
+                ) : body ? (
+                  <div className="space-y-1">
+                    {body.bodyText.split("\n").map((line, i) =>
+                      line.trim().length === 0 ? (
+                        <div key={i} className="h-2" />
+                      ) : (
+                        <p
+                          key={i}
+                          className={
+                            isHighlightLine(line)
+                              ? "rounded bg-[#F59E0B]/10 px-1.5 py-0.5 text-xs font-medium text-[oklch(0.25_0.02_265)]"
+                              : "text-xs leading-relaxed text-[oklch(0.4_0.02_265)]"
+                          }
+                        >
+                          {line}
+                        </p>
+                      ),
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-xs text-[oklch(0.55_0.02_265)]">
+                    {suggestion.subject ? "No preview available." : "Nothing to preview."}
+                  </p>
+                )}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Links */}
           {body && body.links.length > 0 && (

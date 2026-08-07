@@ -1,4 +1,4 @@
-import type { InterviewStatus } from "@/types";
+import type { Interview, InterviewSource, InterviewStatus } from "@/types";
 import type {
   InterviewSort,
   InterviewSortOption,
@@ -18,7 +18,7 @@ export const INTERVIEW_ROUND_PRESETS = [
   "Final Round",
 ] as const;
 
-type ChipTone = "default" | "blue" | "purple" | "green" | "amber" | "rose";
+export type ChipTone = "default" | "blue" | "purple" | "green" | "amber" | "rose";
 
 const ROUND_TONES: Record<string, ChipTone> = {
   "Recruiter Screen": "blue",
@@ -67,6 +67,52 @@ export const WHEN_FILTER_LABELS: Record<InterviewWhenFilter, string> = {
 };
 
 export const WHEN_FILTER_OPTIONS: InterviewWhenFilter[] = ["today", "upcoming", "completed"];
+
+// ── Source filter (Module 9B) ────────────────────────────────────────────────
+
+export const SOURCE_FILTER_LABELS: Record<InterviewSource, string> = {
+  manual: "Manual",
+  gmail: "Gmail",
+  calendar: "Calendar",
+  both: "Gmail + Calendar",
+};
+
+export const SOURCE_FILTER_OPTIONS: InterviewSource[] = ["manual", "gmail", "calendar", "both"];
+
+// Manual is intentionally excluded — unbadged is the norm; a chip on every
+// interview would be noise on a page whose whole point is the interview
+// itself, not its provenance. Gmail/Calendar/Both each get a chip since
+// "where did this come from" is genuinely useful here.
+export const SOURCE_CHIP_META: Partial<Record<InterviewSource, { label: string; tone: ChipTone }>> =
+  {
+    gmail: { label: "Gmail", tone: "amber" },
+    calendar: { label: "Calendar", tone: "blue" },
+    both: { label: "Gmail + Calendar", tone: "purple" },
+  };
+
+// ── "Keep" — acknowledge a cancelled calendar event (Module 9 UX pass) ──────
+// When the linked calendar event is cancelled, the interview stays (never
+// auto-deleted) but keeps showing a "Removed from calendar" indicator
+// forever unless the user explicitly acknowledges it. "Keep" unlinks the
+// interview from that now-gone event — this is the ONLY lever available
+// without new schema: is_calendar_event_stale is computed purely from
+// `calendar_event_id ? staleEventIds.has(id) : false` (see
+// InterviewRepository.attachDerivedFields), so nulling the FK clears the
+// indicator immediately. `source` is downgraded alongside it so the source
+// chip doesn't keep implying an active calendar link that no longer exists.
+
+function downgradeSourceAfterUnlink(source: InterviewSource): InterviewSource {
+  if (source === "both") return "gmail";
+  if (source === "calendar") return "manual";
+  return source;
+}
+
+export function buildKeepInterviewPatch(interview: Pick<Interview, "source">): {
+  calendar_event_id: null;
+  source: InterviewSource;
+} {
+  return { calendar_event_id: null, source: downgradeSourceAfterUnlink(interview.source) };
+}
 
 // ── Sort options ─────────────────────────────────────────────────────────────
 

@@ -1,7 +1,9 @@
+import { useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/context/AuthContext";
 import { interviewService } from "@/services/InterviewService";
-import type { Interview, InterviewStatus } from "@/types";
+import { reminderService } from "@/services/ReminderService";
+import type { ApplicationReminder, Interview, InterviewStatus } from "@/types";
 import type { ScheduleInterviewInput, StandaloneInterviewInput } from "@/features/interviews/types";
 
 // ── Query key factory ────────────────────────────────────────────────────────
@@ -50,6 +52,56 @@ export function useInterviewsForApplication(applicationId: string | undefined) {
     enabled: Boolean(applicationId),
     staleTime: 60 * 1_000,
   });
+}
+
+// ── useUpcomingRemindersByInterview ─────────────────────────────────────────
+// Interview cards' "next reminder" indicator — one bulk fetch for the whole
+// visible list rather than one query per card. See ReminderRepository.
+// findUpcomingForOwners for the application-id-fallback matching rule.
+
+export function useUpcomingRemindersByInterview(
+  interviews: Interview[],
+): Map<string, ApplicationReminder> {
+  const { user } = useAuth();
+  const applicationIds = useMemo(
+    () =>
+      Array.from(
+        new Set(interviews.map((i) => i.application_id).filter((v): v is string => Boolean(v))),
+      ).sort(),
+    [interviews],
+  );
+  const interviewIds = useMemo(() => interviews.map((i) => i.id).sort(), [interviews]);
+
+  const { data: reminders = [] } = useQuery({
+    queryKey: [
+      ...interviewKeys.all,
+      "upcoming-reminders",
+      user?.id ?? "",
+      applicationIds,
+      interviewIds,
+    ],
+    queryFn: () => reminderService.getUpcomingRemindersForOwners(applicationIds, interviewIds),
+    enabled: Boolean(user) && interviews.length > 0,
+    staleTime: 30 * 1_000,
+  });
+
+  return useMemo(() => {
+    const map = new Map<string, ApplicationReminder>();
+    for (const interview of interviews) {
+      const exact = reminders.find((r) => r.interview_id === interview.id);
+      if (exact) {
+        map.set(interview.id, exact);
+        continue;
+      }
+      if (interview.application_id) {
+        const byApplication = reminders.find(
+          (r) => r.application_id === interview.application_id && !r.interview_id,
+        );
+        if (byApplication) map.set(interview.id, byApplication);
+      }
+    }
+    return map;
+  }, [reminders, interviews]);
 }
 
 // ── useCreateInterview ───────────────────────────────────────────────────────
@@ -153,6 +205,33 @@ export function useUpdateInterviewStatus() {
       if (interview.application_id) {
         void queryClient.invalidateQueries({
           queryKey: interviewKeys.byApplication(interview.application_id),
+        });
+      }
+    },
+  });
+}
+
+// ── useResyncInterviewFromCalendar ──────────────────────────────────────────
+// "Resync from calendar" (Module 9B) — clears calendar_fields_locked and
+// pulls the linked calendar event's current details. Only ever offered on a
+// locked, calendar-linked interview (see InterviewDetail's gating).
+
+export function useResyncInterviewFromCalendar() {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const userId = user?.id ?? "";
+
+  return useMutation({
+    mutationFn: (id: string) => interviewService.resyncFromCalendar(id),
+
+    onSettled: (data) => {
+      void queryClient.invalidateQueries({ queryKey: interviewKeys.allByUser(userId) });
+      if (data) {
+        void queryClient.invalidateQueries({ queryKey: interviewKeys.detail(data.id) });
+      }
+      if (data?.application_id) {
+        void queryClient.invalidateQueries({
+          queryKey: interviewKeys.byApplication(data.application_id),
         });
       }
     },

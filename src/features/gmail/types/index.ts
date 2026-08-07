@@ -1,23 +1,28 @@
 import type { Json } from "@/types/database";
 
-// ── Module 9A: Gmail Intelligence — client-facing domain types ──
-// Server-only concerns (encrypted token columns, the sync-engine's history_id
-// checkpoint, sync_lock_acquired_at) intentionally do NOT appear here — they
-// stay on the DB Row types in src/types/database.ts and are only ever read by
-// src/server/gmail/*, never sent to the client.
+// ── Module 9A/9B: Gmail + Calendar Intelligence — client-facing domain types ──
+// Server-only concerns (encrypted token columns, the sync-engine's history_id/
+// sync_token checkpoints, *_sync_lock_acquired_at) intentionally do NOT appear
+// here — they stay on the DB Row types in src/types/database.ts and are only
+// ever read by src/server/gmail/* and src/server/calendar/*, never sent to
+// the client.
 
-export type GmailConnectionStatus =
+export type GoogleProductStatus =
   "connected" | "syncing" | "disconnected" | "error" | "needs_reauth";
 
-/** Client/UI-facing connection status — never includes token material. */
-export type GmailConnection = {
+/** Client/UI-facing connection status — never includes token material. One Google account, two independently-tracked products. */
+export type GoogleConnection = {
   id: string;
   user_id: string;
   google_email: string;
-  status: GmailConnectionStatus;
-  auto_sync_enabled: boolean;
-  last_synced_at: string | null;
-  last_sync_error: string | null;
+  gmail_status: GoogleProductStatus;
+  gmail_auto_sync_enabled: boolean;
+  gmail_last_synced_at: string | null;
+  gmail_last_sync_error: string | null;
+  calendar_status: GoogleProductStatus;
+  calendar_auto_sync_enabled: boolean;
+  calendar_last_synced_at: string | null;
+  calendar_last_sync_error: string | null;
   connected_at: string;
 };
 
@@ -89,31 +94,45 @@ export type GmailMessage = {
  *     detected, generic update) — the specific narrative lives in
  *     `explanation`, not the type.
  *   - create_interview: both a brand-new interview and a reschedule/update
- *     of one Gmail already linked — `suggested_payload.existingInterviewId`
- *     set means update, absent means create.
+ *     of one already linked — `suggested_payload.existingInterviewId` set
+ *     means update, absent means create. Module 9B adds two more optional
+ *     payload fields here: `possibleDuplicateOfInterviewId` (a weaker,
+ *     Tier 3/4 calendar match that might already be a known interview —
+ *     presence of this field switches ReviewSuggestionDialog's create_interview
+ *     view into compare mode) and `calendarEventId`/`isTentative`/`isAllDay`
+ *     (for the Unconfirmed badge and forcing a real time on an all-day event).
  *   - add_reminder: follow-up / OA deadline / offer-expiry — the specific
  *     application_reminders.type travels in `suggested_payload`.
+ *
+ * Calendar-sourced suggestions only ever use create_application or
+ * create_interview — a calendar event never carries the attachment/status-
+ * language signals the other three types depend on. No new type was needed
+ * for Module 9B.
  */
-export type GmailSuggestionType =
+export type SuggestionType =
   | "create_application"
   | "update_application"
   | "create_interview"
   | "add_reminder"
   | "import_attachment";
 
-export type GmailSuggestionStatus = "pending" | "accepted" | "dismissed" | "expired" | "superseded";
+export type SuggestionStatus = "pending" | "accepted" | "dismissed" | "expired" | "superseded";
 
-export type GmailSuggestion = {
+/** Which product(s) produced this suggestion — derived at read time from which FK is set, never stored, so it can't drift from the data (see SuggestionRepository). */
+export type SuggestionSource = "gmail" | "calendar" | "both";
+
+export type Suggestion = {
   id: string;
   user_id: string;
-  gmail_message_id: string;
-  type: GmailSuggestionType;
-  status: GmailSuggestionStatus;
+  gmail_message_id: string | null;
+  calendar_event_id: string | null;
+  type: SuggestionType;
+  status: SuggestionStatus;
   confidence: number;
   /** Human-readable "why this was detected" — always shown in the UI, never hidden behind a click. */
   explanation: string;
   target_application_id: string | null;
-  /** Shape depends on `type` — see the per-type payload builders in src/server/gmail/. */
+  /** Shape depends on `type` — see the per-type payload builders in src/server/gmail/ and src/server/calendar/. */
   suggested_payload: Json;
   resolved_at: string | null;
   resolved_action: "accepted" | "dismissed" | null;
@@ -123,4 +142,4 @@ export type GmailSuggestion = {
 
 /** The 4 filters the Recruiter Inbox exposes — "expired"/"superseded" are
  *  internal bookkeeping states, not user-facing filter options. */
-export type GmailSuggestionFilter = "all" | "pending" | "accepted" | "dismissed";
+export type SuggestionFilter = "all" | "pending" | "accepted" | "dismissed";

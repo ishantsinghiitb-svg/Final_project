@@ -1,7 +1,15 @@
 import { useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { toast } from "sonner";
-import { Inbox as InboxIcon, Search, Mail, RefreshCw, Loader2 } from "lucide-react";
+import {
+  Inbox as InboxIcon,
+  Search,
+  Mail,
+  RefreshCw,
+  Loader2,
+  ChevronDown,
+  ChevronUp,
+} from "lucide-react";
 import {
   DashCard,
   PageHeader,
@@ -13,23 +21,25 @@ import { SuggestionGroupCard } from "@/components/dashboard/gmail/SuggestionGrou
 import { ReviewPanel } from "@/components/dashboard/gmail/ReviewPanel";
 import { ReviewSuggestionDialog } from "@/components/dashboard/gmail/ReviewSuggestionDialog";
 import {
-  useGmailConnection,
-  useGmailSuggestions,
-  useResolveGmailSuggestion,
-  useResolveGmailSuggestions,
-  useSyncGmailNow,
+  useSuggestions,
+  useResolveSuggestion,
+  useResolveSuggestions,
 } from "@/features/gmail/hooks";
+import { useGoogleConnection, useSyncGoogleNow } from "@/features/google/hooks";
+import { combinedSyncOutcomeMessage } from "@/features/google/syncOutcome";
 import { groupSuggestions } from "@/features/gmail/grouping";
-import {
-  VIEWS,
-  applyView,
-  READ_FILTERS,
-  applyReadFilter,
-  type InboxView,
-  type ReadFilter,
-} from "@/features/gmail/views";
-import type { GmailSuggestionFilter, GmailSuggestionType } from "@/features/gmail/types";
-import type { GmailSuggestionListItem } from "@/repositories/GmailRepository";
+import { VIEWS, applyView, splitByReadState, type InboxView } from "@/features/gmail/views";
+import type { SuggestionType } from "@/features/gmail/types";
+import type { SuggestionListItem } from "@/repositories/SuggestionRepository";
+
+// ── Recruiter Inbox (Module 9A, simplified in the Module 9 UX pass) ──
+//
+// Gmail-only — Calendar-sourced suggestions live on the Interviews page
+// instead (see usePendingCalendarSuggestions / PendingCalendarSuggestions).
+// The list here is always PENDING (dismissed/added items simply disappear —
+// there is no "view history" affordance left in this UI; that state still
+// lives in the DB and on the relevant application's timeline, it's just not
+// browsable as a queue anymore).
 
 export const Route = createFileRoute("/dashboard/inbox")({
   head: () => ({
@@ -38,16 +48,7 @@ export const Route = createFileRoute("/dashboard/inbox")({
   component: InboxPage,
 });
 
-const STATUS_FILTERS: { value: GmailSuggestionFilter; label: string }[] = [
-  { value: "pending", label: "Pending" },
-  // The stored status value stays "accepted" — only the label changes, to
-  // match the "Add Application" wording on the action itself.
-  { value: "accepted", label: "Added" },
-  { value: "dismissed", label: "Dismissed" },
-  { value: "all", label: "All" },
-];
-
-const TYPE_SUMMARY_LABEL: Record<GmailSuggestionType, string> = {
+const TYPE_SUMMARY_LABEL: Record<SuggestionType, string> = {
   create_application: "new application",
   update_application: "status update",
   create_interview: "interview",
@@ -55,9 +56,9 @@ const TYPE_SUMMARY_LABEL: Record<GmailSuggestionType, string> = {
   import_attachment: "attachment",
 };
 
-function summarize(pending: GmailSuggestionListItem[]): string[] {
+function summarize(pending: SuggestionListItem[]): string[] {
   if (pending.length === 0) return [];
-  const counts = new Map<GmailSuggestionType, number>();
+  const counts = new Map<SuggestionType, number>();
   for (const item of pending) counts.set(item.type, (counts.get(item.type) ?? 0) + 1);
 
   const parts = [`${pending.length} item${pending.length === 1 ? "" : "s"} need attention`];
@@ -68,48 +69,37 @@ function summarize(pending: GmailSuggestionListItem[]): string[] {
 }
 
 function InboxPage() {
-  const { data: connection } = useGmailConnection();
-  const [status, setStatus] = useState<GmailSuggestionFilter>("pending");
-  const [view, setView] = useState<InboxView>("all");
-  // Defaults to Unread so the Inbox opens as a short actionable list rather
-  // than a full archive. Purely a VIEW filter — "All" always brings back
-  // every stored recruiter email, so nothing is lost by having read it in
-  // Gmail first (see applyReadFilter).
-  const [readFilter, setReadFilter] = useState<ReadFilter>("unread");
+  const { data: connection } = useGoogleConnection();
+  const [view, setView] = useState<InboxView>("needs_action");
+  // The Read section starts collapsed so the Inbox still opens as a short
+  // actionable list — but its count is always visible on the header, so
+  // "nothing to do" never reads as "nothing was found".
+  const [readOpen, setReadOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [reviewing, setReviewing] = useState<GmailSuggestionListItem | null>(null);
-  const [editing, setEditing] = useState<GmailSuggestionListItem | null>(null);
+  const [reviewing, setReviewing] = useState<SuggestionListItem | null>(null);
+  const [editing, setEditing] = useState<SuggestionListItem | null>(null);
   // Per-row busy state, so accepting one card doesn't disable every card's
   // buttons (a single shared `resolveOne.isPending` would).
   const [busyId, setBusyId] = useState<string | null>(null);
 
-  const { data: suggestions = [], isLoading } = useGmailSuggestions(status, search);
-  // Independent of the current filter/search — the summary always reflects
-  // the whole actionable queue, not whatever view is currently selected.
-  const { data: pendingForSummary = [] } = useGmailSuggestions("pending", "");
+  const { data: suggestions = [], isLoading } = useSuggestions("pending", search);
+  const { syncNow, isPending: syncing } = useSyncGoogleNow();
 
-  const resolveOne = useResolveGmailSuggestion();
-  const resolveBulk = useResolveGmailSuggestions();
-  // Same trigger as Settings' "Sync Now" — GmailSyncService.syncUser, no
-  // separate Inbox-specific sync path. Living here too means the user never
-  // has to leave the Inbox just to pull in new mail.
-  const syncNow = useSyncGmailNow();
+  const resolveOne = useResolveSuggestion();
+  const resolveBulk = useResolveSuggestions();
 
-  const visible = useMemo(
-    () => applyReadFilter(applyView(suggestions, view), readFilter),
-    [suggestions, view, readFilter],
-  );
-  const groups = useMemo(() => groupSuggestions(visible), [visible]);
-  const summaryParts = useMemo(() => summarize(pendingForSummary), [pendingForSummary]);
-  const isConnected = Boolean(connection) && connection?.status !== "disconnected";
+  const visible = useMemo(() => applyView(suggestions, view), [suggestions, view]);
+  const { unread, read } = useMemo(() => splitByReadState(visible), [visible]);
+  const unreadGroups = useMemo(() => groupSuggestions(unread), [unread]);
+  const readGroups = useMemo(() => groupSuggestions(read), [read]);
+  const summaryParts = useMemo(() => summarize(suggestions), [suggestions]);
+  const isConnected = Boolean(connection) && connection?.gmail_status !== "disconnected";
 
-  // Only pending suggestions are actionable (accepted/dismissed rows don't
-  // render a checkbox), so every selection operation is scoped to them.
-  const selectableIds = useMemo(
-    () => visible.filter((i) => i.status === "pending").map((i) => i.id),
-    [visible],
-  );
+  // Bulk selection spans both sections — a row stays selectable whether or
+  // not the Read section happens to be expanded, so "Select all" can't
+  // silently mean "all of the half you can currently see".
+  const selectableIds = useMemo(() => visible.map((i) => i.id), [visible]);
 
   // The selection is intersected with what's currently visible rather than
   // pruned on every filter change. Selecting rows, switching view, then
@@ -133,7 +123,7 @@ function InboxPage() {
     });
   }
 
-  /** Master toggle — selects every pending suggestion in the current view, or clears them. */
+  /** Master toggle — selects every suggestion in the current view, or clears them. */
   function toggleSelectAll() {
     setSelected((prev) => {
       const next = new Set(prev);
@@ -172,7 +162,7 @@ function InboxPage() {
    * we open the Review dialog on that suggestion instead of just showing an
    * error — the user lands exactly where they can fix it.
    */
-  function handleAccept(item: GmailSuggestionListItem) {
+  function handleAccept(item: SuggestionListItem) {
     setBusyId(item.id);
     resolveOne.mutate(
       { suggestionId: item.id, decision: { action: "accept" } },
@@ -190,22 +180,12 @@ function InboxPage() {
     );
   }
 
-  /** Identical outcome handling to Settings' "Sync Now" — same server function, same toast copy. */
+  /** The SAME unified sync every "Sync Now" button in the app calls — always syncs both Gmail and Calendar, even though this page only ever displays Gmail results. */
   async function handleSyncNow() {
-    const result = await syncNow.mutateAsync();
-    if (result.status === "synced") {
-      toast.success(
-        result.suggestionsCreated > 0
-          ? `Sync complete — ${result.suggestionsCreated} new update${result.suggestionsCreated === 1 ? "" : "s"} to review.`
-          : "Sync complete — nothing new.",
-      );
-    } else if (result.status === "skipped" && result.reason === "needs_reauth") {
-      toast.error("Gmail access was revoked — please reconnect.");
-    } else if (result.status === "skipped" && result.reason === "already_syncing") {
-      toast.error("A sync is already in progress.");
-    } else if (result.status === "error") {
-      toast.error(result.message);
-    }
+    const { gmailResult, calendarResult } = await syncNow();
+    const toastMsg = combinedSyncOutcomeMessage(gmailResult, calendarResult);
+    if (toastMsg.tone === "success") toast.success(toastMsg.message);
+    else toast.error(toastMsg.message);
   }
 
   async function handleBulk(action: "accept" | "dismiss") {
@@ -257,7 +237,7 @@ function InboxPage() {
         <EmptyState
           icon={Mail}
           title="Gmail isn't connected yet"
-          body="Connect Gmail from Settings to automatically detect recruiter emails and turn them into reviewable suggestions — nothing is ever created without your approval."
+          body="Connect Gmail from Settings to automatically detect recruiter emails, turning them into reviewable suggestions — nothing is ever created without your approval."
           cta={<DashButtonLink to="/dashboard/settings">Go to Settings</DashButtonLink>}
         />
       </>
@@ -289,7 +269,7 @@ function InboxPage() {
           </DashCard>
         )}
 
-        {/* Category / time views */}
+        {/* Category views */}
         <div className="flex flex-wrap gap-1">
           {VIEWS.map((v) => (
             <button
@@ -307,38 +287,6 @@ function InboxPage() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          {/* Gmail read state — a view filter only; "All" restores everything. */}
-          <div className="flex gap-1 rounded-xl border border-black/5 bg-white p-0.5">
-            {READ_FILTERS.map((f) => (
-              <button
-                key={f.value}
-                onClick={() => setReadFilter(f.value)}
-                className={`rounded-lg px-3 py-1.5 text-xs ${
-                  readFilter === f.value
-                    ? "bg-[oklch(0.95_0.02_265)] font-medium text-[#2563EB]"
-                    : "text-[oklch(0.45_0.02_265)] hover:bg-black/[0.03]"
-                }`}
-              >
-                {f.label}
-              </button>
-            ))}
-          </div>
-
-          <div className="flex gap-1 rounded-xl border border-black/5 bg-white p-0.5">
-            {STATUS_FILTERS.map((f) => (
-              <button
-                key={f.value}
-                onClick={() => setStatus(f.value)}
-                className={`rounded-lg px-3 py-1.5 text-xs ${
-                  status === f.value
-                    ? "bg-[oklch(0.95_0.02_265)] font-medium text-[#2563EB]"
-                    : "text-[oklch(0.45_0.02_265)] hover:bg-black/[0.03]"
-                }`}
-              >
-                {f.label}
-              </button>
-            ))}
-          </div>
           <div className="flex h-9 items-center gap-1.5 rounded-lg border border-black/5 bg-white px-3">
             <Search className="h-3.5 w-3.5 text-[oklch(0.55_0.02_265)]" />
             <input
@@ -389,16 +337,16 @@ function InboxPage() {
           ) : (
             <button
               onClick={() => void handleSyncNow()}
-              disabled={syncNow.isPending}
-              title="Pull in new Gmail messages now — same action as Settings' Sync Now"
+              disabled={syncing}
+              title="Syncs every connected Google product together — the same action everywhere in NextOffer."
               className="ml-auto inline-flex h-9 items-center gap-1.5 rounded-lg border border-black/5 bg-white px-3 text-xs font-medium text-[oklch(0.3_0.02_265)] hover:bg-black/[0.03] disabled:opacity-50"
             >
-              {syncNow.isPending ? (
+              {syncing ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
               ) : (
                 <RefreshCw className="h-3.5 w-3.5" />
               )}
-              {syncNow.isPending ? "Syncing…" : "Sync Now"}
+              {syncing ? "Syncing…" : "Sync Now"}
             </button>
           )}
         </div>
@@ -408,43 +356,95 @@ function InboxPage() {
         <DashCard>
           <p className="text-sm text-[oklch(0.5_0.02_265)]">Loading…</p>
         </DashCard>
-      ) : groups.length === 0 ? (
+      ) : visible.length === 0 ? (
         <EmptyState
           icon={InboxIcon}
           title={
             search.trim()
               ? `No results for “${search.trim()}”`
-              : readFilter === "unread"
-                ? "No unread recruiter email"
-                : (activeView?.emptyTitle ?? "Nothing here yet")
+              : (activeView?.emptyTitle ?? "Nothing here yet")
           }
           body={
             search.trim()
               ? "Try a different company, role or recruiter name."
-              : readFilter === "unread"
-                ? // Critical to say this: the Inbox defaults to Unread, so an
-                  // empty screen here does NOT mean nothing was found. Without
-                  // this the user would reasonably conclude detection failed.
-                  "You're showing unread mail only — switch to All to see everything NextOffer has found, including emails you've already opened in Gmail."
-                : (activeView?.emptyBody ??
-                  "New recruiter emails will show up here as reviewable suggestions after your next sync.")
+              : (activeView?.emptyBody ??
+                "New recruiter emails will show up here as reviewable suggestions after your next sync.")
           }
         />
       ) : (
-        <div className="space-y-4">
-          {groups.map((group) => (
-            <SuggestionGroupCard
-              key={group.key}
-              group={group}
-              googleEmail={connection?.google_email ?? null}
-              selectedIds={effectiveSelected}
-              busyId={busyId}
-              onToggleSelect={toggleSelect}
-              onToggleSelectGroup={toggleSelectGroup}
-              onReview={setReviewing}
-              onDismiss={handleDismiss}
-            />
-          ))}
+        <div className="space-y-6">
+          <section className="space-y-3">
+            <div className="flex items-center gap-2">
+              <h2 className="font-display text-sm font-semibold text-[oklch(0.2_0.02_265)]">
+                Unread
+              </h2>
+              <span className="rounded-full bg-[#2563EB]/10 px-2 py-0.5 text-xs font-semibold text-[#2563EB]">
+                {unread.length}
+              </span>
+            </div>
+            {unreadGroups.length === 0 ? (
+              <DashCard className="!p-3">
+                <p className="text-sm text-[oklch(0.5_0.02_265)]">
+                  No unread recruiter email — everything below has already been opened in Gmail.
+                </p>
+              </DashCard>
+            ) : (
+              <div className="space-y-4">
+                {unreadGroups.map((group) => (
+                  <SuggestionGroupCard
+                    key={group.key}
+                    group={group}
+                    googleEmail={connection?.google_email ?? null}
+                    selectedIds={effectiveSelected}
+                    busyId={busyId}
+                    onToggleSelect={toggleSelect}
+                    onToggleSelectGroup={toggleSelectGroup}
+                    onReview={setReviewing}
+                    onDismiss={handleDismiss}
+                  />
+                ))}
+              </div>
+            )}
+          </section>
+
+          {read.length > 0 && (
+            <section className="space-y-3">
+              <button
+                onClick={() => setReadOpen((o) => !o)}
+                aria-expanded={readOpen}
+                className="flex w-full items-center gap-2 text-left"
+              >
+                <h2 className="font-display text-sm font-semibold text-[oklch(0.2_0.02_265)]">
+                  Read
+                </h2>
+                <span className="rounded-full bg-black/[0.06] px-2 py-0.5 text-xs font-semibold text-[oklch(0.45_0.02_265)]">
+                  {read.length}
+                </span>
+                {readOpen ? (
+                  <ChevronUp className="h-4 w-4 text-[oklch(0.5_0.02_265)]" />
+                ) : (
+                  <ChevronDown className="h-4 w-4 text-[oklch(0.5_0.02_265)]" />
+                )}
+              </button>
+              {readOpen && (
+                <div className="space-y-4">
+                  {readGroups.map((group) => (
+                    <SuggestionGroupCard
+                      key={group.key}
+                      group={group}
+                      googleEmail={connection?.google_email ?? null}
+                      selectedIds={effectiveSelected}
+                      busyId={busyId}
+                      onToggleSelect={toggleSelect}
+                      onToggleSelectGroup={toggleSelectGroup}
+                      onReview={setReviewing}
+                      onDismiss={handleDismiss}
+                    />
+                  ))}
+                </div>
+              )}
+            </section>
+          )}
         </div>
       )}
 

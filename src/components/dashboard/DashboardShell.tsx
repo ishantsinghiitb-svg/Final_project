@@ -3,7 +3,6 @@ import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   Activity,
-  Bell,
   Bookmark,
   Briefcase,
   CalendarClock,
@@ -16,7 +15,6 @@ import {
   Mail,
   Search,
   Settings,
-  StickyNote,
   Target,
   X,
   Menu,
@@ -25,13 +23,13 @@ import {
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { CommandPalette } from "./CommandPalette";
-import { notifications } from "@/lib/dashboard-data";
+import { NotificationBell } from "./NotificationBell";
 import { Kbd } from "./primitives";
 import { Logo } from "@/components/site/Logo";
 import { useAuth } from "@/context/AuthContext";
 import { useProfile } from "@/context/ProfileContext";
 import { useSidebarCounts } from "@/features/jobs/hooks";
-import { useGmailAutoSyncOnOpen } from "@/features/gmail/hooks";
+import { useGoogleAutoSyncOnOpen } from "@/features/google/hooks";
 
 type NavItem = {
   to: string;
@@ -58,10 +56,10 @@ const nav: NavItem[] = [
   { to: "/dashboard/resumes", label: "Resumes", icon: FileText },
   { to: "/dashboard/cover-letters", label: "Cover Letters", icon: Mail },
   { to: "/dashboard/interviews", label: "Interviews", icon: CalendarClock },
-  // Module 9A — pending Gmail suggestions review queue. Uses Inbox (not Mail
-  // — that icon's already claimed by Cover Letters above).
+  // Module 9A/9B — pending Gmail- and Calendar-sourced suggestions review
+  // queue. Uses Inbox (not Mail — that icon's already claimed by Cover
+  // Letters above).
   { to: "/dashboard/inbox", label: "Inbox", icon: Inbox, badgeKey: "gmailSuggestions" },
-  { to: "/dashboard/notes", label: "Notes", icon: StickyNote },
   { to: "/dashboard/analytics", label: "Analytics", icon: LineChart },
 ];
 
@@ -75,10 +73,11 @@ export function DashboardShell({ children }: { children: ReactNode }) {
   // Module 9A "app open" sync trigger — fires the cheap due-check once per
   // session mount; no-ops unless a sync is actually due. See the hook's own
   // comment for why there's no platform-level background execution here.
-  useGmailAutoSyncOnOpen();
+  // Calendar's own app-open trigger joins this once CalendarSyncService
+  // exists (Module 9B Phase 2).
+  useGoogleAutoSyncOnOpen();
   const [signingOut, setSigningOut] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
-  const [notifOpen, setNotifOpen] = useState(false);
   const [mobileNav, setMobileNav] = useState(false);
 
   const displayName =
@@ -111,10 +110,7 @@ export function DashboardShell({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     setMobileNav(false);
-    setNotifOpen(false);
   }, [pathname]);
-
-  const unread = notifications.filter((n) => n.unread).length;
 
   /**
    * Clicking a sidebar item that's already the CURRENT page refreshes it in
@@ -302,50 +298,7 @@ export function DashboardShell({ children }: { children: ReactNode }) {
               >
                 <Command className="h-3.5 w-3.5" /> Commands
               </button>
-              <div className="relative">
-                <button
-                  onClick={() => setNotifOpen((o) => !o)}
-                  aria-label="Notifications"
-                  className="grid h-9 w-9 place-items-center rounded-lg border border-black/5 bg-white text-[oklch(0.4_0.02_265)] hover:bg-black/[0.03]"
-                >
-                  <Bell className="h-4 w-4" />
-                  {unread > 0 && (
-                    <span className="absolute right-1.5 top-1.5 grid h-4 min-w-4 place-items-center rounded-full bg-[#F43F5E] px-1 text-[9px] font-semibold text-white">
-                      {unread}
-                    </span>
-                  )}
-                </button>
-                {notifOpen && (
-                  <div className="absolute right-0 top-11 w-[340px] overflow-hidden rounded-xl border border-black/10 bg-white shadow-[0_20px_60px_-20px_rgba(0,0,0,0.25)]">
-                    <div className="flex items-center justify-between border-b border-black/5 px-4 py-3">
-                      <p className="font-display text-sm font-semibold">Notifications</p>
-                      <button className="text-xs text-[#2563EB] hover:underline">
-                        Mark all read
-                      </button>
-                    </div>
-                    <ul className="max-h-[60vh] overflow-y-auto">
-                      {notifications.map((n) => (
-                        <li
-                          key={n.id}
-                          className="flex gap-3 border-b border-black/5 px-4 py-3 last:border-0 hover:bg-[oklch(0.98_0.005_265)]"
-                        >
-                          <span
-                            className={cn(
-                              "mt-1 h-2 w-2 shrink-0 rounded-full",
-                              n.unread ? "bg-[#2563EB]" : "bg-black/10",
-                            )}
-                          />
-                          <div className="min-w-0">
-                            <p className="text-sm font-medium">{n.title}</p>
-                            <p className="mt-0.5 text-xs text-[oklch(0.45_0.02_265)]">{n.body}</p>
-                            <p className="mt-1 text-[11px] text-[oklch(0.55_0.02_265)]">{n.when}</p>
-                          </div>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </div>
+              <NotificationBell />
               {/* Add Job button removed — global jobs are not user-created */}
             </div>
           </header>

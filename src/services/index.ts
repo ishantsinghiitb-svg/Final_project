@@ -11,3 +11,4 @@ export { ContactService, contactService } from "./ContactService";
 export { ReminderService, reminderService } from "./ReminderService";
 export { AttachmentService, attachmentService } from "./AttachmentService";
 export { ManualImportService, manualImportService } from "./ManualImportService";
+export { GoogleService, googleService } from "./GoogleService";

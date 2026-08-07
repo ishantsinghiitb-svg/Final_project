@@ -194,4 +194,87 @@ describe("matchApplication", () => {
     });
     expect(result).toMatchObject({ kind: "single", applicationId: "app-6" });
   });
+
+  // ── Module 9B signals ──────────────────────────────────────────────────
+
+  it("matches via iCalUID when a calendar event's UID matches an already-matched interview email", async () => {
+    const sb = fakeSupabase({
+      gmailMessages: [
+        {
+          user_id: userId,
+          ical_uid: "abc123@google.com",
+          matched_application_id: "app-7",
+        },
+      ],
+    });
+    const result = await matchApplication(sb, userId, {
+      fromAddress: "organizer@acme.com",
+      companyName: null,
+      gmailThreadId: "",
+      subject: "Interview",
+      icalUid: "abc123@google.com",
+    });
+    expect(result).toMatchObject({ kind: "single", applicationId: "app-7" });
+  });
+
+  it("does not match on iCalUID when no email carries that UID", async () => {
+    const sb = fakeSupabase({});
+    const result = await matchApplication(sb, userId, {
+      fromAddress: "organizer@acme.com",
+      companyName: null,
+      gmailThreadId: "",
+      subject: "Interview",
+      icalUid: "unknown-uid@google.com",
+    });
+    expect(result.kind).toBe("none");
+  });
+
+  it("matches an attendee's email domain against a recruiter contact's domain, at lower confidence than an exact email match", async () => {
+    const sb = fakeSupabase({
+      contacts: [{ application_id: "app-8", user_id: userId, email: "jane@acme.com" }],
+    });
+    const result = await matchApplication(sb, userId, {
+      fromAddress: "someone-else@acme.com",
+      companyName: null,
+      gmailThreadId: "",
+      subject: "Interview",
+      attendeeEmails: ["another-person@acme.com"],
+    });
+    expect(result).toMatchObject({ kind: "single", applicationId: "app-8" });
+  });
+
+  it("skips thread continuity entirely for a calendar event (empty gmailThreadId)", async () => {
+    const sb = fakeSupabase({
+      gmailMessages: [{ user_id: userId, gmail_thread_id: "", matched_application_id: "app-9" }],
+    });
+    const result = await matchApplication(sb, userId, {
+      fromAddress: "nobody@nowhere.com",
+      companyName: null,
+      gmailThreadId: "",
+      subject: "Interview",
+    });
+    // Would incorrectly match via signal 1 if empty-string thread ids weren't
+    // explicitly skipped for calendar-sourced calls.
+    expect(result.kind).toBe("none");
+  });
+
+  it("still finds the ambiguous/union result across a mix of Gmail and Calendar signals", async () => {
+    const sb = fakeSupabase({
+      contacts: [{ application_id: "app-10", user_id: userId, email: "jane@acme.com" }],
+      applications: [
+        { id: "app-11", user_id: userId, company_name: "Acme", role: "PM", archived: false },
+      ],
+    });
+    const result = await matchApplication(sb, userId, {
+      fromAddress: "jane@acme.com",
+      companyName: "Acme",
+      gmailThreadId: "",
+      subject: "Interview",
+      attendeeEmails: [],
+    });
+    expect(result.kind).toBe("ambiguous");
+    if (result.kind === "ambiguous") {
+      expect(result.candidateApplicationIds.sort()).toEqual(["app-10", "app-11"]);
+    }
+  });
 });

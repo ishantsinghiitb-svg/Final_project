@@ -3,12 +3,18 @@ import type {} from "@tanstack/react-start";
 import { createServiceSupabase } from "@/server/supabase";
 import { serverEnv, requireEnv } from "@/server/env";
 import { verifySignedState } from "@/server/gmail/OAuthState";
-import { exchangeCodeForTokens, GoogleOAuthError } from "@/server/gmail/GoogleOAuthClient";
+import {
+  exchangeCodeForTokens,
+  GoogleOAuthError,
+  GMAIL_SCOPE,
+  CALENDAR_SCOPE,
+} from "@/server/gmail/GoogleOAuthClient";
 import { getProfile } from "@/server/gmail/GmailApiClient";
+import { getPrimaryCalendar } from "@/server/calendar/CalendarApiClient";
 import { encryptToken } from "@/server/gmail/TokenCrypto";
-import { GmailRepository } from "@/repositories/GmailRepository";
+import { GoogleConnectionRepository } from "@/repositories/GoogleConnectionRepository";
 
-// ── Gmail OAuth callback (Module 9A) ──
+// ── Google OAuth callback (Module 9A/9B) ──
 //
 // A bare GET redirect from Google — no ambient session exists here at all
 // (this app's Supabase session is localStorage-based, not cookie-based), so
@@ -19,23 +25,31 @@ import { GmailRepository } from "@/repositories/GmailRepository";
 // file-route `server.handlers.GET` mechanism already used by
 // src/routes/sitemap[.]xml.ts, rather than TanStack Start's createServerFn
 // RPC — Google's redirect was never going through that RPC format either way.
+//
+// ONE callback serves BOTH products (Gmail connect, Calendar connect, and
+// any future "connect the other one too" click) — which product(s) this
+// particular consent covered is derived from what Google's token response
+// actually granted (`tokens.scope`, space-separated), not from anything the
+// client declared before redirecting. That's simpler than threading intent
+// through the `state` payload and more correct: it reflects reality even if
+// Google silently narrows/widens what it grants.
 
-type GmailCallbackOutcome =
+type GoogleCallbackOutcome =
   "connected" | "access_denied" | "invalid_state" | "token_exchange_failed" | "connection_failed";
 
 // `origin` must be passed in explicitly: unlike a browser's Response.redirect
 // (which resolves a relative URL against the current document), Node's
 // undici implementation — what actually runs this route in dev/on Workers —
 // requires an absolute URL and throws TypeError: Invalid URL on a bare path.
-function settingsRedirect(origin: string, outcome: GmailCallbackOutcome): Response {
-  const params = new URLSearchParams({ gmail: outcome });
+function settingsRedirect(origin: string, outcome: GoogleCallbackOutcome): Response {
+  const params = new URLSearchParams({ google: outcome });
   return Response.redirect(
     new URL(`/dashboard/settings?${params.toString()}`, origin).toString(),
     302,
   );
 }
 
-export const Route = createFileRoute("/auth/gmail/callback")({
+export const Route = createFileRoute("/auth/google/callback")({
   server: {
     handlers: {
       GET: async ({ request }) => {
@@ -50,45 +64,73 @@ export const Route = createFileRoute("/auth/gmail/callback")({
         const state = url.searchParams.get("state");
         if (!code || !state) return settingsRedirect(url.origin, "invalid_state");
 
-        const stateSecret = requireEnv("GMAIL_OAUTH_STATE_SECRET", serverEnv.gmailOAuthStateSecret);
+        const stateSecret = requireEnv(
+          "GOOGLE_OAUTH_STATE_SECRET",
+          serverEnv.googleOAuthStateSecret,
+        );
         const userId = await verifySignedState(state, stateSecret);
         if (!userId) return settingsRedirect(url.origin, "invalid_state");
 
         try {
           const tokens = await exchangeCodeForTokens(code);
-          const profile = await getProfile(tokens.accessToken);
+          const grantedScopes = tokens.scope.split(/\s+/);
+          const gmailGranted = grantedScopes.includes(GMAIL_SCOPE);
+          const calendarGranted = grantedScopes.includes(CALENDAR_SCOPE);
+
+          // Gmail's users.getProfile 403s without the gmail.readonly scope —
+          // a user connecting Calendar alone never granted it. The Calendar
+          // API has no dedicated "who am I" endpoint, but the primary
+          // calendar's own `id` field IS the account's email address.
+          let googleEmail: string;
+          let gmailHistoryIdFromProfile: string | null = null;
+          if (gmailGranted) {
+            const profile = await getProfile(tokens.accessToken);
+            googleEmail = profile.emailAddress;
+            gmailHistoryIdFromProfile = profile.historyId;
+          } else {
+            const primary = await getPrimaryCalendar(tokens.accessToken);
+            googleEmail = primary.id;
+          }
+
           const encryptionKey = requireEnv(
-            "GMAIL_TOKEN_ENCRYPTION_KEY",
-            serverEnv.gmailTokenEncryptionKey,
+            "GOOGLE_TOKEN_ENCRYPTION_KEY",
+            serverEnv.googleTokenEncryptionKey,
           );
           const encrypted = await encryptToken(tokens.refreshToken, encryptionKey);
 
-          const repo = new GmailRepository(createServiceSupabase());
+          const repo = new GoogleConnectionRepository(createServiceSupabase());
 
-          // Reconnecting the SAME Google account keeps its history_id
+          // Reconnecting the SAME Google account keeps Gmail's history_id
           // checkpoint and backfill progress (avoids a full historical
           // re-scan); a different account, or a first-time connect, starts
-          // fresh from the profile's current historyId with backfill not yet
-          // complete — GmailSyncService will paginate through it on the next
+          // fresh — GmailSyncService will paginate through it on the next
           // triggered sync (the Settings page fires "Sync Now" itself as soon
-          // as it sees `?gmail=connected`, so this feels immediate).
+          // as it sees `?google=connected`, so this feels immediate).
           const existing = await repo.findConnectionForSync(userId);
-          const sameAccount = existing?.google_email === profile.emailAddress;
+          const sameAccount = existing?.google_email === googleEmail;
 
           await repo.upsertConnection({
             user_id: userId,
-            google_email: profile.emailAddress,
+            google_email: googleEmail,
             scope: tokens.scope,
             refresh_token_ciphertext: encrypted.ciphertext,
             refresh_token_nonce: encrypted.nonce,
-            history_id: sameAccount ? existing.history_id : profile.historyId,
-            backfillComplete: sameAccount ? existing.backfill_complete : false,
-            backfillPageToken: sameAccount ? existing.backfill_page_token : null,
+            gmailGranted,
+            calendarGranted,
+            gmailHistoryId: sameAccount
+              ? (existing?.gmail_history_id ?? null)
+              : gmailHistoryIdFromProfile,
+            gmailBackfillComplete: sameAccount
+              ? (existing?.gmail_backfill_complete ?? false)
+              : false,
+            gmailBackfillPageToken: sameAccount
+              ? (existing?.gmail_backfill_page_token ?? null)
+              : null,
           });
 
           return settingsRedirect(url.origin, "connected");
         } catch (err) {
-          console.error("Gmail OAuth callback failed:", err instanceof Error ? err.message : err);
+          console.error("Google OAuth callback failed:", err instanceof Error ? err.message : err);
           if (err instanceof GoogleOAuthError)
             return settingsRedirect(url.origin, "token_exchange_failed");
           return settingsRedirect(url.origin, "connection_failed");

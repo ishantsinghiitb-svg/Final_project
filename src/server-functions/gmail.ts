@@ -3,9 +3,20 @@ import { requireUser, createServiceSupabase } from "@/server/supabase";
 import { rebuildSuggestions, type RebuildOutcome } from "@/server/gmail/SuggestionRebuilder";
 import { serverEnv, requireEnv } from "@/server/env";
 import { createSignedState } from "@/server/gmail/OAuthState";
-import { buildConsentUrl, revokeToken } from "@/server/gmail/GoogleOAuthClient";
+import {
+  buildConsentUrl,
+  revokeToken,
+  GMAIL_SCOPE,
+  CALENDAR_SCOPE,
+} from "@/server/gmail/GoogleOAuthClient";
 import { decryptToken } from "@/server/gmail/TokenCrypto";
 import { GmailRepository } from "@/repositories/GmailRepository";
+import {
+  GoogleConnectionRepository,
+  type GoogleProduct,
+} from "@/repositories/GoogleConnectionRepository";
+import { CalendarRepository } from "@/repositories/CalendarRepository";
+import { SuggestionRepository } from "@/repositories/SuggestionRepository";
 import { syncUser, isSyncDue, type SyncOutcome } from "@/server/gmail/GmailSyncService";
 import { refreshAccessToken } from "@/server/gmail/GoogleOAuthClient";
 import { getAttachment, getFullMessage } from "@/server/gmail/GmailApiClient";
@@ -13,55 +24,73 @@ import { base64Encode } from "@/server/gmail/base64";
 import { parseFromHeader } from "@/server/gmail/emailParsing";
 import { cleanEmailBody } from "@/server/gmail/EmailCleaner";
 
-// ── Gmail server functions (Module 9A) ──
+// ── Google (Gmail + Calendar) server functions (Module 9A/9B) ──
 //
 // Lives OUTSIDE src/server/** on purpose (same rationale as
 // src/server-functions/resume.ts): Vite's import-protection blocks client
 // imports of any "server" path, so createServerFn entry points the client
 // calls directly must be defined here — the handler closures below (and
-// everything they import from src/server/gmail/**) still get compiled into
-// the server-only bundle.
+// everything they import from src/server/gmail/** and src/server/calendar/**)
+// still get compiled into the server-only bundle.
 //
 // Every operation here needs a server-only secret (GOOGLE_CLIENT_SECRET /
-// GMAIL_TOKEN_ENCRYPTION_KEY) or the Gmail API itself — reading connection
-// status and toggling auto-sync don't, and are called directly via
-// GmailService from the client instead, exactly like ApplicationService.
+// GOOGLE_TOKEN_ENCRYPTION_KEY) or the Gmail/Calendar API itself — reading
+// connection status and toggling auto-sync don't, and are called directly
+// via GoogleService/GmailService from the client instead, exactly like
+// ApplicationService.
 //
-// checkAndSyncGmail / syncGmailNow are the two "app open" / "Sync Now"
+// checkAndSyncGmail / syncGmailNow are the "app open" / "Sync Now" Gmail
 // triggers from the plan's Sync Triggers section — both just call
 // GmailSyncService.syncUser inside this same authenticated request; there is
 // no background-execution mechanism (see GmailSyncService's header comment).
+// Calendar's equivalent triggers land alongside CalendarSyncService.
 
-type GetConnectUrlInput = { accessToken: string };
+type GetConnectUrlInput = { accessToken: string; product: GoogleProduct };
 
-/** Builds the Google consent URL for "Connect"/"Reconnect", bound to the caller via a signed state param. */
-export const getGmailConnectUrl = createServerFn({ method: "POST" })
+const SCOPE_FOR: Record<GoogleProduct, string> = {
+  gmail: GMAIL_SCOPE,
+  calendar: CALENDAR_SCOPE,
+};
+
+/** Builds the Google consent URL for "Connect"/"Reconnect" a single product, bound to the caller via a signed state param. `include_granted_scopes` (see GoogleOAuthClient) means this never narrows whatever the other product already has. */
+export const getGoogleConnectUrl = createServerFn({ method: "POST" })
   .validator((data: GetConnectUrlInput) => data)
   .handler(async ({ data }): Promise<{ url: string }> => {
     const { user } = await requireUser(data.accessToken);
-    const stateSecret = requireEnv("GMAIL_OAUTH_STATE_SECRET", serverEnv.gmailOAuthStateSecret);
+    const stateSecret = requireEnv("GOOGLE_OAUTH_STATE_SECRET", serverEnv.googleOAuthStateSecret);
     const state = await createSignedState(user.id, stateSecret);
-    return { url: buildConsentUrl(state) };
+    return { url: buildConsentUrl(state, [SCOPE_FOR[data.product]]) };
   });
 
-type DisconnectGmailInput = { accessToken: string };
-type DisconnectGmailResult = { ok: true } | { ok: false; message: string };
+type DisconnectGoogleProductInput = { accessToken: string; product: GoogleProduct };
+type DisconnectGoogleProductResult = { ok: true } | { ok: false; message: string };
 
-/** Best-effort revoke at Google, then clears the stored (encrypted) token locally regardless of whether the revoke call succeeded. */
-export const disconnectGmail = createServerFn({ method: "POST" })
-  .validator((data: DisconnectGmailInput) => data)
-  .handler(async ({ data }): Promise<DisconnectGmailResult> => {
+/**
+ * Best-effort revoke at Google, then clears this PRODUCT's local sync state
+ * regardless of whether the revoke call succeeded. The shared refresh token
+ * itself is only cleared once BOTH products are disconnected (see
+ * GoogleConnectionRepository.disconnectProduct) — disconnecting Gmail alone
+ * must not kill an active Calendar connection, and vice versa.
+ */
+export const disconnectGoogleProduct = createServerFn({ method: "POST" })
+  .validator((data: DisconnectGoogleProductInput) => data)
+  .handler(async ({ data }): Promise<DisconnectGoogleProductResult> => {
     const { supabase, user } = await requireUser(data.accessToken);
-    const repo = new GmailRepository(supabase);
+    const repo = new GoogleConnectionRepository(supabase);
 
     const connection = await repo.findConnectionForSync(user.id);
-    if (!connection) return { ok: false, message: "No Gmail connection found." };
+    if (!connection) return { ok: false, message: "No Google connection found." };
 
-    if (connection.refresh_token_ciphertext) {
+    const otherStillConnected =
+      data.product === "gmail"
+        ? connection.calendar_status !== "disconnected"
+        : connection.gmail_status !== "disconnected";
+
+    if (!otherStillConnected && connection.refresh_token_ciphertext) {
       try {
         const encryptionKey = requireEnv(
-          "GMAIL_TOKEN_ENCRYPTION_KEY",
-          serverEnv.gmailTokenEncryptionKey,
+          "GOOGLE_TOKEN_ENCRYPTION_KEY",
+          serverEnv.googleTokenEncryptionKey,
         );
         const refreshToken = await decryptToken(
           {
@@ -74,11 +103,29 @@ export const disconnectGmail = createServerFn({ method: "POST" })
       } catch (err) {
         // Best-effort — proceed with local cleanup even if Google's revoke call fails
         // (e.g. the token was already revoked on Google's side).
-        console.error("Gmail token revoke failed:", err instanceof Error ? err.message : err);
+        console.error("Google token revoke failed:", err instanceof Error ? err.message : err);
       }
     }
 
-    await repo.disconnectConnection(user.id);
+    // Calendar disconnect additionally removes the candidate ledger (Q12,
+    // Module 9B plan §6) — Gmail's own disconnect never deletes gmail_messages,
+    // this is deliberately different because Calendar's local data is purely
+    // a sync artifact with no independent value once disconnected. Order
+    // matters: calendar-only suggestions first (deleting calendar_events out
+    // from under a surviving calendar-only suggestion — pending, accepted,
+    // or dismissed — would null its only source FK and violate
+    // suggestions_has_source_check; see deleteCalendarOnlySuggestions), then
+    // the events themselves, then the sync checkpoint so a reconnect
+    // re-backfills cleanly instead of resuming a now-meaningless incremental
+    // token.
+    if (data.product === "calendar") {
+      await new SuggestionRepository(supabase).deleteCalendarOnlySuggestions(user.id);
+      const calendarRepo = new CalendarRepository(supabase);
+      await calendarRepo.deleteAllEventsForUser(user.id);
+      await calendarRepo.deleteSyncState(user.id);
+    }
+
+    await repo.disconnectProduct(user.id, data.product);
     return { ok: true };
   });
 
@@ -90,7 +137,7 @@ export const checkAndSyncGmail = createServerFn({ method: "POST" })
   .validator((data: CheckAndSyncGmailInput) => data)
   .handler(async ({ data }): Promise<CheckAndSyncGmailResult> => {
     const authed = await requireUser(data.accessToken);
-    const repo = new GmailRepository(authed.supabase);
+    const repo = new GoogleConnectionRepository(authed.supabase);
     const connection = await repo.findConnectionForSync(authed.user.id);
     if (!connection) return { status: "skipped", reason: "not_connected" };
     if (!isSyncDue(connection)) return { status: "not_due" };
@@ -112,10 +159,11 @@ type RebuildSuggestionsResult =
   { ok: true; outcome: RebuildOutcome } | { ok: false; message: string };
 
 /**
- * DEVELOPMENT-ONLY. Deletes this user's gmail_suggestions and regenerates
- * them by re-running the current classifier over already-stored
+ * DEVELOPMENT-ONLY. Deletes this user's Gmail-sourced suggestions and
+ * regenerates them by re-running the current classifier over already-stored
  * gmail_messages. Never deletes messages, never calls the Gmail API, never
- * touches the OAuth connection or sync checkpoint.
+ * touches the OAuth connection or sync checkpoint, never touches a
+ * calendar-sourced suggestion.
  *
  * Guarded on the SERVER, not just hidden in the UI: a hidden button is not
  * an access control, and this endpoint deletes rows. `import.meta.env.DEV`
@@ -173,18 +221,19 @@ export const fetchGmailMessageBody = createServerFn({ method: "POST" })
   .handler(async ({ data }): Promise<FetchMessageBodyResult> => {
     const authed = await requireUser(data.accessToken);
     try {
-      const repo = new GmailRepository(authed.supabase);
-      const connection = await repo.findConnectionForSync(authed.user.id);
+      const connectionRepo = new GoogleConnectionRepository(authed.supabase);
+      const messageRepo = new GmailRepository(authed.supabase);
+      const connection = await connectionRepo.findConnectionForSync(authed.user.id);
       if (!connection) return { ok: false, message: "Gmail is not connected." };
 
-      const message = await repo.findMessageById(data.gmailMessageRowId);
+      const message = await messageRepo.findMessageById(data.gmailMessageRowId);
       if (!message || message.user_id !== authed.user.id) {
         return { ok: false, message: "Email not found." };
       }
 
       const encryptionKey = requireEnv(
-        "GMAIL_TOKEN_ENCRYPTION_KEY",
-        serverEnv.gmailTokenEncryptionKey,
+        "GOOGLE_TOKEN_ENCRYPTION_KEY",
+        serverEnv.googleTokenEncryptionKey,
       );
       const refreshToken = await decryptToken(
         { ciphertext: connection.refresh_token_ciphertext, nonce: connection.refresh_token_nonce },
@@ -241,18 +290,19 @@ export const fetchGmailAttachmentBytes = createServerFn({ method: "POST" })
   .handler(async ({ data }): Promise<FetchAttachmentBytesResult> => {
     const authed = await requireUser(data.accessToken);
     try {
-      const repo = new GmailRepository(authed.supabase);
-      const connection = await repo.findConnectionForSync(authed.user.id);
+      const connectionRepo = new GoogleConnectionRepository(authed.supabase);
+      const messageRepo = new GmailRepository(authed.supabase);
+      const connection = await connectionRepo.findConnectionForSync(authed.user.id);
       if (!connection) return { ok: false, message: "Gmail is not connected." };
 
-      const message = await repo.findMessageById(data.gmailMessageRowId);
+      const message = await messageRepo.findMessageById(data.gmailMessageRowId);
       if (!message || message.user_id !== authed.user.id) {
         return { ok: false, message: "Email not found." };
       }
 
       const encryptionKey = requireEnv(
-        "GMAIL_TOKEN_ENCRYPTION_KEY",
-        serverEnv.gmailTokenEncryptionKey,
+        "GOOGLE_TOKEN_ENCRYPTION_KEY",
+        serverEnv.googleTokenEncryptionKey,
       );
       const refreshToken = await decryptToken(
         { ciphertext: connection.refresh_token_ciphertext, nonce: connection.refresh_token_nonce },

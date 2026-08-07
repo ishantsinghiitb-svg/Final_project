@@ -52,7 +52,8 @@ const MEETING_LINK_PATTERNS = [
   /https:\/\/[\w.-]*webex\.com\/\S+/i,
 ];
 
-function extractMeetingLink(text: string): string | null {
+/** Exported (Module 9B) for CalendarClassifier.ts, which uses this as a description-field fallback after conferenceData/hangoutLink (structured data the Calendar API gives directly). Generic text-pattern matching, no Gmail coupling. */
+export function extractMeetingLink(text: string): string | null {
   for (const pattern of MEETING_LINK_PATTERNS) {
     const match = text.match(pattern);
     if (match) return match[0].replace(/[.,)]+$/, "");

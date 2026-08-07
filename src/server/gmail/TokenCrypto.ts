@@ -1,16 +1,17 @@
-// ── Gmail refresh-token encryption (Module 9A) ──
+// ── Google refresh-token encryption (Module 9A/9B) ──
 //
 // AES-256-GCM via Web Crypto — works on Cloudflare Workers and Node 18+, and
 // matches this codebase's existing Web-Crypto precedent (src/server/ai/hash.ts)
 // rather than Node's `crypto` module. This Supabase project has no pgsodium/
 // pgcrypto/Vault extension enabled, so application-layer encryption is the
-// only available mechanism for keeping the Gmail refresh token unreadable at
+// only available mechanism for keeping the Google refresh token (shared by
+// Gmail and Calendar — one connection, incrementally scoped) unreadable at
 // rest — not a fallback, the intended design.
 //
 // A fresh random 96-bit nonce is generated per encryption and stored
 // alongside the ciphertext (never reused — reusing a nonce with the same key
 // breaks AES-GCM's confidentiality guarantee). The key is never read from env
-// here; callers pass `serverEnv.gmailTokenEncryptionKey` in explicitly, so
+// here; callers pass `serverEnv.googleTokenEncryptionKey` in explicitly, so
 // this module stays a pure crypto utility with no config dependency.
 
 import { base64Encode, base64Decode } from "./base64";

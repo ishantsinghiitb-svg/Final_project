@@ -1,18 +1,19 @@
 import { describe, it, expect } from "vitest";
 import { groupSuggestions } from "./grouping";
-import { applyView, applyReadFilter } from "./views";
-import type { GmailSuggestionListItem } from "@/repositories/GmailRepository";
-import type { GmailMessageCategory, GmailSuggestionType } from "@/features/gmail/types";
+import { applyView, splitByReadState } from "./views";
+import type { SuggestionListItem } from "@/repositories/SuggestionRepository";
+import type { GmailMessageCategory, SuggestionType } from "@/features/gmail/types";
 
 let seq = 0;
 
-function item(overrides: Partial<GmailSuggestionListItem> = {}): GmailSuggestionListItem {
+function item(overrides: Partial<SuggestionListItem> = {}): SuggestionListItem {
   seq += 1;
-  const base: GmailSuggestionListItem = {
+  const base: SuggestionListItem = {
     id: `s${seq}`,
     user_id: "u1",
     gmail_message_id: `m${seq}`,
-    type: "create_application" as GmailSuggestionType,
+    calendar_event_id: null,
+    type: "create_application" as SuggestionType,
     status: "pending",
     confidence: 0.8,
     explanation: "because",
@@ -22,6 +23,7 @@ function item(overrides: Partial<GmailSuggestionListItem> = {}): GmailSuggestion
     resolved_action: null,
     created_at: "2026-08-01T00:00:00.000Z",
     updated_at: "2026-08-01T00:00:00.000Z",
+    source: "gmail",
     company_name: null,
     subject: null,
     category: "recruiter_reply" as GmailMessageCategory,
@@ -30,14 +32,15 @@ function item(overrides: Partial<GmailSuggestionListItem> = {}): GmailSuggestion
     receivedAt: "2026-08-01T00:00:00.000Z",
     fromAddress: "someone@acme.com",
     isUnread: true,
+    calendarEvent: null,
   };
   return { ...base, ...overrides };
 }
 
 function withSummary(
-  overrides: Partial<GmailSuggestionListItem>,
+  overrides: Partial<SuggestionListItem>,
   summary: Record<string, unknown>,
-): GmailSuggestionListItem {
+): SuggestionListItem {
   return item({
     ...overrides,
     suggested_payload: { summary: { headline: "Recruiter Reply", reason: "r", ...summary } },
@@ -128,10 +131,6 @@ describe("applyView", () => {
     item({ category: "rejection", status: "accepted" }),
   ];
 
-  it("returns everything for the all view", () => {
-    expect(applyView(items, "all")).toHaveLength(4);
-  });
-
   it("filters to a single category", () => {
     expect(applyView(items, "interview")).toHaveLength(1);
     expect(applyView(items, "offer")).toHaveLength(1);
@@ -145,41 +144,34 @@ describe("applyView", () => {
   it("needs_action keeps only pending items", () => {
     expect(applyView(items, "needs_action")).toHaveLength(3);
   });
-
-  it("today keeps only items received today", () => {
-    const todayItem = item({ receivedAt: new Date().toISOString() });
-    const result = applyView([...items, todayItem], "today");
-    expect(result).toHaveLength(1);
-    expect(result[0].id).toBe(todayItem.id);
-  });
 });
 
-describe("applyReadFilter", () => {
+describe("splitByReadState", () => {
   const mixed = [item({ isUnread: true }), item({ isUnread: true }), item({ isUnread: false })];
 
-  it("unread keeps only unread mail", () => {
-    expect(applyReadFilter(mixed, "unread")).toHaveLength(2);
+  it("routes unread mail to the Unread section and the rest to Read", () => {
+    const { unread, read } = splitByReadState(mixed);
+    expect(unread).toHaveLength(2);
+    expect(read).toHaveLength(1);
   });
 
-  it("read keeps only already-read mail", () => {
-    expect(applyReadFilter(mixed, "read")).toHaveLength(1);
+  it("never drops anything — every row lands in exactly one of the two sections", () => {
+    // The guarantee behind splitting rather than filtering: read mail used
+    // to be hidden AND uncounted behind an on-by-default Unread toggle, so
+    // a working inbox could look empty. Both halves are always accounted for.
+    const { unread, read } = splitByReadState(mixed);
+    expect(unread.length + read.length).toBe(mixed.length);
   });
 
-  it("all restores everything — nothing is lost by having read it in Gmail", () => {
-    // The guarantee behind making this a VIEW filter rather than a sync
-    // filter: every stored recruiter email is always reachable.
-    expect(applyReadFilter(mixed, "all")).toHaveLength(3);
-  });
-
-  it("composes with a category view without either filter swallowing the other", () => {
+  it("composes with a category view, splitting only what that view admits", () => {
     const set = [
       item({ category: "interview_invitation", isUnread: true }),
       item({ category: "interview_invitation", isUnread: false }),
       item({ category: "offer", isUnread: true }),
     ];
-    const result = applyReadFilter(applyView(set, "interview"), "unread");
-    expect(result).toHaveLength(1);
-    expect(result[0].category).toBe("interview_invitation");
-    expect(result[0].isUnread).toBe(true);
+    const { unread, read } = splitByReadState(applyView(set, "interview"));
+    expect(unread).toHaveLength(1);
+    expect(read).toHaveLength(1);
+    expect(unread[0].category).toBe("interview_invitation");
   });
 });

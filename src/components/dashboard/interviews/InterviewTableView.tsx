@@ -1,10 +1,28 @@
-import { MapPin, Pencil, Search, Trash2, Video } from "lucide-react";
+import {
+  AlertTriangle,
+  CalendarPlus,
+  CalendarSearch,
+  MapPin,
+  Pencil,
+  Search,
+  Trash2,
+  Video,
+} from "lucide-react";
 import type { Interview } from "@/types";
 import { CompanyMark, Chip, EmptyState } from "@/components/dashboard/primitives";
 import { DashButton } from "@/components/dashboard/DashButton";
-import { INTERVIEW_STATUS_META, roundTone } from "@/features/interviews/constants";
+import {
+  INTERVIEW_STATUS_META,
+  SOURCE_CHIP_META,
+  buildKeepInterviewPatch,
+  roundTone,
+} from "@/features/interviews/constants";
 import { logoToneForCompany } from "@/features/jobs/utils";
+import { downloadInterviewIcs, canExportToCalendar } from "@/features/interviews/ics";
+import { detectMeetingProvider, MEETING_PROVIDER_LABEL } from "@/features/interviews/meetingLink";
+import { useUpdateInterview } from "@/features/interviews/hooks";
 import { format, parseISO } from "date-fns";
+import type { SuggestionListItem } from "@/repositories/SuggestionRepository";
 
 type Props = {
   interviews: Interview[];
@@ -13,6 +31,9 @@ type Props = {
   onDelete: (id: string) => void;
   /** Only relevant when the empty list is caused by filters — see the parent's own identical `filtered.length === 0` case. */
   onClearFilters?: () => void;
+  /** Keyed by interview id — see features/interviews/pendingSuggestions.splitCalendarSuggestions. */
+  pendingSuggestionsByInterviewId?: Map<string, SuggestionListItem>;
+  onReviewSuggestion?: (suggestion: SuggestionListItem) => void;
 };
 
 /**
@@ -27,7 +48,11 @@ export function InterviewTableView({
   onEdit,
   onDelete,
   onClearFilters,
+  pendingSuggestionsByInterviewId,
+  onReviewSuggestion,
 }: Props) {
+  const updateInterview = useUpdateInterview();
+
   if (interviews.length === 0) {
     // Same wording/treatment as the card view's own empty state for this
     // identical case (the parent only renders this view once at least one
@@ -67,6 +92,7 @@ export function InterviewTableView({
           {interviews.map((interview) => {
             const tone = logoToneForCompany(interview.company_name);
             const statusMeta = INTERVIEW_STATUS_META[interview.status];
+            const pendingSuggestion = pendingSuggestionsByInterviewId?.get(interview.id);
 
             return (
               <tr
@@ -97,6 +123,32 @@ export function InterviewTableView({
                       {interview.company_name}
                     </span>
                     {interview.application_id && <Chip tone="default">Linked</Chip>}
+                    {SOURCE_CHIP_META[interview.source] && (
+                      <Chip tone={SOURCE_CHIP_META[interview.source]!.tone}>
+                        {SOURCE_CHIP_META[interview.source]!.label}
+                      </Chip>
+                    )}
+                    {interview.is_calendar_event_stale && (
+                      <span
+                        title="This event was removed from your Google Calendar. Your interview is unaffected — review it if the plan changed."
+                        className="inline-flex items-center gap-1 rounded-full bg-[#F59E0B]/10 py-0.5 pl-2 pr-1 text-[11px] font-medium text-[#B45309]"
+                      >
+                        <AlertTriangle className="h-3 w-3" />
+                        Removed from calendar
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            updateInterview.mutate({
+                              id: interview.id,
+                              updates: buildKeepInterviewPatch(interview),
+                            });
+                          }}
+                          className="ml-0.5 rounded-full px-1.5 py-0.5 underline decoration-dotted hover:bg-[#F59E0B]/15"
+                        >
+                          Keep
+                        </button>
+                      </span>
+                    )}
                   </div>
                 </td>
 
@@ -121,7 +173,9 @@ export function InterviewTableView({
                     ) : (
                       <MapPin className="h-3 w-3 shrink-0" />
                     )}
-                    {interview.mode === "online" ? "Online" : "Offline"}
+                    {interview.mode === "online"
+                      ? MEETING_PROVIDER_LABEL[detectMeetingProvider(interview.link)]
+                      : "Offline"}
                   </span>
                 </td>
 
@@ -141,6 +195,25 @@ export function InterviewTableView({
                     >
                       <Pencil className="h-3.5 w-3.5" />
                     </button>
+                    {pendingSuggestion && onReviewSuggestion && (
+                      <button
+                        onClick={() => onReviewSuggestion(pendingSuggestion)}
+                        aria-label="Calendar update available — review"
+                        title="Calendar update available — review"
+                        className="grid h-7 w-7 place-items-center rounded-lg text-[#2563EB] hover:bg-[#2563EB]/[0.08] transition-colors"
+                      >
+                        <CalendarSearch className="h-3.5 w-3.5" />
+                      </button>
+                    )}
+                    {canExportToCalendar(interview) && (
+                      <button
+                        onClick={() => downloadInterviewIcs(interview)}
+                        aria-label="Add to Calendar"
+                        className="grid h-7 w-7 place-items-center rounded-lg text-[oklch(0.5_0.02_265)] hover:bg-black/[0.05] hover:text-[#2563EB] transition-colors"
+                      >
+                        <CalendarPlus className="h-3.5 w-3.5" />
+                      </button>
+                    )}
                     <button
                       onClick={() => onDelete(interview.id)}
                       aria-label="Delete interview"

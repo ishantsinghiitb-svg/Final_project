@@ -1,4 +1,4 @@
-import type { GmailSuggestionListItem } from "@/repositories/GmailRepository";
+import type { SuggestionListItem } from "@/repositories/SuggestionRepository";
 import type { GmailMessageCategory } from "@/features/gmail/types";
 import { readSuggestionSummary } from "@/features/gmail/summary";
 
@@ -29,11 +29,15 @@ export type SuggestionGroup = {
   company: string | null;
   role: string | null;
   /** Every suggestion in the group, newest email first. */
-  items: GmailSuggestionListItem[];
+  items: SuggestionListItem[];
   /** Only the actionable ones — drives the group's action bar and counts. */
-  pending: GmailSuggestionListItem[];
-  /** Distinct email categories in chronological order — the timeline. */
-  timeline: { category: GmailMessageCategory; receivedAt: string | null; headline: string }[];
+  pending: SuggestionListItem[];
+  /** Distinct email/event categories in chronological order — the timeline. `category` is null for a calendar-only entry (no email lifecycle category). */
+  timeline: {
+    category: GmailMessageCategory | null;
+    receivedAt: string | null;
+    headline: string;
+  }[];
   /** Most recent activity in the group, for sorting groups against each other. */
   lastActivityAt: string | null;
 };
@@ -42,7 +46,7 @@ function normalize(value: string | null | undefined): string {
   return (value ?? "").trim().toLowerCase();
 }
 
-function groupKey(item: GmailSuggestionListItem): string {
+function groupKey(item: SuggestionListItem): string {
   if (item.target_application_id) return `app:${item.target_application_id}`;
 
   const summary = readSuggestionSummary(item);
@@ -54,7 +58,7 @@ function groupKey(item: GmailSuggestionListItem): string {
   return `one:${item.id}`;
 }
 
-function timeOf(item: GmailSuggestionListItem): number {
+function timeOf(item: SuggestionListItem): number {
   const raw = item.receivedAt ?? item.created_at;
   const t = new Date(raw).getTime();
   return Number.isNaN(t) ? 0 : t;
@@ -64,8 +68,8 @@ function timeOf(item: GmailSuggestionListItem): number {
  * Collapses a flat suggestion list into opportunity-level groups, newest
  * activity first. Pure — safe to call inside a `useMemo`.
  */
-export function groupSuggestions(items: GmailSuggestionListItem[]): SuggestionGroup[] {
-  const buckets = new Map<string, GmailSuggestionListItem[]>();
+export function groupSuggestions(items: SuggestionListItem[]): SuggestionGroup[] {
+  const buckets = new Map<string, SuggestionListItem[]>();
   for (const item of items) {
     const key = groupKey(item);
     const existing = buckets.get(key);
@@ -89,18 +93,22 @@ export function groupSuggestions(items: GmailSuggestionListItem[]): SuggestionGr
       if (company && role) break;
     }
 
-    // One timeline entry per distinct email (several suggestions can share a
-    // source message — an assessment invite yields both a status update and
+    // One timeline entry per distinct email/event (several suggestions can
+    // share a source — an assessment invite yields both a status update and
     // a deadline reminder, which is one event, not two).
-    const seenMessages = new Set<string>();
+    const seenSources = new Set<string>();
     const timeline: SuggestionGroup["timeline"] = [];
     for (const item of [...sorted].reverse()) {
-      if (seenMessages.has(item.gmail_message_id)) continue;
-      seenMessages.add(item.gmail_message_id);
+      const sourceKey = item.gmail_message_id ?? item.calendar_event_id ?? item.id;
+      if (seenSources.has(sourceKey)) continue;
+      seenSources.add(sourceKey);
       timeline.push({
         category: item.category,
         receivedAt: item.receivedAt,
-        headline: readSuggestionSummary(item)?.headline ?? item.category.replace(/_/g, " "),
+        headline:
+          readSuggestionSummary(item)?.headline ??
+          item.category?.replace(/_/g, " ") ??
+          "Calendar event",
       });
     }
 

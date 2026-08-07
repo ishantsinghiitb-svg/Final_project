@@ -11,3 +11,6 @@ export { ReminderRepository } from "./ReminderRepository";
 export { AttachmentRepository } from "./AttachmentRepository";
 export { AnalysisRepository } from "./AnalysisRepository";
 export { GmailRepository } from "./GmailRepository";
+export { GoogleConnectionRepository } from "./GoogleConnectionRepository";
+export { SuggestionRepository } from "./SuggestionRepository";
+export { CalendarRepository } from "./CalendarRepository";

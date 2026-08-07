@@ -1,15 +1,18 @@
-// ── Stateless OAuth CSRF state (Module 9A) ──
+// ── Stateless OAuth CSRF state (Module 9A/9B) ──
 //
-// The Gmail OAuth callback (src/routes/auth.gmail.callback.ts) is a bare GET
-// redirect from Google with no ambient session — this app's Supabase session
-// is localStorage-based, not cookie-based, so the callback can't identify the
-// user from the request itself. Instead of a server-side state table, the
-// `state` query param IS the credential: it's an HMAC-signed, short-lived
-// payload binding the state to the user who clicked "Connect." An attacker
-// can't forge a valid state for someone else's user_id without the secret,
-// which defeats classic OAuth-state CSRF without needing single-use tracking.
+// The Google OAuth callback (src/routes/auth.google.callback.ts, née
+// auth.gmail.callback.ts — one callback now serves both Gmail and Calendar
+// consent, see the Module 9B plan §2) is a bare GET redirect from Google with
+// no ambient session — this app's Supabase session is localStorage-based, not
+// cookie-based, so the callback can't identify the user from the request
+// itself. Instead of a server-side state table, the `state` query param IS
+// the credential: it's an HMAC-signed, short-lived payload binding the state
+// to the user who clicked "Connect." An attacker can't forge a valid state
+// for someone else's user_id without the secret, which defeats classic
+// OAuth-state CSRF without needing single-use tracking. Fully generic (no
+// scope/product awareness needed) — unchanged by Module 9B.
 //
-// Keep GMAIL_OAUTH_STATE_SECRET separate from the token-encryption key
+// Keep GOOGLE_OAUTH_STATE_SECRET separate from the token-encryption key
 // (src/server/gmail/TokenCrypto.ts) — signing and encryption are different
 // purposes and should never share a secret.
 

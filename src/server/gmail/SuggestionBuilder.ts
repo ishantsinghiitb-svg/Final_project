@@ -1,6 +1,6 @@
 import type { ApplicationStatus } from "@/types";
 import type { Json } from "@/types/database";
-import type { GmailMessageCategory, GmailSuggestionType } from "@/features/gmail/types";
+import type { GmailMessageCategory, SuggestionType } from "@/features/gmail/types";
 import type { ClassificationResult } from "./EmailClassifier";
 import type { MatchResult } from "./ApplicationMatcher";
 import type { GmailAttachmentRef } from "./GmailApiClient";
@@ -33,7 +33,7 @@ import type { GmailAttachmentRef } from "./GmailApiClient";
 // NOT NULL).
 
 export type SuggestionDraft = {
-  type: GmailSuggestionType;
+  type: SuggestionType;
   confidence: number;
   explanation: string;
   targetApplicationId: string | null;
@@ -56,8 +56,8 @@ const STATUS_BY_CATEGORY: Partial<Record<GmailMessageCategory, ApplicationStatus
   joining_formalities: "offer",
 };
 
-/** Categories that describe an interview whose date we should capture. */
-const INTERVIEW_CATEGORIES = new Set<GmailMessageCategory>([
+/** Categories that describe an interview whose date we should capture. Exported (Module 9B) — GmailSyncService uses this same set to decide which messages are worth fetching a .ics attachment's UID from. */
+export const INTERVIEW_CATEGORIES = new Set<GmailMessageCategory>([
   "interview_invitation",
   "interview_scheduled",
   "interview_rescheduled",

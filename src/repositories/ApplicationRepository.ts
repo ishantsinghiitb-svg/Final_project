@@ -1,10 +1,16 @@
 import { supabase } from "@/lib/supabase";
-import type { Application, ApplicationStatus, ApplicationTimelineEvent } from "@/types";
+import type {
+  Application,
+  ApplicationStatus,
+  ApplicationTimelineEvent,
+  ApplicationTimelineEventType,
+} from "@/types";
+import type { Json } from "@/types/database";
 import type { ApplicationFilters, ApplicationSort } from "@/features/applications/types";
 import type { PaginationParams, PaginatedResult } from "@/types";
 
 const APP_COLUMNS =
-  "id, user_id, job_id, company_name, role, status, applied_at, next_step, notes, location, salary_min, salary_max, salary_currency, source, url, archived, archived_at, created_via, metadata, notes_updated_at, priority, resume_id, cover_letter_id, source_gmail_suggestion_id, created_at, updated_at";
+  "id, user_id, job_id, company_name, role, status, applied_at, next_step, notes, location, salary_min, salary_max, salary_currency, source, url, archived, archived_at, created_via, metadata, notes_updated_at, priority, resume_id, cover_letter_id, source_suggestion_id, created_at, updated_at";
 
 const TIMELINE_COLUMNS =
   "id, application_id, user_id, kind, text, previous_value, new_value, metadata, created_at";
@@ -190,6 +196,34 @@ export class ApplicationRepository {
       metadata: row.metadata,
       created_at: row.created_at,
     }));
+  }
+
+  /**
+   * Manual timeline entry — for the handful of event kinds no DB trigger
+   * covers (calendar_event_linked / interview_rescheduled /
+   * calendar_event_cancelled / email_received), written explicitly by the
+   * Gmail/Calendar suggestion-accept and sync paths. Client-side (ambient
+   * RLS-scoped client) — the owning user's own insert policy on
+   * application_activity covers this the same way every other client write
+   * in this app is scoped.
+   */
+  async logActivity(
+    userId: string,
+    applicationId: string,
+    kind: ApplicationTimelineEventType,
+    text: string,
+    metadata?: Record<string, unknown>,
+  ): Promise<void> {
+    const { error } = await supabase.from("application_activity").insert({
+      application_id: applicationId,
+      user_id: userId,
+      kind,
+      text,
+      previous_value: null,
+      new_value: null,
+      metadata: (metadata ?? null) as Json,
+    });
+    if (error) throw error;
   }
 
   // ── Write ─────────────────────────────────────────────────────────────────

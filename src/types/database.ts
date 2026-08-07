@@ -214,8 +214,8 @@ export type ApplicationRow = {
   priority: string | null;
   resume_id: string | null;
   cover_letter_id: string | null;
-  /** Module 9A — the Gmail suggestion that created/updated this row, if any. */
-  source_gmail_suggestion_id: string | null;
+  /** Module 9A/9B — the suggestion (Gmail- or Calendar-derived) that created/updated this row, if any. */
+  source_suggestion_id: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -466,8 +466,15 @@ export type InterviewRow = {
   resume_name_snapshot: string | null;
   job_id: string | null;
   notes: string | null;
-  /** Module 9A — the Gmail suggestion that created/updated this row, if any. */
-  source_gmail_suggestion_id: string | null;
+  /** Module 9A/9B — the suggestion (Gmail- or Calendar-derived) that created/updated this row, if any. */
+  source_suggestion_id: string | null;
+  /** Module 9B — the calendar_events row this interview is linked to, if any. */
+  calendar_event_id: string | null;
+  /** 'manual' | 'gmail' | 'calendar' | 'both' */
+  source: string;
+  /** True once the user hand-edits scheduled_at/mode/link/location — sync then stops silently overwriting them. */
+  calendar_fields_locked: boolean;
+  last_calendar_sync_at: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -721,7 +728,7 @@ export type ApplicationInsert = {
   priority?: string | null;
   resume_id?: string | null;
   cover_letter_id?: string | null;
-  source_gmail_suggestion_id?: string | null;
+  source_suggestion_id?: string | null;
   created_at?: string;
   updated_at?: string;
 };
@@ -869,7 +876,10 @@ export type ApplicationContactInsert = {
 
 export type ApplicationReminderRow = {
   id: string;
-  application_id: string;
+  /** Module 9B — nullable now that a reminder can hang off a standalone interview instead. At least one of application_id/interview_id is always set (DB CHECK). */
+  application_id: string | null;
+  /** Module 9B — direct link for reminders on a standalone (non-application-linked) interview. */
+  interview_id: string | null;
   user_id: string;
   /** 'follow_up' | 'interview' | 'oa_deadline' | 'offer_expiry' | 'custom' */
   type: string;
@@ -878,15 +888,16 @@ export type ApplicationReminderRow = {
   note: string | null;
   completed: boolean;
   completed_at: string | null;
-  /** Module 9A — the Gmail suggestion that created this row, if any. */
-  source_gmail_suggestion_id: string | null;
+  /** Module 9A/9B — the suggestion (Gmail- or Calendar-derived) that created this row, if any. */
+  source_suggestion_id: string | null;
   created_at: string;
   updated_at: string;
 };
 
 export type ApplicationReminderInsert = {
   id?: string;
-  application_id: string;
+  application_id?: string | null;
+  interview_id?: string | null;
   user_id: string;
   type: string;
   title: string;
@@ -894,7 +905,7 @@ export type ApplicationReminderInsert = {
   note?: string | null;
   completed?: boolean;
   completed_at?: string | null;
-  source_gmail_suggestion_id?: string | null;
+  source_suggestion_id?: string | null;
   created_at?: string;
   updated_at?: string;
 };
@@ -912,8 +923,8 @@ export type ApplicationAttachmentRow = {
   mime_type: string | null;
   /** Optional link to application_reminders — NULL means a general application attachment. */
   reminder_id: string | null;
-  /** Module 9A — the Gmail suggestion that created this row, if any. */
-  source_gmail_suggestion_id: string | null;
+  /** Module 9A/9B — the suggestion (Gmail- or Calendar-derived) that created this row, if any. */
+  source_suggestion_id: string | null;
   created_at: string;
 };
 
@@ -927,53 +938,78 @@ export type ApplicationAttachmentInsert = {
   size_bytes?: number | null;
   mime_type?: string | null;
   reminder_id?: string | null;
-  source_gmail_suggestion_id?: string | null;
+  source_suggestion_id?: string | null;
   created_at?: string;
 };
 
-// ── Module 9A: Gmail Intelligence ──
+// ── Module 9A/9B: Gmail + Calendar Intelligence ──
+//
+// One Google OAuth connection per user (google_connections, née
+// gmail_connections) now carries two independently-grantable, incrementally
+// authorized scopes. Engine-state columns are split gmail_*/calendar_*;
+// identity/token columns (google_email, scope, refresh token) stay shared.
 
-export type GmailConnectionRow = {
+export type GoogleConnectionRow = {
   id: string;
   user_id: string;
   google_email: string;
+  /** The full space-separated scope string Google last granted — may cover one or both products. */
   scope: string;
   /** Never select this in a client-facing query — ciphertext only, decrypted server-side via TokenCrypto.ts. */
   refresh_token_ciphertext: string;
   refresh_token_nonce: string;
-  /** Target checkpoint captured at connect time — only valid as an incremental sync starting point once backfill_complete is true. */
-  history_id: string | null;
-  backfill_complete: boolean;
-  backfill_page_token: string | null;
-  /** 'connected' | 'syncing' | 'disconnected' | 'error' | 'needs_reauth' */
-  status: string;
-  auto_sync_enabled: boolean;
-  last_synced_at: string | null;
-  last_sync_error: string | null;
-  next_sync_at: string | null;
-  sync_lock_acquired_at: string | null;
   connected_at: string;
+
+  /** Target checkpoint captured at connect time — only valid as an incremental sync starting point once gmail_backfill_complete is true. */
+  gmail_history_id: string | null;
+  gmail_backfill_complete: boolean;
+  gmail_backfill_page_token: string | null;
+  /** 'connected' | 'syncing' | 'disconnected' | 'error' | 'needs_reauth' */
+  gmail_status: string;
+  gmail_auto_sync_enabled: boolean;
+  gmail_last_synced_at: string | null;
+  gmail_last_sync_error: string | null;
+  gmail_next_sync_at: string | null;
+  gmail_sync_lock_acquired_at: string | null;
+
+  /** 'connected' | 'syncing' | 'disconnected' | 'error' | 'needs_reauth' */
+  calendar_status: string;
+  calendar_auto_sync_enabled: boolean;
+  calendar_last_synced_at: string | null;
+  calendar_last_sync_error: string | null;
+  calendar_next_sync_at: string | null;
+  calendar_sync_lock_acquired_at: string | null;
+
   created_at: string;
   updated_at: string;
 };
 
-export type GmailConnectionInsert = {
+export type GoogleConnectionInsert = {
   id?: string;
   user_id: string;
   google_email: string;
   scope: string;
   refresh_token_ciphertext: string;
   refresh_token_nonce: string;
-  history_id?: string | null;
-  backfill_complete?: boolean;
-  backfill_page_token?: string | null;
-  status?: string;
-  auto_sync_enabled?: boolean;
-  last_synced_at?: string | null;
-  last_sync_error?: string | null;
-  next_sync_at?: string | null;
-  sync_lock_acquired_at?: string | null;
   connected_at?: string;
+
+  gmail_history_id?: string | null;
+  gmail_backfill_complete?: boolean;
+  gmail_backfill_page_token?: string | null;
+  gmail_status?: string;
+  gmail_auto_sync_enabled?: boolean;
+  gmail_last_synced_at?: string | null;
+  gmail_last_sync_error?: string | null;
+  gmail_next_sync_at?: string | null;
+  gmail_sync_lock_acquired_at?: string | null;
+
+  calendar_status?: string;
+  calendar_auto_sync_enabled?: boolean;
+  calendar_last_synced_at?: string | null;
+  calendar_last_sync_error?: string | null;
+  calendar_next_sync_at?: string | null;
+  calendar_sync_lock_acquired_at?: string | null;
+
   created_at?: string;
   updated_at?: string;
 };
@@ -998,6 +1034,8 @@ export type GmailMessageRow = {
   matched_application_id: string | null;
   /** Gmail UNREAD state at first sync — a snapshot, not live. NULL = predates the column. */
   is_unread: boolean | null;
+  /** Module 9B — parsed from a .ics attachment for interview-category messages. Strongest merge key against a calendar_events row. */
+  ical_uid: string | null;
   processed_at: string;
   created_at: string;
 };
@@ -1018,14 +1056,21 @@ export type GmailMessageInsert = {
   classified_by: string;
   matched_application_id?: string | null;
   is_unread?: boolean | null;
+  ical_uid?: string | null;
   processed_at?: string;
   created_at?: string;
 };
 
-export type GmailSuggestionRow = {
+// ── suggestions (née gmail_suggestions) ──
+// Generalized to carry either a Gmail message or a calendar event, or both
+// when the two sources corroborate the same interview. No stored `source`
+// column — derived at read time from which FK is present (see
+// SuggestionRepository), so it can never drift from the data it describes.
+export type SuggestionRow = {
   id: string;
   user_id: string;
-  gmail_message_id: string;
+  gmail_message_id: string | null;
+  calendar_event_id: string | null;
   /** 'create_application' | 'update_application' | 'create_interview' | 'add_reminder' | 'import_attachment' */
   type: string;
   /** 'pending' | 'accepted' | 'dismissed' | 'expired' | 'superseded' */
@@ -1042,10 +1087,11 @@ export type GmailSuggestionRow = {
   updated_at: string;
 };
 
-export type GmailSuggestionInsert = {
+export type SuggestionInsert = {
   id?: string;
   user_id: string;
-  gmail_message_id: string;
+  gmail_message_id?: string | null;
+  calendar_event_id?: string | null;
   type: string;
   status?: string;
   confidence?: number;
@@ -1054,6 +1100,108 @@ export type GmailSuggestionInsert = {
   suggested_payload?: Json;
   resolved_at?: string | null;
   resolved_action?: string | null;
+  created_at?: string;
+  updated_at?: string;
+};
+
+// ── Module 9B: Calendar Intelligence ──
+
+export type CalendarSyncStateRow = {
+  id: string;
+  user_id: string;
+  google_calendar_id: string;
+  sync_token: string | null;
+  page_token: string | null;
+  window_start: string | null;
+  window_end: string | null;
+  backfill_complete: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+export type CalendarSyncStateInsert = {
+  id?: string;
+  user_id: string;
+  google_calendar_id?: string;
+  sync_token?: string | null;
+  page_token?: string | null;
+  window_start?: string | null;
+  window_end?: string | null;
+  backfill_complete?: boolean;
+  created_at?: string;
+  updated_at?: string;
+};
+
+/** Candidate ledger, mirrors gmail_messages — only events that pass the relevance gate (Tier 1-3) are ever written here. */
+export type CalendarEventRow = {
+  id: string;
+  user_id: string;
+  google_calendar_id: string;
+  google_event_id: string;
+  ical_uid: string | null;
+  recurring_event_id: string | null;
+  title: string | null;
+  description_snippet: string | null;
+  location: string | null;
+  meeting_link: string | null;
+  organizer_email: string | null;
+  organizer_name: string | null;
+  attendee_emails: Json;
+  starts_at: string;
+  ends_at: string | null;
+  is_all_day: boolean;
+  event_timezone: string | null;
+  /** 'confirmed' | 'tentative' | 'cancelled' */
+  google_status: string;
+  /** 'needsAction' | 'declined' | 'tentative' | 'accepted' | null */
+  self_response_status: string | null;
+  etag: string | null;
+  google_updated_at: string | null;
+  /** 'tier_1' | 'tier_2' | 'tier_3' */
+  relevance_tier: string;
+  confidence: number;
+  /** 'rule' | 'ai' */
+  classified_by: string;
+  matched_application_id: string | null;
+  matched_interview_id: string | null;
+  /** Dismiss/delete tombstone — set once the resulting suggestion is dismissed or its interview deleted, so it's never re-suggested. */
+  ignored_at: string | null;
+  first_seen_at: string;
+  last_seen_at: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export type CalendarEventInsert = {
+  id?: string;
+  user_id: string;
+  google_calendar_id?: string;
+  google_event_id: string;
+  ical_uid?: string | null;
+  recurring_event_id?: string | null;
+  title?: string | null;
+  description_snippet?: string | null;
+  location?: string | null;
+  meeting_link?: string | null;
+  organizer_email?: string | null;
+  organizer_name?: string | null;
+  attendee_emails?: Json;
+  starts_at: string;
+  ends_at?: string | null;
+  is_all_day?: boolean;
+  event_timezone?: string | null;
+  google_status?: string;
+  self_response_status?: string | null;
+  etag?: string | null;
+  google_updated_at?: string | null;
+  relevance_tier: string;
+  confidence?: number;
+  classified_by: string;
+  matched_application_id?: string | null;
+  matched_interview_id?: string | null;
+  ignored_at?: string | null;
+  first_seen_at?: string;
+  last_seen_at?: string;
   created_at?: string;
   updated_at?: string;
 };
@@ -1123,7 +1271,11 @@ export type InterviewInsert = {
   resume_name_snapshot?: string | null;
   job_id?: string | null;
   notes?: string | null;
-  source_gmail_suggestion_id?: string | null;
+  source_suggestion_id?: string | null;
+  calendar_event_id?: string | null;
+  source?: string;
+  calendar_fields_locked?: boolean;
+  last_calendar_sync_at?: string | null;
   created_at?: string;
   updated_at?: string;
 };
@@ -1503,10 +1655,10 @@ export type Database = {
         Update: Partial<ApplicationAttachmentRow>;
         Relationships: TableRelationship[];
       };
-      gmail_connections: {
-        Row: GmailConnectionRow;
-        Insert: GmailConnectionInsert;
-        Update: Partial<GmailConnectionRow>;
+      google_connections: {
+        Row: GoogleConnectionRow;
+        Insert: GoogleConnectionInsert;
+        Update: Partial<GoogleConnectionRow>;
         Relationships: TableRelationship[];
       };
       gmail_messages: {
@@ -1515,10 +1667,22 @@ export type Database = {
         Update: Partial<GmailMessageRow>;
         Relationships: TableRelationship[];
       };
-      gmail_suggestions: {
-        Row: GmailSuggestionRow;
-        Insert: GmailSuggestionInsert;
-        Update: Partial<GmailSuggestionRow>;
+      suggestions: {
+        Row: SuggestionRow;
+        Insert: SuggestionInsert;
+        Update: Partial<SuggestionRow>;
+        Relationships: TableRelationship[];
+      };
+      calendar_sync_state: {
+        Row: CalendarSyncStateRow;
+        Insert: CalendarSyncStateInsert;
+        Update: Partial<CalendarSyncStateRow>;
+        Relationships: TableRelationship[];
+      };
+      calendar_events: {
+        Row: CalendarEventRow;
+        Insert: CalendarEventInsert;
+        Update: Partial<CalendarEventRow>;
         Relationships: TableRelationship[];
       };
       resumes: {

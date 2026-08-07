@@ -1,137 +1,50 @@
-import { useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/context/AuthContext";
 import { gmailService, type ResolveDecision } from "@/services/GmailService";
-import {
-  getGmailConnectUrl,
-  disconnectGmail,
-  checkAndSyncGmail,
-  syncGmailNow,
-  rebuildGmailSuggestions,
-} from "@/server-functions/gmail";
-import type { GmailSuggestionFilter } from "@/features/gmail/types";
+import { rebuildGmailSuggestions } from "@/server-functions/gmail";
+import type { SuggestionFilter } from "@/features/gmail/types";
 import type { Json } from "@/types/database";
+import { invalidateMutatedDomains } from "@/features/google/mutatedDomainKeys";
+
+// ── Suggestion queue hooks (Module 9A/9B) ──
+//
+// One unified queue regardless of source (Gmail/Calendar/Both) — there is no
+// separate "calendar suggestions" query, just a `source` filter over the
+// same list (see SuggestionRepository.findSuggestionsByUser). Connection
+// management (connect/disconnect/sync-now/auto-sync) lives in
+// src/features/google/hooks — this file stays scoped to the review queue
+// itself, plus the Gmail-only dev rebuild tool.
 
 /** What a caller supplies — the hook injects `accessToken` itself. */
 export type ResolveDecisionInput =
   { action: "dismiss" } | { action: "accept"; editedPayload?: Json };
 
 // ── Query key factory ───────────────────────────────────────────────────────
+//
+// `sourceScope` MUST be part of both keys below — Inbox ("gmail" scope) and
+// Interviews/Dashboard/notifications ("calendar" scope) fetch the same
+// underlying (userId, filter, search) tuple through different scopes, and
+// without the scope in the key they'd collide on one cache entry: whichever
+// fetch resolved last would silently overwrite the other's data.
 
-export const gmailKeys = {
-  all: ["gmail"] as const,
-  connection: (userId: string) => [...gmailKeys.all, "connection", userId] as const,
-  suggestions: (userId: string, filter: string, search: string) =>
-    [...gmailKeys.all, "suggestions", userId, filter, search] as const,
-  pendingCount: (userId: string) => [...gmailKeys.all, "pending-count", userId] as const,
+export const suggestionKeys = {
+  all: ["suggestions"] as const,
+  list: (userId: string, filter: string, search: string, sourceScope: string) =>
+    [...suggestionKeys.all, "list", userId, filter, search, sourceScope] as const,
+  pendingCount: (userId: string, sourceScope: string) =>
+    [...suggestionKeys.all, "pending-count", userId, sourceScope] as const,
 };
 
-// Every domain a suggestion accept can mutate — broad, cross-cutting
-// invalidation on purpose, since a single accept can touch applications,
-// interviews, reminders, and attachments (plus the application timeline,
-// which nests under "applications" and invalidates along with it — see
-// useApplicationTimeline's own comment).
-const MUTATED_DOMAIN_KEYS = [
-  ["applications"],
-  ["interviews"],
-  ["application-reminders"],
-  ["application-attachments"],
-];
-
-function invalidateMutatedDomains(queryClient: ReturnType<typeof useQueryClient>) {
-  for (const key of MUTATED_DOMAIN_KEYS) void queryClient.invalidateQueries({ queryKey: key });
-}
-
-// ── useGmailConnection ───────────────────────────────────────────────────────
-
-export function useGmailConnection() {
-  const { user } = useAuth();
-  return useQuery({
-    queryKey: gmailKeys.connection(user?.id ?? ""),
-    queryFn: () => gmailService.getConnection(user!.id),
-    enabled: Boolean(user),
-    staleTime: 30 * 1_000,
-  });
-}
-
-// ── useUpdateGmailAutoSync ───────────────────────────────────────────────────
-
-export function useUpdateGmailAutoSync() {
-  const { user } = useAuth();
-  const queryClient = useQueryClient();
-  const userId = user?.id ?? "";
-
-  return useMutation({
-    mutationFn: (enabled: boolean) => gmailService.updateAutoSync(userId, enabled),
-    onSettled: () => void queryClient.invalidateQueries({ queryKey: gmailKeys.connection(userId) }),
-  });
-}
-
-// ── useGmailConnectUrl ───────────────────────────────────────────────────────
-// Redirects the browser to Google's consent screen on success — there is no
-// "return value" the caller does anything else with.
-
-export function useGmailConnectUrl() {
-  const { session } = useAuth();
-
-  return useMutation({
-    mutationFn: async () => {
-      if (!session?.access_token) throw new Error("Not authenticated");
-      return getGmailConnectUrl({ data: { accessToken: session.access_token } });
-    },
-    onSuccess: ({ url }) => {
-      window.location.href = url;
-    },
-  });
-}
-
-// ── useDisconnectGmail ───────────────────────────────────────────────────────
-
-export function useDisconnectGmail() {
-  const { user, session } = useAuth();
-  const queryClient = useQueryClient();
-  const userId = user?.id ?? "";
-
-  return useMutation({
-    mutationFn: async () => {
-      if (!session?.access_token) throw new Error("Not authenticated");
-      return disconnectGmail({ data: { accessToken: session.access_token } });
-    },
-    onSettled: () => void queryClient.invalidateQueries({ queryKey: gmailKeys.connection(userId) }),
-  });
-}
-
-// ── useSyncGmailNow ──────────────────────────────────────────────────────────
-// The manual trigger — always runs, always awaited so the Settings/Inbox UI
-// can show real progress and a completion toast.
-
-export function useSyncGmailNow() {
-  const { user, session } = useAuth();
-  const queryClient = useQueryClient();
-  const userId = user?.id ?? "";
-
-  return useMutation({
-    mutationFn: async () => {
-      if (!session?.access_token) throw new Error("Not authenticated");
-      return syncGmailNow({ data: { accessToken: session.access_token } });
-    },
-    onSettled: () => {
-      void queryClient.invalidateQueries({ queryKey: gmailKeys.connection(userId) });
-      void queryClient.invalidateQueries({ queryKey: gmailKeys.all });
-    },
-  });
-}
-
 // ── useRebuildGmailSuggestions (DEVELOPMENT ONLY) ────────────────────────────
-// Regenerates suggestions from already-stored messages using the current
-// classifier — no Gmail API call, no change to the OAuth connection or sync
-// checkpoint. The server function refuses outside dev regardless of whether
+// Regenerates Gmail-sourced suggestions from already-stored messages using
+// the current classifier — no Gmail API call, no change to the OAuth
+// connection or sync checkpoint, and never touches a calendar-sourced
+// suggestion. The server function refuses outside dev regardless of whether
 // any UI exposes it (see src/server-functions/gmail.ts).
 
 export function useRebuildGmailSuggestions() {
-  const { user, session } = useAuth();
+  const { session } = useAuth();
   const queryClient = useQueryClient();
-  const userId = user?.id ?? "";
 
   return useMutation({
     mutationFn: async () => {
@@ -139,69 +52,79 @@ export function useRebuildGmailSuggestions() {
       return rebuildGmailSuggestions({ data: { accessToken: session.access_token } });
     },
     onSettled: () => {
-      // Suggestions AND their messages changed, so the whole Gmail cache is
-      // stale — including the sidebar's pending badge count.
-      void queryClient.invalidateQueries({ queryKey: gmailKeys.all });
-      void queryClient.invalidateQueries({ queryKey: gmailKeys.connection(userId) });
+      // Suggestions AND their messages changed, so the whole queue cache is
+      // stale — including the sidebar's pending badge count. Also
+      // invalidates the broader "google" root (not imported here to avoid a
+      // circular dependency with features/google/hooks) since
+      // last_synced_at-style fields aren't touched by this dev tool but a
+      // future connection-status read shouldn't ever be stale after it runs.
+      void queryClient.invalidateQueries({ queryKey: suggestionKeys.all });
+      void queryClient.invalidateQueries({ queryKey: ["google"] });
     },
   });
 }
 
-// ── useGmailAutoSyncOnOpen ───────────────────────────────────────────────────
-// The "app open" trigger — fires the cheap due-check once per mount (e.g.
-// once when DashboardShell first renders for a session), never blocking
-// render. checkAndSyncGmail itself no-ops unless a sync is actually due AND
-// auto-sync is enabled — see GmailSyncService.isSyncDue.
+// ── useSuggestions ───────────────────────────────────────────────────────────
+// The Inbox's own query — Inbox is Gmail-only (Module 9 UX pass), so this
+// always scopes to "gmail" (keeps gmail + both, drops pure-calendar rows).
+// Calendar-sourced review items live on Interviews instead — see
+// usePendingCalendarSuggestions below, a separate hook with its own cache
+// key so the two surfaces never fight over one cache entry.
 
-export function useGmailAutoSyncOnOpen() {
-  const { user, session } = useAuth();
-  const queryClient = useQueryClient();
-  const firedRef = useRef(false);
-
-  useEffect(() => {
-    if (firedRef.current || !user || !session?.access_token) return;
-    firedRef.current = true;
-    void checkAndSyncGmail({ data: { accessToken: session.access_token } }).then((result) => {
-      if (result.status === "synced") {
-        void queryClient.invalidateQueries({ queryKey: gmailKeys.all });
-        invalidateMutatedDomains(queryClient);
-      }
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- deliberately fire-once, keyed on mount not on session churn
-  }, [user?.id]);
-}
-
-// ── useGmailSuggestions ──────────────────────────────────────────────────────
-
-export function useGmailSuggestions(filter: GmailSuggestionFilter, companySearch: string) {
+export function useSuggestions(filter: SuggestionFilter, companySearch: string) {
   const { user } = useAuth();
   return useQuery({
-    queryKey: gmailKeys.suggestions(user?.id ?? "", filter, companySearch.trim().toLowerCase()),
-    queryFn: () => gmailService.listSuggestions(user!.id, filter, companySearch),
+    queryKey: suggestionKeys.list(
+      user?.id ?? "",
+      filter,
+      companySearch.trim().toLowerCase(),
+      "gmail",
+    ),
+    queryFn: () => gmailService.listSuggestions(user!.id, filter, companySearch, "gmail"),
     enabled: Boolean(user),
     staleTime: 15 * 1_000,
   });
 }
 
-// ── usePendingGmailCount ─────────────────────────────────────────────────────
-// Powers the sidebar nav badge — same 5-minute staleTime as every other
-// badge in useSidebarCounts; a resolve/sync mutation invalidates it directly
-// for prompt updates right after the user acts.
+// ── usePendingCalendarSuggestions ───────────────────────────────────────────
+// Every calendar-sourced pending review item (new interview/application
+// candidates, and reschedule-conflict updates to an already-tracked
+// interview) — the ONE query behind the Interviews page's pending panel,
+// the Dashboard's "pending interview actions" banner, and the notification
+// bell's suggestion-backed items. One fetch, three consumers, cached once.
 
-export function usePendingGmailCount() {
+export function usePendingCalendarSuggestions() {
   const { user } = useAuth();
   return useQuery({
-    queryKey: gmailKeys.pendingCount(user?.id ?? ""),
-    queryFn: () => gmailService.getPendingCount(user!.id),
+    queryKey: suggestionKeys.list(user?.id ?? "", "pending", "", "calendar"),
+    queryFn: () => gmailService.listSuggestions(user!.id, "pending", "", "calendar"),
+    enabled: Boolean(user),
+    staleTime: 15 * 1_000,
+  });
+}
+
+// ── usePendingSuggestionCount ────────────────────────────────────────────────
+// Powers the sidebar Inbox nav badge — scoped to "gmail" so it matches what
+// the Inbox actually shows (a pending calendar-only suggestion is no longer
+// visible there, so it shouldn't count toward this badge either). Same
+// 5-minute staleTime as every other badge in useSidebarCounts; a resolve/
+// sync mutation invalidates it directly for prompt updates right after the
+// user acts.
+
+export function usePendingSuggestionCount() {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: suggestionKeys.pendingCount(user?.id ?? "", "gmail"),
+    queryFn: () => gmailService.getPendingCount(user!.id, "gmail"),
     enabled: Boolean(user),
     staleTime: 5 * 60 * 1_000,
   });
 }
 
-// ── useResolveGmailSuggestion ────────────────────────────────────────────────
+// ── useResolveSuggestion ─────────────────────────────────────────────────────
 // Single suggestion Review → Accept/Edit → Dismiss.
 
-export function useResolveGmailSuggestion() {
+export function useResolveSuggestion() {
   const { user, session } = useAuth();
   const queryClient = useQueryClient();
 
@@ -225,15 +148,15 @@ export function useResolveGmailSuggestion() {
       return gmailService.resolveSuggestion(user.id, suggestionId, withToken);
     },
     onSettled: () => {
-      void queryClient.invalidateQueries({ queryKey: gmailKeys.all });
+      void queryClient.invalidateQueries({ queryKey: suggestionKeys.all });
       invalidateMutatedDomains(queryClient);
     },
   });
 }
 
-// ── useResolveGmailSuggestions (bulk) ────────────────────────────────────────
+// ── useResolveSuggestions (bulk) ─────────────────────────────────────────────
 
-export function useResolveGmailSuggestions() {
+export function useResolveSuggestions() {
   const { user, session } = useAuth();
   const queryClient = useQueryClient();
 
@@ -254,7 +177,7 @@ export function useResolveGmailSuggestions() {
       );
     },
     onSettled: () => {
-      void queryClient.invalidateQueries({ queryKey: gmailKeys.all });
+      void queryClient.invalidateQueries({ queryKey: suggestionKeys.all });
       invalidateMutatedDomains(queryClient);
     },
   });

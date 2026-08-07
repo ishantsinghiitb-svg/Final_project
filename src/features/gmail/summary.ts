@@ -1,5 +1,5 @@
 import type { Json } from "@/types/database";
-import type { GmailSuggestion } from "@/features/gmail/types";
+import type { Suggestion } from "@/features/gmail/types";
 
 // ── Suggestion summary reading (Module 9A) ──
 //
@@ -34,7 +34,7 @@ function str(source: Record<string, unknown>, key: string): string | null {
 
 /** Reads the structured summary block, or null for rows that predate it. */
 export function readSuggestionSummary(
-  suggestion: Pick<GmailSuggestion, "suggested_payload">,
+  suggestion: Pick<Suggestion, "suggested_payload">,
 ): SuggestionSummary | null {
   const payload = suggestion.suggested_payload;
   if (!payload || typeof payload !== "object" || Array.isArray(payload)) return null;

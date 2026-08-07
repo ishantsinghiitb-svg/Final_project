@@ -9,7 +9,7 @@ import {
   StickyPageHeader,
 } from "@/components/dashboard/primitives";
 import { DashButton } from "@/components/dashboard/DashButton";
-import { GmailConnectionCard } from "@/components/dashboard/settings/GmailConnectionCard";
+import { GoogleConnectionCard } from "@/components/dashboard/settings/GoogleConnectionCard";
 import { useAuth } from "@/context/AuthContext";
 import { useProfile } from "@/context/ProfileContext";
 
@@ -249,11 +249,10 @@ function NotificationsTab() {
 function IntegrationsTab() {
   return (
     <div className="grid gap-3 md:grid-cols-2">
-      <GmailConnectionCard />
+      <GoogleConnectionCard />
       {[
         { l: "Chrome extension", d: "Save jobs from any site with one click", status: "Connected" },
         { l: "LinkedIn", d: "Auto-import jobs you view", status: "Connected" },
-        { l: "Google Calendar", d: "Sync interviews to your calendar", status: "Not connected" },
         { l: "Slack", d: "Get nudges in your DMs", status: "Not connected" },
         { l: "Notion", d: "Export applications to a database", status: "Not connected" },
       ].map((i) => (

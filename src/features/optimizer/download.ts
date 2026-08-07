@@ -1,5 +1,6 @@
 import type { ResumeDocument, ResumeDocBlock } from "./compose";
 import { renderResumeText } from "./compose";
+import { safeFileName as sharedSafeFileName, triggerBlobDownload } from "@/lib/download";
 
 // ── Optimized resume download (Module 6D; PDF fixed in the 6E pass) ──
 //
@@ -28,22 +29,7 @@ export const RESUME_FORMATS: readonly ResumeFormatOption[] = [
 ] as const;
 
 function safeFileName(name: string): string {
-  const base = name
-    .replace(/[^\w\d\-. ]+/g, "")
-    .trim()
-    .replace(/\s+/g, "_");
-  return base || "resume";
-}
-
-function triggerBlobDownload(blob: Blob, filename: string): void {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  return sharedSafeFileName(name, "resume");
 }
 
 // ── PDF (jsPDF) ──────────────────────────────────────────────────────────────

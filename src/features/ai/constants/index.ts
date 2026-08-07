@@ -61,7 +61,7 @@ export type ShippedAICapability = (typeof SHIPPED_AI_CAPABILITIES)[number];
  * in the sense that matters here, not in the sense of incomplete: no user
  * ever directly triggers it, sees a credits cost for it (it's free), or sees
  * its raw output — the classification result only ever surfaces indirectly,
- * as a `gmail_messages.category`/`gmail_suggestions` row the user reviews.
+ * as a `gmail_messages.category`/`suggestions` row the user reviews.
  */
 export const EXPERIMENTAL_AI_CAPABILITIES = [AI_CAPABILITIES.GMAIL_CLASSIFIER] as const;
 

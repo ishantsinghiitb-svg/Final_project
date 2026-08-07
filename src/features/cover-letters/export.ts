@@ -5,6 +5,7 @@ import {
   type InlineSpan,
   type RichLine,
 } from "@/lib/richText";
+import { safeFileName as sharedSafeFileName, triggerBlobDownload } from "@/lib/download";
 
 // ── Cover letter export (Module 6E) ──
 //
@@ -40,22 +41,7 @@ export const COVER_LETTER_EXPORT_FORMATS: readonly ExportFormatOption[] = [
 ] as const;
 
 function safeFileName(name: string): string {
-  const base = name
-    .replace(/[^\w\d\-. ]+/g, "")
-    .trim()
-    .replace(/\s+/g, "_");
-  return base || "cover_letter";
-}
-
-function triggerBlobDownload(blob: Blob, filename: string): void {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  return sharedSafeFileName(name, "cover_letter");
 }
 
 /**

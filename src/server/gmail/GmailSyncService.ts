@@ -1,6 +1,8 @@
 import type { AuthedContext } from "@/server/supabase";
 import { serverEnv, requireEnv } from "@/server/env";
 import { GmailRepository } from "@/repositories/GmailRepository";
+import { GoogleConnectionRepository } from "@/repositories/GoogleConnectionRepository";
+import { SuggestionRepository } from "@/repositories/SuggestionRepository";
 import { refreshAccessToken, GoogleOAuthError } from "./GoogleOAuthClient";
 import { decryptToken } from "./TokenCrypto";
 import * as gmailApi from "./GmailApiClient";
@@ -11,7 +13,8 @@ import { classifyWithAI } from "./EmailClassifierAI";
 import { extractCompanyName } from "./CompanyExtractor";
 import { extractRole, extractRecruiterName } from "./EntityExtractor";
 import { matchApplication, type MatchResult } from "./ApplicationMatcher";
-import { buildSuggestions } from "./SuggestionBuilder";
+import { buildSuggestions, INTERVIEW_CATEGORIES } from "./SuggestionBuilder";
+import { parseIcs } from "./IcsParser";
 
 // ── Sync orchestrator (Module 9A) ──
 //
@@ -86,22 +89,24 @@ function categoryLabel(category: ClassificationResult["category"]): string {
 export async function syncUser(authed: AuthedContext): Promise<SyncOutcome> {
   const userId = authed.user.id;
   const gmailRepo = new GmailRepository(authed.supabase);
+  const connectionRepo = new GoogleConnectionRepository(authed.supabase);
+  const suggestionRepo = new SuggestionRepository(authed.supabase);
 
-  const connection = await gmailRepo.findConnectionForSync(userId);
-  if (!connection || connection.status === "disconnected") {
+  const connection = await connectionRepo.findConnectionForSync(userId);
+  if (!connection || connection.gmail_status === "disconnected") {
     return { status: "skipped", reason: "not_connected" };
   }
-  if (connection.status === "needs_reauth") {
+  if (connection.gmail_status === "needs_reauth") {
     return { status: "skipped", reason: "needs_reauth" };
   }
 
-  const claimed = await gmailRepo.claimSyncLock(userId);
+  const claimed = await connectionRepo.claimSyncLock(userId, "gmail");
   if (!claimed) return { status: "skipped", reason: "already_syncing" };
 
   try {
     const encryptionKey = requireEnv(
-      "GMAIL_TOKEN_ENCRYPTION_KEY",
-      serverEnv.gmailTokenEncryptionKey,
+      "GOOGLE_TOKEN_ENCRYPTION_KEY",
+      serverEnv.googleTokenEncryptionKey,
     );
 
     let accessToken: string;
@@ -113,33 +118,36 @@ export async function syncUser(authed: AuthedContext): Promise<SyncOutcome> {
       accessToken = (await refreshAccessToken(refreshToken)).accessToken;
     } catch (err) {
       if (err instanceof GoogleOAuthError && err.code === "invalid_grant") {
-        await gmailRepo.releaseSyncLock(userId, {
+        await connectionRepo.releaseGmailSyncLock(userId, {
           status: "needs_reauth",
           last_sync_error: "Gmail access was revoked. Please reconnect.",
         });
         return { status: "skipped", reason: "needs_reauth" };
       }
       const message = err instanceof Error ? err.message : "Failed to refresh Gmail access.";
-      await gmailRepo.releaseSyncLock(userId, { status: "error", last_sync_error: message });
+      await connectionRepo.releaseGmailSyncLock(userId, {
+        status: "error",
+        last_sync_error: message,
+      });
       return { status: "error", message };
     }
 
     // ── This run's candidate message ids, bounded to BATCH_SIZE ──
     let candidateIds: string[];
-    let backfillComplete = connection.backfill_complete;
-    let nextBackfillPageToken: string | null = connection.backfill_page_token;
+    let backfillComplete = connection.gmail_backfill_complete;
+    let nextBackfillPageToken: string | null = connection.gmail_backfill_page_token;
     let newHistoryId: string | undefined;
 
     if (!backfillComplete) {
       const page = await gmailApi.listMessages(accessToken, buildSyncQuery(), {
-        pageToken: connection.backfill_page_token ?? undefined,
+        pageToken: connection.gmail_backfill_page_token ?? undefined,
         maxResults: BATCH_SIZE,
       });
       candidateIds = page.messages.map((m) => m.id);
       nextBackfillPageToken = page.nextPageToken;
       backfillComplete = page.nextPageToken === null;
-    } else if (connection.history_id) {
-      const page = await gmailApi.listHistory(accessToken, connection.history_id);
+    } else if (connection.gmail_history_id) {
+      const page = await gmailApi.listHistory(accessToken, connection.gmail_history_id);
       candidateIds = page.messageIds.slice(0, BATCH_SIZE);
       newHistoryId = page.historyId;
     } else {
@@ -159,9 +167,11 @@ export async function syncUser(authed: AuthedContext): Promise<SyncOutcome> {
     // and the recruiter's own follow-up are two different emails that can
     // each independently justify "create an application at Groww". Seeding
     // this set from the existing pending rows — and adding to it as we go —
-    // means the second one is suppressed, within a run and across runs.
+    // means the second one is suppressed, within a run and across runs. Also
+    // seeded across sources now: a Calendar-sourced pending suggestion for
+    // the same action suppresses a Gmail one just as readily (Module 9B).
     const pendingKeys = new Set<string>();
-    for (const row of await gmailRepo.findPendingSuggestionKeys(userId)) {
+    for (const row of await suggestionRepo.findPendingSuggestionKeys(userId)) {
       pendingKeys.add(
         suggestionDedupeKey(row.type, row.target_application_id, row.suggested_payload),
       );
@@ -214,6 +224,34 @@ export async function syncUser(authed: AuthedContext): Promise<SyncOutcome> {
         }
       }
 
+      // .ics UID capture (Module 9B) — fetched only for interview-category
+      // messages that actually carry an .ics attachment, never for every
+      // message: this is the strongest merge key against a calendar event
+      // (the same UID appears in both), so it's worth one extra API call
+      // exactly where it pays off, and nowhere else. A fetch/parse failure
+      // here must never abort the message's own processing — the .ics UID
+      // is a bonus signal, not a required one.
+      let icalUid: string | null = null;
+      if (hasIcsAttachment && INTERVIEW_CATEGORIES.has(classification.category)) {
+        const icsAttachment = full.attachments.find(
+          (a) => a.filename.toLowerCase().endsWith(".ics") || a.mimeType === "text/calendar",
+        );
+        if (icsAttachment) {
+          try {
+            const bytes = await gmailApi.getAttachment(
+              accessToken,
+              gmailMessageId,
+              icsAttachment.attachmentId,
+            );
+            const icsText = new TextDecoder().decode(bytes.data);
+            icalUid = parseIcs(icsText).uid;
+          } catch {
+            // Best-effort — a fetch failure here just means no UID for this
+            // message, not a sync failure.
+          }
+        }
+      }
+
       // Entity extraction runs on the full body, not just the subject — the
       // employer's real brand and the job title both routinely appear only
       // in the copy (especially on ATS-sent mail, where the sender domain is
@@ -248,6 +286,7 @@ export async function syncUser(authed: AuthedContext): Promise<SyncOutcome> {
         confidence: classification.confidence,
         classified_by: classifiedBy,
         matched_application_id: matchedApplicationId,
+        ical_uid: icalUid,
         // Read state at the moment we first saw it. A snapshot, not a live
         // mirror — see migration 20260810000001. Purely a view filter: the
         // message is fetched, classified and stored identically either way.
@@ -291,7 +330,7 @@ export async function syncUser(authed: AuthedContext): Promise<SyncOutcome> {
           const key = suggestionDedupeKey(draft.type, draft.targetApplicationId, draft.payload);
           if (pendingKeys.has(key)) continue;
 
-          await gmailRepo.createSuggestion({
+          await suggestionRepo.createSuggestion({
             user_id: userId,
             gmail_message_id: messageRow.id,
             type: draft.type,
@@ -308,7 +347,7 @@ export async function syncUser(authed: AuthedContext): Promise<SyncOutcome> {
 
     // ── Checkpoint — only advances now that everything above is committed ──
     const nextSyncAt = new Date(Date.now() + MIN_SYNC_INTERVAL_MINUTES * 60_000).toISOString();
-    await gmailRepo.releaseSyncLock(userId, {
+    await connectionRepo.releaseGmailSyncLock(userId, {
       status: "connected",
       backfill_complete: backfillComplete,
       backfill_page_token: backfillComplete ? null : nextBackfillPageToken,
@@ -321,20 +360,24 @@ export async function syncUser(authed: AuthedContext): Promise<SyncOutcome> {
     return { status: "synced", processed, suggestionsCreated };
   } catch (err) {
     const message = err instanceof Error ? err.message : "Sync failed.";
-    await gmailRepo.releaseSyncLock(userId, { status: "error", last_sync_error: message });
+    await connectionRepo.releaseGmailSyncLock(userId, {
+      status: "error",
+      last_sync_error: message,
+    });
     return { status: "error", message };
   }
 }
 
 /** Whether an opportunistic (app-open) sync should fire right now — "Sync Now" bypasses this entirely. */
 export function isSyncDue(connection: {
-  auto_sync_enabled: boolean;
-  next_sync_at: string | null;
-  status: string;
+  gmail_auto_sync_enabled: boolean;
+  gmail_next_sync_at: string | null;
+  gmail_status: string;
 }): boolean {
-  if (!connection.auto_sync_enabled) return false;
-  if (connection.status === "disconnected" || connection.status === "needs_reauth") return false;
-  if (connection.status === "syncing") return false;
-  if (!connection.next_sync_at) return true;
-  return new Date(connection.next_sync_at).getTime() <= Date.now();
+  if (!connection.gmail_auto_sync_enabled) return false;
+  if (connection.gmail_status === "disconnected" || connection.gmail_status === "needs_reauth")
+    return false;
+  if (connection.gmail_status === "syncing") return false;
+  if (!connection.gmail_next_sync_at) return true;
+  return new Date(connection.gmail_next_sync_at).getTime() <= Date.now();
 }

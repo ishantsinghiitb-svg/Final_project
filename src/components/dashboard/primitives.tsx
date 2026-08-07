@@ -56,11 +56,21 @@ export function PageHeader({
   title,
   subtitle,
   actions,
+  leftActions,
 }: {
   eyebrow?: string;
   title: string;
   subtitle?: string;
   actions?: ReactNode;
+  /**
+   * Opt-in second action group, pinned to the LEFT of the action row while
+   * `actions` stays right (used for the Interviews page's Card/Table/Agenda
+   * view switcher, which is a view control rather than a page action and
+   * reads better separated from the primary buttons). Supplying this drops
+   * the action row onto its own full-width line so the two groups can sit
+   * at opposite edges; pages that don't pass it are completely unaffected.
+   */
+  leftActions?: ReactNode;
 }) {
   return (
     <div className="flex flex-wrap items-end justify-between gap-4">
@@ -75,7 +85,21 @@ export function PageHeader({
         </h1>
         {subtitle && <p className="mt-1 text-sm text-[oklch(0.45_0.02_265)]">{subtitle}</p>}
       </div>
-      {actions && <div className="flex items-center gap-2">{actions}</div>}
+      {/* Without leftActions: ml-auto + justify-end keeps the buttons hard
+          against the right edge even when the header wraps to two rows —
+          `justify-between` on the parent alone left them stranded on the
+          left of their own wrapped row at narrower widths. */}
+      {(actions || leftActions) && (
+        <div
+          className={cn(
+            "flex flex-wrap items-center gap-2",
+            leftActions ? "w-full justify-between" : "ml-auto justify-end",
+          )}
+        >
+          {leftActions && <div className="flex flex-wrap items-center gap-2">{leftActions}</div>}
+          {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
+        </div>
+      )}
     </div>
   );
 }

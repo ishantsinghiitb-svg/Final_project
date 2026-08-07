@@ -2,8 +2,10 @@ import { useEffect, useRef, useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import {
   AlertCircle,
+  AlertTriangle,
   ArrowLeft,
   Calendar,
+  CalendarPlus,
   CheckCircle2,
   ChevronDown,
   FileText,
@@ -11,6 +13,7 @@ import {
   MapPin,
   Mic,
   Pencil,
+  RefreshCw,
   Sparkles,
   Trash2,
   Users,
@@ -21,24 +24,36 @@ import { format, parseISO } from "date-fns";
 import { DashCard, SectionTitle, Chip, CompanyMark } from "@/components/dashboard/primitives";
 import { DashButton } from "@/components/dashboard/DashButton";
 import { ScheduleInterviewDialog } from "@/components/dashboard/interviews/ScheduleInterviewDialog";
+import { SuggestionCard } from "@/components/dashboard/gmail/SuggestionCard";
+import { ReviewPanel } from "@/components/dashboard/gmail/ReviewPanel";
+import { ReviewSuggestionDialog } from "@/components/dashboard/gmail/ReviewSuggestionDialog";
 import { useDialogA11y } from "@/hooks/useDialogA11y";
 import {
   useDeleteInterview,
   useInterview,
+  useResyncInterviewFromCalendar,
+  useUpdateInterview,
   useUpdateInterviewStatus,
 } from "@/features/interviews/hooks";
 import { useInterviewPrep } from "@/features/interview-prep/hooks";
 import { useMockInterviewSessions } from "@/features/mock-interview/hooks";
+import { usePendingCalendarSuggestions, useResolveSuggestion } from "@/features/gmail/hooks";
+import { splitCalendarSuggestions } from "@/features/interviews/pendingSuggestions";
 import {
   INTERVIEW_STATUS_META,
   LINKED_STATUSES,
+  SOURCE_CHIP_META,
   STANDALONE_STATUSES,
+  buildKeepInterviewPatch,
   roundTone,
 } from "@/features/interviews/constants";
 import { logoToneForCompany } from "@/features/jobs/utils";
+import { downloadInterviewIcs, canExportToCalendar } from "@/features/interviews/ics";
+import { detectMeetingProvider, MEETING_PROVIDER_LABEL } from "@/features/interviews/meetingLink";
 import { renderRichTextHtml } from "@/lib/richText";
 import { useResumes } from "@/features/resumes/hooks";
 import type { InterviewStatus } from "@/types";
+import type { SuggestionListItem } from "@/repositories/SuggestionRepository";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/dashboard/interviews/$interviewId/")({
@@ -132,10 +147,53 @@ function InterviewDetailPage() {
   const { data: mockSessions = [] } = useMockInterviewSessions(interviewId);
   const { data: resumes = [] } = useResumes();
   const updateStatus = useUpdateInterviewStatus();
+  const updateInterview = useUpdateInterview();
   const deleteInterview = useDeleteInterview();
+  const resyncFromCalendar = useResyncInterviewFromCalendar();
+  const { data: calendarSuggestions = [] } = usePendingCalendarSuggestions();
+  const resolveSuggestion = useResolveSuggestion();
 
   const [editing, setEditing] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [reviewingSuggestion, setReviewingSuggestion] = useState<SuggestionListItem | null>(null);
+  const [editingSuggestion, setEditingSuggestion] = useState<SuggestionListItem | null>(null);
+  const [busySuggestionId, setBusySuggestionId] = useState<string | null>(null);
+
+  // Same routing as the Interviews index page (features/interviews/pendingSuggestions):
+  // a calendar suggestion that names THIS interview's id belongs on its own
+  // detail banner, not the generic pending-review queue.
+  const pendingSuggestion = interviewId
+    ? splitCalendarSuggestions(calendarSuggestions).attachedByInterviewId.get(interviewId)
+    : undefined;
+
+  function handleDismissSuggestion(id: string) {
+    setBusySuggestionId(id);
+    resolveSuggestion.mutate(
+      { suggestionId: id, decision: { action: "dismiss" } },
+      {
+        onError: () => toast.error("Failed to dismiss this suggestion."),
+        onSettled: () => setBusySuggestionId(null),
+      },
+    );
+  }
+
+  function handleAcceptSuggestion(item: SuggestionListItem) {
+    setBusySuggestionId(item.id);
+    resolveSuggestion.mutate(
+      { suggestionId: item.id, decision: { action: "accept" } },
+      {
+        onSuccess: (result) => {
+          if (result.ok) toast.success("Done — updated from your calendar.");
+          else {
+            toast.error(result.message);
+            setReviewingSuggestion(item);
+          }
+        },
+        onError: () => toast.error("Failed to apply this suggestion."),
+        onSettled: () => setBusySuggestionId(null),
+      },
+    );
+  }
 
   if (isLoading) {
     return (
@@ -201,6 +259,31 @@ function InterviewDetailPage() {
                 <Chip tone={roundTone(interview.type)}>{interview.type}</Chip>
                 {interview.application_id && <Chip tone="default">Linked</Chip>}
                 {prepStatusLabel && <Chip tone="green">{prepStatusLabel}</Chip>}
+                {SOURCE_CHIP_META[interview.source] && (
+                  <Chip tone={SOURCE_CHIP_META[interview.source]!.tone}>
+                    {SOURCE_CHIP_META[interview.source]!.label}
+                  </Chip>
+                )}
+                {interview.is_calendar_event_stale && (
+                  <span
+                    title="This event was removed from your Google Calendar. Your interview is unaffected — review it if the plan changed."
+                    className="inline-flex items-center gap-1 rounded-full bg-[#F59E0B]/10 py-0.5 pl-2 pr-1 text-[11px] font-medium text-[#B45309]"
+                  >
+                    <AlertTriangle className="h-3 w-3" />
+                    Removed from calendar
+                    <button
+                      onClick={() =>
+                        updateInterview.mutate({
+                          id: interview.id,
+                          updates: buildKeepInterviewPatch(interview),
+                        })
+                      }
+                      className="ml-0.5 rounded-full px-1.5 py-0.5 underline decoration-dotted hover:bg-[#F59E0B]/15"
+                    >
+                      Keep
+                    </button>
+                  </span>
+                )}
               </div>
             </div>
           </div>
@@ -223,6 +306,35 @@ function InterviewDetailPage() {
             >
               <Pencil className="h-4 w-4" /> Edit
             </button>
+            {canExportToCalendar(interview) && (
+              <button
+                onClick={() => downloadInterviewIcs(interview)}
+                className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-black/5 bg-white px-3 text-sm font-medium text-[oklch(0.4_0.02_265)] transition-colors hover:bg-black/[0.03]"
+              >
+                <CalendarPlus className="h-4 w-4" /> Add to Calendar
+              </button>
+            )}
+            {interview.calendar_fields_locked && interview.calendar_event_id && (
+              <button
+                onClick={() =>
+                  resyncFromCalendar.mutate(interview.id, {
+                    onSuccess: () => toast.success("Updated from your calendar."),
+                    onError: (err) =>
+                      toast.error(err instanceof Error ? err.message : "Failed to resync."),
+                  })
+                }
+                disabled={resyncFromCalendar.isPending}
+                title="Your edits to this interview's date, time or location are protected from calendar syncs. Use this to pull the calendar's current details instead."
+                className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-black/5 bg-white px-3 text-sm font-medium text-[oklch(0.4_0.02_265)] transition-colors hover:bg-black/[0.03] disabled:opacity-60"
+              >
+                {resyncFromCalendar.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <RefreshCw className="h-4 w-4" />
+                )}
+                Resync from Calendar
+              </button>
+            )}
             <button
               onClick={() => setDeleting(true)}
               className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-black/5 bg-white px-3 text-sm font-medium text-rose-600 transition-colors hover:bg-rose-50"
@@ -232,6 +344,21 @@ function InterviewDetailPage() {
           </div>
         </div>
       </DashCard>
+
+      {pendingSuggestion && (
+        <DashCard padded={false}>
+          <SuggestionCard
+            suggestion={pendingSuggestion}
+            googleEmail={null}
+            selected={false}
+            onToggleSelect={() => {}}
+            onReview={() => setReviewingSuggestion(pendingSuggestion)}
+            onDismiss={() => handleDismissSuggestion(pendingSuggestion.id)}
+            busy={busySuggestionId === pendingSuggestion.id}
+            selectable={false}
+          />
+        </DashCard>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-[1fr_280px]">
         <div className="space-y-6">
@@ -245,7 +372,11 @@ function InterviewDetailPage() {
               />
               <DetailTile
                 icon={interview.mode === "online" ? Video : MapPin}
-                label={interview.mode === "online" ? "Meeting link" : "Location"}
+                label={
+                  interview.mode === "online"
+                    ? MEETING_PROVIDER_LABEL[detectMeetingProvider(interview.link)]
+                    : "Location"
+                }
                 value={
                   interview.mode === "online"
                     ? interview.link || "Online"
@@ -351,6 +482,38 @@ function InterviewDetailPage() {
               },
             )
           }
+        />
+      )}
+
+      {/* Same Review → Edit → Accept/Dismiss flow the Interviews index page
+          and Inbox use for calendar/Gmail suggestions — reused as-is here. */}
+      {reviewingSuggestion && !editingSuggestion && (
+        <ReviewPanel
+          suggestion={reviewingSuggestion}
+          googleEmail={null}
+          busy={busySuggestionId === reviewingSuggestion.id}
+          onClose={() => setReviewingSuggestion(null)}
+          onEdit={() => setEditingSuggestion(reviewingSuggestion)}
+          onAccept={() => {
+            const target = reviewingSuggestion;
+            setReviewingSuggestion(null);
+            handleAcceptSuggestion(target);
+          }}
+          onDismiss={() => {
+            const target = reviewingSuggestion;
+            setReviewingSuggestion(null);
+            handleDismissSuggestion(target.id);
+          }}
+        />
+      )}
+
+      {editingSuggestion && (
+        <ReviewSuggestionDialog
+          suggestion={editingSuggestion}
+          onClose={() => {
+            setEditingSuggestion(null);
+            setReviewingSuggestion(null);
+          }}
         />
       )}
     </div>

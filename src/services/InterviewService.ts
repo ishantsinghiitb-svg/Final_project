@@ -2,10 +2,12 @@ import type { Interview, InterviewStatus } from "@/types";
 import type { ScheduleInterviewInput, StandaloneInterviewInput } from "@/features/interviews/types";
 import { LINKED_STATUSES, STANDALONE_STATUSES } from "@/features/interviews/constants";
 import { InterviewRepository } from "@/repositories/InterviewRepository";
+import { CalendarRepository } from "@/repositories/CalendarRepository";
 import { applicationService } from "@/services/ApplicationService";
 import { resumeService } from "@/services/ResumeService";
 
 const interviewRepo = new InterviewRepository();
+const calendarRepo = new CalendarRepository();
 
 /**
  * InterviewService
@@ -28,7 +30,11 @@ export class InterviewService {
     userId: string,
     applicationId: string,
     input: ScheduleInterviewInput,
-    options?: { sourceGmailSuggestionId?: string },
+    options?: {
+      sourceSuggestionId?: string;
+      source?: "manual" | "gmail" | "calendar";
+      calendarEventId?: string;
+    },
   ): Promise<Interview> {
     const application = await applicationService.getApplication(applicationId);
     if (!application) throw new Error("Application not found");
@@ -48,12 +54,33 @@ export class InterviewService {
       resume_name_snapshot: await this.snapshotResumeName(input.resume_id),
       job_id: application.job_id ?? null,
       notes: input.notes ?? null,
-      source_gmail_suggestion_id: options?.sourceGmailSuggestionId ?? null,
+      source_suggestion_id: options?.sourceSuggestionId ?? null,
+      source: options?.source ?? (options?.sourceSuggestionId ? "gmail" : "manual"),
+      calendar_event_id: options?.calendarEventId ?? null,
+      last_calendar_sync_at: options?.calendarEventId ? new Date().toISOString() : null,
     });
   }
 
-  /** job_id is always null — no auto-matching, see class doc. */
-  async createStandalone(userId: string, input: StandaloneInterviewInput): Promise<Interview> {
+  /**
+   * job_id is always null — no auto-matching, see class doc.
+   *
+   * `options` mirrors scheduleForApplication's: a calendar-detected
+   * interview at a company the user isn't tracking an application for is
+   * still a real interview, and accepting its suggestion lands here rather
+   * than in scheduleForApplication. Without the same source/calendar
+   * metadata it would be indistinguishable from a hand-created one, losing
+   * the calendar link that drives resync, the "Calendar" source chip and
+   * duplicate-prevention on the next sync.
+   */
+  async createStandalone(
+    userId: string,
+    input: StandaloneInterviewInput,
+    options?: {
+      sourceSuggestionId?: string;
+      source?: "manual" | "gmail" | "calendar";
+      calendarEventId?: string;
+    },
+  ): Promise<Interview> {
     return interviewRepo.create(userId, {
       application_id: null,
       company_name: input.company_name.trim(),
@@ -69,6 +96,10 @@ export class InterviewService {
       resume_name_snapshot: await this.snapshotResumeName(input.resume_id),
       job_id: null,
       notes: input.notes ?? null,
+      source_suggestion_id: options?.sourceSuggestionId ?? null,
+      source: options?.source ?? (options?.sourceSuggestionId ? "gmail" : "manual"),
+      calendar_event_id: options?.calendarEventId ?? null,
+      last_calendar_sync_at: options?.calendarEventId ? new Date().toISOString() : null,
     });
   }
 
@@ -118,6 +149,39 @@ export class InterviewService {
       throw new Error(`Invalid interview status: ${status}`);
     }
     return interviewRepo.updateStatus(interview.id, status);
+  }
+
+  /**
+   * "Resync from calendar" (Module 9B §1.5) — explicit user action, only
+   * reachable when `calendar_fields_locked` is true: pulls the linked
+   * calendar_events row's current scheduled_at/mode/link/location and
+   * clears the lock, so future syncs can auto-update this interview again.
+   * Never calls the Google API itself — reads the already-stored event row,
+   * which the sync engine keeps current independently.
+   */
+  async resyncFromCalendar(id: string): Promise<Interview> {
+    const interview = await interviewRepo.findById(id);
+    if (!interview?.calendar_event_id) {
+      throw new Error("This interview isn't linked to a calendar event.");
+    }
+    const event = await calendarRepo.findEventById(interview.calendar_event_id);
+    if (!event) throw new Error("The linked calendar event could not be found.");
+
+    const updates: Partial<Omit<Interview, "id" | "user_id" | "created_at" | "updated_at">> = {
+      calendar_fields_locked: false,
+      last_calendar_sync_at: new Date().toISOString(),
+    };
+    if (!event.is_all_day) updates.scheduled_at = event.starts_at;
+    if (event.meeting_link) {
+      updates.mode = "online";
+      updates.link = event.meeting_link;
+      updates.location = null;
+    } else if (event.location) {
+      updates.mode = "offline";
+      updates.location = event.location;
+      updates.link = null;
+    }
+    return interviewRepo.update(id, updates);
   }
 
   // ── Delete ────────────────────────────────────────────────────────────────

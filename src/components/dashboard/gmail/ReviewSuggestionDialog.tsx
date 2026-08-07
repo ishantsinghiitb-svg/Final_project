@@ -1,23 +1,37 @@
 import { useState } from "react";
-import { Loader2, Video, MapPin, X } from "lucide-react";
+import { Loader2, Video, MapPin, X, HelpCircle } from "lucide-react";
 import { toast } from "sonner";
 import { useDialogA11y } from "@/hooks/useDialogA11y";
-import { useResolveGmailSuggestion } from "@/features/gmail/hooks";
+import { useResolveSuggestion } from "@/features/gmail/hooks";
 import { ALL_STATUSES, STATUS_META } from "@/features/applications/constants";
 import { INTERVIEW_ROUND_PRESETS } from "@/features/interviews/constants";
+import { InterviewMergeCompare } from "./InterviewMergeCompare";
 import { cn } from "@/lib/utils";
-import type { GmailSuggestionListItem } from "@/repositories/GmailRepository";
+import type { SuggestionListItem } from "@/repositories/SuggestionRepository";
 import type { Json } from "@/types/database";
 import type { ApplicationStatus, ApplicationReminderType } from "@/types";
 
-// ── ReviewSuggestionDialog (Module 9A) ──
+// ── ReviewSuggestionDialog (Module 9A/9B) ──
 //
 // "Review → Accept / Edit / Dismiss": every field below is pre-filled from
 // the suggestion's stored `suggested_payload` (whatever the deterministic/AI
 // pipeline extracted) but is always editable — for `create_application` and
 // `create_interview` specifically, several required fields (role, interview
-// round) are never extracted from the email at all, so editing here is how
+// round) are never extracted from the source at all, so editing here is how
 // the user actually completes the suggestion, not an optional nicety.
+//
+// Module 9B additions to the create_interview case, all optional payload
+// fields a calendar-sourced draft carries (see CalendarSuggestionBuilder):
+//   - possibleDuplicateOfInterviewId → renders InterviewMergeCompare; the
+//     user's merge/separate choice resolves into `existingInterviewId` at
+//     accept time, same mechanism the dialog already uses for a CONFIRMED
+//     existing-interview target.
+//   - isTentative → an "Unconfirmed" hint, since the user hasn't accepted
+//     the calendar invite yet.
+//   - isAllDay → no special UI needed: `scheduledAtIso` simply arrives null,
+//     which the existing date/time inputs render empty and isValid() already
+//     requires non-empty, so accept is naturally blocked until a real time
+//     is chosen.
 
 const inputClass =
   "h-9 w-full rounded-lg border border-black/5 bg-white px-3 text-sm text-[oklch(0.2_0.02_265)] placeholder:text-[oklch(0.6_0.02_265)] focus:border-[#2563EB]/40 focus:outline-none focus:ring-2 focus:ring-[#2563EB]/10 transition-colors";
@@ -67,11 +81,11 @@ function asAttachments(payload: Payload): AttachmentEntry[] {
   );
 }
 
-type Props = { suggestion: GmailSuggestionListItem; onClose: () => void };
+type Props = { suggestion: SuggestionListItem; onClose: () => void };
 
 export function ReviewSuggestionDialog({ suggestion, onClose }: Props) {
   const payload = asPayload(suggestion.suggested_payload);
-  const resolve = useResolveGmailSuggestion();
+  const resolve = useResolveSuggestion();
 
   const handleClose = () => {
     if (resolve.isPending) return;
@@ -106,6 +120,26 @@ export function ReviewSuggestionDialog({ suggestion, onClose }: Props) {
   const [interviewer, setInterviewer] = useState(str(payload, "interviewer"));
   const timezoneUnclear =
     !bool(payload, "timezoneConfident") && Boolean(str(payload, "rawDateText"));
+  // Module 9B — a weak (time-window) merge-ladder match against an existing
+  // interview: the user must explicitly say merge-or-separate before
+  // accepting (see isValid below). null payload value ("" via str()) means
+  // this is a plain create_interview with no ambiguity.
+  const possibleDuplicateOfInterviewId = str(payload, "possibleDuplicateOfInterviewId") || null;
+  const [mergeChoice, setMergeChoice] = useState<"merge" | "separate" | null>(null);
+  const isTentative = bool(payload, "isTentative");
+  const calendarEventId = str(payload, "calendarEventId") || null;
+
+  // A create_interview that resolves to neither an existing interview nor a
+  // tracked application becomes a STANDALONE interview, which has no
+  // application to inherit a company/role from — so this dialog is the only
+  // place they can come from. Common for calendar detections at a company
+  // the user isn't tracking yet ("DSA interview" names no company at all).
+  const resolvesToExistingInterview =
+    Boolean(str(payload, "existingInterviewId")) || mergeChoice === "merge";
+  const isStandaloneInterview =
+    suggestion.type === "create_interview" &&
+    !suggestion.target_application_id &&
+    !resolvesToExistingInterview;
 
   // ── add_reminder ──
   const remindAtIso = str(payload, "remindAtIso") || null;
@@ -136,7 +170,20 @@ export function ReviewSuggestionDialog({ suggestion, onClose }: Props) {
       case "update_application":
         return Boolean(updateStatus);
       case "create_interview":
-        return date.length > 0 && time.length > 0 && round.trim().length > 0;
+        return (
+          date.length > 0 &&
+          time.length > 0 &&
+          round.trim().length > 0 &&
+          // A standalone interview is created from these fields directly,
+          // so a company is genuinely required (role falls back to the
+          // round label server-side, mirroring create_application's
+          // deliberately role-optional rule).
+          (!isStandaloneInterview || companyName.trim().length > 0) &&
+          // A weak merge candidate must be resolved one way or the other
+          // before accepting — otherwise the accept path doesn't know
+          // whether to update the existing interview or create a new one.
+          (!possibleDuplicateOfInterviewId || mergeChoice !== null)
+        );
       case "add_reminder":
         return remindDate.length > 0 && remindTime.length > 0 && reminderTitle.trim().length > 0;
       case "import_attachment":
@@ -150,7 +197,15 @@ export function ReviewSuggestionDialog({ suggestion, onClose }: Props) {
         return { companyName: companyName.trim(), role: role.trim(), status: createStatus };
       case "update_application":
         return { status: updateStatus };
-      case "create_interview":
+      case "create_interview": {
+        // A CONFIRMED existing target (existingInterviewId, already set by
+        // the pipeline — Tier 1/2 auto-merges never reach the review queue
+        // at all, so this only ever arrives on a Gmail reschedule-of-known-
+        // interview draft) takes priority; otherwise a user "merge" choice
+        // on a weak candidate resolves it the same way.
+        const confirmedExistingId = (payload.existingInterviewId as string | null) ?? null;
+        const resolvedExistingId =
+          confirmedExistingId ?? (mergeChoice === "merge" ? possibleDuplicateOfInterviewId : null);
         return {
           scheduledAtIso: combineToIso(date, time),
           mode,
@@ -158,8 +213,16 @@ export function ReviewSuggestionDialog({ suggestion, onClose }: Props) {
           location: mode === "offline" ? location.trim() || null : null,
           round: round.trim(),
           interviewer: interviewer.trim() || null,
-          existingInterviewId: (payload.existingInterviewId as string | null) ?? null,
+          existingInterviewId: resolvedExistingId,
+          calendarEventId,
+          // Only meaningful on the standalone path (the accept handler
+          // ignores them when an application or existing interview owns the
+          // interview), but always sent so a payload round-trip through this
+          // dialog never silently drops what the detector extracted.
+          companyName: companyName.trim() || null,
+          role: role.trim() || null,
         };
+      }
       case "add_reminder":
         return {
           reminderType,
@@ -286,6 +349,53 @@ export function ReviewSuggestionDialog({ suggestion, onClose }: Props) {
                     Timezone wasn't clear from the email ("{str(payload, "rawDateText")}") — please
                     confirm the date and time below.
                   </p>
+                )}
+                {isTentative && (
+                  <p className="flex items-center gap-1.5 rounded-lg bg-[#F59E0B]/10 px-3 py-2 text-xs text-[#B45309]">
+                    <HelpCircle className="h-3.5 w-3.5 shrink-0" />
+                    Unconfirmed — you haven't accepted this invite in Google Calendar yet.
+                  </p>
+                )}
+                {possibleDuplicateOfInterviewId && (
+                  <InterviewMergeCompare
+                    existingInterviewId={possibleDuplicateOfInterviewId}
+                    calendarSide={{
+                      scheduledAtIso: combineToIso(date, time),
+                      mode,
+                      link: mode === "online" ? link.trim() || null : null,
+                      location: mode === "offline" ? location.trim() || null : null,
+                    }}
+                    choice={mergeChoice}
+                    onChoiceChange={setMergeChoice}
+                  />
+                )}
+                {isStandaloneInterview && (
+                  <>
+                    <div>
+                      <label className={labelClass}>Company</label>
+                      <input
+                        value={companyName}
+                        onChange={(e) => setCompanyName(e.target.value)}
+                        placeholder="Which company is this interview with?"
+                        className={inputClass}
+                      />
+                      {companyName.trim().length === 0 && (
+                        <p className="mt-1 text-xs text-[#B45309]">
+                          Your calendar event doesn't name a company — add one to save this
+                          interview.
+                        </p>
+                      )}
+                    </div>
+                    <div>
+                      <label className={labelClass}>Role</label>
+                      <input
+                        value={role}
+                        onChange={(e) => setRole(e.target.value)}
+                        placeholder="Optional"
+                        className={inputClass}
+                      />
+                    </div>
+                  </>
                 )}
                 <div>
                   <label className={labelClass}>Interview Round</label>

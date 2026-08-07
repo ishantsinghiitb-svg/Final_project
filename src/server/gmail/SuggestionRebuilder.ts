@@ -1,5 +1,5 @@
 import type { ServerSupabase, AuthedContext } from "@/server/supabase";
-import { GmailRepository } from "@/repositories/GmailRepository";
+import { SuggestionRepository } from "@/repositories/SuggestionRepository";
 import { parseFromHeader } from "./emailParsing";
 import { classify } from "./EmailClassifier";
 import { isKnownAtsDomain } from "./RelevanceFilter";
@@ -12,9 +12,9 @@ import { suggestionDedupeKey } from "./GmailSyncService";
 // ── Suggestion rebuild (Module 9A · DEVELOPMENT ONLY) ──
 //
 // Re-runs the CURRENT classification pipeline over already-stored
-// gmail_messages and regenerates gmail_suggestions from scratch. It exists
-// because iterating on the classifier is otherwise painful: the only way to
-// see new logic applied to real mail was to disconnect, reconnect and
+// gmail_messages and regenerates their `suggestions` rows from scratch. It
+// exists because iterating on the classifier is otherwise painful: the only
+// way to see new logic applied to real mail was to disconnect, reconnect and
 // re-sync, which burns Gmail API quota and destroys the sync checkpoint.
 //
 // Guarantees, in the order they matter:
@@ -23,9 +23,12 @@ import { suggestionDedupeKey } from "./GmailSyncService";
 //     category off the message row for grouping and view filters — leaving
 //     them stale would make the rebuild look like it did nothing.
 //   - The Gmail API is NEVER called. Nothing here touches the network.
-//   - gmail_connections is untouched: OAuth tokens, history_id, backfill
+//   - google_connections is untouched: OAuth tokens, history_id, backfill
 //     progress and last_synced_at all survive, so the next real sync picks
 //     up exactly where it left off.
+//   - Only this user's Gmail-sourced suggestions are dropped — a
+//     calendar-sourced (or 'both') suggestion is left alone, since this tool
+//     never touches calendar_events.
 //
 // ⚠️ ACCURACY CAVEAT — this is NOT equivalent to a real sync, and must not
 // be presented as one. gmail_messages deliberately stores only Gmail's short
@@ -70,11 +73,11 @@ type StoredMessage = {
 /**
  * @param authed  The caller's own RLS-scoped context — used for reads that
  *                should stay user-scoped (application matching).
- * @param service Service-role client — required because gmail_suggestions
- *                has no DELETE policy for `authenticated` (see the Module 9A
- *                migration: inserts/deletes are service-role by design).
+ * @param service Service-role client — this dev tool reads/writes across
+ *                gmail_messages/suggestions in bulk without an active
+ *                request's RLS scoping being the right shape for that.
  *                Every statement below is still explicitly scoped by
- *                user_id, since RLS is not doing it for us here.
+ *                user_id regardless, since RLS is not doing it for us here.
  */
 export async function rebuildSuggestions(
   authed: AuthedContext,
@@ -94,23 +97,27 @@ export async function rebuildSuggestions(
   if (readError) throw readError;
   const messages = (messageRows ?? []) as StoredMessage[];
 
-  // ── 2. Drop existing suggestions for this user only ──
+  // ── 2. Drop existing GMAIL-sourced suggestions for this user only ──
+  //
+  // Scoped to gmail_message_id IS NOT NULL so a calendar-sourced (or 'both')
+  // suggestion is never touched by this Gmail-only rebuild tool.
   //
   // NOTE: applications/interviews/reminders/attachments carry a
-  // `source_gmail_suggestion_id` FK with ON DELETE SET NULL, so records the
-  // user already accepted SURVIVE — they simply lose the provenance link
-  // back to the suggestion that produced them. Nothing the user created is
-  // deleted here.
+  // `source_suggestion_id` FK with ON DELETE SET NULL, so records the user
+  // already accepted SURVIVE — they simply lose the provenance link back to
+  // the suggestion that produced them. Nothing the user created is deleted
+  // here.
   const { data: deletedRows, error: deleteError } = await service
-    .from("gmail_suggestions")
+    .from("suggestions")
     .delete()
     .eq("user_id", userId)
+    .not("gmail_message_id", "is", null)
     .select("id");
   if (deleteError) throw deleteError;
   const suggestionsDeleted = (deletedRows ?? []).length;
 
   // ── 3. Re-run the pipeline per message ──
-  const gmailRepo = new GmailRepository(service);
+  const suggestionRepo = new SuggestionRepository(service);
   const pendingKeys = new Set<string>();
   let messagesReclassified = 0;
   let suggestionsCreated = 0;
@@ -188,7 +195,7 @@ export async function rebuildSuggestions(
       const key = suggestionDedupeKey(draft.type, draft.targetApplicationId, draft.payload);
       if (pendingKeys.has(key)) continue;
       try {
-        await gmailRepo.createSuggestion({
+        await suggestionRepo.createSuggestion({
           user_id: userId,
           gmail_message_id: message.id,
           type: draft.type,

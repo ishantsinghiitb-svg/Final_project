@@ -6,7 +6,7 @@ import { SuggestionCard } from "@/components/dashboard/gmail/SuggestionCard";
 import { relativeDay } from "@/features/gmail/summary";
 import type { SuggestionGroup } from "@/features/gmail/grouping";
 import type { GmailMessageCategory } from "@/features/gmail/types";
-import type { GmailSuggestionListItem } from "@/repositories/GmailRepository";
+import type { SuggestionListItem } from "@/repositories/SuggestionRepository";
 
 // ── SuggestionGroupCard (Module 9A) ──
 //
@@ -45,6 +45,14 @@ const CATEGORY_TONE: Record<GmailMessageCategory, string> = {
   unknown: "bg-[oklch(0.7_0.02_265)]",
 };
 
+// A calendar-only timeline entry has no email lifecycle category (Module
+// 9B) — teal distinguishes it from every email-derived dot color above.
+const CALENDAR_TONE = "bg-[#0891B2]";
+
+function toneForCategory(category: GmailMessageCategory | null): string {
+  return category ? CATEGORY_TONE[category] : CALENDAR_TONE;
+}
+
 type Props = {
   group: SuggestionGroup;
   googleEmail: string | null;
@@ -52,7 +60,7 @@ type Props = {
   busyId: string | null;
   onToggleSelect: (id: string) => void;
   onToggleSelectGroup: (ids: string[]) => void;
-  onReview: (item: GmailSuggestionListItem) => void;
+  onReview: (item: SuggestionListItem) => void;
   onDismiss: (id: string) => void;
 };
 
@@ -129,7 +137,7 @@ export function SuggestionGroupCard({
                 {i > 0 && <span className="text-[oklch(0.7_0.02_265)]">→</span>}
                 <span className="inline-flex items-center gap-1 text-xs text-[oklch(0.5_0.02_265)]">
                   <span
-                    className={`h-1.5 w-1.5 rounded-full ${CATEGORY_TONE[entry.category]}`}
+                    className={`h-1.5 w-1.5 rounded-full ${toneForCategory(entry.category)}`}
                     aria-hidden
                   />
                   {entry.headline}
@@ -163,7 +171,7 @@ export function SuggestionGroupCard({
           {group.timeline.map((entry, i) => (
             <li key={`${entry.category}-detail-${i}`} className="relative">
               <span
-                className={`absolute -left-[15px] top-1 h-2 w-2 rounded-full ring-2 ring-white ${CATEGORY_TONE[entry.category]}`}
+                className={`absolute -left-[15px] top-1 h-2 w-2 rounded-full ring-2 ring-white ${toneForCategory(entry.category)}`}
                 aria-hidden
               />
               <p className="text-xs font-medium text-[oklch(0.25_0.02_265)]">{entry.headline}</p>

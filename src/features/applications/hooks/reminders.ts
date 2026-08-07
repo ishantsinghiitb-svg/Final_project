@@ -7,6 +7,7 @@ import { applicationKeys } from "./index";
 export const reminderKeys = {
   all: ["application-reminders"] as const,
   byApplication: (applicationId: string) => [...reminderKeys.all, applicationId] as const,
+  nextUpcoming: (userId: string) => [...reminderKeys.all, "next-upcoming", userId] as const,
 };
 
 export function useReminders(applicationId: string) {
@@ -15,6 +16,17 @@ export function useReminders(applicationId: string) {
     queryFn: () => reminderService.getReminders(applicationId),
     enabled: Boolean(applicationId),
     staleTime: 30 * 1_000,
+  });
+}
+
+/** Dashboard home's "Next reminder" — the single soonest upcoming reminder across every application/interview. */
+export function useNextUpcomingReminder() {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: reminderKeys.nextUpcoming(user?.id ?? ""),
+    queryFn: () => reminderService.getNextUpcomingReminder(user!.id),
+    enabled: Boolean(user),
+    staleTime: 60 * 1_000,
   });
 }
 

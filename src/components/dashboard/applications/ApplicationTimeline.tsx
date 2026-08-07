@@ -17,10 +17,12 @@ import {
   ExternalLink,
   ChevronDown,
   ChevronUp,
+  CalendarClock,
+  CalendarOff,
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { useApplicationTimeline } from "@/features/applications/hooks";
-import { useGmailConnection } from "@/features/gmail/hooks";
+import { useGoogleConnection } from "@/features/google/hooks";
 import { gmailDeepLink } from "@/features/gmail/utils";
 import { STATUS_META, PRIORITY_META } from "@/features/applications/constants";
 import type { ApplicationPriority, ApplicationStatus, ApplicationTimelineEventType } from "@/types";
@@ -52,6 +54,23 @@ const EVENT_META: Record<ApplicationTimelineEventType, EventMeta> = {
   // accepted or dismissed. Renders an "Open Original Email" link below,
   // built from ev.metadata.gmail_message_id (Gmail's own external id).
   email_received: { label: "Email Received", icon: Mail, tone: "text-[#2563EB]" },
+  // Module 9B: written passively regardless of review outcome, same
+  // philosophy as email_received above.
+  calendar_event_linked: {
+    label: "Calendar Event Linked",
+    icon: CalendarClock,
+    tone: "text-[#0891B2]",
+  },
+  interview_rescheduled: {
+    label: "Interview Rescheduled",
+    icon: ArrowRightLeft,
+    tone: "text-[#F59E0B]",
+  },
+  calendar_event_cancelled: {
+    label: "Calendar Event Removed",
+    icon: CalendarOff,
+    tone: "text-[#E11D48]",
+  },
 };
 
 const DEFAULT_EVENT_META: EventMeta = {
@@ -105,7 +124,7 @@ export function ApplicationTimeline({ applicationId }: Props) {
   const { data: events = [], isLoading } = useApplicationTimeline(applicationId);
   // Only fetched for the "Open Original Email" link on email_received rows —
   // harmless/unused when Gmail isn't connected (link simply doesn't render).
-  const { data: gmailConnection } = useGmailConnection();
+  const { data: googleConnection } = useGoogleConnection();
   const [expanded, setExpanded] = useState(false);
 
   if (isLoading) {
@@ -161,9 +180,9 @@ export function ApplicationTimeline({ applicationId }: Props) {
                 </p>
               )}
 
-              {gmailMessageId && gmailConnection?.google_email && (
+              {gmailMessageId && googleConnection?.google_email && (
                 <a
-                  href={gmailDeepLink(gmailConnection.google_email, gmailMessageId)}
+                  href={gmailDeepLink(googleConnection.google_email, gmailMessageId)}
                   target="_blank"
                   rel="noreferrer"
                   className="mt-1.5 inline-flex items-center gap-1 text-xs font-medium text-[#2563EB] hover:underline"

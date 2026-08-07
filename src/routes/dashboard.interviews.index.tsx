@@ -1,19 +1,38 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { AlertCircle, CalendarClock, LayoutGrid, List, Loader2, Plus, Sparkles } from "lucide-react";
+import {
+  AlertCircle,
+  CalendarClock,
+  CalendarRange,
+  LayoutGrid,
+  List,
+  Loader2,
+  Plus,
+  RefreshCw,
+  Sparkles,
+} from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { EmptyState, PageHeader, StickyPageHeader } from "@/components/dashboard/primitives";
 import { InterviewCard } from "@/components/dashboard/interviews/InterviewCard";
 import { InterviewTableView } from "@/components/dashboard/interviews/InterviewTableView";
+import { InterviewAgendaView } from "@/components/dashboard/interviews/InterviewAgendaView";
 import { InterviewFiltersBar } from "@/components/dashboard/interviews/InterviewFiltersBar";
+import { PendingCalendarSuggestions } from "@/components/dashboard/interviews/PendingCalendarSuggestions";
 import { ScheduleInterviewDialog } from "@/components/dashboard/interviews/ScheduleInterviewDialog";
 import { InterviewPickerDialog } from "@/components/dashboard/interviews/prep/InterviewPickerDialog";
+import { ReviewPanel } from "@/components/dashboard/gmail/ReviewPanel";
+import { ReviewSuggestionDialog } from "@/components/dashboard/gmail/ReviewSuggestionDialog";
 import { DashButton } from "@/components/dashboard/DashButton";
 import {
   useAllInterviews,
   useDeleteInterview,
   useUpdateInterviewStatus,
+  useUpcomingRemindersByInterview,
 } from "@/features/interviews/hooks";
+import { usePendingCalendarSuggestions, useResolveSuggestion } from "@/features/gmail/hooks";
+import { useSyncGoogleNow } from "@/features/google/hooks";
+import { combinedSyncOutcomeMessage } from "@/features/google/syncOutcome";
+import { splitCalendarSuggestions } from "@/features/interviews/pendingSuggestions";
 import { DEFAULT_INTERVIEW_SORT_OPTION, SORT_OPTIONS } from "@/features/interviews/constants";
 import type {
   InterviewFilters,
@@ -21,6 +40,7 @@ import type {
   InterviewViewMode,
 } from "@/features/interviews/types";
 import type { Interview, InterviewStatus } from "@/types";
+import type { SuggestionListItem } from "@/repositories/SuggestionRepository";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/dashboard/interviews/")({
@@ -47,10 +67,22 @@ function InterviewsPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [editing, setEditing] = useState<Interview | null>(null);
   const [pickingPrep, setPickingPrep] = useState(false);
+  const [reviewingSuggestion, setReviewingSuggestion] = useState<SuggestionListItem | null>(null);
+  const [editingSuggestion, setEditingSuggestion] = useState<SuggestionListItem | null>(null);
+  const [busySuggestionId, setBusySuggestionId] = useState<string | null>(null);
 
   const { data: interviews = [], isLoading, isError, error } = useAllInterviews();
   const updateStatus = useUpdateInterviewStatus();
   const deleteInterview = useDeleteInterview();
+  const { data: calendarSuggestions = [] } = usePendingCalendarSuggestions();
+  const resolveSuggestion = useResolveSuggestion();
+  const { syncNow, isPending: syncPending } = useSyncGoogleNow();
+  const remindersByInterviewId = useUpcomingRemindersByInterview(interviews);
+
+  const { attachedByInterviewId, unattached } = useMemo(
+    () => splitCalendarSuggestions(calendarSuggestions),
+    [calendarSuggestions],
+  );
 
   const sort = SORT_OPTIONS[sortOption];
 
@@ -95,6 +127,11 @@ function InterviewsPage() {
       );
     }
 
+    if (filters.source && filters.source.length > 0) {
+      const sources = filters.source;
+      list = list.filter((i) => sources.includes(i.source));
+    }
+
     list.sort((a, b) => {
       const dir = sort.direction === "asc" ? 1 : -1;
       return (new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime()) * dir;
@@ -129,10 +166,49 @@ function InterviewsPage() {
 
   const handleOpen = useCallback(
     (interview: Interview) => {
-      void navigate({ to: "/dashboard/interviews/$interviewId", params: { interviewId: interview.id } });
+      void navigate({
+        to: "/dashboard/interviews/$interviewId",
+        params: { interviewId: interview.id },
+      });
     },
     [navigate],
   );
+
+  function handleDismissSuggestion(id: string) {
+    setBusySuggestionId(id);
+    resolveSuggestion.mutate(
+      { suggestionId: id, decision: { action: "dismiss" } },
+      {
+        onError: () => toast.error("Failed to dismiss this suggestion."),
+        onSettled: () => setBusySuggestionId(null),
+      },
+    );
+  }
+
+  function handleAcceptSuggestion(item: SuggestionListItem) {
+    setBusySuggestionId(item.id);
+    resolveSuggestion.mutate(
+      { suggestionId: item.id, decision: { action: "accept" } },
+      {
+        onSuccess: (result) => {
+          if (result.ok) toast.success("Done — updated from your calendar.");
+          else {
+            toast.error(result.message);
+            setReviewingSuggestion(item);
+          }
+        },
+        onError: () => toast.error("Failed to apply this suggestion."),
+        onSettled: () => setBusySuggestionId(null),
+      },
+    );
+  }
+
+  async function handleSyncNow() {
+    const { gmailResult, calendarResult } = await syncNow();
+    const toastMsg = combinedSyncOutcomeMessage(gmailResult, calendarResult);
+    if (toastMsg.tone === "success") toast.success(toastMsg.message);
+    else toast.error(toastMsg.message);
+  }
 
   if (isLoading) {
     return (
@@ -162,29 +238,42 @@ function InterviewsPage() {
           eyebrow="Interviews"
           title="Every round, in one place."
           subtitle="Schedule interviews from a tracked application, or add a standalone one — see what's next at a glance."
+          leftActions={
+            <div className="inline-flex items-center rounded-lg border border-black/5 bg-white p-0.5 text-xs">
+              {(["card", "table", "agenda"] as InterviewViewMode[]).map((v) => (
+                <button
+                  key={v}
+                  onClick={() => setView(v)}
+                  className={cn(
+                    "inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 font-medium transition-all",
+                    view === v
+                      ? "bg-[oklch(0.95_0.02_265)] text-[#2563EB]"
+                      : "text-[oklch(0.5_0.02_265)] hover:text-[oklch(0.3_0.02_265)]",
+                  )}
+                >
+                  {v === "card" && <LayoutGrid className="h-3.5 w-3.5" />}
+                  {v === "table" && <List className="h-3.5 w-3.5" />}
+                  {v === "agenda" && <CalendarRange className="h-3.5 w-3.5" />}
+                  {v === "card" ? "Card" : v === "table" ? "Table" : "Agenda"}
+                </button>
+              ))}
+            </div>
+          }
           actions={
             <>
-              <div className="inline-flex items-center rounded-lg border border-black/5 bg-white p-0.5 text-xs">
-                {(["card", "table"] as InterviewViewMode[]).map((v) => (
-                  <button
-                    key={v}
-                    onClick={() => setView(v)}
-                    className={cn(
-                      "inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 font-medium transition-all",
-                      view === v
-                        ? "bg-[oklch(0.95_0.02_265)] text-[#2563EB]"
-                        : "text-[oklch(0.5_0.02_265)] hover:text-[oklch(0.3_0.02_265)]",
-                    )}
-                  >
-                    {v === "card" ? (
-                      <LayoutGrid className="h-3.5 w-3.5" />
-                    ) : (
-                      <List className="h-3.5 w-3.5" />
-                    )}
-                    {v === "card" ? "Card" : "Table"}
-                  </button>
-                ))}
-              </div>
+              <button
+                onClick={() => void handleSyncNow()}
+                disabled={syncPending}
+                title="Syncs every connected Google product together — the same action everywhere in NextOffer."
+                className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-black/5 bg-white px-3 text-xs font-medium text-[oklch(0.3_0.02_265)] hover:bg-black/[0.03] disabled:opacity-50"
+              >
+                {syncPending ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <RefreshCw className="h-3.5 w-3.5" />
+                )}
+                Sync Now
+              </button>
 
               <DashButton variant="outline" onClick={() => setPickingPrep(true)}>
                 <Sparkles className="h-4 w-4" /> Start Preparation
@@ -206,6 +295,13 @@ function InterviewsPage() {
           totalCount={filtered.length}
         />
       </StickyPageHeader>
+
+      <PendingCalendarSuggestions
+        suggestions={unattached}
+        busyId={busySuggestionId}
+        onReview={setReviewingSuggestion}
+        onDismiss={handleDismissSuggestion}
+      />
 
       {interviews.length === 0 && (
         <EmptyState
@@ -246,6 +342,9 @@ function InterviewsPage() {
                 onStatusChange={handleStatusChange}
                 onEdit={setEditing}
                 onDelete={handleDelete}
+                pendingSuggestion={attachedByInterviewId.get(interview.id)}
+                onReviewSuggestion={setReviewingSuggestion}
+                nextReminder={remindersByInterviewId.get(interview.id)}
               />
             ))}
           </div>
@@ -258,6 +357,21 @@ function InterviewsPage() {
           onEdit={setEditing}
           onDelete={handleDelete}
           onClearFilters={() => setFilters({})}
+          pendingSuggestionsByInterviewId={attachedByInterviewId}
+          onReviewSuggestion={setReviewingSuggestion}
+        />
+      )}
+
+      {interviews.length > 0 && view === "agenda" && (
+        <InterviewAgendaView
+          interviews={filtered}
+          onOpen={handleOpen}
+          onStatusChange={handleStatusChange}
+          onEdit={setEditing}
+          onDelete={handleDelete}
+          onClearFilters={() => setFilters({})}
+          pendingSuggestionsByInterviewId={attachedByInterviewId}
+          onReviewSuggestion={setReviewingSuggestion}
         />
       )}
 
@@ -265,6 +379,38 @@ function InterviewsPage() {
       {editing && <ScheduleInterviewDialog interview={editing} onClose={() => setEditing(null)} />}
       {pickingPrep && (
         <InterviewPickerDialog interviews={interviews} onClose={() => setPickingPrep(false)} />
+      )}
+
+      {/* Same Review → Edit → Accept/Dismiss flow the Inbox uses for Gmail
+          suggestions — reused as-is for calendar-sourced ones here. */}
+      {reviewingSuggestion && !editingSuggestion && (
+        <ReviewPanel
+          suggestion={reviewingSuggestion}
+          googleEmail={null}
+          busy={busySuggestionId === reviewingSuggestion.id}
+          onClose={() => setReviewingSuggestion(null)}
+          onEdit={() => setEditingSuggestion(reviewingSuggestion)}
+          onAccept={() => {
+            const target = reviewingSuggestion;
+            setReviewingSuggestion(null);
+            handleAcceptSuggestion(target);
+          }}
+          onDismiss={() => {
+            const target = reviewingSuggestion;
+            setReviewingSuggestion(null);
+            handleDismissSuggestion(target.id);
+          }}
+        />
+      )}
+
+      {editingSuggestion && (
+        <ReviewSuggestionDialog
+          suggestion={editingSuggestion}
+          onClose={() => {
+            setEditingSuggestion(null);
+            setReviewingSuggestion(null);
+          }}
+        />
       )}
     </>
   );

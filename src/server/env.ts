@@ -24,16 +24,24 @@ export const serverEnv = {
   anthropicApiKey: fromProcess("ANTHROPIC_API_KEY"),
   geminiApiKey: fromProcess("GEMINI_API_KEY"),
 
-  // ── Module 9A: Gmail Intelligence (server-only) ──
+  // ── Module 9A/9B: Gmail + Calendar Intelligence (server-only) ──
+  // One Google OAuth client, one connection per user, two incrementally
+  // authorized scopes (Gmail, Calendar) — see GoogleOAuthClient.ts.
   googleClientId: fromProcess("GOOGLE_CLIENT_ID"),
   googleClientSecret: fromProcess("GOOGLE_CLIENT_SECRET"),
   googleOAuthRedirectUri: fromProcess("GOOGLE_OAUTH_REDIRECT_URI"),
-  // Encrypts the stored Gmail refresh token at rest (AES-256-GCM) — kept
-  // separate from gmailOAuthStateSecret on purpose, one secret per purpose.
-  gmailTokenEncryptionKey: fromProcess("GMAIL_TOKEN_ENCRYPTION_KEY"),
+  // Encrypts the stored Google refresh token at rest (AES-256-GCM) — kept
+  // separate from googleOAuthStateSecret on purpose, one secret per purpose.
+  // Renamed from GMAIL_TOKEN_ENCRYPTION_KEY in Module 9B (the token it
+  // encrypts now covers both products); old name read as a fallback so an
+  // already-configured deployment doesn't need an env change to keep working.
+  googleTokenEncryptionKey:
+    fromProcess("GOOGLE_TOKEN_ENCRYPTION_KEY") || fromProcess("GMAIL_TOKEN_ENCRYPTION_KEY"),
   // Signs the stateless OAuth `state` CSRF parameter (see
   // src/server/gmail/OAuthState.ts) — never reused for token encryption.
-  gmailOAuthStateSecret: fromProcess("GMAIL_OAUTH_STATE_SECRET"),
+  // Renamed from GMAIL_OAUTH_STATE_SECRET in Module 9B, same fallback.
+  googleOAuthStateSecret:
+    fromProcess("GOOGLE_OAUTH_STATE_SECRET") || fromProcess("GMAIL_OAUTH_STATE_SECRET"),
 } as const;
 
 export function requireEnv(name: string, value: string): string {

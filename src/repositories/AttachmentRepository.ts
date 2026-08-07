@@ -2,7 +2,7 @@ import { supabase } from "@/lib/supabase";
 import type { ApplicationAttachment, ApplicationAttachmentKind } from "@/types";
 
 const ATTACHMENT_COLUMNS =
-  "id, application_id, user_id, kind, name, file_path, size_bytes, mime_type, reminder_id, source_gmail_suggestion_id, created_at";
+  "id, application_id, user_id, kind, name, file_path, size_bytes, mime_type, reminder_id, source_suggestion_id, created_at";
 
 export class AttachmentRepository {
   /** General application attachments only — excludes reminder-scoped ones, see findByReminder. */
@@ -38,8 +38,8 @@ export class AttachmentRepository {
       size_bytes?: number | null;
       mime_type?: string | null;
       reminder_id?: string | null;
-      /** Module 9A — set when this attachment was imported by accepting a Gmail suggestion. */
-      source_gmail_suggestion_id?: string | null;
+      /** Module 9A/9B — set when this attachment was imported by accepting a suggestion (Gmail- or Calendar-derived). */
+      source_suggestion_id?: string | null;
     },
   ): Promise<ApplicationAttachment> {
     const { data, error } = await supabase

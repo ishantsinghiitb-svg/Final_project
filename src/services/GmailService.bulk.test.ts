@@ -18,8 +18,8 @@ const updateSuggestionResolution = vi.fn();
 const createManual = vi.fn();
 const updateStatus = vi.fn();
 
-vi.mock("@/repositories/GmailRepository", () => ({
-  GmailRepository: class {
+vi.mock("@/repositories/SuggestionRepository", () => ({
+  SuggestionRepository: class {
     findSuggestionById = findSuggestionById;
     updateSuggestionResolution = updateSuggestionResolution;
   },

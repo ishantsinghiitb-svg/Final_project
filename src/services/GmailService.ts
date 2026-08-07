@@ -2,21 +2,22 @@ import type {
   ApplicationStatus,
   ApplicationReminderType,
   ApplicationAttachmentKind,
+  Interview,
 } from "@/types";
 import type { Json } from "@/types/database";
-import { GmailRepository, type GmailSuggestionListItem } from "@/repositories/GmailRepository";
-import type {
-  GmailConnection,
-  GmailSuggestion,
-  GmailSuggestionFilter,
-} from "@/features/gmail/types";
+import { SuggestionRepository, type SuggestionListItem } from "@/repositories/SuggestionRepository";
+import { CalendarRepository } from "@/repositories/CalendarRepository";
+import { ApplicationRepository } from "@/repositories/ApplicationRepository";
+import type { SuggestionFilter } from "@/features/gmail/types";
 import { applicationService } from "@/services/ApplicationService";
 import { interviewService } from "@/services/InterviewService";
 import { reminderService } from "@/services/ReminderService";
 import { attachmentService } from "@/services/AttachmentService";
 import { fetchGmailAttachmentBytes } from "@/server-functions/gmail";
 
-const gmailRepo = new GmailRepository();
+const suggestionRepo = new SuggestionRepository();
+const calendarRepo = new CalendarRepository();
+const applicationRepo = new ApplicationRepository();
 
 // ── GmailService (Module 9A) ──
 //
@@ -111,7 +112,7 @@ async function acceptCreateApplication(
   const app = await applicationService.createManual(
     userId,
     { company_name: companyName, role, status },
-    { createdVia: "gmail", sourceGmailSuggestionId: suggestionId },
+    { createdVia: "gmail", sourceSuggestionId: suggestionId },
   );
   batch?.createdApplicationIds.set(key, app.id);
   return { targetApplicationId: app.id };
@@ -126,11 +127,65 @@ async function acceptUpdateApplication(
   await applicationService.updateStatus(targetApplicationId, status);
 }
 
+/** manual→X, X→X, the-other-one→both, both stays both. */
+function upgradeInterviewSource(
+  current: string,
+  incoming: "gmail" | "calendar",
+): "manual" | "gmail" | "calendar" | "both" {
+  if (current === "both" || current === incoming) return current as "both" | "gmail" | "calendar";
+  if (current === "manual") return incoming;
+  return "both";
+}
+
+// A day-before and an hour-before nudge — Q56's "in-app reminders only"
+// scope (no push/email notification system), so these just populate the
+// existing Reminders surface. Deliberately only fires when accepting a
+// suggestion CREATES a new interview, not on every subsequent update to an
+// already-linked one (a reschedule-conflict accept, or a silent calendar
+// sync) — application_reminders has no interview-round scoping on an
+// application-linked row, so re-deriving reminders on every update risks
+// touching a different round's reminders sharing the same application_id.
+const REMINDER_OFFSET_HOURS: { hours: number; label: string }[] = [
+  { hours: 24, label: "1 day" },
+  { hours: 1, label: "1 hour" },
+];
+
+async function createInterviewReminders(
+  userId: string,
+  owner: { applicationId: string } | { interviewId: string },
+  scheduledAtIso: string,
+  companyName: string,
+  suggestionId: string,
+): Promise<void> {
+  const scheduledAt = new Date(scheduledAtIso).getTime();
+  const now = Date.now();
+  for (const { hours, label } of REMINDER_OFFSET_HOURS) {
+    const remindAt = scheduledAt - hours * 60 * 60 * 1000;
+    // Skip any offset already in the past — no point reminding about
+    // something that should have already happened.
+    if (remindAt <= now) continue;
+    const input = {
+      type: "interview" as const,
+      title: `Interview with ${companyName} in ${label}`,
+      remind_at: new Date(remindAt).toISOString(),
+      source_suggestion_id: suggestionId,
+    };
+    // A standalone interview has no application to hang the reminder off —
+    // application_reminders.interview_id (Module 9B) is exactly that case.
+    if ("applicationId" in owner) {
+      await reminderService.createReminder(userId, owner.applicationId, input);
+    } else {
+      await reminderService.createReminderForInterview(userId, owner.interviewId, input);
+    }
+  }
+}
+
 async function acceptCreateInterview(
   userId: string,
-  targetApplicationId: string,
+  targetApplicationId: string | null,
   suggestionId: string,
   payload: Record<string, unknown>,
+  source: "gmail" | "calendar",
 ): Promise<void> {
   const scheduledAtIso = payload.scheduledAtIso as string | undefined;
   if (!scheduledAtIso) {
@@ -138,12 +193,28 @@ async function acceptCreateInterview(
       "An interview date and time are required — edit this suggestion before accepting.",
     );
   }
-  const mode = payload.mode === "offline" ? "offline" : "online";
+  const companyName =
+    typeof payload.companyName === "string" && payload.companyName.trim()
+      ? payload.companyName.trim()
+      : null;
+  const mode: "online" | "offline" = payload.mode === "offline" ? "offline" : "online";
   const round =
     typeof payload.round === "string" && payload.round.trim() ? payload.round.trim() : "Interview";
   const existingInterviewId = payload.existingInterviewId as string | null | undefined;
+  // Set only for a calendar-sourced draft (see CalendarSuggestionBuilder) —
+  // links the resulting interview back to the calendar_events row it came
+  // from, the same way accepting a Gmail suggestion sets source_suggestion_id.
+  const calendarEventId = (payload.calendarEventId as string | null | undefined) ?? undefined;
 
   if (existingInterviewId) {
+    const current = await interviewService.getInterview(existingInterviewId);
+    const timeChanged = current ? current.scheduled_at !== scheduledAtIso : false;
+    // First time this calendar event is confirmed as THIS interview vs a
+    // drift on an already-confirmed link — same event, different timeline
+    // wording, and only the "first link" case sets calendar_events.
+    // matched_interview_id (see below) since it was never set before.
+    const isNewLink = Boolean(calendarEventId) && current?.calendar_event_id !== calendarEventId;
+
     await interviewService.updateInterview(existingInterviewId, {
       scheduled_at: scheduledAtIso,
       mode,
@@ -151,28 +222,118 @@ async function acceptCreateInterview(
         mode === "online" ? ((payload.link ?? payload.meetingLink ?? null) as string | null) : null,
       location: mode === "offline" ? ((payload.location as string | null) ?? null) : null,
       interviewer: (payload.interviewer as string | null) ?? null,
-      source_gmail_suggestion_id: suggestionId,
+      source_suggestion_id: suggestionId,
+      source: current ? upgradeInterviewSource(current.source, source) : source,
+      ...(calendarEventId
+        ? { calendar_event_id: calendarEventId, last_calendar_sync_at: new Date().toISOString() }
+        : {}),
     });
+
+    if (calendarEventId && source === "calendar") {
+      // calendar_events.matched_interview_id is the sync engine's own
+      // "already linked" signal (see CalendarSyncService) — it's only ever
+      // set here, at explicit accept, never silently during a sync. This is
+      // what makes re-syncing the same event afterward recognize it as an
+      // update to THIS interview instead of proposing a duplicate.
+      await calendarRepo.linkToInterview(calendarEventId, existingInterviewId);
+    }
+
+    if (current?.application_id) {
+      await applicationRepo.logActivity(
+        userId,
+        current.application_id,
+        isNewLink ? "calendar_event_linked" : "interview_rescheduled",
+        isNewLink
+          ? "Interview linked to a calendar event"
+          : timeChanged
+            ? "Interview time updated from your calendar"
+            : "Interview details updated from your calendar",
+        { calendar_event_id: calendarEventId ?? null },
+      );
+    }
     return;
   }
 
-  await interviewService.scheduleForApplication(
-    userId,
-    targetApplicationId,
-    {
-      round,
-      scheduled_at: scheduledAtIso,
-      mode,
-      link:
-        mode === "online"
-          ? ((payload.link ?? payload.meetingLink ?? null) as string | null)
-          : undefined,
-      location: mode === "offline" ? ((payload.location as string | null) ?? undefined) : undefined,
-      interviewer: (payload.interviewer as string | null) ?? undefined,
-      resume_id: (payload.resumeId as string | null) ?? undefined,
-    },
-    { sourceGmailSuggestionId: suggestionId },
-  );
+  const sharedInput = {
+    round,
+    scheduled_at: scheduledAtIso,
+    mode,
+    link:
+      mode === "online"
+        ? ((payload.link ?? payload.meetingLink ?? null) as string | null)
+        : undefined,
+    location: mode === "offline" ? ((payload.location as string | null) ?? undefined) : undefined,
+    interviewer: (payload.interviewer as string | null) ?? undefined,
+    resume_id: (payload.resumeId as string | null) ?? undefined,
+  };
+  const creationOptions = { sourceSuggestionId: suggestionId, source, calendarEventId };
+
+  // No application to hang this off — a calendar-detected interview at a
+  // company the user isn't tracking yet. That's a real interview, not an
+  // error: create it standalone rather than refusing (which is what the old
+  // "No application linked to this suggestion" guard did, making every
+  // unmatched calendar detection un-acceptable).
+  let created: Interview;
+  if (targetApplicationId) {
+    created = await interviewService.scheduleForApplication(
+      userId,
+      targetApplicationId,
+      sharedInput,
+      creationOptions,
+    );
+  } else {
+    // A standalone interview has no application to inherit a company from,
+    // so the payload must carry one. Surfaced as a message (not a crash)
+    // because the caller turns ok:false into "open the Review dialog on
+    // this suggestion", which is exactly where the user fixes it — same
+    // path a missing date/time already takes.
+    if (!companyName) {
+      throw new Error(
+        "A company name is required for this interview — edit this suggestion before accepting.",
+      );
+    }
+    created = await interviewService.createStandalone(
+      userId,
+      {
+        ...sharedInput,
+        company_name: companyName,
+        role: (payload.role as string | null)?.trim() || round,
+      },
+      creationOptions,
+    );
+  }
+
+  if (calendarEventId && source === "calendar") {
+    // Same "only ever set at explicit accept" back-reference as the
+    // existingInterviewId branch above — without it, a later sync's merge
+    // ladder has no exact rung to promote this event on (no iCalUID, often
+    // no meeting link either), so a genuine future reschedule would fall
+    // back to a weaker "possible duplicate, confirm merge" suggestion
+    // instead of the intended "this interview's details changed" update.
+    // Live-verified gap: brand-new calendar-sourced interviews never got
+    // this call; only the existingInterviewId (already-known-interview)
+    // path did.
+    await calendarRepo.linkToInterview(calendarEventId, created.id);
+  }
+
+  try {
+    await createInterviewReminders(
+      userId,
+      targetApplicationId ? { applicationId: targetApplicationId } : { interviewId: created.id },
+      created.scheduled_at,
+      created.company_name,
+      suggestionId,
+    );
+  } catch (err) {
+    // The interview itself was created successfully above — a reminder
+    // failure is a nice-to-have miss, not grounds to report the whole
+    // accept as failed (the caller's try/catch would otherwise turn this
+    // into a false "accept failed" for a suggestion that actually succeeded).
+    console.error(
+      "Failed to create interview reminders:",
+      err instanceof Error ? err.message : err,
+    );
+  }
 }
 
 async function acceptAddReminder(
@@ -194,7 +355,7 @@ async function acceptAddReminder(
     type: reminderType,
     title,
     remind_at: remindAtIso,
-    source_gmail_suggestion_id: suggestionId,
+    source_suggestion_id: suggestionId,
   });
 }
 
@@ -272,24 +433,17 @@ async function acceptImportAttachment(
 }
 
 export class GmailService {
-  async getConnection(userId: string): Promise<GmailConnection | null> {
-    return gmailRepo.findConnectionByUser(userId);
-  }
-
-  async updateAutoSync(userId: string, enabled: boolean): Promise<GmailConnection> {
-    return gmailRepo.updateAutoSync(userId, enabled);
-  }
-
   async listSuggestions(
     userId: string,
-    filter: GmailSuggestionFilter,
+    filter: SuggestionFilter,
     companySearch?: string,
-  ): Promise<GmailSuggestionListItem[]> {
-    return gmailRepo.findSuggestionsByUser(userId, filter, companySearch);
+    sourceScope?: "gmail" | "calendar",
+  ): Promise<SuggestionListItem[]> {
+    return suggestionRepo.findSuggestionsByUser(userId, filter, companySearch, sourceScope);
   }
 
-  async getPendingCount(userId: string): Promise<number> {
-    return gmailRepo.countPendingByUser(userId);
+  async getPendingCount(userId: string, sourceScope?: "gmail" | "calendar"): Promise<number> {
+    return suggestionRepo.countPendingByUser(userId, sourceScope);
   }
 
   /**
@@ -312,7 +466,7 @@ export class GmailService {
     batch?: BatchContext,
   ): Promise<ResolveResult> {
     try {
-      const suggestion = await gmailRepo.findSuggestionById(suggestionId);
+      const suggestion = await suggestionRepo.findSuggestionById(suggestionId);
       if (!suggestion || suggestion.user_id !== userId) {
         return { ok: false, message: "Suggestion not found." };
       }
@@ -321,7 +475,7 @@ export class GmailService {
       }
 
       if (decision.action === "dismiss") {
-        await gmailRepo.updateSuggestionResolution(suggestionId, "dismissed");
+        await suggestionRepo.updateSuggestionResolution(suggestionId, "dismissed");
         return { ok: true };
       }
 
@@ -341,8 +495,22 @@ export class GmailService {
           break;
         }
         case "create_interview": {
-          if (!targetApplicationId) throw new Error("No application linked to this suggestion.");
-          await acceptCreateInterview(userId, targetApplicationId, suggestionId, payload);
+          // An application is NOT required here. Three valid shapes:
+          //   - existingInterviewId set → update that interview in place
+          //     (e.g. a calendar reschedule review item).
+          //   - targetApplicationId set → create linked to that application.
+          //   - neither → create a STANDALONE interview from the payload's
+          //     own companyName/role (a calendar-detected interview at a
+          //     company with no tracked application). This used to throw
+          //     "No application linked to this suggestion", which made every
+          //     unmatched calendar detection impossible to accept.
+          await acceptCreateInterview(
+            userId,
+            targetApplicationId,
+            suggestionId,
+            payload,
+            suggestion.calendar_event_id ? "calendar" : "gmail",
+          );
           break;
         }
         case "add_reminder": {
@@ -352,6 +520,10 @@ export class GmailService {
         }
         case "import_attachment": {
           if (!targetApplicationId) throw new Error("No application linked to this suggestion.");
+          // Calendar events never carry attachments — this type is Gmail-only.
+          if (!suggestion.gmail_message_id) {
+            throw new Error("No source email linked to this suggestion.");
+          }
           await acceptImportAttachment(
             userId,
             targetApplicationId,
@@ -364,7 +536,7 @@ export class GmailService {
         }
       }
 
-      await gmailRepo.updateSuggestionResolution(suggestionId, "accepted", payload as Json);
+      await suggestionRepo.updateSuggestionResolution(suggestionId, "accepted", payload as Json);
       return { ok: true };
     } catch (err) {
       return {
@@ -425,4 +597,3 @@ export class GmailService {
 }
 
 export const gmailService = new GmailService();
-export type { GmailSuggestion };

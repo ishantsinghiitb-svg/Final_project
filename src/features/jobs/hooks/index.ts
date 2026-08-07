@@ -3,7 +3,7 @@ import { useAuth } from "@/context/AuthContext";
 import { jobService } from "@/services/JobService";
 import { collectionService } from "@/services/CollectionService";
 import { gmailService } from "@/services/GmailService";
-import { gmailKeys } from "@/features/gmail/hooks";
+import { suggestionKeys } from "@/features/gmail/hooks";
 import { manualImportService, type ManualImportInput } from "@/services/ManualImportService";
 import type { JobFilters, JobSort } from "@/features/jobs/types";
 import type { GlobalJob, PaginationParams } from "@/types";
@@ -344,10 +344,10 @@ export function useImportJob() {
 // this hook already reuses jobService for the Saved/Applications counts — a
 // single "sidebar chrome" hook covering every badge, not a bespoke query per
 // nav item, so every badge stays visually and architecturally consistent.
-// Inbox (Module 9A) is the newest addition — its query key matches
-// gmailKeys.pendingCount exactly, so a suggestion resolve/sync mutation's
-// broad `gmailKeys.all` invalidation refreshes this badge too, same as every
-// other Gmail-related view.
+// Inbox (Module 9A/9B) is the newest addition — its query key matches
+// suggestionKeys.pendingCount exactly, so a suggestion resolve/sync
+// mutation's broad `suggestionKeys.all` invalidation refreshes this badge
+// too, same as every other Inbox-related view (Gmail- or Calendar-sourced).
 
 type SidebarCounts = {
   jobs: number;
@@ -388,8 +388,8 @@ export function useSidebarCounts(): SidebarCounts {
   });
 
   const { data: gmailSuggestionsCount = 0 } = useQuery({
-    queryKey: gmailKeys.pendingCount(user?.id ?? ""),
-    queryFn: () => gmailService.getPendingCount(user!.id),
+    queryKey: suggestionKeys.pendingCount(user?.id ?? "", "gmail"),
+    queryFn: () => gmailService.getPendingCount(user!.id, "gmail"),
     enabled: Boolean(user),
     staleTime: 5 * 60 * 1_000,
   });

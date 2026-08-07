@@ -64,7 +64,7 @@ export class ApplicationService {
   async createManual(
     userId: string,
     input: ManualApplicationInput,
-    options?: { createdVia?: "manual" | "gmail"; sourceGmailSuggestionId?: string },
+    options?: { createdVia?: "manual" | "gmail"; sourceSuggestionId?: string },
   ): Promise<Application> {
     const company = input.company_name.trim();
     const role = input.role.trim();
@@ -86,7 +86,7 @@ export class ApplicationService {
       url: input.url?.trim() || matched?.url || null,
       notes: input.notes?.trim() || null,
       created_via: options?.createdVia ?? "manual",
-      source_gmail_suggestion_id: options?.sourceGmailSuggestionId ?? null,
+      source_suggestion_id: options?.sourceSuggestionId ?? null,
     });
   }
 

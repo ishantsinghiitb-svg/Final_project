@@ -1,9 +1,11 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   ArrowUpRight,
+  BellRing,
   Briefcase,
   CalendarClock,
+  CalendarSearch,
   CircleCheck as CheckCircle2,
   Circle,
   FileText,
@@ -13,6 +15,7 @@ import {
   Target,
   TrendingUp,
 } from "lucide-react";
+import { format, isSameDay, isTomorrow, parseISO } from "date-fns";
 import {
   DashCard,
   PageHeader,
@@ -24,7 +27,12 @@ import {
 import { DashButtonLink } from "@/components/dashboard/DashButton";
 import { useAuth } from "@/context/AuthContext";
 import { useProfile } from "@/context/ProfileContext";
-import { interviews, jobs, stats, stageMeta, onboardingSteps } from "@/lib/dashboard-data";
+import { jobs, stats, stageMeta, onboardingSteps } from "@/lib/dashboard-data";
+import { useAllInterviews } from "@/features/interviews/hooks";
+import { usePendingCalendarSuggestions } from "@/features/gmail/hooks";
+import { useNextUpcomingReminder } from "@/features/applications/hooks/reminders";
+import { roundTone } from "@/features/interviews/constants";
+import { logoToneForCompany } from "@/features/jobs/utils";
 
 export const Route = createFileRoute("/dashboard/")({
   head: () => ({
@@ -33,14 +41,34 @@ export const Route = createFileRoute("/dashboard/")({
   component: OverviewPage,
 });
 
+function formatInterviewWhen(iso: string): string {
+  const date = parseISO(iso);
+  if (isSameDay(date, new Date())) return "Today";
+  if (isTomorrow(date)) return "Tomorrow";
+  return format(date, "EEE, MMM d");
+}
+
 function OverviewPage() {
   const { user } = useAuth();
   const { profile } = useProfile();
   const firstName = (profile?.full_name || user?.email?.split("@")[0] || "there").split(" ")[0];
   const [onboardingDone, setOnboardingDone] = useState<Set<string>>(new Set(["ob1"]));
-  const nextInterview = interviews[0];
   const suggested = jobs.filter((j) => !j.stage).slice(0, 3);
   const onboardingComplete = onboardingDone.size === onboardingSteps.length;
+
+  const { data: interviews = [] } = useAllInterviews();
+  // Same query the Interviews page's pending panel and the notification
+  // bell read — one cache entry, three consumers.
+  const { data: pendingCalendarSuggestions = [] } = usePendingCalendarSuggestions();
+  const pendingCalendarCount = pendingCalendarSuggestions.length;
+  const { data: nextReminder } = useNextUpcomingReminder();
+
+  const nextInterview = useMemo(() => {
+    const now = new Date();
+    return interviews
+      .filter((i) => i.status === "scheduled" && new Date(i.scheduled_at) >= now)
+      .sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime())[0];
+  }, [interviews]);
 
   return (
     <>
@@ -68,6 +96,21 @@ function OverviewPage() {
             </>
           }
         />
+
+        {pendingCalendarCount > 0 && (
+          <Link to="/dashboard/interviews" className="block">
+            <DashCard className="!p-3 border-[#2563EB]/15 bg-[#2563EB]/[0.03] transition-colors hover:bg-[#2563EB]/[0.06]">
+              <p className="flex items-center gap-2 text-sm">
+                <CalendarSearch className="h-4 w-4 shrink-0 text-[#2563EB]" />
+                <span className="font-medium text-[oklch(0.2_0.02_265)]">
+                  {pendingCalendarCount} interview action{pendingCalendarCount === 1 ? "" : "s"}{" "}
+                  need your review
+                </span>
+                <ArrowUpRight className="ml-auto h-3.5 w-3.5 shrink-0 text-[#2563EB]" />
+              </p>
+            </DashCard>
+          </Link>
+        )}
       </StickyPageHeader>
 
       {/* Onboarding checklist — only while incomplete */}
@@ -194,18 +237,21 @@ function OverviewPage() {
           {nextInterview && (
             <div className="mt-4 flex items-center gap-4 rounded-xl border border-[#7C3AED]/15 bg-gradient-to-br from-[#7C3AED]/[0.06] to-[#2563EB]/[0.04] p-4">
               <CompanyMark
-                company={nextInterview.company}
-                tone="from-[#7C3AED] to-[#2563EB]"
+                company={nextInterview.company_name}
+                tone={logoToneForCompany(nextInterview.company_name)}
                 size={44}
+                logoUrl={nextInterview.company_logo_url}
               />
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
-                  <p className="font-display font-semibold">{nextInterview.company}</p>
-                  <Chip tone="purple">{nextInterview.type}</Chip>
+                  <p className="font-display font-semibold">{nextInterview.company_name}</p>
+                  <Chip tone={roundTone(nextInterview.type)}>{nextInterview.type}</Chip>
                 </div>
                 <p className="text-sm text-[oklch(0.45_0.02_265)]">{nextInterview.role}</p>
                 <p className="mt-1 text-xs text-[oklch(0.5_0.02_265)]">
-                  {nextInterview.when} · {nextInterview.time} · with {nextInterview.interviewer}
+                  {formatInterviewWhen(nextInterview.scheduled_at)} ·{" "}
+                  {format(parseISO(nextInterview.scheduled_at), "h:mm a")}
+                  {nextInterview.interviewer ? ` · with ${nextInterview.interviewer}` : ""}
                 </p>
               </div>
               <DashButtonLink
@@ -215,6 +261,23 @@ function OverviewPage() {
               >
                 Prep with AI <Sparkles className="h-3.5 w-3.5 text-[#7C3AED]" />
               </DashButtonLink>
+            </div>
+          )}
+
+          {nextReminder && (
+            <div className="mt-3 flex items-center gap-3 rounded-xl border border-black/5 bg-[oklch(0.98_0.005_265)] p-3">
+              <div className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[#0891B2]/10 text-[#0891B2]">
+                <BellRing className="h-4 w-4" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium text-[oklch(0.2_0.02_265)]">
+                  {nextReminder.title}
+                </p>
+                <p className="text-xs text-[oklch(0.5_0.02_265)]">
+                  {formatInterviewWhen(nextReminder.remind_at)} ·{" "}
+                  {format(parseISO(nextReminder.remind_at), "h:mm a")}
+                </p>
+              </div>
             </div>
           )}
 

@@ -43,7 +43,7 @@ import { Route as DashboardInterviewsInterviewIdRouteImport } from './routes/das
 import { Route as DashboardCoverLettersCoverLetterIdRouteImport } from './routes/dashboard.cover-letters.$coverLetterId'
 import { Route as DashboardCollectionsCollectionIdRouteImport } from './routes/dashboard.collections.$collectionId'
 import { Route as DashboardApplicationsApplicationIdRouteImport } from './routes/dashboard.applications.$applicationId'
-import { Route as AuthGmailCallbackRouteImport } from './routes/auth.gmail.callback'
+import { Route as AuthGoogleCallbackRouteImport } from './routes/auth.google.callback'
 import { Route as DashboardInterviewsInterviewIdIndexRouteImport } from './routes/dashboard.interviews.$interviewId.index'
 import { Route as DashboardResumesResumeIdOptimizeRouteImport } from './routes/dashboard.resumes_.$resumeId.optimize'
 import { Route as DashboardInterviewsInterviewIdPrepRouteImport } from './routes/dashboard.interviews.$interviewId.prep'
@@ -230,9 +230,9 @@ const DashboardApplicationsApplicationIdRoute =
     path: '/$applicationId',
     getParentRoute: () => DashboardApplicationsRoute,
   } as any)
-const AuthGmailCallbackRoute = AuthGmailCallbackRouteImport.update({
-  id: '/auth/gmail/callback',
-  path: '/auth/gmail/callback',
+const AuthGoogleCallbackRoute = AuthGoogleCallbackRouteImport.update({
+  id: '/auth/google/callback',
+  path: '/auth/google/callback',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DashboardInterviewsInterviewIdIndexRoute =
@@ -303,7 +303,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/saved': typeof DashboardSavedRoute
   '/dashboard/settings': typeof DashboardSettingsRoute
   '/dashboard/': typeof DashboardIndexRoute
-  '/auth/gmail/callback': typeof AuthGmailCallbackRoute
+  '/auth/google/callback': typeof AuthGoogleCallbackRoute
   '/dashboard/applications/$applicationId': typeof DashboardApplicationsApplicationIdRoute
   '/dashboard/collections/$collectionId': typeof DashboardCollectionsCollectionIdRoute
   '/dashboard/cover-letters/$coverLetterId': typeof DashboardCoverLettersCoverLetterIdRoute
@@ -341,7 +341,7 @@ export interface FileRoutesByTo {
   '/dashboard/saved': typeof DashboardSavedRoute
   '/dashboard/settings': typeof DashboardSettingsRoute
   '/dashboard': typeof DashboardIndexRoute
-  '/auth/gmail/callback': typeof AuthGmailCallbackRoute
+  '/auth/google/callback': typeof AuthGoogleCallbackRoute
   '/dashboard/applications/$applicationId': typeof DashboardApplicationsApplicationIdRoute
   '/dashboard/collections/$collectionId': typeof DashboardCollectionsCollectionIdRoute
   '/dashboard/cover-letters/$coverLetterId': typeof DashboardCoverLettersCoverLetterIdRoute
@@ -384,7 +384,7 @@ export interface FileRoutesById {
   '/dashboard/saved': typeof DashboardSavedRoute
   '/dashboard/settings': typeof DashboardSettingsRoute
   '/dashboard/': typeof DashboardIndexRoute
-  '/auth/gmail/callback': typeof AuthGmailCallbackRoute
+  '/auth/google/callback': typeof AuthGoogleCallbackRoute
   '/dashboard/applications/$applicationId': typeof DashboardApplicationsApplicationIdRoute
   '/dashboard/collections/$collectionId': typeof DashboardCollectionsCollectionIdRoute
   '/dashboard/cover-letters/$coverLetterId': typeof DashboardCoverLettersCoverLetterIdRoute
@@ -430,7 +430,7 @@ export interface FileRouteTypes {
     | '/dashboard/saved'
     | '/dashboard/settings'
     | '/dashboard/'
-    | '/auth/gmail/callback'
+    | '/auth/google/callback'
     | '/dashboard/applications/$applicationId'
     | '/dashboard/collections/$collectionId'
     | '/dashboard/cover-letters/$coverLetterId'
@@ -468,7 +468,7 @@ export interface FileRouteTypes {
     | '/dashboard/saved'
     | '/dashboard/settings'
     | '/dashboard'
-    | '/auth/gmail/callback'
+    | '/auth/google/callback'
     | '/dashboard/applications/$applicationId'
     | '/dashboard/collections/$collectionId'
     | '/dashboard/cover-letters/$coverLetterId'
@@ -510,7 +510,7 @@ export interface FileRouteTypes {
     | '/dashboard/saved'
     | '/dashboard/settings'
     | '/dashboard/'
-    | '/auth/gmail/callback'
+    | '/auth/google/callback'
     | '/dashboard/applications/$applicationId'
     | '/dashboard/collections/$collectionId'
     | '/dashboard/cover-letters/$coverLetterId'
@@ -543,7 +543,7 @@ export interface RootRouteChildren {
   SignupRoute: typeof SignupRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   SupabaseStatusRoute: typeof SupabaseStatusRoute
-  AuthGmailCallbackRoute: typeof AuthGmailCallbackRoute
+  AuthGoogleCallbackRoute: typeof AuthGoogleCallbackRoute
   DashboardInterviewsInterviewIdMockSessionIdRoute: typeof DashboardInterviewsInterviewIdMockSessionIdRoute
 }
 
@@ -787,11 +787,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardApplicationsApplicationIdRouteImport
       parentRoute: typeof DashboardApplicationsRoute
     }
-    '/auth/gmail/callback': {
-      id: '/auth/gmail/callback'
-      path: '/auth/gmail/callback'
-      fullPath: '/auth/gmail/callback'
-      preLoaderRoute: typeof AuthGmailCallbackRouteImport
+    '/auth/google/callback': {
+      id: '/auth/google/callback'
+      path: '/auth/google/callback'
+      fullPath: '/auth/google/callback'
+      preLoaderRoute: typeof AuthGoogleCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/dashboard/interviews/$interviewId/': {
@@ -1007,7 +1007,7 @@ const rootRouteChildren: RootRouteChildren = {
   SignupRoute: SignupRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   SupabaseStatusRoute: SupabaseStatusRoute,
-  AuthGmailCallbackRoute: AuthGmailCallbackRoute,
+  AuthGoogleCallbackRoute: AuthGoogleCallbackRoute,
   DashboardInterviewsInterviewIdMockSessionIdRoute:
     DashboardInterviewsInterviewIdMockSessionIdRoute,
 }

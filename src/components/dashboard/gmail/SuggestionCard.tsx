@@ -10,10 +10,10 @@ import {
 import { Chip } from "@/components/dashboard/primitives";
 import { gmailReplyLink } from "@/features/gmail/utils";
 import { readSuggestionSummary, confidenceTier } from "@/features/gmail/summary";
-import type { GmailSuggestionListItem } from "@/repositories/GmailRepository";
-import type { GmailSuggestionType } from "@/features/gmail/types";
+import type { SuggestionListItem } from "@/repositories/SuggestionRepository";
+import type { SuggestionType } from "@/features/gmail/types";
 
-// ── SuggestionCard (Module 9A) ──
+// ── SuggestionCard (Module 9A/9B) ──
 //
 // A task row, not an email preview. Everything on it is something the user
 // acts on: what kind of thing this is, who it's from, what it's about, what
@@ -35,7 +35,7 @@ import type { GmailSuggestionType } from "@/features/gmail/types";
 // and the list stays scannable at a glance.
 
 const TYPE_META: Record<
-  GmailSuggestionType,
+  SuggestionType,
   { label: string; icon: React.ComponentType<{ className?: string }>; tint: string }
 > = {
   create_application: { label: "New Application", icon: Briefcase, tint: "text-[#2563EB]" },
@@ -45,14 +45,27 @@ const TYPE_META: Record<
   import_attachment: { label: "Attachment", icon: Paperclip, tint: "text-[oklch(0.5_0.02_265)]" },
 };
 
+// Gmail is the original, unbadged look (no chip) — Calendar and "Both"
+// (independently corroborated by an email AND a calendar event, see
+// SuggestionRepository) get a distinct tone so the source is visible at a
+// glance without adding noise to the common Gmail-only case.
+const SOURCE_META: Partial<
+  Record<SuggestionListItem["source"], { label: string; tone: "purple" | "blue" }>
+> = {
+  calendar: { label: "Calendar", tone: "blue" },
+  both: { label: "Gmail + Calendar", tone: "purple" },
+};
+
 type Props = {
-  suggestion: GmailSuggestionListItem;
+  suggestion: SuggestionListItem;
   googleEmail: string | null;
   selected: boolean;
   onToggleSelect: () => void;
   onReview: () => void;
   onDismiss: () => void;
   busy: boolean;
+  /** Bulk-select only makes sense where there's a bulk action bar to act on it (the Inbox) — the Interviews page's calendar-suggestions panel has neither, so it hides the checkbox entirely rather than rendering a dead control. */
+  selectable?: boolean;
 };
 
 export function SuggestionCard({
@@ -63,12 +76,14 @@ export function SuggestionCard({
   onReview,
   onDismiss,
   busy,
+  selectable = true,
 }: Props) {
   const meta = TYPE_META[suggestion.type];
   const Icon = meta.icon;
   const summary = readSuggestionSummary(suggestion);
   const tier = confidenceTier(suggestion.confidence);
   const isPending = suggestion.status === "pending";
+  const sourceMeta = SOURCE_META[suggestion.source];
 
   // The headline prefers the email's own classification ("Interview
   // Invitation") over the mechanical suggestion type ("Interview") — it's
@@ -85,7 +100,7 @@ export function SuggestionCard({
 
   return (
     <div className="flex items-start gap-3 border-b border-black/5 px-4 py-3 last:border-0">
-      {isPending && (
+      {isPending && selectable && (
         <input
           type="checkbox"
           checked={selected}
@@ -107,6 +122,7 @@ export function SuggestionCard({
             {headline}
           </p>
           <Chip tone={tier.tone}>{tier.display}</Chip>
+          {sourceMeta && <Chip tone={sourceMeta.tone}>{sourceMeta.label}</Chip>}
           {!isPending && (
             <Chip tone={suggestion.status === "accepted" ? "green" : "default"}>
               {suggestion.status === "accepted"

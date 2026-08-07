@@ -1,4 +1,4 @@
-import type { InterviewMode } from "@/types";
+import type { InterviewMode, InterviewSource } from "@/types";
 
 // ── "When" filter ─────────────────────────────────────────────────────────
 
@@ -17,6 +17,8 @@ export type InterviewFilters = {
   /** One or more Interview Round values */
   round?: string[];
   linked?: InterviewLinkedFilter;
+  /** One or more Interview.source values */
+  source?: InterviewSource[];
 };
 
 // ── Sort shape ───────────────────────────────────────────────────────────────
@@ -34,7 +36,7 @@ export type InterviewSortOption = "earliest" | "latest";
 
 // ── View mode ────────────────────────────────────────────────────────────────
 
-export type InterviewViewMode = "card" | "table";
+export type InterviewViewMode = "card" | "table" | "agenda";
 
 // ── Create/schedule input ────────────────────────────────────────────────────
 // Shared by both flows; `scheduleForApplication` fills in company_name/role/

@@ -1,12 +1,19 @@
-// ── Google OAuth 2.0 client (Module 9A) ──
+// ── Google OAuth 2.0 client (Module 9A/9B) ──
 //
 // Hand-rolled `fetch` against Google's OAuth endpoints — no `googleapis`/
 // `google-auth-library` dependency (not installed in this repo, and that
 // package is Node-oriented/heavy for a Cloudflare Workers runtime). This is
-// a separate, dedicated OAuth connection for Gmail API access — distinct
-// from Supabase Auth's "Sign in with Google" (src/services/AuthService.ts),
-// which is login identity only and doesn't durably persist a Gmail-scoped
-// refresh token.
+// a separate, dedicated OAuth connection for Gmail/Calendar API access —
+// distinct from Supabase Auth's "Sign in with Google"
+// (src/services/AuthService.ts), which is login identity only and doesn't
+// durably persist a scoped refresh token.
+//
+// ONE connection, TWO independently-grantable, incrementally authorized
+// scopes: connecting either product requests only that product's scope, with
+// `include_granted_scopes=true` so Google unions it with whatever was already
+// granted (rather than each connect silently narrowing the other product's
+// access). This is why every consent URL now takes an explicit `scopes`
+// array instead of a single hardcoded scope.
 
 import { requireEnv, serverEnv } from "@/server/env";
 
@@ -17,6 +24,13 @@ const REVOKE_URL = "https://oauth2.googleapis.com/revoke";
 // Read-only, and *only* readonly — see the plan's OAuth Flow section for why
 // gmail.modify/gmail.metadata are each wrong for this feature.
 export const GMAIL_SCOPE = "https://www.googleapis.com/auth/gmail.readonly";
+
+// Read-only events access — narrower than calendar.readonly (which also
+// exposes the calendar LIST itself, needed only for a future multi-calendar
+// picker, not V1's primary-calendar-only sync). See the Module 9B plan §2 for
+// why this stays read-only: no write scope is requested, so nothing this app
+// does can ever create/modify/delete an event in the user's real calendar.
+export const CALENDAR_SCOPE = "https://www.googleapis.com/auth/calendar.events.readonly";
 
 export class GoogleOAuthError extends Error {
   /** Google's OAuth error code, e.g. "invalid_grant" — callers use this to
@@ -55,15 +69,23 @@ function credentials() {
   };
 }
 
-/** Builds the URL to redirect the browser to for the Google consent screen. */
-export function buildConsentUrl(state: string): string {
+/**
+ * Builds the URL to redirect the browser to for the Google consent screen.
+ * `scopes` is exactly what's being newly requested for THIS click (e.g. just
+ * `[CALENDAR_SCOPE]` when Gmail is already connected and the user clicks
+ * "Connect" under Calendar) — `include_granted_scopes` tells Google to union
+ * it with whatever this user already granted, rather than treating it as the
+ * complete desired set.
+ */
+export function buildConsentUrl(state: string, scopes: string[]): string {
   const { clientId, redirectUri } = credentials();
   const params = new URLSearchParams({
     client_id: clientId,
     redirect_uri: redirectUri,
     response_type: "code",
-    scope: GMAIL_SCOPE,
+    scope: scopes.join(" "),
     access_type: "offline",
+    include_granted_scopes: "true",
     // Forces Google to re-issue a refresh token even on a repeat consent —
     // without this, reconnecting an already-once-authorized account can
     // silently omit refresh_token from the response.
