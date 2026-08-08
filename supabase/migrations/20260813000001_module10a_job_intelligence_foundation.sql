@@ -9,8 +9,9 @@
 --
 -- Three additions:
 --   1. global_jobs: `tags`, `normalized_company`, `normalized_role` columns
---      + a generated `search_vector` full-text index (search-index strategy,
---      no UI yet).
+--      + a trigger-maintained `search_vector` full-text index (search-index
+--      strategy, no UI yet). See the ⚠️ note at that column for why it is a
+--      trigger and not `GENERATED ALWAYS AS (…) STORED`.
 --   2. `job_sources`: retains EVERY contributing platform's (source,
 --      source_job_id, source_url, url) for a canonical job — the piece the
 --      existing hierarchical dedup (Module 4A) didn't have: a cross-platform
@@ -49,31 +50,143 @@ WHERE normalized_company IS NULL OR normalized_role IS NULL;
 CREATE INDEX IF NOT EXISTS idx_global_jobs_normalized_company_role
   ON global_jobs (normalized_company, normalized_role);
 
--- Full-text search index — role/normalized_role weighted highest, then
--- company/normalized_company/tags, then location/employment/experience,
--- description last. Mirrors the field list + weighting documented in
+-- ── Full-text search index ──
+-- role/normalized_role weighted highest, then company/normalized_company/
+-- tags, then location/employment/experience, description last. Mirrors the
+-- field list + weighting documented in
 -- src/server/jobIntelligence/search/searchIndex.ts (buildSearchIndexDocument)
 -- so the DB index and the pure-TS "what's searchable" contract agree. Skills
 -- live in the `job_skills` join table and are searched via that join
 -- (see JobRepository.findAllRanked's existing skill-match query) rather than
--- folded into this generated column.
-ALTER TABLE global_jobs ADD COLUMN IF NOT EXISTS search_vector tsvector
-  GENERATED ALWAYS AS (
-    setweight(to_tsvector('english', coalesce(role, '')), 'A') ||
-    setweight(to_tsvector('english', coalesce(normalized_role, '')), 'A') ||
-    setweight(to_tsvector('english', coalesce(company_name, '')), 'B') ||
-    setweight(to_tsvector('english', coalesce(normalized_company, '')), 'B') ||
-    setweight(to_tsvector('english', coalesce(array_to_string(tags, ' '), '')), 'B') ||
+-- folded into this column.
+--
+-- ⚠️ This is a TRIGGER-maintained column, NOT `GENERATED ALWAYS AS (…) STORED`.
+-- A generated column's expression must be IMMUTABLE, and `array_to_string`
+-- (needed for the `tags text[]` term) is only STABLE — PostgreSQL marks it so
+-- because it invokes the element type's output function, which is not
+-- immutable for every possible array type. Using it in a generated column
+-- fails at DDL time with `42P17: generation expression is not immutable`.
+-- Every other function in this expression (to_tsvector(regconfig, text),
+-- setweight, tsvector ||, coalesce, text ||) IS immutable — `array_to_string`
+-- alone is what pushes the expression over the line. Wrapping it in a
+-- deliberately-mislabelled IMMUTABLE helper would silence the error by lying
+-- to the planner, so this uses the standard pre-generated-column approach
+-- instead: a plain column kept current by a BEFORE INSERT OR UPDATE trigger.
+-- Write cost is identical (a generated column recomputes on every write too)
+-- and reads are unchanged — a plain GIN index over a stored tsvector.
+
+-- Idempotency: if an earlier attempt of this migration managed to create
+-- `search_vector` as a GENERATED column, drop it — a generated column cannot
+-- be assigned by a trigger, so the two definitions can't coexist.
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'global_jobs'
+      AND column_name = 'search_vector'
+      AND is_generated = 'ALWAYS'
+  ) THEN
+    ALTER TABLE global_jobs DROP COLUMN search_vector;
+  END IF;
+END $$;
+
+ALTER TABLE global_jobs ADD COLUMN IF NOT EXISTS search_vector tsvector;
+
+-- The single definition of the search document. Both the trigger and the
+-- backfill below call this, so the two can never disagree about which fields
+-- are indexed or how they're weighted. STABLE (not IMMUTABLE) is the honest
+-- marking given `array_to_string`; that's fine here because the result is
+-- stored in a column and indexed with a plain GIN index — it never needs to
+-- back an expression index.
+CREATE OR REPLACE FUNCTION global_job_search_vector(
+  p_role text,
+  p_normalized_role text,
+  p_company_name text,
+  p_normalized_company text,
+  p_tags text[],
+  p_location text,
+  p_city text,
+  p_employment_type text,
+  p_experience_level text,
+  p_description text
+)
+RETURNS tsvector
+LANGUAGE sql
+STABLE
+AS $$
+  SELECT
+    setweight(to_tsvector('english', coalesce(p_role, '')), 'A') ||
+    setweight(to_tsvector('english', coalesce(p_normalized_role, '')), 'A') ||
+    setweight(to_tsvector('english', coalesce(p_company_name, '')), 'B') ||
+    setweight(to_tsvector('english', coalesce(p_normalized_company, '')), 'B') ||
+    setweight(to_tsvector('english', coalesce(array_to_string(p_tags, ' '), '')), 'B') ||
     setweight(
-      to_tsvector('english', coalesce(location, '') || ' ' || coalesce(city, '')),
+      to_tsvector('english', coalesce(p_location, '') || ' ' || coalesce(p_city, '')),
       'C'
     ) ||
     setweight(
-      to_tsvector('english', coalesce(employment_type, '') || ' ' || coalesce(experience_level, '')),
+      to_tsvector('english', coalesce(p_employment_type, '') || ' ' || coalesce(p_experience_level, '')),
       'C'
     ) ||
-    setweight(to_tsvector('english', coalesce(description, '')), 'D')
-  ) STORED;
+    setweight(to_tsvector('english', coalesce(p_description, '')), 'D');
+$$;
+
+CREATE OR REPLACE FUNCTION global_jobs_search_vector_trigger()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  -- Derive the normalized identity columns when the writer didn't supply
+  -- them. `upsert_global_job` (the user/extension write path, deliberately
+  -- left untouched by Module 10A) predates these columns and never sets
+  -- them, so without this every extension-captured row would carry NULLs —
+  -- missing from the search vector's B-weight terms AND invisible to
+  -- SupabaseJobIntelligenceStore.findDedupCandidates' tier-3 candidate
+  -- lookup, which filters on exactly these two columns.
+  --
+  -- A caller-supplied value always wins: admin_upsert_global_job passes the
+  -- richer TS canonicalization ("Google Careers" -> "Google"), which
+  -- normalize_company_name deliberately does not attempt. The extra
+  -- `= normalize_company_name(OLD.company_name)` test refreshes a value only
+  -- when it was itself SQL-derived and its source column just changed, so a
+  -- caller's deliberate value is never clobbered as stale.
+  IF NEW.normalized_company IS NULL
+     OR (TG_OP = 'UPDATE'
+         AND NEW.company_name IS DISTINCT FROM OLD.company_name
+         AND NEW.normalized_company = normalize_company_name(OLD.company_name)) THEN
+    NEW.normalized_company := normalize_company_name(NEW.company_name);
+  END IF;
+
+  IF NEW.normalized_role IS NULL
+     OR (TG_OP = 'UPDATE'
+         AND NEW.role IS DISTINCT FROM OLD.role
+         AND NEW.normalized_role = normalize_role_text(OLD.role)) THEN
+    NEW.normalized_role := normalize_role_text(NEW.role);
+  END IF;
+
+  NEW.search_vector := global_job_search_vector(
+    NEW.role, NEW.normalized_role, NEW.company_name, NEW.normalized_company,
+    NEW.tags, NEW.location, NEW.city, NEW.employment_type,
+    NEW.experience_level, NEW.description
+  );
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS global_jobs_search_vector_update ON global_jobs;
+CREATE TRIGGER global_jobs_search_vector_update
+  BEFORE INSERT OR UPDATE ON global_jobs
+  FOR EACH ROW EXECUTE FUNCTION global_jobs_search_vector_trigger();
+
+-- Backfill every pre-existing row. Re-runnable: rows already carrying a
+-- vector are skipped, and the trigger recomputes anything this touches.
+UPDATE global_jobs
+SET search_vector = global_job_search_vector(
+  role, normalized_role, company_name, normalized_company,
+  tags, location, city, employment_type, experience_level, description
+)
+WHERE search_vector IS NULL;
 
 CREATE INDEX IF NOT EXISTS global_jobs_search_vector_idx ON global_jobs USING GIN (search_vector);
 

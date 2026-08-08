@@ -120,7 +120,7 @@ export type GlobalJobRow = {
   tags: string[] | null;
   normalized_company: string | null;
   normalized_role: string | null;
-  /** Generated tsvector column — read-only, only meaningful server-side via full-text queries. */
+  /** Trigger-maintained tsvector column — never written by app code, only read via full-text queries. */
   search_vector: unknown | null;
   created_at: string;
   updated_at: string;
@@ -642,7 +642,8 @@ export type GlobalJobInsert = {
   tags?: string[] | null;
   normalized_company?: string | null;
   normalized_role?: string | null;
-  // search_vector is GENERATED ALWAYS — never insertable.
+  // search_vector is maintained by a BEFORE INSERT OR UPDATE trigger —
+  // deliberately omitted here so app code can never write it by hand.
   created_at?: string;
   updated_at?: string;
 };
