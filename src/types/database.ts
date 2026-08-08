@@ -680,6 +680,145 @@ export type JobSourceInsert = {
   last_seen_at?: string;
 };
 
+// ── Module 10B.1: crawl_company_registry ──
+// The Company Registry the crawl orchestrator iterates. Crawl targets are
+// data, not code — see the Module 10B.1 migration.
+export type CrawlCompanyRegistryRow = {
+  id: string;
+  company_name: string;
+  careers_url: string;
+  platform: string;
+  enabled: boolean;
+  crawl_frequency_hours: number;
+  last_crawl_at: string | null;
+  last_success_at: string | null;
+  last_status: "success" | "partial" | "failed" | "skipped" | null;
+  last_error: string | null;
+  last_jobs_imported: number | null;
+  notes: string | null;
+  /** Adapter-specific overrides (board token, feed category, …). `{}` when unused. */
+  config: Json;
+  created_at: string;
+  updated_at: string;
+
+  // ── Module 10B.1.5: identity + source health ──
+  // Health tracks whether the URL is a working jobs source; the `last_*`
+  // columns above track whether the last CRAWL worked. Different facts.
+  parent_company: string | null;
+  aliases: string[] | null;
+  health_status: "HEALTHY" | "REDIRECTED" | "BLOCKED" | "BROKEN" | "UNAVAILABLE" | "UNKNOWN" | null;
+  last_checked_at: string | null;
+  last_health_success_at: string | null;
+  last_failure_at: string | null;
+  http_status: number | null;
+  detected_platform: string | null;
+  error_reason: string | null;
+  resolved_url: string | null;
+  postings_seen: number | null;
+};
+
+export type SourceVerificationRunRow = {
+  id: string;
+  started_at: string;
+  finished_at: string | null;
+  duration_ms: number | null;
+  triggered_by: string | null;
+  status: "running" | "completed" | "failed";
+  sources_checked: number;
+  healthy: number;
+  redirected: number;
+  blocked: number;
+  broken: number;
+  unavailable: number;
+  unknown: number;
+  report: Json;
+  error: string | null;
+};
+
+export type SourceVerificationRunInsert = {
+  id?: string;
+  started_at?: string;
+  finished_at?: string | null;
+  duration_ms?: number | null;
+  triggered_by?: string | null;
+  status?: "running" | "completed" | "failed";
+  sources_checked?: number;
+  healthy?: number;
+  redirected?: number;
+  blocked?: number;
+  broken?: number;
+  unavailable?: number;
+  unknown?: number;
+  report?: Json;
+  error?: string | null;
+};
+
+export type CrawlCompanyRegistryInsert = {
+  id?: string;
+  company_name: string;
+  careers_url: string;
+  platform: string;
+  enabled?: boolean;
+  crawl_frequency_hours?: number;
+  last_crawl_at?: string | null;
+  last_success_at?: string | null;
+  last_status?: "success" | "partial" | "failed" | "skipped" | null;
+  last_error?: string | null;
+  last_jobs_imported?: number | null;
+  notes?: string | null;
+  config?: Json;
+  created_at?: string;
+  updated_at?: string;
+};
+
+// ── Module 10B.1: crawl_runs ──
+// One row per crawl (live or dry run) holding its report, so "View Last Crawl
+// Report" survives a reload. Counters are denormalized out of `report` so the
+// admin list renders without parsing jsonb.
+export type CrawlRunRow = {
+  id: string;
+  mode: "live" | "dry_run";
+  scope: "platform" | "all";
+  platform: string | null;
+  triggered_by: string | null;
+  status: "running" | "completed" | "failed";
+  started_at: string;
+  finished_at: string | null;
+  duration_ms: number | null;
+  companies_scanned: number;
+  jobs_discovered: number;
+  jobs_parsed: number;
+  jobs_imported: number;
+  jobs_updated: number;
+  jobs_duplicates: number;
+  jobs_skipped: number;
+  jobs_failed: number;
+  report: Json;
+  error: string | null;
+};
+
+export type CrawlRunInsert = {
+  id?: string;
+  mode: "live" | "dry_run";
+  scope: "platform" | "all";
+  platform?: string | null;
+  triggered_by?: string | null;
+  status?: "running" | "completed" | "failed";
+  started_at?: string;
+  finished_at?: string | null;
+  duration_ms?: number | null;
+  companies_scanned?: number;
+  jobs_discovered?: number;
+  jobs_parsed?: number;
+  jobs_imported?: number;
+  jobs_updated?: number;
+  jobs_duplicates?: number;
+  jobs_skipped?: number;
+  jobs_failed?: number;
+  report?: Json;
+  error?: string | null;
+};
+
 export type RoleInsert = {
   id?: string;
   title: string;
@@ -1630,6 +1769,25 @@ export type Database = {
         Row: JobSourceRow;
         Insert: JobSourceInsert;
         Update: Partial<JobSourceRow>;
+        Relationships: TableRelationship[];
+      };
+      // ── Module 10B.1 ──
+      crawl_company_registry: {
+        Row: CrawlCompanyRegistryRow;
+        Insert: CrawlCompanyRegistryInsert;
+        Update: Partial<CrawlCompanyRegistryRow>;
+        Relationships: TableRelationship[];
+      };
+      source_verification_runs: {
+        Row: SourceVerificationRunRow;
+        Insert: SourceVerificationRunInsert;
+        Update: Partial<SourceVerificationRunRow>;
+        Relationships: TableRelationship[];
+      };
+      crawl_runs: {
+        Row: CrawlRunRow;
+        Insert: CrawlRunInsert;
+        Update: Partial<CrawlRunRow>;
         Relationships: TableRelationship[];
       };
       saved_jobs: {

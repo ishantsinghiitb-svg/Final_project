@@ -43,6 +43,20 @@ describe("parseSalaryText", () => {
     expect(result.min).toBe(25);
   });
 
+  // Regression (Module 10B.1): the period patterns used to carry a single
+  // leading `\b` across the whole alternation, so a slash form preceded by a
+  // SPACE never matched — Internshala writes stipends exactly that way.
+  it.each([
+    ["₹ 12,000 - 17,000 /month", "Monthly"],
+    ["₹12,000/month", "Monthly"],
+    ["$120,000 / year", "Yearly"],
+    ["$25 /hr", "Hourly"],
+    ["£300 / day", "Daily"],
+    ["€900 /week", "Weekly"],
+  ])("reads the period from %s", (text, period) => {
+    expect(parseSalaryText(text).period).toBe(period);
+  });
+
   it("returns all-null for unparseable text", () => {
     expect(parseSalaryText("Competitive salary")).toEqual({
       min: null,

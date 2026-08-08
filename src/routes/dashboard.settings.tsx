@@ -10,6 +10,8 @@ import {
 } from "@/components/dashboard/primitives";
 import { DashButton } from "@/components/dashboard/DashButton";
 import { GoogleConnectionCard } from "@/components/dashboard/settings/GoogleConnectionCard";
+import { JobCrawlersCard } from "@/components/dashboard/settings/JobCrawlersCard";
+import { useCrawlAdminOverview } from "@/features/jobCrawlers/hooks";
 import { useAuth } from "@/context/AuthContext";
 import { useProfile } from "@/context/ProfileContext";
 
@@ -22,8 +24,20 @@ export const Route = createFileRoute("/dashboard/settings")({
 
 const tabs = ["Profile", "Notifications", "Integrations", "Billing"] as const;
 
+/** Module 10B.1: an operator-only tab, appended for admins only. */
+const ADMIN_TAB = "Job crawlers";
+
+type SettingsTab = (typeof tabs)[number] | typeof ADMIN_TAB;
+
 function SettingsPage() {
-  const [tab, setTab] = useState<(typeof tabs)[number]>("Profile");
+  const [tab, setTab] = useState<SettingsTab>("Profile");
+
+  // The server decides admin-ness (`isAdmin`); this only decides whether to
+  // draw the tab. The server functions behind it re-check on every call, so a
+  // user who forces the tab open still gets nothing.
+  const crawlOverview = useCrawlAdminOverview();
+  const isAdmin = crawlOverview.data?.isAdmin === true;
+  const visibleTabs: SettingsTab[] = isAdmin ? [...tabs, ADMIN_TAB] : [...tabs];
 
   return (
     <>
@@ -36,7 +50,7 @@ function SettingsPage() {
       </StickyPageHeader>
 
       <div className="flex flex-wrap gap-1 rounded-xl border border-black/5 bg-white p-0.5">
-        {tabs.map((t) => (
+        {visibleTabs.map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -55,6 +69,7 @@ function SettingsPage() {
       {tab === "Notifications" && <NotificationsTab />}
       {tab === "Integrations" && <IntegrationsTab />}
       {tab === "Billing" && <BillingTab />}
+      {tab === ADMIN_TAB && isAdmin && <JobCrawlersCard overview={crawlOverview} />}
     </>
   );
 }

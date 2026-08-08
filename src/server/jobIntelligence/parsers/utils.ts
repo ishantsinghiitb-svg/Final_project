@@ -53,13 +53,30 @@ function detectCurrency(text: string): string | null {
   return codeMatch ? codeMatch[1].toUpperCase() : null;
 }
 
+// ⚠️ The word-boundary placement here is load-bearing. These were originally
+// written as `\b(per\s*month|monthly|\/\s*month)\b`, with ONE leading `\b`
+// covering the whole alternation — which silently never matched the
+// slash-prefixed forms when a space preceded the slash. `\b` needs a word
+// character on one side, and in "₹ 17,000 /month" the characters around the
+// slash are a space and a `/`, both non-word. "$120,000/year" happened to work
+// (the `0` before `/` supplies the boundary), which is why the original tests
+// passed while Internshala's "12,000 - 17,000 /month" lost its period entirely.
+// Each alternative now carries the boundary only where a boundary is meaningful.
+const PERIOD_PATTERNS: Array<[RegExp, string]> = [
+  [/\bper\s*hour\b|\bhourly\b|\/\s*(?:hr|hour)s?\b/i, "Hourly"],
+  [/\bper\s*day\b|\bdaily\b|\/\s*days?\b/i, "Daily"],
+  [/\bper\s*week\b|\bweekly\b|\/\s*(?:wk|week)s?\b/i, "Weekly"],
+  [/\bper\s*month\b|\bmonthly\b|\/\s*(?:mo|month)s?\b/i, "Monthly"],
+  [
+    /\bper\s*(?:annum|year)\b|\bannually\b|\byearly\b|\/\s*(?:yr|year)s?\b|\bctc\b|\blpa\b/i,
+    "Yearly",
+  ],
+];
+
 function detectPeriod(text: string): string | null {
-  if (/\b(per\s*hour|hourly|\/\s*hr|\/\s*hour)\b/i.test(text)) return "Hourly";
-  if (/\b(per\s*day|daily|\/\s*day)\b/i.test(text)) return "Daily";
-  if (/\b(per\s*week|weekly|\/\s*week)\b/i.test(text)) return "Weekly";
-  if (/\b(per\s*month|monthly|\/\s*month|\/\s*mo)\b/i.test(text)) return "Monthly";
-  if (/\b(per\s*(annum|year)|annually|yearly|\/\s*year|\/\s*yr|ctc|lpa)\b/i.test(text))
-    return "Yearly";
+  for (const [pattern, period] of PERIOD_PATTERNS) {
+    if (pattern.test(text)) return period;
+  }
   return null;
 }
 
