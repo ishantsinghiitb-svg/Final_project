@@ -44,6 +44,7 @@ import {
 import type { CrawlFetcher } from "../../crawl/HttpFetcher";
 import type { CrawlTarget, PlatformAdapter, PlatformCrawler } from "../types";
 import { mapEmploymentType } from "../careerPages/ats/shared";
+import type { RegionRelevance } from "../../crawl/relevance/regionRelevance";
 
 export const WWR_PLATFORM = "weworkremotely";
 export const WWR_SOURCE = "weworkremotely";
@@ -149,6 +150,44 @@ function isWorldwide(region: string | null): boolean {
   return /anywhere|worldwide|global/i.test(region ?? "");
 }
 
+/**
+ * Module 10B.3 Phase 1: classifies WWR's own applicant-eligibility signal.
+ *
+ * `<region>` is checked FIRST: it is WWR's own primary, human-facing
+ * "Region Restrictions" badge, and an explicit "Anywhere in the World" there
+ * is the strongest affirmative statement the feed can make that a posting is
+ * open to everyone. `<country>` — verified against the live feed to be
+ * either absent, a single country, or a comma-joined allowlist — is only
+ * consulted when `<region>` does NOT already say worldwide, since it has
+ * been observed set alongside an explicit "Anywhere in the World" region
+ * (see the fixture in WeWorkRemotelyAdapter.test.ts) where treating it as a
+ * hard restriction would incorrectly exclude a posting WWR itself calls
+ * fully open — exactly the false-negative the India-first policy must not
+ * produce. When `<region>` gives no worldwide signal, `<country>` is what
+ * distinguishes a genuine restriction ("Texas" region + "USA" country) from
+ * no restriction at all.
+ *
+ * `country` is expected already flag-emoji-stripped (see `stripFlagEmoji`) —
+ * the same cleaned text `WeWorkRemotelyParser` stores on `job.country`.
+ */
+export function classifyWwrRegionRelevance(
+  region: string | null,
+  country: string | null,
+): RegionRelevance {
+  if (isWorldwide(region)) {
+    return { classification: "worldwide", restrictedTo: null };
+  }
+
+  const cleanedCountry = collapseWhitespace(country ?? "");
+  if (!cleanedCountry) {
+    return { classification: "unrestricted", restrictedTo: null };
+  }
+  if (/india/i.test(cleanedCountry)) {
+    return { classification: "india", restrictedTo: null };
+  }
+  return { classification: "restricted_non_india", restrictedTo: cleanedCountry };
+}
+
 const WWR_TYPE_MAP: Record<string, EmploymentTypeValue> = {
   "full-time": "Full-Time",
   "part-time": "Part-Time",
@@ -194,6 +233,7 @@ export class WeWorkRemotelyParser implements JobParser {
       // Every WWR posting is remote by definition — that is the entire premise
       // of the board — so `remote` is asserted, not inferred.
       const location = region ?? "Remote";
+      const cleanedCountry = stripFlagEmoji(country);
 
       const parsed: ParsedJobPosting = {
         source: WWR_SOURCE,
@@ -211,7 +251,7 @@ export class WeWorkRemotelyParser implements JobParser {
         // office — kept, but no city is invented from them.
         city: null,
         state,
-        country: stripFlagEmoji(country),
+        country: cleanedCountry,
         remote: true,
         workMode: "Remote",
 
@@ -232,6 +272,8 @@ export class WeWorkRemotelyParser implements JobParser {
         parserVersion: WWR_PARSER_VERSION,
         parserConfidence: description ? 0.95 : 0.7,
         extractionWarnings: buildWarnings(description, isWorldwide(region)),
+
+        regionRelevance: classifyWwrRegionRelevance(region, cleanedCountry),
       };
 
       return { ok: true, job: parsed };

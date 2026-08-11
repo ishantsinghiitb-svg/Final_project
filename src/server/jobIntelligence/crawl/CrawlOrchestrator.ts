@@ -46,6 +46,10 @@ import {
   type CompanyRegistryStore,
 } from "./registry/CompanyRegistry";
 import { ValidatingJobParser, ValidationCollector } from "./validate/ValidatingJobParser";
+import {
+  RelevanceFilteringJobParser,
+  RelevanceCollector,
+} from "./relevance/RelevanceFilteringJobParser";
 import { CareerPagesCrawler } from "../adapters/careerPages/CareerPagesAdapter";
 
 export type CrawlRequest = {
@@ -180,6 +184,7 @@ export class CrawlOrchestrator {
     }
 
     const collector = new ValidationCollector();
+    const relevanceCollector = new RelevanceCollector();
     /** Filled by the crawler while it runs; read after the pipeline finishes. */
     const observations = newObservations();
     let adapter: PlatformAdapter;
@@ -187,12 +192,19 @@ export class CrawlOrchestrator {
 
     try {
       const built = descriptor.createAdapter(this.deps.fetcher, entry, observations);
-      // Validation is inserted by decorating the parser — see
+      // The India-first region-relevance gate runs BEFORE validation, so an
+      // excluded posting never spends validator effort on data we're going to
+      // discard anyway, and can never be confused with a data-quality
+      // rejection. Both stages are inserted by decorating the parser — see
+      // ./relevance/RelevanceFilteringJobParser.ts and
       // ./validate/ValidatingJobParser.ts for why this, and not a forked runner.
       adapter = {
         platform: built.platform,
         crawler: built.crawler,
-        parser: new ValidatingJobParser(built.parser, collector),
+        parser: new ValidatingJobParser(
+          new RelevanceFilteringJobParser(built.parser, relevanceCollector),
+          collector,
+        ),
       };
       if (built.crawler instanceof CareerPagesCrawler) {
         resolvedProvider = built.crawler.resolveBoard(toCrawlTarget(entry)).provider;
@@ -211,10 +223,15 @@ export class CrawlOrchestrator {
 
     try {
       const result = await runPlatformCrawl(adapter, toCrawlTarget(entry), store);
-      const counters = this.countOutcomes(result.outcomes, collector, result.total);
+      const counters = this.countOutcomes(
+        result.outcomes,
+        collector,
+        relevanceCollector,
+        result.total,
+      );
       // Postings the crawler excluded before parsing (drafts, unpublished).
       counters.skipped += observations.skipped;
-      const issues = this.collectIssues(result.outcomes, collector);
+      const issues = this.collectIssues(result.outcomes, collector, relevanceCollector);
       const warnings = this.collectWarnings(collector, observations.warnings);
 
       // Module 10B.2: HTTP 200 is not success. A run that discovered no
@@ -266,17 +283,22 @@ export class CrawlOrchestrator {
 
   /**
    * Turns Module 10A's per-posting outcomes into report counters. `parse_failed`
-   * outcomes are split into genuinely-failed vs validator-skipped by consulting
-   * the collector, so a rejected posting never inflates the failure count.
+   * outcomes are split into region-excluded vs validator-skipped vs
+   * genuinely-failed by consulting the two collectors, so neither an excluded
+   * nor a rejected posting ever inflates the failure count. `parsed` is owned
+   * by the relevance collector (Module 10B.3) — it is the innermost decorator
+   * around the base parser, so its record count is "postings the parser
+   * turned into a structured job" regardless of what either gate later did.
    */
   private countOutcomes(
     outcomes: CrawlRunOutcome[],
     collector: ValidationCollector,
+    relevanceCollector: RelevanceCollector,
     discovered: number,
   ): CrawlCounters {
     const counters = emptyCounters();
     counters.discovered = discovered;
-    counters.parsed = collector.parsedCount;
+    counters.parsed = relevanceCollector.parsedCount;
 
     for (const outcome of outcomes) {
       switch (outcome.status) {
@@ -299,10 +321,13 @@ export class CrawlOrchestrator {
           counters.validated++;
           break;
         case "parse_failed":
-          // The validator decorator records WHY: a posting it refused is a
-          // `rejected`, anything else genuinely broke.
-          if (collector.get(outcome.sourceUrl)?.kind === "skipped") counters.rejected++;
-          else counters.failed++;
+          if (relevanceCollector.get(outcome.sourceUrl)?.kind === "excluded") {
+            counters.excluded++;
+          } else if (collector.get(outcome.sourceUrl)?.kind === "skipped") {
+            counters.rejected++;
+          } else {
+            counters.failed++;
+          }
           break;
       }
     }
@@ -310,7 +335,11 @@ export class CrawlOrchestrator {
     return counters;
   }
 
-  private collectIssues(outcomes: CrawlRunOutcome[], collector: ValidationCollector): CrawlIssue[] {
+  private collectIssues(
+    outcomes: CrawlRunOutcome[],
+    collector: ValidationCollector,
+    relevanceCollector: RelevanceCollector,
+  ): CrawlIssue[] {
     const issues: CrawlIssue[] = [];
     for (const outcome of outcomes) {
       if (issues.length >= MAX_ISSUES_PER_COMPANY) break;
@@ -321,9 +350,10 @@ export class CrawlOrchestrator {
           reason: outcome.reason ?? "Store write failed.",
         });
       } else if (outcome.status === "parse_failed") {
-        const skipped = collector.get(outcome.sourceUrl)?.kind === "skipped";
+        const excluded = relevanceCollector.get(outcome.sourceUrl)?.kind === "excluded";
+        const skipped = !excluded && collector.get(outcome.sourceUrl)?.kind === "skipped";
         issues.push({
-          kind: skipped ? "validation_skipped" : "parse_failed",
+          kind: excluded ? "region_excluded" : skipped ? "validation_skipped" : "parse_failed",
           sourceUrl: outcome.sourceUrl,
           reason: outcome.reason ?? "Parse failed.",
         });

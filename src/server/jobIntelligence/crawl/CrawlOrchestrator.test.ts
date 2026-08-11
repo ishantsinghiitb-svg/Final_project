@@ -453,6 +453,116 @@ describe("CrawlOrchestrator — scheduling", () => {
   });
 });
 
+describe("CrawlOrchestrator — India-first region relevance (Module 10B.3 Phase 1)", () => {
+  /** One WWR feed with an India-relevant item and a USA-only-restricted item. */
+  function wwrFeed(): string {
+    return (
+      `<rss><channel>` +
+      `<item><title>Acme India: Backend Engineer</title>` +
+      `<link>https://weworkremotely.com/remote-jobs/acme-backend</link>` +
+      `<region>Remote</region><country>🇮🇳 India</country></item>` +
+      `<item><title>Acme US: Frontend Engineer</title>` +
+      `<link>https://weworkremotely.com/remote-jobs/acme-frontend</link>` +
+      `<region>Texas</region><country>🇺🇸 United States of America</country></item>` +
+      `</channel></rss>`
+    );
+  }
+
+  function buildWithWwr(fetcher: FakeFetcher, store?: InMemoryJobStore) {
+    return build({
+      fetcher,
+      store,
+      entries: [
+        registryEntry({
+          id: "wwr-entry",
+          platform: "weworkremotely",
+          careersUrl: WWR_FEED,
+          companyName: "We Work Remotely — All Jobs",
+        }),
+      ],
+    });
+  }
+
+  it("H. an excluded posting never reaches the store", async () => {
+    const fetcher = new FakeFetcher({ [WWR_FEED]: { body: wwrFeed() } });
+    const { orchestrator, store } = buildWithWwr(fetcher);
+
+    await orchestrator.run({ mode: "live", scope: "all" });
+
+    const jobStore = store as InMemoryJobStore;
+    expect(jobStore.writes).toHaveLength(1);
+    expect(jobStore.writes[0].role).toBe("Backend Engineer");
+    expect(jobStore.writes.some((w) => w.role === "Frontend Engineer")).toBe(false);
+  });
+
+  it("I. an excluded posting is counted and reported separately from a validation rejection", async () => {
+    const fetcher = new FakeFetcher({ [WWR_FEED]: { body: wwrFeed() } });
+    const { orchestrator } = buildWithWwr(fetcher);
+
+    const report = await orchestrator.run({ mode: "live", scope: "all" });
+    const company = report.companies[0];
+
+    expect(report.totals.discovered).toBe(2);
+    expect(report.totals.parsed).toBe(2);
+    expect(report.totals.imported).toBe(1);
+    expect(report.totals.excluded).toBe(1);
+    expect(report.totals.rejected).toBe(0);
+    expect(report.totals.failed).toBe(0);
+    expect(company.issues).toContainEqual(
+      expect.objectContaining({
+        kind: "region_excluded",
+        sourceUrl: "https://weworkremotely.com/remote-jobs/acme-frontend",
+        reason: expect.stringMatching(/Explicitly restricted to United States of America/),
+      }),
+    );
+    // A distinct 20-posting India-first exclusion is not lumped into a
+    // validator-shaped issue kind.
+    expect(company.issues.some((issue) => issue.kind === "validation_skipped")).toBe(false);
+  });
+
+  it("a fully-excluded company still reports success — exclusion is policy working, not a problem", async () => {
+    const onlyRestricted =
+      `<rss><channel><item><title>Acme US: Ops</title>` +
+      `<link>https://weworkremotely.com/remote-jobs/acme-ops</link>` +
+      `<region>Texas</region><country>🇺🇸 United States of America</country></item>` +
+      `</channel></rss>`;
+    const fetcher = new FakeFetcher({ [WWR_FEED]: { body: onlyRestricted } });
+    const { orchestrator } = buildWithWwr(fetcher);
+
+    const report = await orchestrator.run({ mode: "live", scope: "all" });
+
+    expect(report.companies[0].status).toBe("success");
+    expect(report.totals.excluded).toBe(1);
+  });
+
+  it("J. an unrelated career-pages crawl is completely unaffected", async () => {
+    const fetcher = new FakeFetcher({
+      [GREENHOUSE_URL]: { body: greenhousePayload([goodJob(1), goodJob(2)]) },
+    });
+    const { orchestrator, store } = build({ fetcher });
+
+    const report = await orchestrator.run({ mode: "live", scope: "all" });
+
+    expect(report.totals.imported).toBe(2);
+    expect(report.totals.excluded).toBe(0);
+    expect((store as InMemoryJobStore).writes).toHaveLength(2);
+  });
+
+  it("K. dry run still runs the excluded posting through fetch->parse->policy, with zero writes", async () => {
+    const fetcher = new FakeFetcher({ [WWR_FEED]: { body: wwrFeed() } });
+    const { orchestrator, store } = buildWithWwr(fetcher);
+
+    const report = await orchestrator.run({ mode: "dry_run", scope: "all" });
+
+    expect(report.totals.discovered).toBe(2);
+    expect(report.totals.excluded).toBe(1);
+    expect(report.totals.imported).toBe(1); // what WOULD be imported, per dry-run semantics
+    const jobStore = store as InMemoryJobStore;
+    expect(jobStore.writes).toHaveLength(0);
+    expect(jobStore.rows).toHaveLength(0);
+  });
+});
+
 describe("allReportedLimitations", () => {
   it("lists every declared limitation with a reason and an unblock path", () => {
     const limitations = allReportedLimitations();

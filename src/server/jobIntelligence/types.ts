@@ -13,6 +13,8 @@
 // without editing a shared enum. `global_jobs.source` has no CHECK
 // constraint, so this is safe at the DB layer too.
 
+import type { RegionRelevance } from "./crawl/relevance/regionRelevance";
+
 export type WorkModeValue = "Remote" | "Hybrid" | "Onsite";
 export type EmploymentTypeValue =
   "Full-Time" | "Part-Time" | "Contract" | "Internship" | "Temporary" | "Freelance";
@@ -114,6 +116,15 @@ export type ParsedJobPosting = {
   parserVersion: string;
   parserConfidence?: number | null;
   extractionWarnings?: string[];
+
+  /**
+   * Module 10B.3: set only by adapters that have a real applicant-eligibility
+   * restriction signal from their source (today: We Work Remotely). Absent
+   * for every other adapter, which is intentionally the same as
+   * "unrestricted" to the gate that reads it — see
+   * crawl/relevance/regionRelevance.ts.
+   */
+  regionRelevance?: RegionRelevance | null;
 };
 
 /**

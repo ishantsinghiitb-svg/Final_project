@@ -46,6 +46,14 @@ export type CrawlCounters = {
    * board full of validator rejections means the parser or the source changed.
    */
   skipped: number;
+  /**
+   * Postings the India-first region-relevance policy refused (Module 10B.3) —
+   * explicitly restricted to a non-India country. Distinct from `rejected`
+   * (a data-quality refusal): this posting was perfectly well-formed, it is
+   * simply out of scope for this product. A board full of these means the
+   * policy is working, not that anything is wrong with the source.
+   */
+  excluded: number;
   /** Postings lost to an error (parse crash, store failure). */
   failed: number;
 };
@@ -61,6 +69,7 @@ export function emptyCounters(): CrawlCounters {
     duplicates: 0,
     rejected: 0,
     skipped: 0,
+    excluded: 0,
     failed: 0,
   };
 }
@@ -120,13 +129,14 @@ export function addCounters(a: CrawlCounters, b: CrawlCounters): CrawlCounters {
     duplicates: a.duplicates + b.duplicates,
     rejected: a.rejected + b.rejected,
     skipped: a.skipped + b.skipped,
+    excluded: a.excluded + b.excluded,
     failed: a.failed + b.failed,
   };
 }
 
 /** One rejected/failed posting, kept so an operator can see WHY, not just how many. */
 export type CrawlIssue = {
-  kind: "parse_failed" | "validation_skipped" | "store_failed";
+  kind: "parse_failed" | "validation_skipped" | "region_excluded" | "store_failed";
   sourceUrl: string;
   reason: string;
 };
@@ -205,7 +215,7 @@ export function summarizeReport(report: CrawlReport): string {
   return (
     `${prefix}: ${report.companiesScanned} target(s), ${totals.discovered} discovered, ` +
     `${totals.imported} imported, ${totals.duplicates} duplicate(s), ` +
-    `${totals.rejected} rejected, ${totals.skipped} skipped, ` +
+    `${totals.rejected} rejected, ${totals.excluded} excluded, ${totals.skipped} skipped, ` +
     `${totals.failed} failed in ${(report.durationMs / 1000).toFixed(1)}s`
   );
 }

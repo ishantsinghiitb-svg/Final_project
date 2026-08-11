@@ -3,6 +3,7 @@ import { BLOCKED, FakeFetcher } from "../../crawl/testing/fakeFetcher";
 import { CrawlTargetError } from "../../crawl/errors";
 import type { CrawlTarget } from "../types";
 import {
+  classifyWwrRegionRelevance,
   createWeWorkRemotelyAdapter,
   splitFeedTitle,
   splitSkillList,
@@ -80,6 +81,90 @@ describe("splitSkillList", () => {
   it("returns null for empty input", () => {
     expect(splitSkillList(null)).toBeNull();
     expect(splitSkillList("")).toBeNull();
+  });
+});
+
+// ── Module 10B.3 Phase 1: India-first region relevance ──
+//
+// Values below are copied verbatim from a live pull of
+// https://weworkremotely.com/remote-jobs.rss (2026-08), not invented: a
+// single flag-emoji country for a country-specific posting, a comma-"and"
+// joined list for a multi-country allowlist, and "Anywhere in the World" for
+// an explicitly worldwide one.
+
+describe("classifyWwrRegionRelevance", () => {
+  it("A. classifies an India-restricted posting as india (allowed)", () => {
+    expect(classifyWwrRegionRelevance("Remote", "India")).toEqual({
+      classification: "india",
+      restrictedTo: null,
+    });
+  });
+
+  it("A. classifies India present within a multi-country allowlist as india (allowed)", () => {
+    expect(
+      classifyWwrRegionRelevance(
+        "Remote",
+        "India, United States of America, and United Kingdom of Great Britain and Northern Ireland",
+      ),
+    ).toEqual({ classification: "india", restrictedTo: null });
+  });
+
+  it("B. classifies an explicit 'Anywhere in the World' region as worldwide (allowed)", () => {
+    expect(classifyWwrRegionRelevance("Anywhere in the World", null)).toEqual({
+      classification: "worldwide",
+      restrictedTo: null,
+    });
+  });
+
+  it("B. worldwide wins even when a country is also present (real feed shape, see fixture below)", () => {
+    expect(classifyWwrRegionRelevance("Anywhere in the World", "United States of America")).toEqual(
+      { classification: "worldwide", restrictedTo: null },
+    );
+  });
+
+  it("C. classifies no region and no country as unrestricted (allowed)", () => {
+    expect(classifyWwrRegionRelevance(null, null)).toEqual({
+      classification: "unrestricted",
+      restrictedTo: null,
+    });
+  });
+
+  it("C. classifies a plain 'Remote' region with no country restriction as unrestricted (allowed)", () => {
+    expect(classifyWwrRegionRelevance("Remote", null)).toEqual({
+      classification: "unrestricted",
+      restrictedTo: null,
+    });
+  });
+
+  it("D. classifies USA-only as restricted_non_india (excluded)", () => {
+    expect(classifyWwrRegionRelevance("Texas", "United States of America")).toEqual({
+      classification: "restricted_non_india",
+      restrictedTo: "United States of America",
+    });
+  });
+
+  it("E. classifies UK-only as restricted_non_india (excluded)", () => {
+    expect(
+      classifyWwrRegionRelevance("Remote", "United Kingdom of Great Britain and Northern Ireland"),
+    ).toEqual({
+      classification: "restricted_non_india",
+      restrictedTo: "United Kingdom of Great Britain and Northern Ireland",
+    });
+  });
+
+  it("F. classifies Canada-only as restricted_non_india (excluded)", () => {
+    expect(classifyWwrRegionRelevance("Remote", "Canada")).toEqual({
+      classification: "restricted_non_india",
+      restrictedTo: "Canada",
+    });
+  });
+
+  it("G. classifies another explicit non-India country/allowlist as restricted_non_india (excluded)", () => {
+    // The exact live-feed multi-country allowlist format: comma + "and" before the last entry.
+    expect(classifyWwrRegionRelevance("Remote", "Canada and United States of America")).toEqual({
+      classification: "restricted_non_india",
+      restrictedTo: "Canada and United States of America",
+    });
   });
 });
 
@@ -179,6 +264,53 @@ describe("WeWorkRemotelyParser", () => {
     const outcome = await parseFirst();
     if (!outcome.ok) throw new Error("expected success");
     expect(outcome.job.extractionWarnings?.join(" ")).toMatch(/worldwide/i);
+  });
+
+  // ── Module 10B.3 Phase 1: regionRelevance end-to-end, real raw feed XML ──
+
+  it("attaches worldwide regionRelevance for the default fixture (Anywhere in the World + USA)", async () => {
+    // The default FEED fixture already combines <region>Anywhere in the
+    // World</region> with a single <country> — the real shape that makes
+    // "region wins" the correct priority (see classifyWwrRegionRelevance).
+    const outcome = await parseFirst();
+    if (!outcome.ok) throw new Error("expected success");
+    expect(outcome.job.regionRelevance).toEqual({
+      classification: "worldwide",
+      restrictedTo: null,
+    });
+  });
+
+  it("D. end-to-end: a real USA-only <country> (no worldwide region) excludes via regionRelevance", async () => {
+    const feed = FEED.replace("<region>Anywhere in the World</region>", "<region>Texas</region>");
+    const outcome = await parseFirst(feed);
+    if (!outcome.ok) throw new Error("expected success");
+    expect(outcome.job.regionRelevance).toEqual({
+      classification: "restricted_non_india",
+      restrictedTo: "United States of America",
+    });
+  });
+
+  it("A. end-to-end: a real India <country> flag-emoji entry parses to india regionRelevance", async () => {
+    const feed = FEED.replace(
+      "<region>Anywhere in the World</region>",
+      "<region>Remote</region>",
+    ).replace("<country>🇺🇸 United States of America</country>", "<country>🇮🇳 India</country>");
+    const outcome = await parseFirst(feed);
+    if (!outcome.ok) throw new Error("expected success");
+    expect(outcome.job.regionRelevance).toEqual({ classification: "india", restrictedTo: null });
+  });
+
+  it("C. end-to-end: no <country> tag at all parses to unrestricted regionRelevance", async () => {
+    const feed = FEED.replace(
+      "<region>Anywhere in the World</region>",
+      "<region>Remote</region>",
+    ).replace("<country>🇺🇸 United States of America</country>", "<country></country>");
+    const outcome = await parseFirst(feed);
+    if (!outcome.ok) throw new Error("expected success");
+    expect(outcome.job.regionRelevance).toEqual({
+      classification: "unrestricted",
+      restrictedTo: null,
+    });
   });
 
   it("rejects an item whose title carries no company", async () => {
