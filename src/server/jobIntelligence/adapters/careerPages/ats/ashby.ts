@@ -122,6 +122,13 @@ export const ashbyProvider: AtsProvider = {
       sourceUrlOf: (posting, resolved) =>
         pickString(posting, "jobUrl") ??
         `https://jobs.ashbyhq.com/${resolved.token}/${pickString(posting, "id") ?? ""}`,
+      // Drafts are excluded above; reported so a board of drafts is visibly
+      // different from an empty board.
+      countSkipped: (body) => {
+        const jobs = (body as { jobs?: unknown })?.jobs;
+        if (!Array.isArray(jobs)) return 0;
+        return jobs.filter((job) => (job as AshbyPosting)?.isListed === false).length;
+      },
     });
   },
 

@@ -159,7 +159,10 @@ describe("greenhouseProvider", () => {
 
 // ── Lever ──
 
-const LEVER_URL = "https://api.lever.co/v0/postings/spotify?mode=json";
+// Lever now pages with skip/limit, so the first page carries them.
+const LEVER_URL = "https://api.lever.co/v0/postings/spotify?mode=json&limit=100&skip=0";
+const leverPage = (skip: number) =>
+  `https://api.lever.co/v0/postings/spotify?mode=json&limit=100&skip=${skip}`;
 const LEVER_BOARD = boardFor("lever", "spotify", "https://jobs.lever.co/spotify");
 
 describe("leverProvider", () => {

@@ -83,6 +83,12 @@ export const recruiteeProvider: AtsProvider = {
           return status === undefined || status === "published";
         });
       },
+      countSkipped: (body) => {
+        const offers = (body as { offers?: unknown })?.offers;
+        if (!Array.isArray(offers)) return 0;
+        return offers.filter((offer) => (offer as { status?: string })?.status !== "published")
+          .length;
+      },
       sourceUrlOf: (posting, resolved) =>
         pickString(posting, "careers_url") ??
         `https://${resolved.token}.recruitee.com/o/${pickString(posting, "slug") ?? ""}`,

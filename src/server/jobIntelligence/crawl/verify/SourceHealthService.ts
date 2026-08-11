@@ -124,7 +124,7 @@ export class SourceHealthService {
         entry.companyName,
         this.deps.fetcher,
         entry.config,
-        { now: () => this.now() },
+        { now: () => this.now(), platform: entry.platform },
       );
     } catch (error) {
       // The verifier is written not to throw; this is belt-and-braces so one

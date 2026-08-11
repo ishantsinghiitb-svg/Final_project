@@ -3,6 +3,7 @@ import type { GlobalJob, SavedJob, Skill, PaginationParams, PaginatedResult } fr
 import type { Json } from "@/types/database";
 import type { JobFilters, JobSort, RoleCategory } from "@/features/jobs/types";
 import { roleMatchesAnyCategory, extractRoleKeywords } from "@/features/jobs/utils";
+import { activeWindowCutoffIso } from "@/features/jobs/activeWindow";
 
 // Select all columns that map to the GlobalJob domain type.
 // `role_id` and `location_id` are DB-only FK references and are excluded
@@ -172,10 +173,26 @@ export class JobRepository {
    */
   private applyDiscoveryVisibility<T>(query: T): T {
     const nowIso = new Date().toISOString();
-    return (query as unknown as DiscoveryFilterable)
-      .eq("is_manual_import", false)
-      .eq("is_closed", false)
-      .or(`expiry_date.is.null,expiry_date.gte.${nowIso}`) as unknown as T;
+    return (
+      (query as unknown as DiscoveryFilterable)
+        .eq("is_manual_import", false)
+        .eq("is_closed", false)
+        .or(`expiry_date.is.null,expiry_date.gte.${nowIso}`)
+        // ── Module 10B.2: the 30-day active window ──
+        // Keyed on `last_seen_at` (when a crawl last OBSERVED the job live),
+        // never on `posted_at`. That distinction is the whole point: the
+        // comment above records that a `posted_at` age ceiling was shipped and
+        // reverted as a regression, because a still-open REPOST carries an old
+        // original date. A job re-observed today stays visible however old its
+        // posting date; a job that vanished from its source ages out on its
+        // own, with nothing deleted and no flag flipped.
+        //
+        // `is.null` keeps rows that predate the column (and anything written by
+        // the untouched extension path) visible rather than silently emptying
+        // the feed — the same "unknown is not stale" rule the ingestion gate
+        // uses. See features/jobs/activeWindow.ts.
+        .or(`last_seen_at.is.null,last_seen_at.gte.${activeWindowCutoffIso()}`) as unknown as T
+    );
   }
 
   /**

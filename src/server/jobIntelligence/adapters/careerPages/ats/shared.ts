@@ -25,8 +25,17 @@ export async function crawlJsonBoard(options: {
   endpoint: string;
   platform: string;
   selectPostings: (body: unknown) => unknown[] | null;
+  /** Postings the provider deliberately excluded (drafts, unpublished). */
+  countSkipped?: (body: unknown) => number;
   sourceUrlOf: (posting: unknown, board: AtsBoard) => string;
   headers?: Record<string, string>;
+  /**
+   * The count the board itself claims to hold, when it reports one (Greenhouse
+   * `meta.total`). Lets completeness be VERIFIED rather than assumed — these
+   * APIs return a whole board in one response, so "no second page" is only
+   * trustworthy if the count agrees.
+   */
+  reportedTotal?: (body: unknown) => number | null;
 }): Promise<AtsCrawlResult> {
   const { board, fetcher, limits, endpoint, platform, selectPostings, sourceUrlOf } = options;
 
@@ -79,7 +88,17 @@ export async function crawlJsonBoard(options: {
   }
   if (postings.length > limits.maxPostings) {
     warnings.push(
-      `${board.provider} board "${board.token}" returned ${postings.length} postings; capped at ${limits.maxPostings}.`,
+      `${board.provider} board "${board.token}" returned ${postings.length} postings; capped at ${limits.maxPostings}. Raise maxPostings — jobs are being dropped.`,
+    );
+  }
+
+  // Verify against the board's own count where it publishes one. These APIs
+  // return the entire board in one response, so the only way to notice a
+  // truncated or partial payload is to compare with what it says it holds.
+  const reportedTotal = options.reportedTotal?.(body) ?? null;
+  if (reportedTotal !== null && postings.length < reportedTotal) {
+    warnings.push(
+      `${board.provider} board "${board.token}" reports ${reportedTotal} posting(s) but returned ${postings.length} — the response looks incomplete.`,
     );
   }
 
@@ -93,7 +112,17 @@ export async function crawlJsonBoard(options: {
     };
   });
 
-  return { raws, warnings };
+  // These providers return the entire board in ONE response, so the crawl is
+  // complete unless our own cap trimmed it or the board's own count disagrees.
+  const capped = postings.length > limits.maxPostings;
+  const short = reportedTotal !== null && postings.length < reportedTotal;
+
+  return {
+    raws,
+    warnings,
+    skipped: options.countSkipped?.(body) ?? 0,
+    complete: !capped && !short,
+  };
 }
 
 // ── Field mapping ──

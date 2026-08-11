@@ -23,6 +23,8 @@ import { findJobPostingNodes } from "../../parsers/jsonLd";
 import { discoverJobLinks } from "../../adapters/careerPages/ats/jsonLdBoard";
 import { getPlatformLimitation } from "../limitations";
 import type { CrawlFetcher, FetchResult } from "../HttpFetcher";
+import { extractFeedItems } from "../../parsers/xmlFeed";
+import { WWR_PLATFORM } from "../../adapters/weWorkRemotely/WeWorkRemotelyAdapter";
 
 /**
  * Operator-facing health of one source. Deliberately a small, plain-language
@@ -46,9 +48,10 @@ export type SourceHealth =
 /**
  * What the source turned out to be. An ATS id when one answered; the literal
  * `custom_careers` for a company-hosted page that IS a jobs board but not on a
- * recognized ATS; null when we could not tell.
+ * recognized ATS; `weworkremotely` for a verified WWR RSS feed; null when we
+ * could not tell.
  */
-export type DetectedPlatform = AtsProviderId | "custom_careers";
+export type DetectedPlatform = AtsProviderId | "custom_careers" | "weworkremotely";
 
 export const CUSTOM_CAREERS: DetectedPlatform = "custom_careers";
 
@@ -170,7 +173,71 @@ export type VerifyOptions = {
   /** Follow one linked-ATS hop from a custom page. Off in tests that assert the raw verdict. */
   followLinkedAts?: boolean;
   now?: () => Date;
+  /** The registry entry's platform tag. Drives platform-specific verification (e.g. WWR's RSS feed). */
+  platform?: string;
 };
+
+/**
+ * Verifies a We Work Remotely RSS feed URL. WWR is a syndication feed, not an
+ * ATS board or a rendered careers page — running `detectAtsBoard`'s HTML/
+ * JSON-LD heuristics against RSS/XML would never find a `JobPosting` node and
+ * would misreport a perfectly healthy feed as UNKNOWN (the exact bug this
+ * fixes). The evidence bar mirrors every other provider: a feed only counts as
+ * HEALTHY once it is parsed as XML AND found to contain real `<item>` entries,
+ * the same items `WeWorkRemotelyCrawler` would go on to crawl.
+ */
+async function verifyWeWorkRemotelySource(
+  feedUrl: string,
+  fetcher: CrawlFetcher,
+  checkedAt: string,
+): Promise<SourceVerification> {
+  const base = {
+    url: feedUrl,
+    finalUrl: null as string | null,
+    httpStatus: null as number | null,
+    detectedPlatform: null as DetectedPlatform | null,
+    postingsSeen: null as number | null,
+    checkedAt,
+  };
+
+  const result = await fetcher.fetchText(feedUrl, {
+    accept: "application/rss+xml, application/xml;q=0.9, text/xml;q=0.8",
+  });
+
+  if (!result.ok) {
+    return {
+      ...base,
+      finalUrl: result.url ?? null,
+      httpStatus: result.status ?? null,
+      health: healthForFailure(result),
+      errorReason: result.reason,
+    };
+  }
+
+  const finalUrl = result.url ?? feedUrl;
+  const redirected = isMeaningfulRedirect(feedUrl, finalUrl);
+  const items = extractFeedItems(result.body);
+
+  if (items.length === 0) {
+    return {
+      ...base,
+      finalUrl,
+      httpStatus: result.status,
+      health: "UNKNOWN",
+      errorReason: "Response did not contain any <item> entries — not a valid RSS job feed.",
+    };
+  }
+
+  return {
+    ...base,
+    finalUrl,
+    httpStatus: result.status,
+    health: redirected ? "REDIRECTED" : "HEALTHY",
+    detectedPlatform: "weworkremotely",
+    postingsSeen: items.length,
+    errorReason: redirected ? `Feed answers at ${finalUrl}.` : null,
+  };
+}
 
 /**
  * Verifies one source URL. Never throws: a verification failure is a health
@@ -204,6 +271,14 @@ export async function verifySource(
       detectedPlatform: null,
       errorReason: limitation.reason,
     };
+  }
+
+  // We Work Remotely is a syndication RSS feed, not an ATS board or a
+  // rendered careers page — it needs its own evidence check (a parseable
+  // feed with real <item> entries) and must never fall through to the
+  // generic ATS/JSON-LD detection below, which would never recognize XML.
+  if (options.platform === WWR_PLATFORM) {
+    return verifyWeWorkRemotelySource(careersUrl, fetcher, checkedAt);
   }
 
   const detection = detectAtsBoard(careersUrl, companyName, config);
@@ -296,16 +371,36 @@ export async function verifySource(
     };
   }
 
-  const links = discoverJobLinks(result.body, finalUrl).length;
-  if (links > 0) {
+  const links = discoverJobLinks(result.body, finalUrl);
+  if (links.length > 0) {
+    // Module 10B.2.5: a candidate link is not evidence the page behind it is
+    // actually readable — confirm at least one really carries a parseable
+    // JobPosting before calling the source HEALTHY, the same "verify by
+    // fetching" standard the linked-ATS-board branch above already holds
+    // itself to. One sample is enough to catch the case this exists for
+    // (every candidate is unparsable); it does not have to be exhaustive.
+    const sample = await fetcher.fetchText(links[0]);
+    const confirmed = sample.ok && findJobPostingNodes(sample.body).length > 0;
+    if (confirmed) {
+      return {
+        ...base,
+        finalUrl,
+        httpStatus: result.status,
+        health: redirected ? "REDIRECTED" : "HEALTHY",
+        detectedPlatform: CUSTOM_CAREERS,
+        postingsSeen: links.length,
+        errorReason: null,
+      };
+    }
     return {
       ...base,
       finalUrl,
       httpStatus: result.status,
-      health: redirected ? "REDIRECTED" : "HEALTHY",
-      detectedPlatform: CUSTOM_CAREERS,
-      postingsSeen: links,
-      errorReason: null,
+      health: "UNKNOWN",
+      detectedPlatform: null,
+      errorReason:
+        `Found ${links.length} candidate job link(s), but none of the sampled page(s) carried ` +
+        "parseable JobPosting data.",
     };
   }
 

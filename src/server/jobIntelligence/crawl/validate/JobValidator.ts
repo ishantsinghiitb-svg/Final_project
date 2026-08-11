@@ -155,6 +155,30 @@ export function validateParsedJob(job: ParsedJobPosting): ValidationResult {
     });
   }
 
+  // ⚠️ Module 10B.2 correction — DELIBERATELY no `postedAt`-age fatal check
+  // here. One was added and then removed after the 2026-08-09 Dry Run audit
+  // proved it wrong: it rejected 2,702 of 3,890 real, valid postings (69%),
+  // because large-company ATS reqs routinely stay open for months while
+  // `posted_at` (the ORIGINAL source date) does not move.
+  //
+  // The 30-day active-job rule is enforced by `last_seen_at`, not `posted_at`:
+  //   - `posted_at` is preserved verbatim — historical fact, never judged here.
+  //   - `admin_upsert_global_job` stamps `last_seen_at = now()` on every
+  //     insert/update, unconditionally. A job crawled TODAY is observed today
+  //     regardless of how old its original posting date is.
+  //   - `JobRepository.applyDiscoveryVisibility` filters the Jobs page on
+  //     `last_seen_at`, never `posted_at` — see that file's own comment,
+  //     which documents that a `posted_at` filter was shipped once already
+  //     and reverted as a reported regression for exactly this reason.
+  //   - A job that stops being crawled simply stops being refreshed and ages
+  //     out of the window on its own, with nothing deleted here.
+  //
+  // Rejecting at ingestion on `posted_at` age would have reintroduced that
+  // same reverted mistake one layer earlier, where it is even more damaging:
+  // it prevents the correct mechanism (`last_seen_at`) from ever running at
+  // all. See @/features/jobs/activeWindow for the shared constant/predicate
+  // the (correct) discovery-side filter uses.
+
   if (fatal.length > 0) {
     return {
       ok: false,

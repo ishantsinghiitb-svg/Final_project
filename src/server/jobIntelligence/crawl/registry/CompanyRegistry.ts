@@ -93,6 +93,66 @@ export function rollupHealth(entries: CompanyRegistryEntry[]): HealthRollup {
 }
 
 /**
+ * The ONLY health states a source may be crawled in (Module 10B.2).
+ *
+ * This is an allowlist, not a blocklist, and that is the point: a blocklist
+ * lets any state nobody thought about — including NULL — fall through into
+ * "crawl it". Only a source we have positively verified is reachable and
+ * serving jobs may be crawled.
+ */
+const CRAWLABLE_HEALTH: ReadonlySet<SourceHealth> = new Set<SourceHealth>([
+  "HEALTHY",
+  "REDIRECTED",
+]);
+
+export type CrawlEligibility =
+  { crawlable: true } | { crawlable: false; reason: string; needsVerification: boolean };
+
+/**
+ * Whether a registry entry may be crawled at all.
+ *
+ * `enabled` alone is not enough: a source can be enabled and since have gone
+ * BROKEN or BLOCKED, and crawling it would burn requests to produce a failure
+ * we already know about.
+ *
+ * ⚠️ NULL health is REFUSED. "Never verified" is not "healthy" — it is the
+ * absence of evidence, and this module's governing rule is that an unverified
+ * source is worse than a skipped one. This is NOT a permanent block: running
+ * "Check all sources" (the Module 10B.1.5 verification sweep) sets the health,
+ * after which every HEALTHY/REDIRECTED source becomes crawlable. `needsVerification`
+ * marks exactly those entries so the report can tell an operator what to do
+ * about them, rather than leaving them looking broken.
+ */
+export function crawlEligibility(entry: CompanyRegistryEntry): CrawlEligibility {
+  if (!entry.enabled) {
+    return {
+      crawlable: false,
+      reason: "Source is disabled in the registry.",
+      needsVerification: false,
+    };
+  }
+  if (entry.healthStatus === null) {
+    return {
+      crawlable: false,
+      reason:
+        "Source has never been verified. Run 'Check all sources' first — it becomes crawlable once it verifies as working.",
+      needsVerification: true,
+    };
+  }
+  if (!CRAWLABLE_HEALTH.has(entry.healthStatus)) {
+    return {
+      crawlable: false,
+      reason:
+        `Source health is ${entry.healthStatus}` +
+        (entry.errorReason ? ` — ${entry.errorReason}` : "") +
+        ". Re-verify the source before crawling it.",
+      needsVerification: true,
+    };
+  }
+  return { crawlable: true };
+}
+
+/**
  * Whether an entry is due, given its frequency and last crawl. Entries never
  * crawled are always due. `force` (the operator pressing "Crawl") overrides
  * the schedule — the frequency is a floor for automatic selection, not a lock.

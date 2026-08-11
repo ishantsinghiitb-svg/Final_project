@@ -16,17 +16,19 @@ import {
   type PlatformSummary,
 } from "@/server/jobIntelligence/crawl/PlatformCatalog";
 import type { CrawlMode, CrawlReport } from "@/server/jobIntelligence/crawl/report/CrawlReport";
+import type { CompanyRegistryEntry } from "@/server/jobIntelligence/crawl/registry/CompanyRegistry";
 import {
-  rollupHealth,
-  type CompanyRegistryEntry,
-  type HealthRollup,
-} from "@/server/jobIntelligence/crawl/registry/CompanyRegistry";
+  summarizeRegistry,
+  type RegistrySummary,
+} from "@/server/jobIntelligence/crawl/registry/registrySummary";
 import { AdminAccessError } from "@/server/jobIntelligence/adminAuth";
 import {
   SourceHealthService,
   type SourceHealthReport,
 } from "@/server/jobIntelligence/crawl/verify/SourceHealthService";
 import { SupabaseSourceVerificationStore } from "@/server/jobIntelligence/crawl/verify/SourceVerificationStore";
+
+export type { RegistrySummary } from "@/server/jobIntelligence/crawl/registry/registrySummary";
 
 // ── runManualCrawl (Module 10A) ──
 //
@@ -100,49 +102,6 @@ function buildOrchestrator(): CrawlOrchestrator {
 export type AdminRegistryEntry = Omit<CompanyRegistryEntry, "config"> & {
   configJson: string | null;
 };
-
-/** Registry-wide counts the admin panel headline renders. */
-export type RegistrySummary = {
-  total: number;
-  enabled: number;
-  /** HEALTHY or REDIRECTED — i.e. a source we can actually crawl. */
-  verified: number;
-  /** BROKEN or BLOCKED — needs an operator to fix or accept. */
-  needsAttention: number;
-  /** Never verified yet. */
-  unchecked: number;
-  health: HealthRollup;
-  /** Count per detected platform (ATS id / custom_careers / "undetected"). */
-  platforms: Array<{ platform: string; count: number }>;
-  lastCheckedAt: string | null;
-};
-
-function summarizeRegistry(entries: CompanyRegistryEntry[]): RegistrySummary {
-  const health = rollupHealth(entries);
-  const platformCounts = new Map<string, number>();
-  let lastCheckedAt: string | null = null;
-
-  for (const entry of entries) {
-    const key = entry.detectedPlatform ?? "undetected";
-    platformCounts.set(key, (platformCounts.get(key) ?? 0) + 1);
-    if (entry.lastCheckedAt && (!lastCheckedAt || entry.lastCheckedAt > lastCheckedAt)) {
-      lastCheckedAt = entry.lastCheckedAt;
-    }
-  }
-
-  return {
-    total: entries.length,
-    enabled: entries.filter((entry) => entry.enabled).length,
-    verified: health.HEALTHY + health.REDIRECTED,
-    needsAttention: health.BROKEN + health.BLOCKED,
-    unchecked: health.UNCHECKED,
-    health,
-    platforms: [...platformCounts.entries()]
-      .map(([platform, count]) => ({ platform, count }))
-      .sort((a, b) => b.count - a.count),
-    lastCheckedAt,
-  };
-}
 
 function toAdminEntry(entry: CompanyRegistryEntry): AdminRegistryEntry {
   const { config, ...rest } = entry;

@@ -173,6 +173,40 @@ describe("SourceHealthService.sweep", () => {
     expect(report.entries[0].platform).toBe("weworkremotely");
   });
 
+  // Module 10B.2 Dry Run Audit, fix 3: WWR was previously misreported UNKNOWN
+  // because the sweep never told the verifier which entries are RSS feeds.
+  it("a healthy We Work Remotely registry entry verifies HEALTHY end-to-end", async () => {
+    const feed = "https://weworkremotely.com/remote-jobs.rss";
+    const fetcher = new FakeFetcher({
+      [feed]: {
+        body:
+          `<rss><channel>` +
+          `<item><title>Acme: Backend Engineer</title><link>https://weworkremotely.com/remote-jobs/acme-1</link></item>` +
+          `<item><title>Acme: Frontend Engineer</title><link>https://weworkremotely.com/remote-jobs/acme-2</link></item>` +
+          `</channel></rss>`,
+        contentType: "application/rss+xml",
+      },
+    });
+    const { service, registry } = build({
+      fetcher,
+      entries: [
+        registryEntry({
+          id: "wwr-1",
+          companyName: "We Work Remotely — All Jobs",
+          platform: "weworkremotely",
+          careersUrl: feed,
+        }),
+      ],
+    });
+
+    const report = await service.sweep();
+
+    expect(report.entries[0].health).toBe("HEALTHY");
+    expect(report.entries[0].detectedPlatform).toBe("weworkremotely");
+    expect(report.entries[0].postingsSeen).toBe(2);
+    expect(registry.verifications[0].verification.health).toBe("HEALTHY");
+  });
+
   it("records the failure when the registry itself is unreadable", async () => {
     const runs = new InMemoryVerificationStore();
     const registry = new InMemoryRegistryStore([]);

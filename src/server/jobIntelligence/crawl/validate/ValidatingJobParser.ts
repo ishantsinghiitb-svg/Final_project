@@ -32,9 +32,22 @@ export type ValidationDecision =
  */
 export class ValidationCollector {
   private decisions = new Map<string, ValidationDecision>();
+  /**
+   * Every `record()` call, independent of `decisions`' key collisions.
+   *
+   * `decisions` is keyed by `sourceUrl` for classification lookups, but a
+   * source is not obligated to hand back a unique `sourceUrl` per posting —
+   * We Work Remotely's feed has been observed to repeat a `<link>` across two
+   * distinct postings. When that happens the Map silently collapses them to
+   * one entry, undercounting `parsedCount` (Module 10B.2.5) even though both
+   * postings really were parsed and really did reach the store. This counter
+   * is the ground truth for "how many times was `record()` called".
+   */
+  private recordCount = 0;
 
   record(sourceUrl: string, decision: ValidationDecision): void {
     this.decisions.set(sourceUrl, decision);
+    this.recordCount++;
   }
 
   get(sourceUrl: string): ValidationDecision | undefined {
@@ -43,7 +56,7 @@ export class ValidationCollector {
 
   /** Postings the parser successfully structured (whether or not validation then rejected them). */
   get parsedCount(): number {
-    return this.decisions.size;
+    return this.recordCount;
   }
 
   get skipped(): Array<{ sourceUrl: string; reason: string }> {
@@ -69,6 +82,7 @@ export class ValidationCollector {
 
   reset(): void {
     this.decisions.clear();
+    this.recordCount = 0;
   }
 }
 

@@ -35,6 +35,11 @@ import type { JobParser, ParseOutcome, RawJobPayload } from "../../parsers/types
 import type { EmploymentTypeValue, ParsedJobPosting, WorkModeValue } from "../../types";
 import { parseSalaryText } from "../../parsers/utils";
 import { crawlErrorMessage, CrawlTargetError } from "../../crawl/errors";
+import {
+  newObservations,
+  noteIncomplete,
+  type CrawlObservations,
+} from "../../crawl/CrawlObservations";
 import type { CrawlFetcher } from "../../crawl/HttpFetcher";
 import type { CrawlTarget, PlatformAdapter, PlatformCrawler } from "../types";
 import {
@@ -155,6 +160,7 @@ export class InternshalaCrawler implements PlatformCrawler {
   constructor(
     private readonly fetcher: CrawlFetcher,
     private readonly limits: InternshalaLimits = DEFAULT_INTERNSHALA_LIMITS,
+    private readonly observations: CrawlObservations = newObservations(),
   ) {}
 
   async fetchRawPostings(target: CrawlTarget): Promise<RawJobPayload[]> {
@@ -176,12 +182,27 @@ export class InternshalaCrawler implements PlatformCrawler {
         if (page === 1) {
           firstPageFailure = `Internshala listing ${pageUrl}: ${response.reason}`;
           blocked = response.kind === "blocked";
+        } else {
+          // Later pages exist but could not be read — the crawl is real but
+          // demonstrably partial.
+          noteIncomplete(
+            this.observations,
+            `Listing pagination stopped at page ${page}: ${response.reason}`,
+          );
         }
         break;
       }
 
       const cards = extractListingCards(response.body, response.url);
+      // A full page followed by an empty one is the natural end of the listing.
       if (cards.length === 0) break;
+      // Hitting the page cap with cards still coming means there is more.
+      if (page === this.limits.maxPages) {
+        noteIncomplete(
+          this.observations,
+          `Listing stopped at the ${this.limits.maxPages}-page cap; more pages may exist.`,
+        );
+      }
       for (const card of cards) {
         if (!discovered.has(card.internshipId)) discovered.set(card.internshipId, card);
       }
@@ -197,11 +218,23 @@ export class InternshalaCrawler implements PlatformCrawler {
     const fetchedAt = new Date().toISOString();
     const raws: RawJobPayload[] = [];
 
-    for (const card of [...discovered.values()].slice(0, this.limits.maxDetailFetches)) {
+    const cards = [...discovered.values()];
+    if (cards.length > this.limits.maxDetailFetches) {
+      noteIncomplete(
+        this.observations,
+        `Found ${cards.length} posting(s) but fetched the first ${this.limits.maxDetailFetches}.`,
+      );
+    }
+
+    let detailFailures = 0;
+    for (const card of cards.slice(0, this.limits.maxDetailFetches)) {
       const detail = await this.fetcher.fetchText(card.detailUrl);
       // One unreachable posting must not fail the target; it is simply absent
-      // from this run and the counters reflect that.
-      if (!detail.ok) continue;
+      // from this run, and the crawl is recorded as incomplete because of it.
+      if (!detail.ok) {
+        detailFailures++;
+        continue;
+      }
 
       raws.push({
         platform: INTERNSHALA_PLATFORM,
@@ -210,6 +243,13 @@ export class InternshalaCrawler implements PlatformCrawler {
         html: detail.body,
         json: { internshipId: card.internshipId, listingUrl: baseUrl, discovered: discovered.size },
       });
+    }
+
+    if (detailFailures > 0) {
+      noteIncomplete(
+        this.observations,
+        `${detailFailures} detail page(s) could not be fetched and are missing from this run.`,
+      );
     }
 
     if (raws.length === 0) {
@@ -495,10 +535,11 @@ function buildWarnings(description: string | null, internshipId: string | null):
 export function createInternshalaAdapter(
   fetcher: CrawlFetcher,
   limits: InternshalaLimits = DEFAULT_INTERNSHALA_LIMITS,
+  observations: CrawlObservations = newObservations(),
 ): PlatformAdapter {
   return {
     platform: INTERNSHALA_PLATFORM,
-    crawler: new InternshalaCrawler(fetcher, limits),
+    crawler: new InternshalaCrawler(fetcher, limits, observations),
     parser: new InternshalaParser(),
   };
 }

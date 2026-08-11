@@ -48,8 +48,18 @@ export type AtsCrawlLimits = {
   maxDetailFetches: number;
 };
 
+/**
+ * Production caps (raised in Module 10B.2).
+ *
+ * `maxPostings` was 300, which silently truncated real boards — Stripe's
+ * Greenhouse board returns 550 postings and OpenAI's Ashby board 750, both in a
+ * SINGLE response. A cap below the size of a real board is indistinguishable
+ * from a pagination bug: the crawl looks successful and quietly drops a third
+ * of the jobs. It is now above the largest board observed, and whenever it does
+ * bite, the crawler says so in the report rather than trimming in silence.
+ */
 export const DEFAULT_ATS_LIMITS: AtsCrawlLimits = {
-  maxPostings: 300,
+  maxPostings: 2_000,
   maxDetailFetches: 40,
 };
 
@@ -59,6 +69,21 @@ export type AtsCrawlResult = {
   warnings: string[];
   /** Set when the board could not be read at all; `raws` is then empty. */
   failure?: { reason: string; blocked: boolean };
+  /**
+   * Postings the crawler deliberately EXCLUDED before parsing (Ashby drafts,
+   * unpublished Recruitee offers). Reported as `skipped` so they are visible
+   * rather than vanishing between "discovered" and what the board actually
+   * holds — a board where every posting is a draft should look different from
+   * a board that is empty.
+   */
+  skipped?: number;
+  /**
+   * False when the crawl could NOT be proven complete — pagination stopped
+   * early, a page failed, or the posting cap bit. Module 10B.2 crawl safety:
+   * only a demonstrably complete crawl may be treated as an authoritative
+   * observation of a source. See CrawlOrchestrator.
+   */
+  complete?: boolean;
 };
 
 export interface AtsProvider {

@@ -36,6 +36,11 @@ import {
   readFeedLine,
 } from "../../parsers/xmlFeed";
 import { crawlErrorMessage, CrawlTargetError } from "../../crawl/errors";
+import {
+  newObservations,
+  noteIncomplete,
+  type CrawlObservations,
+} from "../../crawl/CrawlObservations";
 import type { CrawlFetcher } from "../../crawl/HttpFetcher";
 import type { CrawlTarget, PlatformAdapter, PlatformCrawler } from "../types";
 import { mapEmploymentType } from "../careerPages/ats/shared";
@@ -72,6 +77,7 @@ export class WeWorkRemotelyCrawler implements PlatformCrawler {
   constructor(
     private readonly fetcher: CrawlFetcher,
     private readonly maxItems: number = MAX_ITEMS,
+    private readonly observations: CrawlObservations = newObservations(),
   ) {}
 
   async fetchRawPostings(target: CrawlTarget): Promise<RawJobPayload[]> {
@@ -90,6 +96,16 @@ export class WeWorkRemotelyCrawler implements PlatformCrawler {
     if (items.length === 0) {
       throw new CrawlTargetError(
         `We Work Remotely feed ${feedUrl} contained no <item> entries (is it a valid RSS URL?).`,
+      );
+    }
+
+    // The feed is a fixed-size window, not a paginated archive: it is complete
+    // by definition for what it publishes. The only way this crawl is NOT
+    // complete is if our own cap trimmed it.
+    if (items.length > this.maxItems) {
+      noteIncomplete(
+        this.observations,
+        `Feed returned ${items.length} items; capped at ${this.maxItems}. Raise the cap — jobs are being dropped.`,
       );
     }
 
@@ -256,10 +272,13 @@ function buildWarnings(description: string, worldwide: boolean): string[] {
   return warnings;
 }
 
-export function createWeWorkRemotelyAdapter(fetcher: CrawlFetcher): PlatformAdapter {
+export function createWeWorkRemotelyAdapter(
+  fetcher: CrawlFetcher,
+  observations: CrawlObservations = newObservations(),
+): PlatformAdapter {
   return {
     platform: WWR_PLATFORM,
-    crawler: new WeWorkRemotelyCrawler(fetcher),
+    crawler: new WeWorkRemotelyCrawler(fetcher, MAX_ITEMS, observations),
     parser: new WeWorkRemotelyParser(),
   };
 }

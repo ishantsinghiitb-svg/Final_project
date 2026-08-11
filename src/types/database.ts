@@ -58,6 +58,8 @@ export type CompanyRow = {
 };
 
 export type GlobalJobRow = {
+  /** Module 10B.2: most recent crawl that observed this job live. Drives 30-day active visibility. */
+  last_seen_at: string | null;
   id: string;
   company_id: string | null;
   company_name: string;
@@ -791,6 +793,8 @@ export type CrawlRunRow = {
   jobs_imported: number;
   jobs_updated: number;
   jobs_duplicates: number;
+  /** Module 10B.2: validator refusals, distinct from crawler-side skips. */
+  jobs_rejected: number;
   jobs_skipped: number;
   jobs_failed: number;
   report: Json;

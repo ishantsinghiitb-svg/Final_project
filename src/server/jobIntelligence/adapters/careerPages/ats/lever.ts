@@ -23,7 +23,6 @@ import {
 import type { ParseOutcome, RawJobPayload } from "../../../parsers/types";
 import type { ParsedJobPosting } from "../../../types";
 import {
-  crawlJsonBoard,
   inferExperienceLevelFromTitle,
   looksRemote,
   mapEmploymentType,
@@ -32,7 +31,13 @@ import {
   splitLocationText,
   toIsoDate,
 } from "./shared";
-import { ATS_SOURCE_TAG, type AtsBoard, type AtsPostingPayload, type AtsProvider } from "./types";
+import {
+  ATS_SOURCE_TAG,
+  type AtsBoard,
+  type AtsCrawlResult,
+  type AtsPostingPayload,
+  type AtsProvider,
+} from "./types";
 
 export const LEVER_PARSER_VERSION = "lever-1.0.0";
 
@@ -60,8 +65,15 @@ type LeverPosting = {
   salaryRange?: { min?: number; max?: number; currency?: string; interval?: string };
 };
 
+/** Lever's own maximum page size. */
+const LEVER_PAGE_SIZE = 100;
+
 function boardEndpoint(board: AtsBoard): string {
   return `https://api.lever.co/v0/postings/${encodeURIComponent(board.token)}?mode=json`;
+}
+
+function pageEndpoint(board: AtsBoard, skip: number): string {
+  return `${boardEndpoint(board)}&limit=${LEVER_PAGE_SIZE}&skip=${skip}`;
 }
 
 /** Lever's salary `interval` is e.g. "per-year-salary" / "per-hour-wage". */
@@ -99,19 +111,100 @@ export const leverProvider: AtsProvider = {
   id: "lever",
   boardUrl: boardEndpoint,
 
-  crawl(board, fetcher, limits) {
-    return crawlJsonBoard({
-      board,
-      fetcher,
-      limits,
-      endpoint: boardEndpoint(board),
-      platform: ATS_SOURCE_TAG.lever,
+  async crawl(board, fetcher, limits): Promise<AtsCrawlResult> {
+    // Lever returns a whole board in one response for every board observed
+    // (leverdemo: 388 postings, unchanged by `limit=1000`), but it DOES honour
+    // `skip`, and its per-request ceiling is not documented. So rather than
+    // trusting one response to be complete, this pages forward with `skip`
+    // until a short page — which costs exactly one extra request on a board
+    // that already fit, and is the difference between "we got everything" and
+    // "we got whatever the first page happened to hold" on a board that grows.
+    const fetchedAt = new Date().toISOString();
+    const raws: RawJobPayload[] = [];
+    const warnings: string[] = [];
+    const seenIds = new Set<string>();
+
+    for (let skip = 0; raws.length < limits.maxPostings; skip += LEVER_PAGE_SIZE) {
+      const response = await fetcher.fetchText(pageEndpoint(board, skip), {
+        accept: "application/json",
+      });
+
+      if (!response.ok) {
+        if (skip === 0) {
+          return {
+            raws: [],
+            warnings,
+            failure: {
+              reason: `lever board "${board.token}": ${response.reason}`,
+              blocked: response.kind === "blocked",
+            },
+          };
+        }
+        warnings.push(`Pagination stopped at skip=${skip}: ${response.reason}`);
+        break;
+      }
+
+      let page: unknown;
+      try {
+        page = JSON.parse(response.body);
+      } catch {
+        if (skip === 0) {
+          return {
+            raws: [],
+            warnings,
+            failure: {
+              reason: `lever board "${board.token}" did not return JSON.`,
+              blocked: false,
+            },
+          };
+        }
+        warnings.push(`Pagination stopped at skip=${skip}: response was not JSON.`);
+        break;
+      }
+
       // Lever returns the array at the top level, with no envelope.
-      selectPostings: (body) => (Array.isArray(body) ? body : null),
-      sourceUrlOf: (posting, resolved) =>
-        pickString(posting, "hostedUrl") ??
-        `https://jobs.lever.co/${resolved.token}/${pickString(posting, "id") ?? ""}`,
-    });
+      if (!Array.isArray(page)) {
+        if (skip === 0) {
+          return {
+            raws: [],
+            warnings,
+            failure: {
+              reason: `lever board "${board.token}" returned an unexpected payload shape.`,
+              blocked: false,
+            },
+          };
+        }
+        break;
+      }
+
+      let added = 0;
+      for (const posting of page) {
+        if (raws.length >= limits.maxPostings) break;
+        // A board that ignores `skip` would otherwise re-serve page 1 forever.
+        const id = pickString(posting, "id");
+        if (id) {
+          if (seenIds.has(id)) continue;
+          seenIds.add(id);
+        }
+        added++;
+        raws.push({
+          platform: ATS_SOURCE_TAG.lever,
+          sourceUrl:
+            pickString(posting, "hostedUrl") ??
+            `https://jobs.lever.co/${board.token}/${pickString(posting, "id") ?? ""}`,
+          fetchedAt,
+          json: { provider: "lever", board, posting } satisfies AtsPostingPayload,
+        });
+      }
+
+      // Short page = no more; zero NEW postings = the board is ignoring `skip`.
+      if (page.length < LEVER_PAGE_SIZE || added === 0) break;
+    }
+
+    if (raws.length === 0) {
+      warnings.push(`lever board "${board.token}" returned 0 postings.`);
+    }
+    return { raws, warnings };
   },
 
   parsePosting(payload: AtsPostingPayload, raw: RawJobPayload): ParseOutcome {

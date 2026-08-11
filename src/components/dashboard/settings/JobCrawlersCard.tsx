@@ -259,8 +259,11 @@ function SourceHealthPanel({
       </SectionTitle>
       <p className="mt-1 text-xs text-[oklch(0.5_0.02_265)]">
         {summary.total} compan{summary.total === 1 ? "y" : "ies"} registered · {summary.enabled}{" "}
-        enabled · {summary.verified} verified working · {summary.needsAttention} need attention
+        enabled, {summary.eligibleNow} ready to crawl now · {summary.needsAttention} need attention
         {summary.unchecked > 0 ? ` · ${summary.unchecked} not checked yet` : ""}
+      </p>
+      <p className="mt-0.5 text-[11px] text-[oklch(0.55_0.02_265)]">
+        {summary.verified} verified working across the full registry (including disabled sources)
       </p>
 
       <div className="mt-3 flex flex-wrap gap-1.5">
@@ -379,6 +382,7 @@ function CrawlReportPanel({ report }: { report: CrawlReport }) {
     ["Imported", report.totals.imported],
     ["Updated", report.totals.updated],
     ["Duplicates", report.totals.duplicates],
+    ["Rejected", report.totals.rejected],
     ["Skipped", report.totals.skipped],
     ["Failed", report.totals.failed],
   ];
@@ -397,7 +401,7 @@ function CrawlReportPanel({ report }: { report: CrawlReport }) {
         {report.triggeredBy ? ` · ${report.triggeredBy}` : ""}
       </p>
 
-      <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-8">
+      <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-9">
         {stats.map(([label, value]) => (
           <div key={label} className="rounded-xl border border-black/5 bg-black/[0.015] p-3">
             <p className="text-[11px] text-[oklch(0.5_0.02_265)]">{label}</p>
@@ -405,6 +409,40 @@ function CrawlReportPanel({ report }: { report: CrawlReport }) {
           </div>
         ))}
       </div>
+
+      {report.platforms.length > 1 && (
+        <div className="mt-4">
+          <p className="text-[11px] font-medium text-[oklch(0.45_0.02_265)]">By platform</p>
+          <div className="mt-1 overflow-x-auto">
+            <table className="w-full min-w-[520px] text-left text-xs">
+              <thead className="text-[11px] text-[oklch(0.5_0.02_265)]">
+                <tr className="border-b border-black/5">
+                  <th className="py-1.5 pr-3 font-medium">Platform</th>
+                  <th className="py-1.5 pr-3 font-medium">Targets</th>
+                  <th className="py-1.5 pr-3 font-medium">Discovered</th>
+                  <th className="py-1.5 pr-3 font-medium">Imported</th>
+                  <th className="py-1.5 pr-3 font-medium">Duplicates</th>
+                  <th className="py-1.5 font-medium">Failed</th>
+                </tr>
+              </thead>
+              <tbody>
+                {report.platforms.map((entry) => (
+                  <tr key={entry.platform} className="border-b border-black/5 last:border-0">
+                    <td className="py-1.5 pr-3 font-mono text-[11px]">{entry.platform}</td>
+                    <td className="py-1.5 pr-3">
+                      {entry.succeeded}/{entry.targets}
+                    </td>
+                    <td className="py-1.5 pr-3">{entry.counters.discovered}</td>
+                    <td className="py-1.5 pr-3">{entry.counters.imported}</td>
+                    <td className="py-1.5 pr-3">{entry.counters.duplicates}</td>
+                    <td className="py-1.5">{entry.failed + entry.counters.failed}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {report.companies.length > 0 && (
         <ul className="mt-4 divide-y divide-black/5">
@@ -484,7 +522,7 @@ function CompanyRow({
           </span>
           <span className="mt-0.5 block text-[11px] text-[oklch(0.5_0.02_265)]">
             {company.counters.discovered} discovered · {company.counters.imported} imported ·{" "}
-            {company.counters.duplicates} duplicate · {company.counters.skipped} skipped ·{" "}
+            {company.counters.duplicates} duplicate · {company.counters.rejected} rejected ·{" "}
             {company.counters.failed} failed · {(company.durationMs / 1000).toFixed(1)}s
           </span>
         </span>

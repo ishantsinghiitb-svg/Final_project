@@ -9,6 +9,7 @@ import {
   isMeaningfulRedirect,
   verifySource,
 } from "./SourceVerifier";
+import { WWR_PLATFORM } from "../../adapters/weWorkRemotely/WeWorkRemotelyAdapter";
 
 const GH_API = (slug: string) =>
   `https://boards-api.greenhouse.io/v1/boards/${slug}/jobs?content=true`;
@@ -212,13 +213,61 @@ describe("verifySource — plain careers pages", () => {
     expect(result.postingsSeen).toBe(1);
   });
 
-  it("is HEALTHY when the page links to real postings", async () => {
+  it("is HEALTHY when the page links to postings AND the sampled link actually parses", async () => {
     const body = `<a href="/jobs/backend-engineer">Backend</a><a href="/jobs/designer">Designer</a>`;
-    const result = await verifySource(PAGE, "Acme", new FakeFetcher({ [PAGE]: html(body) }));
+    const detail = `<script type="application/ld+json">${JSON.stringify({
+      "@type": "JobPosting",
+      title: "Backend Engineer",
+    })}</script>`;
+    const result = await verifySource(
+      PAGE,
+      "Acme",
+      new FakeFetcher({
+        [PAGE]: html(body),
+        "https://acme.test/jobs/backend-engineer": html(detail),
+      }),
+    );
 
     expect(result.health).toBe("HEALTHY");
     expect(result.detectedPlatform).toBe("custom_careers");
     expect(result.postingsSeen).toBe(2);
+  });
+
+  // Module 10B.2.5: candidate links alone are not proof postings are
+  // crawlable — this is the exact false-HEALTHY shape the MoEngage/Trakstar
+  // investigation found (link discovery succeeds, but every linked page
+  // fails to yield a parseable JobPosting).
+  it("is UNKNOWN, not HEALTHY, when links exist but none of the sampled pages actually parse", async () => {
+    const body = `<a href="/jobs/backend-engineer">Backend</a><a href="/jobs/designer">Designer</a>`;
+    const result = await verifySource(
+      PAGE,
+      "Acme",
+      new FakeFetcher({
+        [PAGE]: html(body),
+        "https://acme.test/jobs/backend-engineer": html("<p>No structured data here.</p>"),
+      }),
+    );
+
+    expect(result.health).toBe("UNKNOWN");
+    expect(result.detectedPlatform).toBeNull();
+    expect(result.errorReason).toMatch(/candidate job link/i);
+    expect(result.errorReason).toMatch(/no.*parseable JobPosting/i);
+  });
+
+  it("is UNKNOWN when the sampled candidate link cannot even be fetched", async () => {
+    const body = `<a href="/jobs/backend-engineer">Backend</a>`;
+    const result = await verifySource(
+      PAGE,
+      "Acme",
+      new FakeFetcher({
+        [PAGE]: html(body),
+        "https://acme.test/jobs/backend-engineer": {
+          failure: { ok: false, kind: "http", status: 404, reason: "HTTP 404 Not Found" },
+        },
+      }),
+    );
+
+    expect(result.health).toBe("UNKNOWN");
   });
 
   it("is UNKNOWN — never HEALTHY — for a page with no evidence of being a jobs board", async () => {
@@ -286,6 +335,121 @@ describe("verifySource — config overrides", () => {
     });
     expect(result.health).toBe("HEALTHY");
     expect(result.detectedPlatform).toBe("greenhouse");
+  });
+});
+
+describe("verifySource — We Work Remotely (Module 10B.2 fix)", () => {
+  const FEED = "https://weworkremotely.com/remote-jobs.rss";
+
+  function rss(items: string[]): { body: string; contentType: string } {
+    const body =
+      `<?xml version="1.0" encoding="UTF-8"?><rss><channel>` + items.join("") + `</channel></rss>`;
+    return { body, contentType: "application/rss+xml" };
+  }
+
+  function feedItem(title: string, link: string): string {
+    return `<item><title>${title}</title><link>${link}</link></item>`;
+  }
+
+  it("a valid feed with real job entries is HEALTHY", async () => {
+    const fetcher = new FakeFetcher({
+      [FEED]: rss([
+        feedItem("Acme Inc: Backend Engineer", "https://weworkremotely.com/remote-jobs/acme-1"),
+        feedItem("Acme Inc: Frontend Engineer", "https://weworkremotely.com/remote-jobs/acme-2"),
+      ]),
+    });
+
+    const result = await verifySource(FEED, "We Work Remotely — All Jobs", fetcher, undefined, {
+      platform: WWR_PLATFORM,
+    });
+
+    expect(result.health).toBe("HEALTHY");
+    expect(result.detectedPlatform).toBe("weworkremotely");
+    expect(result.postingsSeen).toBe(2);
+    expect(result.errorReason).toBeNull();
+  });
+
+  it("an empty feed (no <item> entries) is not healthy", async () => {
+    const fetcher = new FakeFetcher({
+      [FEED]: rss([]),
+    });
+
+    const result = await verifySource(FEED, "We Work Remotely — All Jobs", fetcher, undefined, {
+      platform: WWR_PLATFORM,
+    });
+
+    expect(result.health).toBe("UNKNOWN");
+    expect(isCrawlableHealth(result.health)).toBe(false);
+    expect(result.errorReason).toMatch(/no <item> entries|not a valid RSS/i);
+  });
+
+  it("a malformed (non-XML) response is not healthy", async () => {
+    const fetcher = new FakeFetcher({
+      [FEED]: { body: "<html><body>this is not a feed</body></html>", contentType: "text/html" },
+    });
+
+    const result = await verifySource(FEED, "We Work Remotely — All Jobs", fetcher, undefined, {
+      platform: WWR_PLATFORM,
+    });
+
+    expect(result.health).toBe("UNKNOWN");
+  });
+
+  it("maps an HTTP failure to the same health as every other provider", async () => {
+    const fetcher503 = new FakeFetcher({
+      [FEED]: { failure: { ok: false, kind: "http", status: 503, reason: "HTTP 503" } },
+    });
+    expect(
+      (await verifySource(FEED, "WWR", fetcher503, undefined, { platform: WWR_PLATFORM })).health,
+    ).toBe("UNAVAILABLE");
+
+    const fetcher404 = new FakeFetcher({
+      [FEED]: { failure: { ok: false, kind: "http", status: 404, reason: "HTTP 404 Not Found" } },
+    });
+    expect(
+      (await verifySource(FEED, "WWR", fetcher404, undefined, { platform: WWR_PLATFORM })).health,
+    ).toBe("BROKEN");
+
+    const blocked = new FakeFetcher({ [FEED]: BLOCKED });
+    expect(
+      (await verifySource(FEED, "WWR", blocked, undefined, { platform: WWR_PLATFORM })).health,
+    ).toBe("BLOCKED");
+  });
+
+  it("never falls through to JSON-LD/HTML detection, even when the body would satisfy it", async () => {
+    // This body has valid JobPosting JSON-LD (which the generic detector would
+    // happily call HEALTHY/custom_careers) but no RSS <item> entries at all.
+    // Under WWR verification only <item> entries count as evidence — proving
+    // the generic detector never ran.
+    const trickBody = `<script type="application/ld+json">${JSON.stringify({
+      "@type": "JobPosting",
+      title: "Engineer",
+    })}</script>`;
+    const fetcher = new FakeFetcher({
+      [FEED]: { body: trickBody, contentType: "text/html" },
+    });
+
+    const result = await verifySource(FEED, "We Work Remotely — All Jobs", fetcher, undefined, {
+      platform: WWR_PLATFORM,
+    });
+
+    expect(result.health).toBe("UNKNOWN");
+    expect(result.detectedPlatform).not.toBe("custom_careers");
+  });
+
+  it("without the platform tag, the same URL still runs the generic detector (not RSS-aware)", async () => {
+    // Proves the dispatch is opt-in via registry `platform`, not URL sniffing
+    // — a source not tagged weworkremotely is never treated as one.
+    const fetcher = new FakeFetcher({
+      [FEED]: rss([feedItem("Acme Inc: Backend Engineer", "https://weworkremotely.com/x")]),
+    });
+
+    const result = await verifySource(FEED, "We Work Remotely — All Jobs", fetcher);
+
+    // The generic detector sees XML it doesn't recognize as an ATS, and finds
+    // no JobPosting JSON-LD or job-shaped links in it either.
+    expect(result.health).toBe("UNKNOWN");
+    expect(result.detectedPlatform).not.toBe("weworkremotely");
   });
 });
 

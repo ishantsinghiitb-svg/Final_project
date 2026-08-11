@@ -295,7 +295,7 @@ describe("CrawlOrchestrator — failures are contained", () => {
 });
 
 describe("CrawlOrchestrator — validation is in the pipeline", () => {
-  it("counts a rejected posting as skipped, not failed", async () => {
+  it("counts a validator-refused posting as rejected, not failed", async () => {
     const fetcher = new FakeFetcher({
       [GREENHOUSE_URL]: {
         body: greenhousePayload([
@@ -312,7 +312,7 @@ describe("CrawlOrchestrator — validation is in the pipeline", () => {
     expect(report.totals.discovered).toBe(2);
     expect(report.totals.parsed).toBe(2);
     expect(report.totals.imported).toBe(1);
-    expect(report.totals.skipped).toBe(1);
+    expect(report.totals.rejected).toBe(1);
     expect(report.totals.failed).toBe(0);
     expect((store as InMemoryJobStore).writes).toHaveLength(1);
   });
@@ -404,6 +404,52 @@ describe("CrawlOrchestrator — scheduling", () => {
 
     const report = await orchestrator.run({ mode: "live", scope: "all" });
     expect(report.companiesScanned).toBe(0);
+  });
+
+  // Module 10B.2 Dry Run Audit, fix 2: 8 inherited foreign seed companies
+  // (Stripe among them) are disabled — the strategy is Indian/Indian-origin
+  // companies. Disabling must be enforced the same way any other disabled
+  // entry is: never selected, never requested, never written.
+  it("a disabled foreign seed company is skipped while an enabled Indian company still crawls", async () => {
+    const INDIAN_URL = "https://boards-api.greenhouse.io/v1/boards/acme-india/jobs?content=true";
+    const fetcher = new FakeFetcher({
+      [INDIAN_URL]: { body: greenhousePayload([goodJob(1)]) },
+      // Deliberately no entry for GREENHOUSE_URL (Stripe's board) — if the
+      // disabled entry were ever requested, the fetcher would have nothing to
+      // serve it and the crawl would surface that as a failure, not silence.
+    });
+    const jobStore = new InMemoryJobStore();
+    const { orchestrator, registry } = build({
+      fetcher,
+      store: jobStore,
+      entries: [
+        registryEntry({
+          id: "stripe-foreign-seed",
+          companyName: "Stripe",
+          careersUrl: "https://boards.greenhouse.io/stripe",
+          enabled: false,
+        }),
+        registryEntry({
+          id: "indian-company",
+          companyName: "Acme India",
+          careersUrl: "https://boards.greenhouse.io/acme-india",
+          enabled: true,
+        }),
+      ],
+    });
+
+    const report = await orchestrator.run({ mode: "live", scope: "all" });
+
+    // Only the enabled Indian company was ever scanned.
+    expect(report.companiesScanned).toBe(1);
+    expect(report.companies).toHaveLength(1);
+    expect(report.companies[0].status).toBe("success");
+
+    // Disabled entries never even reach markCrawlResult — there is nothing to
+    // record because there was no crawl attempt.
+    expect(registry.results).toHaveLength(1);
+    expect(registry.results[0].entryId).toBe("indian-company");
+    expect(jobStore.writes).toHaveLength(1);
   });
 });
 

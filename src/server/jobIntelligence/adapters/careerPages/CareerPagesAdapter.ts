@@ -11,6 +11,7 @@
 // page's existing source labels and filters keep working untouched.
 
 import { crawlErrorMessage, CrawlTargetError } from "../../crawl/errors";
+import { newObservations, type CrawlObservations } from "../../crawl/CrawlObservations";
 import type { CrawlFetcher } from "../../crawl/HttpFetcher";
 import type { JobParser, ParseOutcome, RawJobPayload } from "../../parsers/types";
 import type { CrawlTarget, PlatformAdapter, PlatformCrawler } from "../types";
@@ -58,17 +59,17 @@ export class CareerPagesCrawler implements PlatformCrawler {
     private readonly context: CareerPagesContext = { companyName: "", config: {} },
     private readonly limits: AtsCrawlLimits = DEFAULT_ATS_LIMITS,
     /**
-     * Non-fatal notes (pagination caps, empty boards, per-page fetch failures)
-     * are pushed here for the crawl report. A sink rather than a return value
-     * because `PlatformCrawler.fetchRawPostings` is Module 10A's frozen
-     * signature and returns only payloads.
+     * What the crawler learned while running — warnings, deliberately-excluded
+     * postings, and whether the crawl is provably complete. A sink rather than
+     * a return value because `PlatformCrawler.fetchRawPostings` is Module 10A's
+     * frozen signature and returns only payloads.
      */
-    private readonly warnings: string[] = [],
+    private readonly observations: CrawlObservations = newObservations(),
   ) {}
 
   /** A copy bound to one registry entry's company name + config. */
   withContext(context: CareerPagesContext): CareerPagesCrawler {
-    return new CareerPagesCrawler(this.fetcher, context, this.limits, this.warnings);
+    return new CareerPagesCrawler(this.fetcher, context, this.limits, this.observations);
   }
 
   /** The board this crawler would read for a target — exposed so the orchestrator can report it. */
@@ -87,7 +88,11 @@ export class CareerPagesCrawler implements PlatformCrawler {
     if (result.failure) {
       throw new CrawlTargetError(result.failure.reason, { blocked: result.failure.blocked });
     }
-    this.warnings.push(...result.warnings);
+    this.observations.warnings.push(...result.warnings);
+    this.observations.skipped += result.skipped ?? 0;
+    // Pessimistic: a provider that did not explicitly prove completeness is
+    // treated as incomplete, so the lifecycle rule never acts on a guess.
+    if (result.complete !== true) this.observations.complete = false;
     return result.raws;
   }
 }
@@ -118,11 +123,11 @@ export class CareerPagesParser implements JobParser {
 export function createCareerPagesAdapter(
   fetcher: CrawlFetcher,
   limits: AtsCrawlLimits = DEFAULT_ATS_LIMITS,
-  warnings: string[] = [],
+  observations: CrawlObservations = newObservations(),
 ): PlatformAdapter & { crawler: CareerPagesCrawler } {
   return {
     platform: CAREER_PAGES_PLATFORM,
-    crawler: new CareerPagesCrawler(fetcher, { companyName: "", config: {} }, limits, warnings),
+    crawler: new CareerPagesCrawler(fetcher, { companyName: "", config: {} }, limits, observations),
     parser: new CareerPagesParser(),
   };
 }

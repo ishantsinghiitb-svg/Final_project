@@ -16,7 +16,81 @@ import { findElements, htmlToPlainText, collapseWhitespace, decodeHtmlEntities }
 
 export type JsonLdObject = Record<string, unknown>;
 
-/** Parses every `<script type="application/ld+json">` block; unparseable blocks are skipped. */
+/**
+ * Escapes RAW control characters (U+0000–U+001F) found INSIDE JSON string
+ * literals — the JSON spec requires those to appear only as an escape
+ * sequence (`\n`, `\t`, ``, …), and `JSON.parse` rejects a literal one
+ * outright ("Bad control character in string literal"). This is the single
+ * most common real-world JSON-LD defect: a description field pasted in with
+ * an actual newline/tab instead of `\n`/`\t`.
+ *
+ * Purely mechanical and string-boundary-aware: it tracks quotes and existing
+ * `\`-escapes to know when it is inside a string, and only ever touches a
+ * raw control-character byte found there. Everything else — structure,
+ * whitespace between tokens, already-escaped sequences, quotes, backslashes,
+ * Unicode text — passes through byte-for-byte unchanged. It does not
+ * validate or otherwise repair the JSON; a result that is still malformed
+ * for any other reason simply fails the caller's `JSON.parse`, exactly as
+ * before.
+ */
+export function escapeRawControlCharsInJsonStrings(text: string): string {
+  let out = "";
+  let inString = false;
+  let escaped = false;
+
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+
+    if (!inString) {
+      if (ch === '"') inString = true;
+      out += ch;
+      continue;
+    }
+
+    if (escaped) {
+      // The character right after a `\` — part of an existing escape
+      // sequence (\n, \", \\, \uXXXX's "u", ...). Copy it verbatim; it is
+      // never itself an unescaped control byte.
+      out += ch;
+      escaped = false;
+      continue;
+    }
+    if (ch === "\\") {
+      out += ch;
+      escaped = true;
+      continue;
+    }
+    if (ch === '"') {
+      inString = false;
+      out += ch;
+      continue;
+    }
+
+    const code = text.charCodeAt(i);
+    out +=
+      code <= 0x1f ? (CONTROL_ESCAPES[code] ?? `\\u${code.toString(16).padStart(4, "0")}`) : ch;
+  }
+
+  return out;
+}
+
+const CONTROL_ESCAPES: Record<number, string> = {
+  0x08: "\\b",
+  0x09: "\\t",
+  0x0a: "\\n",
+  0x0c: "\\f",
+  0x0d: "\\r",
+};
+
+/**
+ * Parses every `<script type="application/ld+json">` block; unparseable
+ * blocks are skipped. Tries a short, ordered list of safe repairs before
+ * giving up on a block — HTML-decoding (some sites double-escape the JSON
+ * payload) and/or control-character escaping (see
+ * `escapeRawControlCharsInJsonStrings`) — but never guesses at or fabricates
+ * content: the first candidate that `JSON.parse` itself accepts wins, and a
+ * block that no candidate can parse is skipped exactly as it always was.
+ */
 export function extractJsonLdBlocks(html: string): unknown[] {
   const blocks: unknown[] = [];
   // `findElements` strips <script> content, so scan the raw document here.
@@ -27,15 +101,35 @@ export function extractJsonLdBlocks(html: string): unknown[] {
     if (!/type\s*=\s*["']?application\/ld\+json/i.test(match[1])) continue;
     const raw = match[2].trim();
     if (!raw) continue;
+
+    // Each candidate is computed lazily, only once the previous one has
+    // failed to parse — the overwhelmingly common case (well-formed JSON)
+    // never touches the repair functions at all.
+    //
+    // Control-character repair always runs AFTER HTML-decoding, never
+    // instead of it: a description field is very often HTML-escaped
+    // (`&lt;p&gt;`) as ordinary, correct content, and downstream
+    // `readDescription` only recognizes literal `<p>`/`</p>` tags — decoding
+    // is idempotent and harmless when there is nothing to decode, but
+    // skipping it here would hand back a block that parses yet still has
+    // its markup entity-escaped, which is silently wrong rather than merely
+    // unparsed.
     try {
       blocks.push(JSON.parse(raw));
+      continue;
     } catch {
-      // Some sites HTML-escape the JSON payload inside the script tag.
-      try {
-        blocks.push(JSON.parse(decodeHtmlEntities(raw)));
-      } catch {
-        continue;
-      }
+      // fall through
+    }
+    try {
+      blocks.push(JSON.parse(decodeHtmlEntities(raw)));
+      continue;
+    } catch {
+      // fall through
+    }
+    try {
+      blocks.push(JSON.parse(escapeRawControlCharsInJsonStrings(decodeHtmlEntities(raw))));
+    } catch {
+      // No safe repair parsed — skip the block, exactly as before.
     }
   }
 

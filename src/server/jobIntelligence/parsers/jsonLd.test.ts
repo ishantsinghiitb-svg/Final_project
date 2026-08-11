@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  escapeRawControlCharsInJsonStrings,
   extractJsonLdBlocks,
   findJobPostingNode,
   findJobPostingNodes,
@@ -16,6 +17,11 @@ import {
 
 function script(payload: unknown): string {
   return `<script type="application/ld+json">${JSON.stringify(payload)}</script>`;
+}
+
+/** Wraps already-serialized JSON text verbatim, for fixtures that need control over the raw bytes. */
+function rawScript(json: string): string {
+  return `<script type="application/ld+json">${json}</script>`;
 }
 
 describe("extractJsonLdBlocks", () => {
@@ -41,6 +47,144 @@ describe("extractJsonLdBlocks", () => {
   it("tolerates attribute order and single quotes on the type", () => {
     const html = `<script data-x='1' type='application/ld+json'>{"a":2}</script>`;
     expect(extractJsonLdBlocks(html)).toEqual([{ a: 2 }]);
+  });
+
+  // ── Module 10B.2.5: recovering raw control characters inside a JSON string ──
+
+  it("recovers a block whose string value contains a raw newline", () => {
+    // The exact defect shape found in the wild: a JobPosting's description
+    // pasted in with a literal newline instead of an escaped \n, which the
+    // JSON spec forbids unescaped inside a string.
+    const html = rawScript(
+      '{"@type":"JobPosting","title":"Engineer","description":"<p>Line one</p>\n<p>Line two</p>"}',
+    );
+    const blocks = extractJsonLdBlocks(html);
+    expect(blocks).toHaveLength(1);
+    expect((blocks[0] as { description: string }).description).toBe(
+      "<p>Line one</p>\n<p>Line two</p>",
+    );
+  });
+
+  it("recovers raw carriage-return and tab control characters inside a string", () => {
+    const html = rawScript('{"a":"line1\r\nline2\tindented"}');
+    expect(extractJsonLdBlocks(html)).toEqual([{ a: "line1\r\nline2\tindented" }]);
+  });
+
+  it("recovers an otherwise-uncommon raw control character via \\u escaping", () => {
+    const html = rawScript('{"a":"bell\x07here"}');
+    expect(extractJsonLdBlocks(html)).toEqual([{ a: "bell\x07here" }]);
+  });
+
+  it("does not double-escape an already-valid \\n", () => {
+    const html = rawScript('{"a":"line1\\nline2"}');
+    expect(extractJsonLdBlocks(html)).toEqual([{ a: "line1\nline2" }]);
+  });
+
+  it("preserves quotes and backslashes inside a repaired block", () => {
+    const html = rawScript('{"a":"He said \\"hi\\" then C:\\\\path\nnext line"}');
+    expect(extractJsonLdBlocks(html)).toEqual([{ a: 'He said "hi" then C:\\path\nnext line' }]);
+  });
+
+  it("preserves Unicode text inside a repaired block", () => {
+    const html = rawScript('{"a":"caf\u00e9 \ud83d\ude80\nnext line"}');
+    expect(extractJsonLdBlocks(html)).toEqual([{ a: "café 🚀\nnext line" }]);
+  });
+
+  it("still rejects JSON that is malformed for a reason repair cannot fix", () => {
+    const html = rawScript('{"a": "unterminated\n');
+    expect(extractJsonLdBlocks(html)).toEqual([]);
+  });
+
+  it("recovers multiple blocks independently — one clean, one needing repair", () => {
+    const html = script({ a: 1 }) + rawScript('{"b":"broken\nvalue"}');
+    expect(extractJsonLdBlocks(html)).toEqual([{ a: 1 }, { b: "broken\nvalue" }]);
+  });
+
+  it("still finds a JobPosting once its description is repaired", () => {
+    const html = rawScript(
+      '{"@type":"JobPosting","title":"Backend Engineer","description":"para one\npara two"}',
+    );
+    const node = findJobPostingNode(html);
+    expect(node?.title).toBe("Backend Engineer");
+    expect(node?.description).toBe("para one\npara two");
+  });
+
+  it("recovers a real-world defect shape: HTML-escaped markup AND a raw newline together", () => {
+    // The exact shape found live on a job board: the description is
+    // HTML-entity-escaped (&lt;p&gt;...) as many sites do, AND the ATS
+    // joined two paragraphs with a literal newline instead of \n. Escaping
+    // the raw newline alone is enough to make the block parseable — the
+    // string value legitimately keeps its literal "&lt;p&gt;" text at this
+    // layer, exactly as a normal (non-broken) HTML-escaped description
+    // would. `readDescription`'s `htmlToPlainText` is what decodes entities
+    // and strips tags, downstream, for every JSON-LD page alike — that is
+    // the layer this repair needs to hand a *parseable* block to, not a
+    // fully HTML-decoded one.
+    const html = rawScript(
+      '{"@type":"JobPosting","title":"Assistant Manager Finance",' +
+        '"description":"&lt;p&gt;About us&lt;/p&gt;\n&lt;p&gt;The role&lt;/p&gt;"}',
+    );
+    const node = findJobPostingNode(html);
+    expect(node?.title).toBe("Assistant Manager Finance");
+    expect(readDescription(node!)).toBe("About us\n\nThe role");
+  });
+});
+
+describe("escapeRawControlCharsInJsonStrings", () => {
+  it("leaves already-valid JSON completely unchanged", () => {
+    const json = '{"a":1,"b":"two words","c":[1,2,3],"d":null,"e":true}';
+    expect(escapeRawControlCharsInJsonStrings(json)).toBe(json);
+  });
+
+  it("leaves whitespace OUTSIDE strings untouched, including newlines", () => {
+    const json = '{\n  "a": 1,\n  "b": 2\n}';
+    expect(escapeRawControlCharsInJsonStrings(json)).toBe(json);
+  });
+
+  it("escapes a raw newline inside a string but not the identical byte outside one", () => {
+    const input = '{\n"a":"line1\nline2"\n}';
+    const result = escapeRawControlCharsInJsonStrings(input);
+    // The structural newlines (outside the string) are byte-identical...
+    expect(result.startsWith('{\n"a":"')).toBe(true);
+    expect(result.endsWith('"\n}')).toBe(true);
+    // ...only the one inside the string became a real JSON escape.
+    expect(result).toContain("line1\\nline2");
+    expect(JSON.parse(result)).toEqual({ a: "line1\nline2" });
+  });
+
+  it("does not touch an already-escaped \\n", () => {
+    const input = '{"a":"line1\\nline2"}';
+    expect(escapeRawControlCharsInJsonStrings(input)).toBe(input);
+  });
+
+  it("does not toggle string state on an escaped quote", () => {
+    const input = '{"a":"quote: \\" still inside\nstring"}';
+    const result = escapeRawControlCharsInJsonStrings(input);
+    expect(JSON.parse(result)).toEqual({ a: 'quote: " still inside\nstring' });
+  });
+
+  it("preserves a literal backslash immediately before a repaired control character", () => {
+    const input = '{"a":"C:\\\\path\nnext"}';
+    const result = escapeRawControlCharsInJsonStrings(input);
+    expect(JSON.parse(result)).toEqual({ a: "C:\\path\nnext" });
+  });
+
+  it("preserves Unicode characters, including surrogate pairs, unchanged", () => {
+    const input = '{"a":"caf\u00e9 \ud83d\ude80"}';
+    expect(escapeRawControlCharsInJsonStrings(input)).toBe(input);
+  });
+
+  it("handles every JSON-named control escape (\\b \\t \\n \\f \\r)", () => {
+    const input = '{"a":"\b\t\n\f\r"}';
+    const result = escapeRawControlCharsInJsonStrings(input);
+    expect(result).toBe('{"a":"\\b\\t\\n\\f\\r"}');
+    expect(JSON.parse(result)).toEqual({ a: "\b\t\n\f\r" });
+  });
+
+  it("escapes a control character with no short name as \\u00XX", () => {
+    const input = '{"a":"\x01"}';
+    const result = escapeRawControlCharsInJsonStrings(input);
+    expect(result).toBe('{"a":"\\u0001"}');
   });
 });
 

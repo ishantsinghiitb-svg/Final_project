@@ -95,7 +95,9 @@ export function registryEntry(overrides: Partial<CompanyRegistryEntry> = {}): Co
     // ── Module 10B.1.5 identity + health ──
     parentCompany: null,
     aliases: [],
-    healthStatus: null,
+    // Module 10B.2 gates crawling on verified health, so the DEFAULT fixture
+    // is a verified source — tests about gating set healthStatus explicitly.
+    healthStatus: "HEALTHY",
     lastCheckedAt: null,
     lastHealthSuccessAt: null,
     lastFailureAt: null,

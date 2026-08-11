@@ -34,7 +34,17 @@ export type CrawlCounters = {
    * is what an operator actually asks about.
    */
   duplicates: number;
-  /** Postings deliberately not stored (validation rejected them). */
+  /**
+   * Postings the VALIDATOR refused — bad data, placeholder employer, or older
+   * than the active window. We read them and decided not to store them.
+   */
+  rejected: number;
+  /**
+   * Postings the crawler/parser deliberately excluded BEFORE validation — an
+   * Ashby draft (`isListed: false`), a Recruitee offer that is not published.
+   * Distinct from `rejected` on purpose: a board full of drafts is normal, a
+   * board full of validator rejections means the parser or the source changed.
+   */
   skipped: number;
   /** Postings lost to an error (parse crash, store failure). */
   failed: number;
@@ -49,9 +59,54 @@ export function emptyCounters(): CrawlCounters {
     updated: 0,
     merged: 0,
     duplicates: 0,
+    rejected: 0,
     skipped: 0,
     failed: 0,
   };
+}
+
+/**
+ * Per-platform rollup (Module 10B.2). "Which platform is pulling its weight,
+ * and which one quietly stopped working" is a question the flat company list
+ * cannot answer once the registry holds ~180 entries.
+ */
+export type PlatformCrawlSummary = {
+  platform: string;
+  targets: number;
+  succeeded: number;
+  failed: number;
+  blocked: number;
+  skipped: number;
+  counters: CrawlCounters;
+};
+
+export function rollupByPlatform(companies: CompanyCrawlReport[]): PlatformCrawlSummary[] {
+  const byPlatform = new Map<string, PlatformCrawlSummary>();
+
+  for (const company of companies) {
+    let summary = byPlatform.get(company.platform);
+    if (!summary) {
+      summary = {
+        platform: company.platform,
+        targets: 0,
+        succeeded: 0,
+        failed: 0,
+        blocked: 0,
+        skipped: 0,
+        counters: emptyCounters(),
+      };
+      byPlatform.set(company.platform, summary);
+    }
+
+    summary.targets++;
+    if (company.status === "success" || company.status === "partial") summary.succeeded++;
+    else if (company.status === "failed") summary.failed++;
+    else if (company.status === "blocked") summary.blocked++;
+    else if (company.status === "skipped") summary.skipped++;
+    summary.counters = addCounters(summary.counters, company.counters);
+  }
+
+  return [...byPlatform.values()].sort((a, b) => b.counters.imported - a.counters.imported);
 }
 
 export function addCounters(a: CrawlCounters, b: CrawlCounters): CrawlCounters {
@@ -63,6 +118,7 @@ export function addCounters(a: CrawlCounters, b: CrawlCounters): CrawlCounters {
     updated: a.updated + b.updated,
     merged: a.merged + b.merged,
     duplicates: a.duplicates + b.duplicates,
+    rejected: a.rejected + b.rejected,
     skipped: a.skipped + b.skipped,
     failed: a.failed + b.failed,
   };
@@ -118,6 +174,8 @@ export type CrawlReport = {
   companiesScanned: number;
   totals: CrawlCounters;
   companies: CompanyCrawlReport[];
+  /** Per-platform rollup (Module 10B.2) — see rollupByPlatform. */
+  platforms: PlatformCrawlSummary[];
 
   /** Declared platform limitations relevant to this run. */
   limitations: ReportedLimitation[];
@@ -134,6 +192,7 @@ export function toRunCounters(report: CrawlReport) {
     jobs_imported: report.totals.imported,
     jobs_updated: report.totals.updated,
     jobs_duplicates: report.totals.duplicates,
+    jobs_rejected: report.totals.rejected,
     jobs_skipped: report.totals.skipped,
     jobs_failed: report.totals.failed,
   };
@@ -146,6 +205,7 @@ export function summarizeReport(report: CrawlReport): string {
   return (
     `${prefix}: ${report.companiesScanned} target(s), ${totals.discovered} discovered, ` +
     `${totals.imported} imported, ${totals.duplicates} duplicate(s), ` +
-    `${totals.skipped} skipped, ${totals.failed} failed in ${(report.durationMs / 1000).toFixed(1)}s`
+    `${totals.rejected} rejected, ${totals.skipped} skipped, ` +
+    `${totals.failed} failed in ${(report.durationMs / 1000).toFixed(1)}s`
   );
 }

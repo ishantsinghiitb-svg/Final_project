@@ -23,6 +23,7 @@ import {
 import { DEFAULT_ATS_LIMITS } from "../adapters/careerPages/ats/types";
 import {
   createInternshalaAdapter,
+  DEFAULT_INTERNSHALA_LIMITS,
   INTERNSHALA_PLATFORM,
 } from "../adapters/internshala/InternshalaAdapter";
 import {
@@ -31,6 +32,7 @@ import {
 } from "../adapters/weWorkRemotely/WeWorkRemotelyAdapter";
 import type { PlatformAdapter } from "../adapters/types";
 import type { CrawlFetcher } from "./HttpFetcher";
+import type { CrawlObservations } from "./CrawlObservations";
 import { PLATFORM_LIMITATIONS, type PlatformLimitation } from "./limitations";
 import type { CompanyRegistryEntry } from "./registry/CompanyRegistry";
 
@@ -44,15 +46,16 @@ export type PlatformDescriptor = {
   /** Present when `supported` is false. */
   limitation?: PlatformLimitation;
   /**
-   * Builds the adapter for one registry entry. `warnings` is a sink the
-   * crawler pushes non-fatal notes into — `PlatformCrawler.fetchRawPostings`
-   * is Module 10A's frozen signature and can only return payloads, so this is
-   * how pagination caps and empty-board notices reach the crawl report.
+   * Builds the adapter for one registry entry. `observations` is a sink the
+   * crawler fills with warnings, deliberately-excluded posting counts and a
+   * completeness flag — `PlatformCrawler.fetchRawPostings` is Module 10A's
+   * frozen signature and can only return payloads, so this is how those reach
+   * the crawl report. See ./CrawlObservations.ts.
    */
   createAdapter: (
     fetcher: CrawlFetcher,
     entry: CompanyRegistryEntry,
-    warnings: string[],
+    observations: CrawlObservations,
   ) => PlatformAdapter;
 };
 
@@ -64,13 +67,13 @@ const SUPPORTED: PlatformDescriptor[] = [
     method:
       "Public ATS job-board APIs (Greenhouse, Lever, Ashby, SmartRecruiters, Workable, Recruitee) " +
       "with a schema.org JSON-LD fallback for pages on no known ATS.",
-    createAdapter: (fetcher, entry, warnings) => ({
+    createAdapter: (fetcher, entry, observations) => ({
       platform: CAREER_PAGES_PLATFORM,
       crawler: new CareerPagesCrawler(
         fetcher,
         { companyName: entry.companyName, config: entry.config },
         DEFAULT_ATS_LIMITS,
-        warnings,
+        observations,
       ),
       parser: new CareerPagesParser(),
     }),
@@ -80,7 +83,8 @@ const SUPPORTED: PlatformDescriptor[] = [
     displayName: "We Work Remotely",
     supported: true,
     method: "Official RSS feeds (robots.txt: Allow: /).",
-    createAdapter: (fetcher) => createWeWorkRemotelyAdapter(fetcher),
+    createAdapter: (fetcher, _entry, observations) =>
+      createWeWorkRemotelyAdapter(fetcher, observations),
   },
   {
     platform: INTERNSHALA_PLATFORM,
@@ -88,7 +92,8 @@ const SUPPORTED: PlatformDescriptor[] = [
     supported: true,
     method:
       "Server-rendered listing pages (path-based pagination only) followed by per-posting detail pages.",
-    createAdapter: (fetcher) => createInternshalaAdapter(fetcher),
+    createAdapter: (fetcher, _entry, observations) =>
+      createInternshalaAdapter(fetcher, DEFAULT_INTERNSHALA_LIMITS, observations),
   },
 ];
 

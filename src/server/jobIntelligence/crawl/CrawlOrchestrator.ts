@@ -19,12 +19,14 @@ import type { JobIntelligenceStore } from "../store/JobIntelligenceStore";
 import type { PlatformAdapter } from "../adapters/types";
 import { crawlErrorMessage, CrawlTargetError, isBlockedError } from "./errors";
 import type { CrawlFetcher } from "./HttpFetcher";
+import { newObservations } from "./CrawlObservations";
 import { getPlatformDescriptor, PLATFORM_CATALOG } from "./PlatformCatalog";
 import { DryRunJobIntelligenceStore } from "./DryRunStore";
 import { getPlatformLimitation } from "./limitations";
 import {
   addCounters,
   emptyCounters,
+  rollupByPlatform,
   MAX_ISSUES_PER_COMPANY,
   type CompanyCrawlReport,
   type CompanyCrawlStatus,
@@ -37,6 +39,7 @@ import {
 } from "./report/CrawlReport";
 import type { CrawlReportStore } from "./report/CrawlReportStore";
 import {
+  crawlEligibility,
   isEntryDue,
   toCrawlTarget,
   type CompanyRegistryEntry,
@@ -141,6 +144,16 @@ export class CrawlOrchestrator {
       issues: extra.issues ?? base.issues,
     });
 
+    // Module 10B.2: only verified sources are crawled. A BROKEN/BLOCKED/
+    // UNAVAILABLE/UNKNOWN source is refused BEFORE any request is made — we
+    // already have evidence it will not yield jobs, so spending a request on
+    // it would be both wasteful and, for a blocked host, impolite.
+    const eligibility = crawlEligibility(entry);
+    if (!eligibility.crawlable) {
+      await this.markRegistry(entry, "skipped", eligibility.reason, 0, request.mode);
+      return finish("skipped", emptyCounters(), { message: eligibility.reason });
+    }
+
     // Not due yet — reported explicitly so a skip is never mistaken for a
     // zero-result crawl.
     if (!isEntryDue(entry, this.now(), request.force ?? false)) {
@@ -168,12 +181,12 @@ export class CrawlOrchestrator {
 
     const collector = new ValidationCollector();
     /** Filled by the crawler while it runs; read after the pipeline finishes. */
-    const crawlerWarnings: string[] = [];
+    const observations = newObservations();
     let adapter: PlatformAdapter;
     let resolvedProvider: string | undefined;
 
     try {
-      const built = descriptor.createAdapter(this.deps.fetcher, entry, crawlerWarnings);
+      const built = descriptor.createAdapter(this.deps.fetcher, entry, observations);
       // Validation is inserted by decorating the parser — see
       // ./validate/ValidatingJobParser.ts for why this, and not a forked runner.
       adapter = {
@@ -199,25 +212,45 @@ export class CrawlOrchestrator {
     try {
       const result = await runPlatformCrawl(adapter, toCrawlTarget(entry), store);
       const counters = this.countOutcomes(result.outcomes, collector, result.total);
+      // Postings the crawler excluded before parsing (drafts, unpublished).
+      counters.skipped += observations.skipped;
       const issues = this.collectIssues(result.outcomes, collector);
-      const warnings = this.collectWarnings(collector, crawlerWarnings);
+      const warnings = this.collectWarnings(collector, observations.warnings);
 
+      // Module 10B.2: HTTP 200 is not success. A run that discovered no
+      // postings at all did not do the job it was asked to do, even though
+      // nothing errored — the board may have moved, emptied, or changed shape,
+      // and reporting that as green is how a silently-dead source survives for
+      // weeks. It is reported as `failed` with an explicit reason.
       const status: CompanyCrawlStatus =
-        counters.failed > 0 && counters.imported + counters.duplicates === 0
+        counters.discovered === 0
           ? "failed"
-          : counters.failed > 0 || counters.skipped > 0
-            ? "partial"
-            : "success";
+          : counters.failed > 0 && counters.imported + counters.duplicates === 0
+            ? "failed"
+            : counters.failed > 0 || counters.rejected > 0
+              ? "partial"
+              : "success";
+
+      const zeroDiscoveryMessage =
+        counters.discovered === 0
+          ? "Source responded but returned no job postings. It may have moved, emptied, or changed format."
+          : undefined;
 
       await this.markRegistry(
         entry,
         status === "failed" ? "failed" : status === "partial" ? "partial" : "success",
-        counters.failed > 0 ? `${counters.failed} posting(s) failed.` : null,
+        zeroDiscoveryMessage ??
+          (counters.failed > 0 ? `${counters.failed} posting(s) failed.` : null),
         counters.imported,
         request.mode,
       );
 
-      return finish(status, counters, { issues, warnings, resolvedProvider });
+      return finish(status, counters, {
+        issues,
+        warnings,
+        resolvedProvider,
+        message: zeroDiscoveryMessage,
+      });
     } catch (err) {
       const message = crawlErrorMessage(err, "Crawl failed for this entry.");
       await this.markRegistry(entry, "failed", message, 0, request.mode);
@@ -226,7 +259,7 @@ export class CrawlOrchestrator {
         resolvedProvider,
         // Whatever the crawler managed to note before it gave up is still
         // useful context for why it did.
-        warnings: crawlerWarnings.slice(0, MAX_ISSUES_PER_COMPANY),
+        warnings: observations.warnings.slice(0, MAX_ISSUES_PER_COMPANY),
       });
     }
   }
@@ -266,7 +299,9 @@ export class CrawlOrchestrator {
           counters.validated++;
           break;
         case "parse_failed":
-          if (collector.get(outcome.sourceUrl)?.kind === "skipped") counters.skipped++;
+          // The validator decorator records WHY: a posting it refused is a
+          // `rejected`, anything else genuinely broke.
+          if (collector.get(outcome.sourceUrl)?.kind === "skipped") counters.rejected++;
           else counters.failed++;
           break;
       }
@@ -350,6 +385,7 @@ export class CrawlOrchestrator {
       companiesScanned: input.companies.length,
       totals,
       companies: input.companies,
+      platforms: rollupByPlatform(input.companies),
       limitations: relevantLimitations(input.platform, input.companies),
     };
   }

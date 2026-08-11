@@ -81,6 +81,8 @@ export const smartRecruitersProvider: AtsProvider = {
     const fetchedAt = new Date().toISOString();
     const raws: RawJobPayload[] = [];
     const warnings: string[] = [];
+    /** From the board's own `totalFound`, so completeness is checked not assumed. */
+    let expectedTotal: number | null = null;
 
     for (let offset = 0; raws.length < limits.maxPostings; offset += PAGE_SIZE) {
       const response = await fetcher.fetchText(pageEndpoint(board, offset), {
@@ -112,7 +114,8 @@ export const smartRecruitersProvider: AtsProvider = {
         break;
       }
 
-      const content = (body as { content?: unknown })?.content;
+      const envelope = body as { content?: unknown; totalFound?: unknown } | null;
+      const content = envelope?.content;
       if (!Array.isArray(content)) {
         if (offset === 0) {
           return {
@@ -125,6 +128,36 @@ export const smartRecruitersProvider: AtsProvider = {
           };
         }
         break;
+      }
+
+      // ⚠️ Module 10B.2 — the SmartRecruiters phantom-board rule.
+      //
+      // This API answers HTTP 200 with `{"totalFound":0,"content":[]}` for ANY
+      // company slug, including nonsense ones (verified live during the Module
+      // 10B.1.5 registry probe). So an empty first page is NOT "a real board
+      // with no openings today" — it is indistinguishable from "this board does
+      // not exist", and treating it as success would let a mistyped slug sit
+      // in the registry looking healthy forever.
+      //
+      // It is therefore reported as a FAILURE with an explicit reason, never as
+      // a zero-result success, and no phantom jobs can be imported from it.
+      if (offset === 0 && content.length === 0) {
+        return {
+          raws: [],
+          warnings,
+          failure: {
+            reason:
+              `smartrecruiters board "${board.token}" returned 0 postings. This API answers 200 ` +
+              `with an empty board for ANY slug, so this is treated as an invalid/unknown board ` +
+              `rather than an empty one — re-verify the board token.`,
+            blocked: false,
+          },
+        };
+      }
+
+      // `totalFound` lets completeness be checked rather than assumed.
+      if (offset === 0 && typeof envelope?.totalFound === "number") {
+        expectedTotal = envelope.totalFound;
       }
 
       for (const posting of content) {
@@ -142,8 +175,13 @@ export const smartRecruitersProvider: AtsProvider = {
       if (content.length < PAGE_SIZE) break;
     }
 
-    if (raws.length === 0 && warnings.length === 0) {
-      warnings.push(`smartrecruiters board "${board.token}" returned 0 postings.`);
+    // Completeness is CHECKED, not assumed: the board tells us how many
+    // postings it has, so a short crawl is reported rather than silently
+    // passing off a partial board as the whole thing.
+    if (expectedTotal !== null && raws.length < Math.min(expectedTotal, limits.maxPostings)) {
+      warnings.push(
+        `Collected ${raws.length} of ${expectedTotal} posting(s) reported by the board — pagination did not complete.`,
+      );
     }
     return { raws, warnings };
   },

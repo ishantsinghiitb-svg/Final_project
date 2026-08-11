@@ -210,6 +210,7 @@ describe("crawl report counters", () => {
       updated: 0,
       merged: 0,
       duplicates: 0,
+      rejected: 0,
       skipped: 0,
       failed: 0,
     });
@@ -237,6 +238,7 @@ describe("crawl report counters", () => {
       companiesScanned: 3,
       totals: { ...emptyCounters(), discovered: 40, imported: 30, duplicates: 8, failed: 2 },
       companies: [],
+      platforms: [],
       limitations: [],
     };
   }
@@ -253,7 +255,7 @@ describe("crawl report counters", () => {
 
   it("summarizes in one line", () => {
     expect(summarizeReport(report())).toBe(
-      "Crawl: 3 target(s), 40 discovered, 30 imported, 8 duplicate(s), 0 skipped, 2 failed in 12.0s",
+      "Crawl: 3 target(s), 40 discovered, 30 imported, 8 duplicate(s), 0 rejected, 0 skipped, 2 failed in 12.0s",
     );
   });
 

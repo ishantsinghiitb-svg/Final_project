@@ -68,6 +68,11 @@ export const greenhouseProvider: AtsProvider = {
       sourceUrlOf: (posting, resolved) =>
         pickString(posting, "absolute_url") ??
         `https://boards.greenhouse.io/${resolved.token}/jobs/${pickString(posting, "id") ?? ""}`,
+      // Greenhouse publishes `meta.total`, so completeness is verifiable.
+      reportedTotal: (body) => {
+        const total = (body as { meta?: { total?: unknown } })?.meta?.total;
+        return typeof total === "number" ? total : null;
+      },
     });
   },
 
@@ -124,7 +129,15 @@ export const greenhouseProvider: AtsProvider = {
 
       companyCareerUrl: payload.board.careersUrl,
 
+      // `first_published` is the real posting date; `updated_at` is a fallback
+      // only, because an edit is not a re-post.
       postedAt: toIsoDate(job.first_published) ?? toIsoDate(job.updated_at),
+
+      // Module 10B.2 enrichment. Greenhouse's `metadata[]` is free-form
+      // per-board custom fields, so only entries that are genuinely
+      // tag-shaped are promoted — a "Salary Range" metadata entry is not a
+      // tag, and inventing one would put noise into the search vector.
+      tags: readGreenhouseTags(job),
 
       parserVersion: GREENHOUSE_PARSER_VERSION,
       parserConfidence: description ? 0.95 : 0.8,
@@ -145,4 +158,44 @@ function readMetadata(job: GreenhouseJob, name: string): string | null {
   if (Array.isArray(value) && typeof value[0] === "string")
     return collapseWhitespace(value[0]) || null;
   return null;
+}
+
+/**
+ * Tag-shaped values from a Greenhouse board's free-form `metadata[]`, plus its
+ * office names.
+ *
+ * ⚠️ Deliberately conservative. `metadata[]` is whatever the employer
+ * configured — "Salary Range", "Requisition Owner", long free text. Promoting
+ * all of it to `tags` would pollute the search vector (tags are weighted B in
+ * `global_job_search_vector`) with values that are not tags at all. Only short,
+ * single-line, non-numeric string values from tag-ish fields are taken.
+ *
+ * `updated_at` is deliberately NOT stored: `global_jobs` has no "source last
+ * updated" column, and overloading `updated_at` (which means "when OUR row
+ * changed") would corrupt a column other features rely on. It is still used as
+ * a `postedAt` fallback above.
+ */
+export function readGreenhouseTags(job: GreenhouseJob): string[] | null {
+  const tags: string[] = [];
+
+  for (const office of job.offices ?? []) {
+    const name = collapseWhitespace(office?.name ?? "");
+    if (name) tags.push(name);
+  }
+
+  const TAG_FIELDS = /(employment type|job type|work type|team|category|level|seniority)/i;
+  for (const entry of job.metadata ?? []) {
+    const name = collapseWhitespace(entry?.name ?? "");
+    if (!name || !TAG_FIELDS.test(name)) continue;
+
+    const value = entry?.value;
+    if (typeof value !== "string") continue;
+    const clean = collapseWhitespace(value);
+    // A tag is a short label, not a sentence or a number.
+    if (!clean || clean.length > 40 || /^\d+$/.test(clean)) continue;
+    tags.push(clean);
+  }
+
+  const unique = [...new Set(tags)];
+  return unique.length > 0 ? unique : null;
 }

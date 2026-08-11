@@ -1,9 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  backoffDelayMs,
   CRAWLER_USER_AGENT,
   HttpFetcher,
   looksLikeChallengePage,
   parseJsonResult,
+  parseRetryAfter,
 } from "./HttpFetcher";
 
 type FetchArgs = [input: string, init?: RequestInit];
@@ -28,8 +30,14 @@ afterEach(() => {
 });
 
 // No host delay in tests — the politeness gap is verified explicitly below.
+// No host delay, no real sleeping, deterministic jitter — retry behaviour is
+// asserted explicitly below rather than paid for in wall-clock time here.
 function fetcher() {
-  return new HttpFetcher(0);
+  return new HttpFetcher(
+    0,
+    async () => {},
+    () => 0.5,
+  );
 }
 
 describe("looksLikeChallengePage", () => {
@@ -132,7 +140,8 @@ describe("HttpFetcher.fetchText", () => {
     const result = await fetcher().fetchText("https://a.test/x");
     if (!result.ok) {
       expect(result.kind).toBe("network");
-      expect(result.reason).toBe("ECONNREFUSED");
+      // Transient failures are retried, and the report says so.
+      expect(result.reason).toMatch(/^ECONNREFUSED \(after 3 attempts\)$/);
     } else throw new Error("expected failure");
   });
 
@@ -186,6 +195,153 @@ describe("HttpFetcher.fetchText", () => {
     await polite.fetchText("https://b.test/1");
 
     expect(slept).toHaveLength(0);
+  });
+});
+
+// ── Module 10B.2: retries ──
+
+describe("backoffDelayMs", () => {
+  it("grows exponentially and is capped", () => {
+    const noJitter = () => 1;
+    expect(backoffDelayMs(0, noJitter)).toBe(600);
+    expect(backoffDelayMs(1, noJitter)).toBe(1200);
+    expect(backoffDelayMs(2, noJitter)).toBe(2400);
+    expect(backoffDelayMs(10, noJitter)).toBe(8000);
+  });
+
+  it("applies jitter between 50% and 100% of the delay", () => {
+    expect(backoffDelayMs(1, () => 0)).toBe(600);
+    expect(backoffDelayMs(1, () => 1)).toBe(1200);
+  });
+});
+
+describe("parseRetryAfter", () => {
+  it("reads delta-seconds", () => {
+    expect(parseRetryAfter("2")).toBe(2000);
+  });
+
+  it("reads an HTTP-date", () => {
+    const now = Date.parse("2026-08-09T00:00:00Z");
+    expect(parseRetryAfter("Sun, 09 Aug 2026 00:00:03 GMT", now)).toBe(3000);
+  });
+
+  it("caps a hostile value so one board cannot stall a run", () => {
+    expect(parseRetryAfter("99999")).toBe(8000);
+  });
+
+  it("returns null for nonsense or a missing header", () => {
+    expect(parseRetryAfter(null)).toBeNull();
+    expect(parseRetryAfter("soon")).toBeNull();
+  });
+
+  it("never returns a negative delay for a past date", () => {
+    const now = Date.parse("2026-08-09T00:00:10Z");
+    expect(parseRetryAfter("Sun, 09 Aug 2026 00:00:00 GMT", now)).toBe(0);
+  });
+});
+
+describe("HttpFetcher retries", () => {
+  /** Returns the given responses in order, one per attempt. */
+  function sequence(responses: Array<() => Response | Promise<Response>>) {
+    let index = 0;
+    const calls = { count: 0 };
+    vi.stubGlobal("fetch", () => {
+      calls.count++;
+      const next = responses[Math.min(index++, responses.length - 1)];
+      return Promise.resolve(next());
+    });
+    return calls;
+  }
+
+  it("retries a 500 and succeeds on a later attempt", async () => {
+    const calls = sequence([
+      () => new Response("", { status: 500 }),
+      () => new Response("", { status: 500 }),
+      () => ok("recovered"),
+    ]);
+
+    const result = await fetcher().fetchText("https://a.test/x");
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.body).toBe("recovered");
+    expect(calls.count).toBe(3);
+  });
+
+  it("retries a timeout", async () => {
+    let attempts = 0;
+    vi.stubGlobal("fetch", () => {
+      attempts++;
+      if (attempts < 3) {
+        const error = new Error("aborted");
+        error.name = "AbortError";
+        return Promise.reject(error);
+      }
+      return Promise.resolve(ok("late but fine"));
+    });
+
+    const result = await fetcher().fetchText("https://a.test/x");
+    expect(result.ok).toBe(true);
+    expect(attempts).toBe(3);
+  });
+
+  it("retries a 429 — that is the platform asking us to slow down, not to go away", async () => {
+    const calls = sequence([() => new Response("", { status: 429 }), () => ok("fine")]);
+    const result = await fetcher().fetchText("https://a.test/x");
+    expect(result.ok).toBe(true);
+    expect(calls.count).toBe(2);
+  });
+
+  it("does NOT retry a 403 — hammering a board that said no is the behaviour to avoid", async () => {
+    const calls = sequence([() => new Response("", { status: 403 })]);
+    const result = await fetcher().fetchText("https://a.test/x");
+
+    expect(result.ok).toBe(false);
+    expect(calls.count).toBe(1);
+    if (!result.ok) expect(result.reason).not.toMatch(/attempts/);
+  });
+
+  it.each([404, 410, 400])("does NOT retry a %d", async (status) => {
+    const calls = sequence([() => new Response("", { status })]);
+    await fetcher().fetchText("https://a.test/x");
+    expect(calls.count).toBe(1);
+  });
+
+  it("does NOT retry an anti-bot challenge page", async () => {
+    const calls = sequence([
+      () => ok(`<html><script src="https://ct.captcha-delivery.com/c.js"></script></html>`),
+    ]);
+    await fetcher().fetchText("https://a.test/x");
+    expect(calls.count).toBe(1);
+  });
+
+  it("gives up after the configured attempts and says how many it made", async () => {
+    const calls = sequence([() => new Response("", { status: 503 })]);
+    const result = await fetcher().fetchText("https://a.test/x", { retries: 2 });
+
+    expect(calls.count).toBe(3);
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.reason).toMatch(/after 3 attempts/);
+  });
+
+  it("honours retries: 0", async () => {
+    const calls = sequence([() => new Response("", { status: 500 })]);
+    await fetcher().fetchText("https://a.test/x", { retries: 0 });
+    expect(calls.count).toBe(1);
+  });
+
+  it("waits for Retry-After rather than its own backoff when the platform sets it", async () => {
+    const slept: number[] = [];
+    const polite = new HttpFetcher(
+      0,
+      async (ms) => void slept.push(ms),
+      () => 0.5,
+    );
+    sequence([
+      () => new Response("", { status: 429, headers: { "retry-after": "3" } }),
+      () => ok("fine"),
+    ]);
+
+    await polite.fetchText("https://a.test/x");
+    expect(slept).toEqual([3000]);
   });
 });
 
