@@ -141,7 +141,28 @@ export function resolveDuplicate(
     if (exact) return { tier: "external_id", matchId: exact.id };
   }
 
-  const byFingerprint = candidates.find((c) => c.fingerprint === incoming.fingerprint);
+  // Module 10B.3: a candidate from the SAME source carrying its OWN
+  // distinct, non-null source_job_id is a confirmed-different posting — the
+  // source itself has already told us these are two different requisitions
+  // (e.g. two open Greenhouse reqs with an identical title/location). That
+  // fact overrides both the fingerprint tier and the cross-platform tier,
+  // which exist only for cases where no reliable per-source id is
+  // available. Mirrors the guard in admin_upsert_global_job (the actual
+  // write path this function's decision is reported alongside) — see
+  // supabase/migrations/20260819000001_module10b3_dedup_source_id_guard.sql.
+  // Never excludes anything a genuine tier-1 match above would have caught,
+  // since that candidate's sourceJobId is by definition equal to incoming's.
+  const safeCandidates = candidates.filter(
+    (c) =>
+      !(
+        c.source === incoming.source &&
+        c.sourceJobId != null &&
+        incoming.sourceJobId != null &&
+        c.sourceJobId !== incoming.sourceJobId
+      ),
+  );
+
+  const byFingerprint = safeCandidates.find((c) => c.fingerprint === incoming.fingerprint);
   if (byFingerprint) return { tier: "fingerprint", matchId: byFingerprint.id };
 
   // Entry requirement mirrors the SQL: without a resolvable company, role,
@@ -152,7 +173,7 @@ export function resolveDuplicate(
 
   let bestId: string | null = null;
   let bestScore = 0;
-  for (const candidate of candidates) {
+  for (const candidate of safeCandidates) {
     const score = scoreCrossPlatformCandidate(incoming, candidate);
     if (score != null && score > bestScore) {
       bestScore = score;

@@ -10,6 +10,8 @@ import {
   verifySource,
 } from "./SourceVerifier";
 import { WWR_PLATFORM } from "../../adapters/weWorkRemotely/WeWorkRemotelyAdapter";
+import { INTERNSHALA_PLATFORM } from "../../adapters/internshala/InternshalaAdapter";
+import { crawlEligibility, type CompanyRegistryEntry } from "../registry/CompanyRegistry";
 
 const GH_API = (slug: string) =>
   `https://boards-api.greenhouse.io/v1/boards/${slug}/jobs?content=true`;
@@ -450,6 +452,180 @@ describe("verifySource — We Work Remotely (Module 10B.2 fix)", () => {
     // no JobPosting JSON-LD or job-shaped links in it either.
     expect(result.health).toBe("UNKNOWN");
     expect(result.detectedPlatform).not.toBe("weworkremotely");
+  });
+});
+
+describe("verifySource — Internshala (Module 10B.3 fix)", () => {
+  const LISTING = "https://internshala.com/internships/";
+
+  // Mirrors the real markup captured in InternshalaAdapter.test.ts — the
+  // same evidence extractListingCards() (and therefore the real crawler)
+  // actually depends on.
+  function listingHtml(cardCount: number): string {
+    const cards = Array.from({ length: cardCount }, (_, i) => {
+      const id = 3232915 + i;
+      return `
+        <div class="container-fluid individual_internship" id="individual_internship_${id}"
+             internshipId="${id}" data-href="/internship/detail/role-${id}">
+          <h2 class="job-internship-name">
+            <a class="job-title-href" href="/internship/detail/role-${id}">Role ${id}</a>
+          </h2>
+          <p class="company-name">Company ${id}</p>
+        </div>`;
+    }).join("");
+    return `<div id="internship_list_container_reactMain">${cards}</div>`;
+  }
+
+  it("a listing page with real posting cards is HEALTHY — the same evidence the crawler itself uses", async () => {
+    const fetcher = new FakeFetcher({
+      [LISTING]: html(listingHtml(2)),
+    });
+
+    const result = await verifySource(LISTING, "Internshala — Internships", fetcher, undefined, {
+      platform: INTERNSHALA_PLATFORM,
+    });
+
+    expect(result.health).toBe("HEALTHY");
+    expect(result.detectedPlatform).toBe("internshala");
+    expect(result.postingsSeen).toBe(2);
+    expect(result.errorReason).toBeNull();
+  });
+
+  it("a genuinely broken source (no posting cards) is still UNKNOWN, not HEALTHY", async () => {
+    const fetcher = new FakeFetcher({
+      [LISTING]: html("<div>Nothing here — markup changed or the page is empty.</div>"),
+    });
+
+    const result = await verifySource(LISTING, "Internshala — Internships", fetcher, undefined, {
+      platform: INTERNSHALA_PLATFORM,
+    });
+
+    expect(result.health).toBe("UNKNOWN");
+    expect(isCrawlableHealth(result.health)).toBe(false);
+    expect(result.errorReason).toMatch(/no posting cards/i);
+  });
+
+  it("does not require schema.org JobPosting markup — a page with cards but no JSON-LD is still HEALTHY", async () => {
+    // This is the exact bug being fixed: the generic detector would call this
+    // UNKNOWN because there is no JobPosting JSON-LD anywhere on the page.
+    const fetcher = new FakeFetcher({
+      [LISTING]: html(listingHtml(1)),
+    });
+
+    const result = await verifySource(LISTING, "Internshala — Internships", fetcher, undefined, {
+      platform: INTERNSHALA_PLATFORM,
+    });
+
+    expect(result.health).toBe("HEALTHY");
+    expect(isCrawlableHealth(result.health)).toBe(true);
+  });
+
+  it("maps an HTTP failure to the same health as every other provider", async () => {
+    const fetcher503 = new FakeFetcher({
+      [LISTING]: { failure: { ok: false, kind: "http", status: 503, reason: "HTTP 503" } },
+    });
+    expect(
+      (
+        await verifySource(LISTING, "Internshala", fetcher503, undefined, {
+          platform: INTERNSHALA_PLATFORM,
+        })
+      ).health,
+    ).toBe("UNAVAILABLE");
+
+    const fetcher404 = new FakeFetcher({
+      [LISTING]: {
+        failure: { ok: false, kind: "http", status: 404, reason: "HTTP 404 Not Found" },
+      },
+    });
+    expect(
+      (
+        await verifySource(LISTING, "Internshala", fetcher404, undefined, {
+          platform: INTERNSHALA_PLATFORM,
+        })
+      ).health,
+    ).toBe("BROKEN");
+
+    const blocked = new FakeFetcher({ [LISTING]: BLOCKED });
+    expect(
+      (
+        await verifySource(LISTING, "Internshala", blocked, undefined, {
+          platform: INTERNSHALA_PLATFORM,
+        })
+      ).health,
+    ).toBe("BLOCKED");
+  });
+
+  it("without the platform tag, the same URL still runs the generic detector (not Internshala-aware)", async () => {
+    // Proves the dispatch is opt-in via registry `platform`, not URL sniffing.
+    const fetcher = new FakeFetcher({
+      [LISTING]: html(listingHtml(2)),
+    });
+
+    const result = await verifySource(LISTING, "Internshala — Internships", fetcher);
+
+    // The generic detector finds no known ATS, no JobPosting JSON-LD, and
+    // (Internshala's cards are not <a> job links) no discoverable job links
+    // either — it never recognizes this as healthy without the platform tag.
+    expect(result.detectedPlatform).not.toBe("internshala");
+    expect(result.health).not.toBe("HEALTHY");
+  });
+
+  it("the generic JSON-LD/custom-careers path is unchanged for a normal careers page", async () => {
+    // Regression guard: adding the Internshala branch must not alter the
+    // existing custom_careers behavior for pages that DO carry JSON-LD.
+    const PAGE = "https://careers.acme.test/openings";
+    const jsonLd = `<script type="application/ld+json">${JSON.stringify({
+      "@type": "JobPosting",
+      title: "Engineer",
+    })}</script>`;
+    const fetcher = new FakeFetcher({ [PAGE]: html(jsonLd) });
+
+    const result = await verifySource(PAGE, "Acme", fetcher);
+
+    expect(result.health).toBe("HEALTHY");
+    expect(result.detectedPlatform).toBe("custom_careers");
+  });
+
+  it("end-to-end: a HEALTHY verdict makes the orchestrator's eligibility gate crawlable, not skipped", async () => {
+    const fetcher = new FakeFetcher({ [LISTING]: html(listingHtml(3)) });
+    const verification = await verifySource(
+      LISTING,
+      "Internshala — Internships",
+      fetcher,
+      undefined,
+      {
+        platform: INTERNSHALA_PLATFORM,
+      },
+    );
+
+    const entry: CompanyRegistryEntry = {
+      id: "registry-1",
+      companyName: "Internshala — Internships",
+      careersUrl: LISTING,
+      platform: INTERNSHALA_PLATFORM,
+      enabled: true,
+      crawlFrequencyHours: 24,
+      lastCrawlAt: null,
+      lastSuccessAt: null,
+      lastStatus: null,
+      lastError: null,
+      lastJobsImported: null,
+      notes: null,
+      config: {},
+      parentCompany: null,
+      aliases: [],
+      healthStatus: verification.health,
+      lastCheckedAt: verification.checkedAt,
+      lastHealthSuccessAt: null,
+      lastFailureAt: null,
+      httpStatus: verification.httpStatus,
+      detectedPlatform: verification.detectedPlatform,
+      errorReason: verification.errorReason,
+      resolvedUrl: null,
+      postingsSeen: verification.postingsSeen,
+    };
+
+    expect(crawlEligibility(entry)).toEqual({ crawlable: true });
   });
 });
 

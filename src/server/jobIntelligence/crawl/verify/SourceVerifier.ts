@@ -25,6 +25,10 @@ import { getPlatformLimitation } from "../limitations";
 import type { CrawlFetcher, FetchResult } from "../HttpFetcher";
 import { extractFeedItems } from "../../parsers/xmlFeed";
 import { WWR_PLATFORM } from "../../adapters/weWorkRemotely/WeWorkRemotelyAdapter";
+import {
+  extractListingCards,
+  INTERNSHALA_PLATFORM,
+} from "../../adapters/internshala/InternshalaAdapter";
 
 /**
  * Operator-facing health of one source. Deliberately a small, plain-language
@@ -51,7 +55,7 @@ export type SourceHealth =
  * recognized ATS; `weworkremotely` for a verified WWR RSS feed; null when we
  * could not tell.
  */
-export type DetectedPlatform = AtsProviderId | "custom_careers" | "weworkremotely";
+export type DetectedPlatform = AtsProviderId | "custom_careers" | "weworkremotely" | "internshala";
 
 export const CUSTOM_CAREERS: DetectedPlatform = "custom_careers";
 
@@ -240,6 +244,69 @@ async function verifyWeWorkRemotelySource(
 }
 
 /**
+ * Verifies an Internshala listing URL. Internshala server-renders its
+ * listing pages as plain HTML with no schema.org JobPosting markup and no
+ * JSON-LD — the generic ATS/JSON-LD detection below would always misreport
+ * a healthy listing as UNKNOWN (the exact bug this fixes; same class as the
+ * We Work Remotely fix above — verification evidence must match the actual
+ * adapter's parsing strategy). The evidence bar mirrors every other
+ * provider: HEALTHY only once the page yields real posting cards, found via
+ * the SAME `extractListingCards` the crawler itself depends on — not an
+ * Internshala-specific heuristic invented for verification alone.
+ */
+async function verifyInternshalaSource(
+  listingUrl: string,
+  fetcher: CrawlFetcher,
+  checkedAt: string,
+): Promise<SourceVerification> {
+  const base = {
+    url: listingUrl,
+    finalUrl: null as string | null,
+    httpStatus: null as number | null,
+    detectedPlatform: null as DetectedPlatform | null,
+    postingsSeen: null as number | null,
+    checkedAt,
+  };
+
+  const result = await fetcher.fetchText(listingUrl);
+
+  if (!result.ok) {
+    return {
+      ...base,
+      finalUrl: result.url ?? null,
+      httpStatus: result.status ?? null,
+      health: healthForFailure(result),
+      errorReason: result.reason,
+    };
+  }
+
+  const finalUrl = result.url ?? listingUrl;
+  const redirected = isMeaningfulRedirect(listingUrl, finalUrl);
+  const cards = extractListingCards(result.body, finalUrl);
+
+  if (cards.length === 0) {
+    return {
+      ...base,
+      finalUrl,
+      httpStatus: result.status,
+      health: "UNKNOWN",
+      errorReason:
+        "Page loaded but no posting cards were found — the listing markup may have changed.",
+    };
+  }
+
+  return {
+    ...base,
+    finalUrl,
+    httpStatus: result.status,
+    health: redirected ? "REDIRECTED" : "HEALTHY",
+    detectedPlatform: "internshala",
+    postingsSeen: cards.length,
+    errorReason: redirected ? `Listing answers at ${finalUrl}.` : null,
+  };
+}
+
+/**
  * Verifies one source URL. Never throws: a verification failure is a health
  * status, because this runs over a whole registry and one bad row must not
  * abort the sweep.
@@ -279,6 +346,14 @@ export async function verifySource(
   // generic ATS/JSON-LD detection below, which would never recognize XML.
   if (options.platform === WWR_PLATFORM) {
     return verifyWeWorkRemotelySource(careersUrl, fetcher, checkedAt);
+  }
+
+  // Internshala server-renders plain HTML listing pages — same reasoning as
+  // the WWR branch above, just for a dedicated HTML-listing adapter instead
+  // of an RSS one. Must never fall through to the generic ATS/JSON-LD
+  // detection, which would never find markup Internshala doesn't publish.
+  if (options.platform === INTERNSHALA_PLATFORM) {
+    return verifyInternshalaSource(careersUrl, fetcher, checkedAt);
   }
 
   const detection = detectAtsBoard(careersUrl, companyName, config);
