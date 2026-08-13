@@ -259,7 +259,11 @@ function SourceHealthPanel({
       </SectionTitle>
       <p className="mt-1 text-xs text-[oklch(0.5_0.02_265)]">
         {summary.total} compan{summary.total === 1 ? "y" : "ies"} registered · {summary.enabled}{" "}
-        enabled, {summary.eligibleNow} ready to crawl now · {summary.needsAttention} need attention
+        enabled, {summary.eligibleNow} ready to crawl now
+        {summary.enabledNotReady > 0
+          ? ` (${summary.enabledNotReady} enabled but not crawl-ready)`
+          : ""}{" "}
+        · {summary.needsAttention} need attention
         {summary.unchecked > 0 ? ` · ${summary.unchecked} not checked yet` : ""}
       </p>
       <p className="mt-0.5 text-[11px] text-[oklch(0.55_0.02_265)]">

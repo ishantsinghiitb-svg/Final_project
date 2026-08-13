@@ -8,7 +8,7 @@ import type { CompanyRow, CompanyInsert } from "@/types/database";
 // callers always work with the domain model.
 
 const COMPANY_COLUMNS =
-  "id, name, website, logo_url, industry, size, headquarters, created_at, updated_at";
+  "id, name, website, logo_url, industry, size, headquarters, created_at, updated_at, normalized_key, aliases, domain, logo_source";
 
 export class CompanyRepository {
   // ── Private mapper ──────────────────────────────────────────────────────────
@@ -24,6 +24,10 @@ export class CompanyRepository {
       location: row.headquarters ?? undefined,
       created_at: row.created_at,
       updated_at: row.updated_at,
+      normalized_key: row.normalized_key ?? undefined,
+      aliases: row.aliases,
+      domain: row.domain ?? undefined,
+      logo_source: row.logo_source ?? undefined,
     };
   }
 

@@ -132,3 +132,30 @@ export function normalizeCompanyName(raw: string): NormalizedCompany {
   const canonicalName = tokens.map(titleCaseWord).join(" ");
   return { original, canonicalName, key: canonicalName.toLowerCase() };
 }
+
+/**
+ * ── Module 11C-1 ──
+ *
+ * Mirrors the SQL `normalize_company_name()` helper EXACTLY (see
+ * supabase/migrations/20260722000001_module4a_hierarchical_dedup.sql): lowercase,
+ * drop `.` and `,`, collapse whitespace, then strip ONE trailing legal suffix.
+ *
+ * Deliberately NOT `normalizeCompanyName` above, which additionally applies a
+ * curated alias table and noise-word stripping. This one exists for the single
+ * case where a caller must write `global_jobs.normalized_company` directly and
+ * has to produce the same value the database's own ingest path would — that
+ * column is the cross-platform dedup grouping key `find_cross_platform_match`
+ * reads, so a value computed by the richer normalizer would silently disagree
+ * with every row written through the RPC.
+ *
+ * Same relationship, and same reason, as `normalizeLocationText` in
+ * ./location.ts.
+ */
+export function sqlNormalizeCompanyName(input: string | null | undefined): string {
+  return (input ?? "")
+    .toLowerCase()
+    .replace(/[.,]/g, "")
+    .replace(/\s+/g, " ")
+    .replace(/\s+(inc|llc|ltd|limited|corp|corporation|co|gmbh|plc|pvt ltd|private limited)$/, "")
+    .trim();
+}

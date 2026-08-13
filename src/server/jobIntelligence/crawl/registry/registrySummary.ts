@@ -34,7 +34,25 @@ export type RegistrySummary = {
    * does not change what `crawlEligibility()` itself decides.
    */
   eligibleNow: number;
-  /** BROKEN or BLOCKED — needs an operator to fix or accept. */
+  /**
+   * Module 11B: enabled, but NOT currently crawlable — exactly
+   * `enabled - eligibleNow`. Surfaced as its own number because "enabled"
+   * reads as "on" to an operator, while the crawl gate may still be refusing
+   * every one of these rows. The Module 11B audit found 18 such sources
+   * sitting in the registry looking active while nothing could ever crawl
+   * them. Never let `enabled` alone imply crawl-ready.
+   */
+  enabledNotReady: number;
+  /**
+   * Sources an operator should look at: BROKEN, BLOCKED, UNAVAILABLE or
+   * UNKNOWN.
+   *
+   * ⚠️ UNKNOWN and UNAVAILABLE were previously excluded, which is how the 18
+   * rows above stayed invisible: they were neither "verified", nor
+   * "unchecked" (they HAD been checked), nor counted here — so the headline
+   * silently under-reported the work outstanding while the card's own list
+   * (which did include UNKNOWN) disagreed with it.
+   */
   needsAttention: number;
   /** Never verified yet. */
   unchecked: number;
@@ -59,12 +77,15 @@ export function summarizeRegistry(entries: CompanyRegistryEntry[]): RegistrySumm
     if (crawlEligibility(entry).crawlable) eligibleNow++;
   }
 
+  const enabled = entries.filter((entry) => entry.enabled).length;
+
   return {
     total: entries.length,
-    enabled: entries.filter((entry) => entry.enabled).length,
+    enabled,
     verified: health.HEALTHY + health.REDIRECTED,
     eligibleNow,
-    needsAttention: health.BROKEN + health.BLOCKED,
+    enabledNotReady: enabled - eligibleNow,
+    needsAttention: health.BROKEN + health.BLOCKED + health.UNAVAILABLE + health.UNKNOWN,
     unchecked: health.UNCHECKED,
     health,
     platforms: [...platformCounts.entries()]

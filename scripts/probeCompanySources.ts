@@ -26,6 +26,10 @@ import {
   type SourceVerification,
 } from "../src/server/jobIntelligence/crawl/verify/SourceVerifier";
 import { resolveCompanyIdentity } from "../src/server/jobIntelligence/crawl/registry/companyIdentity";
+import {
+  confirmBoardIdentity,
+  type IdentityVerdict,
+} from "../src/server/jobIntelligence/crawl/verify/boardIdentity";
 import { COMPANY_CANDIDATES, type CompanyCandidate } from "./companyCandidates";
 
 type Outcome = {
@@ -35,6 +39,8 @@ type Outcome = {
   aliases: string[];
   chosenUrl: string | null;
   verification: SourceVerification | null;
+  /** Module 11B: why the board was (or was not) accepted as this company's. Null when nothing was reachable. */
+  identity: IdentityVerdict | null;
   triedCount: number;
   attempts: Array<{ url: string; verification: SourceVerification }>;
 };
@@ -142,7 +148,32 @@ async function probeCompany(candidate: CompanyCandidate, fetcher: HttpFetcher): 
     }
   }
 
-  const usable = best ? isAcceptableDiscovery(best.verification) : false;
+  const reachable = best ? isAcceptableDiscovery(best.verification) : false;
+
+  // ── Module 11B: the identity gate ──
+  //
+  // `isAcceptableDiscovery` above answers "is a board reachable and serving
+  // postings?". It cannot answer "is it THIS company's board", because the
+  // slug was GUESSED from the company name — and the Module 11B investigation
+  // measured a ~40% false-positive rate from exactly that guess (a Canadian
+  // real-estate agency answering on "pine", Recruitee demo tenants answering
+  // on "google"/"samsung", and so on).
+  //
+  // So reachability is now necessary but no longer sufficient: a candidate is
+  // only emitted with a `chosenUrl` — i.e. only becomes registerable — when
+  // the board's own content independently corroborates the employer. Anything
+  // short of that is reported with its verdict for a human to judge, never
+  // silently promoted into the registry.
+  let identityVerdict: IdentityVerdict | null = null;
+  if (reachable && best) {
+    identityVerdict = await confirmBoardIdentity(
+      best.url,
+      identity.canonicalName,
+      fetcher,
+      candidate.domain,
+    );
+  }
+  const usable = reachable && identityVerdict?.autoRegisterable === true;
 
   return {
     input: candidate.name,
@@ -151,6 +182,7 @@ async function probeCompany(candidate: CompanyCandidate, fetcher: HttpFetcher): 
     aliases: identity.aliases,
     chosenUrl: usable ? best!.url : null,
     verification: best?.verification ?? null,
+    identity: identityVerdict,
     triedCount: urls.length,
     attempts,
   };
@@ -173,6 +205,7 @@ async function main() {
       `[${index}/${COMPANY_CANDIDATES.length}] ${outcome.canonicalName}: ` +
         `${verification?.health ?? "NO-CANDIDATES"} ` +
         `${verification?.detectedPlatform ?? "-"} ` +
+        `identity=${outcome.identity?.outcome ?? "-"} ` +
         `${outcome.chosenUrl ?? "(none)"}\n`,
     );
   }

@@ -60,6 +60,14 @@ export type Company = {
   location?: string;
   created_at: string;
   updated_at: string;
+  /** Module 11A: stable identity key this row was resolved/deduped on. */
+  normalized_key?: string;
+  /** Module 11A: other known names for this entity. */
+  aliases?: string[];
+  /** Module 11A: lowercased, www.-stripped hostname, when known. */
+  domain?: string;
+  /** Module 11A: 'job_scraped' | 'domain_favicon', when logo_url is set. */
+  logo_source?: string;
 };
 
 // ── Job ──

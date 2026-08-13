@@ -29,9 +29,9 @@ export class JobService {
     // Step 1: Trim free-text fields so the repository doesn't see padding
     const trimmed: JobFilters = {
       ...filters,
-      q:        filters.q?.trim()        || undefined,
-      company:  filters.company?.trim()  || undefined,
-      role:     filters.role?.trim()     || undefined,
+      q: filters.q?.trim() || undefined,
+      company: filters.company?.trim() || undefined,
+      role: filters.role?.trim() || undefined,
       location: filters.location?.trim() || undefined,
     };
 
@@ -43,7 +43,6 @@ export class JobService {
 
     return jobRepo.findAll(normalized, sort, pagination);
   }
-
 
   async getJob(id: string): Promise<GlobalJob | null> {
     return jobRepo.findById(id);
@@ -85,6 +84,16 @@ export class JobService {
    */
   async getSimilarJobs(job: GlobalJob, limit: number = 6): Promise<GlobalJob[]> {
     return jobRepo.findSimilarJobs(job, limit);
+  }
+
+  /**
+   * Module 11C-2: other postings that are exact duplicates of `job` (same
+   * company/role/location AND dedup fingerprint) — presentation-only, so the
+   * job-detail page can still surface every one's own apply/source link even
+   * though the Jobs list collapses them into a single card.
+   */
+  async getDuplicatePostings(job: GlobalJob): Promise<GlobalJob[]> {
+    return jobRepo.findDuplicatePostings(job);
   }
 
   /**

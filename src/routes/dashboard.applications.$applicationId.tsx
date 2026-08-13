@@ -45,6 +45,7 @@ import { useJob } from "@/features/jobs/hooks";
 import { useCompany } from "@/features/companies/hooks";
 import { STATUS_META, ALL_STATUSES, PRIORITY_META } from "@/features/applications/constants";
 import { logoToneForCompany, getJobBadges, formatSourceLabel } from "@/features/jobs/utils";
+import { formatLocationDisplay } from "@/features/jobs/locationDisplay";
 import { maybePromptScheduleInterview } from "@/features/interviews/sync";
 import type { ApplicationPriority, ApplicationStatus } from "@/types";
 import { cn } from "@/lib/utils";
@@ -257,6 +258,7 @@ function ApplicationDetailPage() {
   }
 
   const tone = logoToneForCompany(app.company_name);
+  const location = formatLocationDisplay(app.location);
 
   const salary = (() => {
     if (!app.salary_min && !app.salary_max) return null;
@@ -310,7 +312,7 @@ function ApplicationDetailPage() {
                   </Chip>
                 )}
                 {app.source && <Chip tone="default">{formatSourceLabel(app.source)}</Chip>}
-                {app.location && <Chip tone="default">{app.location}</Chip>}
+                {location && <Chip tone="default">{location}</Chip>}
                 {job &&
                   getJobBadges(job).map((badge) => (
                     <Chip key={badge.key} tone={badge.tone}>
@@ -387,7 +389,7 @@ function ApplicationDetailPage() {
                   iconColor="text-[#F59E0B]"
                 />
               )}
-              {app.location && <DetailTile icon={MapPin} label="Location" value={app.location} />}
+              {location && <DetailTile icon={MapPin} label="Location" value={location} />}
               {salary && (
                 <DetailTile
                   icon={Banknote}

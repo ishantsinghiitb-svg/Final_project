@@ -17,6 +17,16 @@ export type CompanyCandidate = {
   atsSlugs?: string[];
   /** Careers URLs to try on the company's own domain. */
   careerUrls?: string[];
+  /**
+   * Module 11B: the employer's OWN domain (never a job board's), used by the
+   * identity gate as the independent signal that a discovered board really
+   * belongs to this company. Without it a board can only ever reach
+   * "needs review" — name evidence alone cannot separate two companies that
+   * share a name, which is how a UAE retailer, a US startup and a US
+   * healthcare org each passed a name-only check for an unrelated Indian
+   * company. See crawl/verify/boardIdentity.ts.
+   */
+  domain?: string;
 };
 
 const careers = (domain: string, ...paths: string[]): string[] =>

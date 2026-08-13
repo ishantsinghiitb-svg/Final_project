@@ -22,6 +22,13 @@
 // one canonicalizes an OPERATOR-SUPPLIED registry name before it is written.
 // They are deliberately separate: a mistake here merges two registry entries
 // (an operator-visible config error), a mistake there merges two jobs.
+//
+// Module 11A (server/company/identity.ts) is a second, later caller: for a
+// plain (non-"A / B") input, `resolveCompanyIdentity` is a pure alias lookup
+// with no registry-specific side effects, so reusing the SAME curated
+// rename/alias table for scraped company names (not just registry names) is
+// safe — the aliases are facts about the real company, independent of which
+// input produced the string.
 
 /** Canonical identity for one registry company. */
 export type CompanyIdentity = {
@@ -76,6 +83,13 @@ const CANONICAL_ALIASES: Record<string, string> = {
   // Freshdesk is a product of Freshworks, not a separate employer.
   freshdesk: "Freshworks",
   "freshdesk freshworks": "Freshworks",
+  // Module 11C-1: Razorpay's Greenhouse board posts under its registered legal
+  // entity name ("Razorpay Software Private Limited"), which
+  // `normalizeCompanyName` reduces to "Razorpay Software" — a second row
+  // holding 23 postings alongside the plain "Razorpay" one. Same company, same
+  // hiring entity; this is a legal-name alias, not a similarity guess.
+  "razorpay software": "Razorpay",
+  "razorpay software private limited": "Razorpay",
 };
 
 /**
@@ -171,6 +185,51 @@ export function resolveCompanyIdentity(raw: string): CompanyIdentity {
     .filter((name) => name && identityKey(name) !== canonicalKey);
 
   return { canonicalName: canonical, parentCompany, aliases };
+}
+
+/**
+ * Every curated name that denotes the SAME hiring entity as `raw` — its
+ * canonical name plus every alias the table maps onto that canonical name.
+ *
+ * An EXACT reverse lookup over `CANONICAL_ALIASES`: a name is included only if
+ * the curated table already says it is the same entity. There is no fuzzy
+ * matching, no substring similarity and no inference from name resemblance —
+ * "Eternal" is a variant of "Zomato" solely because the table records that
+ * legal rename, and nothing else qualifies.
+ *
+ * Module 11C-1 added this for the board-identity guard, which previously
+ * searched board text for the canonical name ALONE. A company that renamed
+ * itself posts under the new name, so the guard read a legitimate board as
+ * belonging to someone else. Widening the NAME evidence does not widen what
+ * gets auto-registered: `accepted` still additionally requires the employer's
+ * own domain (see crawl/verify/boardIdentity.ts), so alias awareness can move
+ * a board from `rejected` to `needs_review`, never straight to `accepted`.
+ *
+ * Deliberately does NOT include parent companies: Blinkit is Zomato-owned but
+ * is a different hiring entity with its own board, and treating the parent's
+ * name as evidence for the subsidiary's board is exactly the conflation
+ * PARENT_COMPANIES exists to prevent.
+ */
+export function curatedNameVariants(raw: string): string[] {
+  const canonical = resolveCompanyIdentity(raw).canonicalName;
+  const canonicalKey = identityKey(canonical);
+  if (!canonicalKey) return [];
+
+  const seen = new Set<string>([canonicalKey]);
+  const variants = [canonical];
+
+  for (const [aliasKey, target] of Object.entries(CANONICAL_ALIASES)) {
+    if (identityKey(target) !== canonicalKey) continue;
+    if (seen.has(aliasKey)) continue;
+    seen.add(aliasKey);
+    variants.push(aliasKey);
+  }
+
+  // The caller's own string, when the tables reduced it to something else.
+  const rawKey = identityKey(raw ?? "");
+  if (rawKey && !seen.has(rawKey)) variants.push((raw ?? "").trim());
+
+  return variants;
 }
 
 /**

@@ -30,6 +30,7 @@ import {
   useJob,
   useJobSkills,
   useSimilarJobs,
+  useDuplicatePostings,
   useSavedJobIds,
   useSaveJob,
   useUnsaveJob,
@@ -43,6 +44,7 @@ import {
   getJobBadges,
   primaryRoleKeyword,
 } from "@/features/jobs/utils";
+import { formatLocationDisplay } from "@/features/jobs/locationDisplay";
 import type { GlobalJob } from "@/types";
 import {
   TrackApplicationModal,
@@ -258,6 +260,10 @@ function JobDetailPage() {
   const { data: job, isLoading, isError, error } = useJob(jobId);
   const { data: skills = [] } = useJobSkills(jobId);
   const { data: similarJobs = [] } = useSimilarJobs(jobId, job);
+  // Module 11C-2: presentation-only. Other postings the Jobs list collapsed
+  // into this one's "N openings" indicator — each keeps its own apply/source
+  // URL, surfaced below so nothing is lost by not giving them a separate card.
+  const { data: duplicatePostings = [] } = useDuplicatePostings(jobId, job);
   const { data: savedIds = [] } = useSavedJobIds();
   const saveJob = useSaveJob();
   const unsaveJob = useUnsaveJob();
@@ -372,6 +378,7 @@ function JobDetailPage() {
   const salary = formatSalary(job);
   const tone = logoToneForCompany(job.company_name);
   const postedTime = formatPostedTime(job);
+  const location = formatLocationDisplay(job.location);
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
@@ -463,6 +470,9 @@ function JobDetailPage() {
                     <ExternalLink className="h-3 w-3" /> Responses managed off LinkedIn
                   </Chip>
                 )}
+                {duplicatePostings.length > 0 && (
+                  <Chip tone="blue">{duplicatePostings.length + 1} openings</Chip>
+                )}
                 {getJobBadges(job).map((badge) => (
                   <Chip key={badge.key} tone={badge.tone}>
                     {badge.label}
@@ -509,14 +519,14 @@ function JobDetailPage() {
 
         {/* ── Detail grid ────────────────────────────────────────────── */}
         <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-          {job.location && (
+          {location && (
             <div className="flex items-start gap-2.5 rounded-xl bg-[oklch(0.97_0.01_265)] p-3">
               <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-[#2563EB]" />
               <div>
                 <p className="text-[10px] font-medium uppercase tracking-wide text-[oklch(0.55_0.02_265)]">
                   Location
                 </p>
-                <p className="mt-0.5 text-sm font-medium">{job.location}</p>
+                <p className="mt-0.5 text-sm font-medium">{location}</p>
               </div>
             </div>
           )}
@@ -606,6 +616,55 @@ function JobDetailPage() {
           )}
         </div>
       </DashCard>
+
+      {/* ── Module 11C-2: also posted separately ────────────────────────
+          Presentation-only — these are OTHER global_jobs rows the Jobs list
+          collapsed into this card's "N openings" indicator (same company,
+          role, location and dedup fingerprint; see
+          features/jobs/duplicatePostings.ts). Nothing is merged or deleted,
+          so each one's own apply/source link is still reachable here. */}
+      {duplicatePostings.length > 0 && (
+        <DashCard>
+          <SectionTitle>Also Posted Separately</SectionTitle>
+          <p className="mt-1 text-xs text-[oklch(0.5_0.02_265)]">
+            The same opening was published as {duplicatePostings.length + 1} separate listings. Each
+            one has its own apply link.
+          </p>
+          <ul className="mt-3 divide-y divide-black/5">
+            {duplicatePostings.map((dup) => (
+              <li key={dup.id} className="flex items-center justify-between gap-3 py-2.5">
+                <div className="flex items-center gap-2 text-sm text-[oklch(0.3_0.02_265)]">
+                  <Globe className="h-3.5 w-3.5 shrink-0 text-[oklch(0.5_0.02_265)]" />
+                  {formatSourceLabel(dup.source)}
+                  {dup.posted_at && (
+                    <span className="text-xs text-[oklch(0.55_0.02_265)]">
+                      · {formatPostedTime(dup)}
+                    </span>
+                  )}
+                </div>
+                {dup.url ? (
+                  <a
+                    href={dup.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-black/5 bg-white px-2.5 py-1.5 text-xs font-medium text-[oklch(0.25_0.02_265)] hover:bg-black/[0.03] transition-colors"
+                  >
+                    View listing <ExternalLink className="h-3 w-3" />
+                  </a>
+                ) : (
+                  <Link
+                    to="/dashboard/jobs/$jobId"
+                    params={{ jobId: dup.id }}
+                    className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-black/5 bg-white px-2.5 py-1.5 text-xs font-medium text-[oklch(0.25_0.02_265)] hover:bg-black/[0.03] transition-colors"
+                  >
+                    View listing <ArrowUpRight className="h-3 w-3" />
+                  </Link>
+                )}
+              </li>
+            ))}
+          </ul>
+        </DashCard>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-[1fr_280px]">
         {/* ── Left: Description + Skills ──────────────────────────────── */}

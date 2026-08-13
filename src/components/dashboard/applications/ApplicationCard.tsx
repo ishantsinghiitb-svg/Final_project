@@ -5,6 +5,7 @@ import type { Application, ApplicationStatus } from "@/types";
 import { CompanyMark, Chip } from "@/components/dashboard/primitives";
 import { STATUS_META, ALL_STATUSES } from "@/features/applications/constants";
 import { logoToneForCompany } from "@/features/jobs/utils";
+import { formatLocationDisplay } from "@/features/jobs/locationDisplay";
 import { cn } from "@/lib/utils";
 import { format, parseISO } from "date-fns";
 
@@ -54,6 +55,7 @@ export function ApplicationCard({
   const tone = logoToneForCompany(app.company_name);
   const meta = STATUS_META[app.status];
   const salary = formatSalaryRange(app);
+  const location = formatLocationDisplay(app.location);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -176,10 +178,10 @@ export function ApplicationCard({
 
       {/* Meta row */}
       <div className="mt-2.5 space-y-1">
-        {app.location && (
+        {location && (
           <div className="flex items-center gap-1 text-[11px] text-[oklch(0.55_0.02_265)]">
             <MapPin className="h-3 w-3 shrink-0" />
-            <span className="truncate">{app.location}</span>
+            <span className="truncate">{location}</span>
           </div>
         )}
         {salary && (

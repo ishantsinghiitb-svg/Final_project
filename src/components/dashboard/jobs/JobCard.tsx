@@ -16,6 +16,7 @@ import {
   formatSourceLabel,
   logoToneForCompany,
 } from "@/features/jobs/utils";
+import { formatLocationDisplay } from "@/features/jobs/locationDisplay";
 import type { GlobalJob } from "@/types";
 
 // ── Job Card ─────────────────────────────────────────────────────────────────
@@ -38,6 +39,15 @@ export interface JobCardProps {
    * every existing caller renders identically to before this prop existed.
    */
   extraAction?: ReactNode;
+  /**
+   * Module 11C-2: how many OTHER exact-duplicate postings this card is
+   * standing in for (see features/jobs/duplicatePostings.ts) — omitted or 0
+   * renders exactly as before this prop existed. When set, shows an
+   * "N openings" indicator instead of a separate card per duplicate; the
+   * job-detail page is where each duplicate's own apply/source URL is still
+   * reachable.
+   */
+  duplicateCount?: number;
 }
 
 export const JobCard = memo(function JobCard({
@@ -47,10 +57,13 @@ export const JobCard = memo(function JobCard({
   onUnsave,
   onApply,
   extraAction,
+  duplicateCount = 0,
 }: JobCardProps) {
   const salary = formatSalary(job);
   const posted = formatPostedTime(job);
   const tone = logoToneForCompany(job.company_name);
+  const location = formatLocationDisplay(job.location);
+  const openingsCount = duplicateCount > 0 ? duplicateCount + 1 : 0;
 
   return (
     <li className="group flex items-center gap-4 px-4 py-4 hover:bg-[oklch(0.98_0.005_265)] transition-colors">
@@ -98,15 +111,20 @@ export const JobCard = memo(function JobCard({
                 {job.experience_level}
               </Chip>
             )}
+            {openingsCount > 0 && (
+              <Chip tone="blue" className="shrink-0">
+                {openingsCount} openings
+              </Chip>
+            )}
           </div>
 
           <div className="mt-1 flex items-center gap-2 flex-wrap">
             <p className="text-[13px] text-[oklch(0.5_0.02_265)]">
               {job.company_name}
-              {job.location && (
+              {location && (
                 <>
                   {" · "}
-                  <MapPin className="inline h-3 w-3" /> {job.location}
+                  <MapPin className="inline h-3 w-3" /> {location}
                 </>
               )}
             </p>

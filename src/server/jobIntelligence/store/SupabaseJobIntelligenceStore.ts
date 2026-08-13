@@ -1,4 +1,5 @@
 import { createServiceSupabase, type ServerSupabase } from "@/server/supabase";
+import { resolveCanonicalCompany } from "@/server/company/identity";
 import type { Json } from "@/types/database";
 import type { DedupCandidate } from "../dedup/DeduplicationEngine";
 import type { NormalizedJobPosting } from "../types";
@@ -135,7 +136,37 @@ export class SupabaseJobIntelligenceStore implements JobIntelligenceStore {
   }
 }
 
-function toAdminUpsertPayload(job: NormalizedJobPosting): Record<string, unknown> {
+/** Exported for testing (see SupabaseJobIntelligenceStore.test.ts) — pure, no I/O. */
+export function toAdminUpsertPayload(job: NormalizedJobPosting): Record<string, unknown> {
+  // ── Module 11A: canonical company identity ──
+  // Resolved here (once, at the ingestion boundary) rather than in SQL, so
+  // the curated alias tables (normalize/company.ts + registry/companyIdentity.ts)
+  // stay the single, testable source of truth. Purely additive on the RPC
+  // side (see 20260821000001) — omitting these fields reproduces the RPC's
+  // pre-Module-11A behavior exactly, so this can never regress a crawl.
+  //
+  // ── Module 11C-1: homonym evidence ──
+  // The posting's own board/apply URLs are passed as evidence so that the two
+  // proven name collisions (Slice, Porter — see server/company/homonyms.ts)
+  // keep resolving to the right employer on every future crawl, instead of
+  // re-merging into the single shared row the 11C audit found. For every other
+  // company these arguments are inert: the homonym table is consulted only for
+  // names already on it, and it can only ever select between entities it
+  // already declares.
+  const canonicalCompany = resolveCanonicalCompany(job.companyName, job.companyUrl, [
+    job.sourceUrl,
+    job.url,
+    job.companyCareerUrl,
+  ]);
+  // Module 11C-1: `company_canonical_name` is what `admin_upsert_global_job`
+  // writes into `companies.name` (see 20260821000001's `v_company_display_name`)
+  // — a column `companies_name_unique` constrains globally. `displayName`, not
+  // `canonicalName`, is the value that respects that constraint for a homonym
+  // entity (Slice's two entities are both plainly "Slice"/"slice" as
+  // `canonicalName`; only `displayName` disambiguates). Using `canonicalName`
+  // here is exactly what raised the 23505 during the first cleanup apply.
+  // Inert for every non-homonym company: `displayName === canonicalName` there.
+
   return {
     source: job.source,
     source_job_id: job.sourceJobId ?? null,
@@ -144,6 +175,9 @@ function toAdminUpsertPayload(job: NormalizedJobPosting): Record<string, unknown
     role: job.role,
     normalized_company: job.normalizedCompany,
     normalized_role: job.normalizedRole,
+    company_canonical_name: canonicalCompany.displayName,
+    company_normalized_key: canonicalCompany.normalizedKey,
+    company_domain: canonicalCompany.domain,
     location: job.location ?? null,
     city: job.city ?? null,
     state: job.state ?? null,

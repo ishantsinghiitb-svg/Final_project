@@ -40,6 +40,7 @@ import { toast } from "sonner";
 import { useTrackedJobIds } from "@/features/applications/hooks";
 import { AddToCollectionMenu } from "@/components/dashboard/collections/AddToCollectionMenu";
 import { getJobBadges, logoToneForCompany } from "@/features/jobs/utils";
+import { formatLocationDisplay } from "@/features/jobs/locationDisplay";
 import type { PaginationParams } from "@/types";
 import { DEFAULT_PAGINATION } from "@/features/jobs/constants";
 import type { GlobalJob } from "@/types";
@@ -210,6 +211,7 @@ function SavedPage() {
               const isSaved = savedIds.includes(job.id);
               const salary = formatSalary(job);
               const tone = logoToneForCompany(job.company_name);
+              const location = formatLocationDisplay(job.location);
 
               return (
                 <DashCard
@@ -320,14 +322,14 @@ function SavedPage() {
                     </div>
                   )}
 
-                  {(job.location || salary) && (
+                  {(location || salary) && (
                     <p className="mt-2 flex items-center gap-1 text-xs text-[oklch(0.5_0.02_265)]">
-                      {job.location && (
+                      {location && (
                         <>
-                          <MapPin className="h-3 w-3" /> {job.location}
+                          <MapPin className="h-3 w-3" /> {location}
                         </>
                       )}
-                      {job.location && salary && " · "}
+                      {location && salary && " · "}
                       {salary}
                     </p>
                   )}

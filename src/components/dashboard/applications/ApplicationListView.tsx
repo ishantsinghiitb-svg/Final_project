@@ -3,6 +3,7 @@ import type { Application, ApplicationStatus } from "@/types";
 import { CompanyMark } from "@/components/dashboard/primitives";
 import { StatusBadge } from "./ApplicationCard";
 import { logoToneForCompany, formatSourceLabel } from "@/features/jobs/utils";
+import { formatLocationDisplay } from "@/features/jobs/locationDisplay";
 import { Calendar, MapPin, Banknote, Globe, Trash2, Archive, ArrowUpRight } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -49,6 +50,7 @@ export function ApplicationListView({ applications, onDelete, onArchive }: Props
         <tbody className="divide-y divide-black/[0.03]">
           {applications.map((app) => {
             const tone = logoToneForCompany(app.company_name);
+            const location = formatLocationDisplay(app.location);
             const appliedDate = app.applied_at
               ? format(parseISO(app.applied_at), "MMM d, yyyy")
               : "—";
@@ -95,10 +97,10 @@ export function ApplicationListView({ applications, onDelete, onArchive }: Props
 
                 {/* Location */}
                 <td className="hidden px-4 py-3 text-xs text-[oklch(0.5_0.02_265)] lg:table-cell">
-                  {app.location ? (
+                  {location ? (
                     <span className="flex items-center gap-1">
                       <MapPin className="h-3 w-3 shrink-0" />
-                      {app.location}
+                      {location}
                     </span>
                   ) : (
                     <span className="text-[oklch(0.7_0.01_265)]">—</span>

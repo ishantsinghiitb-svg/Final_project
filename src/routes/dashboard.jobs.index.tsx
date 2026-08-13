@@ -56,6 +56,7 @@ import {
   ROLE_CATEGORY_OPTIONS,
 } from "@/features/jobs/constants";
 import { jobMatchesFilters, compareJobsBy } from "@/features/jobs/utils";
+import { groupExactDuplicatePostings } from "@/features/jobs/duplicatePostings";
 
 // Multi-select filters store their selected values as a comma-joined string
 // in the URL (e.g. "remote,hybrid") rather than relying on the router's
@@ -261,6 +262,16 @@ function JobsPage() {
   const jobs = result?.data ?? [];
   const totalPages = result?.totalPages ?? 1;
   const total = result?.total ?? 0;
+
+  // ── Module 11C-2: presentation-only exact-duplicate collapse ─────────────
+  // Applied to the CURRENT PAGE's rows only — this never touches the query,
+  // pagination, sort, or `total` (all of which still count every underlying
+  // row, unchanged). If a duplicate pair happens to straddle a page boundary
+  // it simply renders as two ordinary cards on their respective pages; that
+  // is an accepted limit of a display-only fix, not a correctness bug — no
+  // global_jobs row, source_job_id, or URL is ever affected by this.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const jobGroups = useMemo(() => groupExactDuplicatePostings(jobs), [result?.data]);
 
   // ── Recently Viewed as a dataset, not a second filtering system ──────────
   // Reuses the SAME `filters` object the server-side "All Jobs" query already
@@ -592,10 +603,11 @@ function JobsPage() {
           ) : (
             <>
               <ul className="divide-y divide-black/5">
-                {jobs.map((job) => (
+                {jobGroups.map(({ primary: job, duplicates }) => (
                   <JobCard
                     key={job.id}
                     job={job}
+                    duplicateCount={duplicates.length}
                     isSaved={savedIds.includes(job.id)}
                     onSave={() => saveJob.mutate({ jobId: job.id })}
                     onUnsave={() => unsaveJob.mutate({ jobId: job.id })}

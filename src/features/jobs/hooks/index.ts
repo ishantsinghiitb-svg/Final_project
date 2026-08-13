@@ -24,6 +24,7 @@ export const jobKeys = {
 
   skills: (jobId: string) => [...jobKeys.detail(jobId), "skills"] as const,
   similar: (jobId: string) => [...jobKeys.detail(jobId), "similar"] as const,
+  duplicates: (jobId: string) => [...jobKeys.detail(jobId), "duplicates"] as const,
 
   /** Parent key for all saved-job queries for a given user */
   saved: (userId: string) => [...jobKeys.all, "saved", userId] as const,
@@ -92,6 +93,20 @@ export function useSimilarJobs(jobId: string | undefined, job: GlobalJob | null 
   return useQuery({
     queryKey: jobKeys.similar(jobId ?? ""),
     queryFn: () => jobService.getSimilarJobs(job!, 6),
+    enabled: Boolean(jobId) && Boolean(job),
+    staleTime: 5 * 60 * 1_000,
+  });
+}
+
+// ── useDuplicatePostings ─────────────────────────────────────────────────────
+// Module 11C-2. Other exact-duplicate postings of the reference job (see
+// features/jobs/duplicatePostings.ts) — read-only, so the job-detail page can
+// still link out to each one's own apply/source URL.
+
+export function useDuplicatePostings(jobId: string | undefined, job: GlobalJob | null | undefined) {
+  return useQuery({
+    queryKey: jobKeys.duplicates(jobId ?? ""),
+    queryFn: () => jobService.getDuplicatePostings(job!),
     enabled: Boolean(jobId) && Boolean(job),
     staleTime: 5 * 60 * 1_000,
   });

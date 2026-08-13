@@ -4,6 +4,7 @@ import type { Json } from "@/types/database";
 import type { JobFilters, JobSort, RoleCategory } from "@/features/jobs/types";
 import { roleMatchesAnyCategory, extractRoleKeywords } from "@/features/jobs/utils";
 import { activeWindowCutoffIso } from "@/features/jobs/activeWindow";
+import { isSameDuplicateGroup } from "@/features/jobs/duplicatePostings";
 
 // Select all columns that map to the GlobalJob domain type.
 // `role_id` and `location_id` are DB-only FK references and are excluded
@@ -636,6 +637,37 @@ export class JobRepository {
       });
 
     return scored.slice(0, limit).map((s) => s.cand);
+  }
+
+  /**
+   * Module 11C-2: other `global_jobs` rows that are exact duplicates of
+   * `job` — same company, role and location, AND the same dedup
+   * `fingerprint` (see features/jobs/duplicatePostings.ts for why fingerprint
+   * is required, not just title/company/location). Presentation-only and
+   * read-only: never merges, deletes, updates, or otherwise writes anything.
+   * Each returned row keeps its own `source_job_id`/`url`/`source_url`
+   * exactly as stored, so the job-detail page can still link out to every
+   * one of them even though the Jobs list only shows one card.
+   *
+   * Narrowed server-side by `company_id` + `fingerprint` (a single indexed
+   * equality query), then confirmed client-side against the SAME
+   * `isSameDuplicateGroup` the Jobs list uses for its own grouping — so this
+   * method can never disagree with what the list already collapsed.
+   */
+  async findDuplicatePostings(job: GlobalJob): Promise<GlobalJob[]> {
+    if (!job.company_id || !job.fingerprint) return [];
+
+    const { data, error } = await supabase
+      .from("global_jobs")
+      .select(JOB_COLUMNS)
+      .eq("company_id", job.company_id)
+      .eq("fingerprint", job.fingerprint)
+      .neq("id", job.id);
+    if (error) throw error;
+
+    return ((data ?? []) as unknown as GlobalJob[]).filter((candidate) =>
+      isSameDuplicateGroup(job, candidate),
+    );
   }
 
   /** Map of job_id → lowercased skill-name set, for a batch of jobs (one query). */

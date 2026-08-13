@@ -55,6 +55,16 @@ export type CompanyRow = {
   headquarters: string | null;
   created_at: string;
   updated_at: string;
+  /** Module 11A: stable identity/conflict key — see companies_set_normalized_key_trigger. */
+  normalized_key: string | null;
+  /** Module 11A: other known names for this entity. */
+  aliases: string[];
+  /** Module 11A: lowercased, www.-stripped hostname, when known. */
+  domain: string | null;
+  /** Module 11A: 'job_scraped' | 'domain_favicon' | null. */
+  logo_source: string | null;
+  /** Module 11A: when the domain-based logo fallback last attempted this company. */
+  logo_checked_at: string | null;
 };
 
 export type GlobalJobRow = {
@@ -579,6 +589,11 @@ export type CompanyInsert = {
   headquarters?: string | null;
   created_at?: string;
   updated_at?: string;
+  normalized_key?: string | null; // nullable in the DB, defaulted by trigger when omitted
+  aliases?: string[]; // NOT NULL DEFAULT '{}'
+  domain?: string | null;
+  logo_source?: string | null;
+  logo_checked_at?: string | null;
 };
 
 export type GlobalJobInsert = {

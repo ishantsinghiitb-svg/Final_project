@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { normalizeCompanyName } from "./company";
+import { normalizeCompanyName, sqlNormalizeCompanyName } from "./company";
 
 describe("normalizeCompanyName", () => {
   it("resolves curated aliases (task examples)", () => {
@@ -51,5 +51,38 @@ describe("normalizeCompanyName", () => {
     const a = normalizeCompanyName("Acme Inc.");
     const b = normalizeCompanyName("ACME, LLC");
     expect(a.key).toBe(b.key);
+  });
+});
+
+// ── Module 11C-1 ──
+describe("sqlNormalizeCompanyName", () => {
+  it("reproduces the SQL helper's lowercase + punctuation + whitespace handling", () => {
+    expect(sqlNormalizeCompanyName("Google, Inc.")).toBe("google");
+    expect(sqlNormalizeCompanyName("  Acme   Robotics  ")).toBe("acme robotics");
+    expect(sqlNormalizeCompanyName("Eternal")).toBe("eternal");
+    expect(sqlNormalizeCompanyName("Tetriz")).toBe("tetriz");
+  });
+
+  it("strips exactly ONE trailing legal suffix, like the SQL regex does", () => {
+    expect(sqlNormalizeCompanyName("Razorpay Software Private Limited")).toBe("razorpay software");
+    expect(sqlNormalizeCompanyName("Foo Ltd")).toBe("foo");
+  });
+
+  it("does NOT apply the curated alias table — that is normalizeCompanyName's job", () => {
+    // Decisive: this must agree with the DATABASE, not with the richer TS
+    // resolver, or global_jobs.normalized_company would drift from every row
+    // the ingest RPC writes.
+    expect(sqlNormalizeCompanyName("Amazon Jobs")).toBe("amazon jobs");
+    expect(normalizeCompanyName("Amazon Jobs").canonicalName).toBe("Amazon");
+  });
+
+  it("does not strip careers-site noise words the way normalizeCompanyName does", () => {
+    expect(sqlNormalizeCompanyName("Google Careers")).toBe("google careers");
+    expect(normalizeCompanyName("Google Careers").canonicalName).toBe("Google");
+  });
+
+  it("handles empty input", () => {
+    expect(sqlNormalizeCompanyName("")).toBe("");
+    expect(sqlNormalizeCompanyName(null)).toBe("");
   });
 });

@@ -14,6 +14,7 @@ import { Chip, CompanyMark } from "@/components/dashboard/primitives";
 import { useResumes } from "@/features/resumes/hooks";
 import { useJobs, useSavedJobs } from "@/features/jobs/hooks";
 import { logoToneForCompany } from "@/features/jobs/utils";
+import { formatLocationDisplay } from "@/features/jobs/locationDisplay";
 import {
   DEFAULT_LENGTH,
   DEFAULT_TONE,
@@ -361,7 +362,9 @@ export function GenerateCoverLetterDialog({
                             </p>
                             <p className="truncate text-[11px] text-[oklch(0.5_0.02_265)]">
                               {job.company_name}
-                              {job.location ? ` · ${job.location}` : ""}
+                              {formatLocationDisplay(job.location)
+                                ? ` · ${formatLocationDisplay(job.location)}`
+                                : ""}
                             </p>
                           </div>
                           {active && <Check className="h-4 w-4 shrink-0 text-[#2563EB]" />}

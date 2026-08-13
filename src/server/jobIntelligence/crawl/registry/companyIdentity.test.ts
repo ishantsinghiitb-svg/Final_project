@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  curatedNameVariants,
   identityKey,
   isSameCompany,
   resolveCompanyIdentity,
@@ -167,5 +168,59 @@ describe("isSameCompany — duplicate prevention", () => {
 
   it("ignores casing and punctuation", () => {
     expect(isSameCompany("cult.fit", "CULT FIT")).toBe(true);
+  });
+});
+
+// ── Module 11C-1 ──
+describe("curatedNameVariants", () => {
+  it("returns the canonical name plus every curated alias of the SAME entity", () => {
+    const variants = curatedNameVariants("Zomato").map((v) => identityKey(v));
+    expect(variants).toContain("zomato");
+    expect(variants).toContain("eternal");
+    expect(variants).toContain("eternal ltd");
+  });
+
+  it("resolves from either direction — the alias yields the canonical name too", () => {
+    const fromAlias = curatedNameVariants("Eternal Ltd").map((v) => identityKey(v));
+    expect(fromAlias).toContain("zomato");
+    expect(fromAlias).toContain("eternal");
+  });
+
+  it("covers the Fi Money / Epifi rename", () => {
+    const variants = curatedNameVariants("Fi Money").map((v) => identityKey(v));
+    expect(variants).toContain("fi money");
+    expect(variants).toContain("epifi");
+  });
+
+  it("returns just the company itself when no alias is curated", () => {
+    expect(curatedNameVariants("Acme Robotics").map((v) => identityKey(v))).toEqual([
+      "acme robotics",
+    ]);
+  });
+
+  it("NEVER includes a parent company — Blinkit is Zomato-owned but hires separately", () => {
+    const variants = curatedNameVariants("Blinkit").map((v) => identityKey(v));
+    expect(variants).toContain("blinkit");
+    expect(variants).not.toContain("zomato");
+  });
+
+  it("does not include a different entity that merely resembles the name", () => {
+    // Exact reverse lookup only: nothing is pulled in by similarity.
+    const variants = curatedNameVariants("Freshworks").map((v) => identityKey(v));
+    expect(variants).toContain("freshworks");
+    expect(variants).toContain("freshdesk");
+    expect(variants).not.toContain("fresh");
+    expect(variants).not.toContain("freshmenu");
+  });
+
+  it("gives the two proven homonyms no aliases at all", () => {
+    // Decisive for Module 11C-1: alias awareness must add nothing to Slice or
+    // Porter, whose separation depends entirely on URL evidence.
+    expect(curatedNameVariants("Slice").map((v) => identityKey(v))).toEqual(["slice"]);
+    expect(curatedNameVariants("Porter").map((v) => identityKey(v))).toEqual(["porter"]);
+  });
+
+  it("returns an empty list for an empty name", () => {
+    expect(curatedNameVariants("")).toEqual([]);
   });
 });
