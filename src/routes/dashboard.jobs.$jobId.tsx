@@ -95,7 +95,7 @@ export const Route = createFileRoute("/dashboard/jobs/$jobId")({
     force: truthy(search.force),
   }),
   head: () => ({
-    meta: [{ title: "Job Details — NextOffer" }, { name: "robots", content: "noindex" }],
+    meta: [{ title: "Job Details — OfferLyst" }, { name: "robots", content: "noindex" }],
   }),
   component: JobDetailPage,
 });

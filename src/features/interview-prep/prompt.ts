@@ -153,7 +153,7 @@ const GROUNDING_RULES = [
 
 const ADAPTIVE_COVERAGE = [
   "COVERAGE PHILOSOPHY — this is the most important rule in this prompt:",
-  "Think like an experienced interviewer at a top tech company preparing to interview this exact candidate tomorrow: \"What are ALL the important areas I would actually evaluate, given this résumé, this role, this round, and everything else I know?\" Your job is to prepare the candidate for realistic, COMPLETE coverage of that — not to produce a fixed-length list.",
+  'Think like an experienced interviewer at a top tech company preparing to interview this exact candidate tomorrow: "What are ALL the important areas I would actually evaluate, given this résumé, this role, this round, and everything else I know?" Your job is to prepare the candidate for realistic, COMPLETE coverage of that — not to produce a fixed-length list.',
   "",
   "There is NO fixed target count. The right number depends on how much there genuinely is to cover:",
   "• Thin résumé + thin job description → roughly 8-10 questions is honest; inventing more would mean padding.",
@@ -167,7 +167,7 @@ const ADAPTIVE_COVERAGE = [
 const QUALITY_RULES = [
   "QUESTION QUALITY:",
   "• Every question must earn its place. `whyAsked` has to state the SPECIFIC thing in the résumé, the job posting, the company context, the round, the candidate's additional notes, or a prior analysis that makes this question likely — not a generic justification that could apply to any candidate in any interview.",
-  "• `sourceTag` is a SHORT at-a-glance version of the same grounding (a few words) — e.g. \"Your Product internship at Kuku Technologies\", \"The JD's emphasis on experimentation\", \"The hiring manager round\", \"Your note about SQL\" — never a vague phrase like \"Standard question\" or \"General fit\".",
+  '• `sourceTag` is a SHORT at-a-glance version of the same grounding (a few words) — e.g. "Your Product internship at Kuku Technologies", "The JD\'s emphasis on experimentation", "The hiring manager round", "Your note about SQL" — never a vague phrase like "Standard question" or "General fit".',
   '• Prefer specific, evidence-anchored phrasing over generic prompts. Weak: "Tell me about yourself." Strong: "I noticed you increased conversion by 18% at Kuku Technologies — walk me through how you identified the problem, validated the opportunity, prioritized the solution, and measured success." Anchor questions in the candidate\'s actual résumé lines and the job\'s actual requirements whenever the material supports it.',
   "• A question that could be asked in any interview for any role, for any candidate, is a failure — no matter how common or 'safe' it is elsewhere.",
   "• The same standard applies to `priorityTopics`, `evaluationCriteria`, `resumeWeakAreas` and `starStories`: include an item only when it is specific to this résumé and this job, not boilerplate interview advice.",
@@ -331,7 +331,7 @@ export function buildAnswerPrompt(
     "BEFORE YOU RETURN: is every claim in the answer traceable to the résumé or the job posting below? If not, remove or soften it.",
     "",
     "── OUTPUT ──",
-    "Return `relevantExperience` (which résumé evidence this draws on), `structureNote` (e.g. \"Structured as STAR\" — internal, never shown as part of the answer), `answer` (the answer itself, plain prose), `keyPointsHit` (short list of the points it covers), and a one-sentence `note` describing the answer.",
+    'Return `relevantExperience` (which résumé evidence this draws on), `structureNote` (e.g. "Structured as STAR" — internal, never shown as part of the answer), `answer` (the answer itself, plain prose), `keyPointsHit` (short list of the points it covers), and a one-sentence `note` describing the answer.',
     "",
     UNTRUSTED_NOTE,
   ].join("\n");

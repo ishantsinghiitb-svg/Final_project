@@ -15,6 +15,7 @@ import {
   Gauge,
   Wand2,
   History,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -46,7 +47,7 @@ import type { Resume, ResumeVersion } from "@/types";
 
 export const Route = createFileRoute("/dashboard/resumes")({
   head: () => ({
-    meta: [{ title: "Resumes — NextOffer" }, { name: "robots", content: "noindex" }],
+    meta: [{ title: "Resumes — OfferLyst" }, { name: "robots", content: "noindex" }],
   }),
   component: ResumesPage,
 });
@@ -62,6 +63,8 @@ function ResumesPage() {
   // false, so its existing behavior (no redirect) is unaffected.
   const [uploadForOptimize, setUploadForOptimize] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  // Only meaningful below lg, where the detail has no column of its own.
+  const [detailOpen, setDetailOpen] = useState(false);
 
   // Keep a valid selection: prefer the default resume, else the first.
   useEffect(() => {
@@ -85,6 +88,15 @@ function ResumesPage() {
   // to the same query key with its own hook call.
   const { data: parsed } = useResumeParsed(selected?.id);
   const reparse = useReparseResume();
+
+  useEffect(() => {
+    if (!detailOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setDetailOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [detailOpen]);
 
   function goToOptimize(resumeId: string) {
     void navigate({ to: "/dashboard/resumes/$resumeId/optimize", params: { resumeId } });
@@ -118,7 +130,7 @@ function ResumesPage() {
         <EmptyState
           icon={FileText}
           title="No resumes yet"
-          body="Upload a PDF resume to get started. We extract the text and generate a deterministic health report — no AI credits used."
+          body="Upload a PDF resume to get started. We extract the text and generate a health report, which uses no AI credits."
           cta={
             <DashButton onClick={() => setUploadOpen(true)}>
               <Plus className="h-4 w-4" /> Upload resume
@@ -127,7 +139,11 @@ function ResumesPage() {
         />
       ) : (
         <>
-          <div className="grid gap-4 md:grid-cols-4">
+          {/* Overview tiles are a desktop affordance. On a phone they cost
+              four full-width cards before the user reaches a single resume,
+              which is the opposite of what they came here for. The same
+              numbers stay one tap away inside each resume's detail view. */}
+          <div className="hidden gap-4 md:grid md:grid-cols-4">
             <StatTile icon={FileText} label="Total resumes" value={String(resumes.length)} />
             <StatTile
               icon={Star}
@@ -149,19 +165,33 @@ function ResumesPage() {
             />
           </div>
 
-          <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
+          {/* `grid-cols-1` is required at the base breakpoint, not just
+              cosmetic: without it Tailwind never emits a
+              `grid-template-columns` rule below `lg`, so the browser falls
+              back to CSS's implicit `auto`-sized single column, which sizes to
+              the content's max-content width rather than shrinking to the
+              container. On a real uploaded resume that overflowed the
+              viewport by up to 27px on phones — the resume card ignored its
+              container width entirely below `lg`. */}
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1.4fr_1fr]">
             <div className="space-y-3">
               {resumes.map((r) => (
                 <ResumeLibraryEntry
                   key={r.id}
                   resume={r}
                   selected={r.id === selectedId}
-                  onSelect={() => setSelectedId(r.id)}
+                  onSelect={() => {
+                    setSelectedId(r.id);
+                    // Below lg there is no detail column beside the list, so
+                    // selecting opens the detail as its own sheet instead.
+                    setDetailOpen(true);
+                  }}
                 />
               ))}
             </div>
 
-            <div className="space-y-4">
+            {/* Desktop: detail sits beside the list, as before. */}
+            <div className="hidden space-y-4 lg:block">
               {selected && (
                 <ResumeDetail
                   resumeId={selected.id}
@@ -174,6 +204,48 @@ function ResumesPage() {
               )}
             </div>
           </div>
+
+          {/* Mobile/tablet: the same ResumeDetail, opened as a full-height
+              sheet once a resume is chosen. One component, two presentations,
+              so the detail can never drift between them. */}
+          {detailOpen && selected && (
+            <div
+              className="fixed inset-0 z-50 lg:hidden"
+              role="dialog"
+              aria-modal="true"
+              aria-label={`${selected.name} details`}
+            >
+              <div
+                className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+                onClick={() => setDetailOpen(false)}
+              />
+              <div className="absolute inset-x-0 bottom-0 top-12 overflow-y-auto rounded-t-2xl border-t border-black/5 bg-[oklch(0.985_0.003_250)]">
+                <div className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-black/5 bg-white/95 px-4 py-3 backdrop-blur">
+                  <div className="min-w-0">
+                    <p className="truncate font-display text-sm font-semibold">{selected.name}</p>
+                    <p className="text-xs text-[oklch(0.5_0.02_265)]">Resume details</p>
+                  </div>
+                  <button
+                    onClick={() => setDetailOpen(false)}
+                    aria-label="Close details"
+                    className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-black/5 bg-white"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+                <div className="space-y-4 p-4">
+                  <ResumeDetail
+                    resumeId={selected.id}
+                    parseStatus={selected.parse_status}
+                    parseError={selected.parse_error}
+                    parsed={parsed ?? null}
+                    onReparse={() => reparse.mutate(selected.id)}
+                    reparsing={reparse.isPending}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
         </>
       )}
 

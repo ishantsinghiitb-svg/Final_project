@@ -20,7 +20,7 @@ import {
   Video,
 } from "lucide-react";
 import { toast } from "sonner";
-import { format, parseISO } from "date-fns";
+import { format, formatDistanceToNow, isPast, parseISO } from "date-fns";
 import { DashCard, SectionTitle, Chip, CompanyMark } from "@/components/dashboard/primitives";
 import { DashButton } from "@/components/dashboard/DashButton";
 import { ScheduleInterviewDialog } from "@/components/dashboard/interviews/ScheduleInterviewDialog";
@@ -58,7 +58,7 @@ import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/dashboard/interviews/$interviewId/")({
   head: () => ({
-    meta: [{ title: "Interview Details — NextOffer" }, { name: "robots", content: "noindex" }],
+    meta: [{ title: "Interview Details — OfferLyst" }, { name: "robots", content: "noindex" }],
   }),
   component: InterviewDetailPage,
 });
@@ -232,6 +232,15 @@ function InterviewDetailPage() {
       : "Prep ready"
     : null;
 
+  // Everything below is derived from data already loaded on this page. Nothing
+  // here invents interview detail that the record does not carry.
+  const scheduledAt = parseISO(interview.scheduled_at);
+  const isOver = isPast(scheduledAt);
+  const whenRelative = `${isOver ? "" : "In "}${formatDistanceToNow(scheduledAt)}${isOver ? " ago" : ""}`;
+  // "concluded" is the finished state for a mock session (the others are
+  // active / paused / failed).
+  const completedSessions = mockSessions.filter((session) => session.status === "concluded");
+
   return (
     <div className="mx-auto max-w-6xl space-y-6">
       <Link
@@ -360,6 +369,47 @@ function InterviewDetailPage() {
         </DashCard>
       )}
 
+      {/* At-a-glance strip. The page previously jumped straight from the header
+          to a half-empty detail card, which is why it read as "two boxes on the
+          right and nothing else". Each tile is derived from the interview
+          record or from prep/mock data already loaded here. */}
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <GlanceTile
+          icon={Calendar}
+          label={isOver ? "Took place" : "Starts"}
+          value={format(scheduledAt, "EEE, MMM d")}
+          hint={format(scheduledAt, "h:mm a") + " \u00b7 " + whenRelative}
+        />
+        <GlanceTile
+          icon={interview.mode === "online" ? Video : MapPin}
+          label={interview.mode === "online" ? "Format" : "Location"}
+          value={interview.mode === "online" ? "Online" : interview.location || "In person"}
+          hint={
+            interview.mode === "online"
+              ? MEETING_PROVIDER_LABEL[detectMeetingProvider(interview.link)]
+              : undefined
+          }
+        />
+        <GlanceTile
+          icon={Sparkles}
+          label="Preparation"
+          value={prep ? "Ready" : "Not started"}
+          hint={prep && questionCount > 0 ? questionCount + " questions" : undefined}
+          tone={prep ? "good" : "muted"}
+        />
+        <GlanceTile
+          icon={Mic}
+          label="Mock interviews"
+          value={
+            mockSessions.length === 0
+              ? "None yet"
+              : mockSessions.length + (mockSessions.length === 1 ? " session" : " sessions")
+          }
+          hint={completedSessions.length > 0 ? completedSessions.length + " completed" : undefined}
+          tone={mockSessions.length > 0 ? "good" : "muted"}
+        />
+      </div>
+
       <div className="grid gap-6 lg:grid-cols-[1fr_280px]">
         <div className="space-y-6">
           <DashCard>
@@ -368,7 +418,7 @@ function InterviewDetailPage() {
               <DetailTile
                 icon={Calendar}
                 label="Date & time"
-                value={format(parseISO(interview.scheduled_at), "MMM d, yyyy 'at' h:mm a")}
+                value={format(scheduledAt, "MMM d, yyyy 'at' h:mm a")}
               />
               <DetailTile
                 icon={interview.mode === "online" ? Video : MapPin}
@@ -383,20 +433,101 @@ function InterviewDetailPage() {
                     : interview.location || "Offline"
                 }
               />
+              <DetailTile icon={Users} label="Round" value={interview.type} />
               {interview.interviewer && (
                 <DetailTile icon={Users} label="Interviewer" value={interview.interviewer} />
               )}
               {resumeName && <DetailTile icon={FileText} label="Resume" value={resumeName} />}
+              <DetailTile
+                icon={CheckCircle2}
+                label="Status"
+                value={INTERVIEW_STATUS_META[interview.status].label}
+              />
             </div>
           </DashCard>
 
-          {interview.notes && (
+          {/* Related application — only when this interview is actually linked
+              to one. A standalone interview has no application to point at. */}
+          {interview.application_id && (
             <DashCard>
-              <SectionTitle>Notes</SectionTitle>
+              <SectionTitle>Related application</SectionTitle>
+              <Link
+                to="/dashboard/applications/$applicationId"
+                params={{ applicationId: interview.application_id }}
+                className="mt-3 flex items-center gap-3 rounded-xl border border-black/5 bg-[oklch(0.98_0.005_265)] p-3 transition-colors hover:border-[#2563EB]/25"
+              >
+                <CompanyMark
+                  company={interview.company_name}
+                  tone={tone}
+                  size={32}
+                  logoUrl={interview.company_logo_url}
+                />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium text-[oklch(0.2_0.02_265)]">
+                    {interview.role}
+                  </p>
+                  <p className="truncate text-xs text-[oklch(0.5_0.02_265)]">
+                    {interview.company_name}
+                  </p>
+                </div>
+                <span className="shrink-0 text-xs font-medium text-[#2563EB]">
+                  Open application
+                </span>
+              </Link>
+            </DashCard>
+          )}
+
+          <DashCard>
+            <SectionTitle>Notes</SectionTitle>
+            {interview.notes ? (
               <div
                 className="prose prose-sm mt-3 max-w-none text-[oklch(0.35_0.02_265)]"
                 dangerouslySetInnerHTML={{ __html: renderRichTextHtml(interview.notes) }}
               />
+            ) : (
+              <div className="mt-3 rounded-xl border border-dashed border-black/10 p-4">
+                <p className="text-sm text-[oklch(0.5_0.02_265)]">
+                  Nothing noted yet. Keep what this round covers, or the questions you want to ask,
+                  here.
+                </p>
+                <button
+                  onClick={() => setEditing(true)}
+                  className="mt-2 text-xs font-medium text-[#2563EB] hover:underline"
+                >
+                  Add notes
+                </button>
+              </div>
+            )}
+          </DashCard>
+
+          {/* Mock interview history — rendered only when sessions exist. Shows
+              what the session records actually contain (when it ran, its state
+              and how many turns); scores live inside the report and are shown
+              on the report page rather than guessed at here. */}
+          {mockSessions.length > 0 && (
+            <DashCard>
+              <SectionTitle>Mock interview history</SectionTitle>
+              <div className="mt-3 divide-y divide-black/5">
+                {mockSessions.map((session) => (
+                  <div
+                    key={session.id}
+                    className="flex flex-wrap items-center justify-between gap-2 py-2.5"
+                  >
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium text-[oklch(0.25_0.02_265)]">
+                        {session.round_label || session.interviewer_role_label}
+                      </p>
+                      <p className="text-xs text-[oklch(0.55_0.02_265)]">
+                        {format(parseISO(session.started_at), "MMM d, yyyy")}
+                        {session.turn_count > 0 ? " \u00b7 " + session.turn_count + " answers" : ""}
+                      </p>
+                    </div>
+                    <Chip tone={MOCK_STATUS_CHIP[session.status].tone}>
+                      {MOCK_STATUS_CHIP[session.status].label}
+                    </Chip>
+                  </div>
+                ))}
+              </div>
             </DashCard>
           )}
         </div>
@@ -517,6 +648,60 @@ function InterviewDetailPage() {
         />
       )}
     </div>
+  );
+}
+
+/**
+ * Compact summary tile for the top of the interview detail page. Purely
+ * presentational — every value passed in is derived from the interview record
+ * or from prep/mock queries already on the page.
+ */
+/** Display mapping for a mock session's lifecycle state. */
+const MOCK_STATUS_CHIP: Record<
+  "active" | "paused" | "concluded" | "failed",
+  { label: string; tone: "green" | "blue" | "amber" | "rose" }
+> = {
+  concluded: { label: "Completed", tone: "green" },
+  active: { label: "In progress", tone: "blue" },
+  paused: { label: "Paused", tone: "amber" },
+  failed: { label: "Didn't finish", tone: "rose" },
+};
+
+function GlanceTile({
+  icon: Icon,
+  label,
+  value,
+  hint,
+  tone = "default",
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  value: string;
+  hint?: string;
+  tone?: "default" | "good" | "muted";
+}) {
+  return (
+    <DashCard className="p-3.5">
+      <div className="flex items-center gap-2">
+        <Icon
+          className={cn(
+            "h-4 w-4 shrink-0",
+            tone === "good"
+              ? "text-[#16A34A]"
+              : tone === "muted"
+                ? "text-[oklch(0.65_0.02_265)]"
+                : "text-[#2563EB]",
+          )}
+        />
+        <p className="text-[10px] font-medium uppercase tracking-wider text-[oklch(0.55_0.02_265)]">
+          {label}
+        </p>
+      </div>
+      <p className="mt-1.5 truncate text-sm font-semibold text-[oklch(0.2_0.02_265)]" title={value}>
+        {value}
+      </p>
+      {hint && <p className="truncate text-[11px] text-[oklch(0.55_0.02_265)]">{hint}</p>}
+    </DashCard>
   );
 }
 

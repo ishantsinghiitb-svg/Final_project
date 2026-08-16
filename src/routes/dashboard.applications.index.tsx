@@ -26,7 +26,7 @@ import { cn } from "@/lib/utils";
 // ── Route definition ──────────────────────────────────────────────────────────
 export const Route = createFileRoute("/dashboard/applications/")({
   head: () => ({
-    meta: [{ title: "Applications — NextOffer" }, { name: "robots", content: "noindex" }],
+    meta: [{ title: "Applications — OfferLyst" }, { name: "robots", content: "noindex" }],
   }),
   component: AppsPage,
 });

@@ -5,11 +5,11 @@ import { ProtectedRoute } from "@/components/auth/RouteGuards";
 export const Route = createFileRoute("/dashboard")({
   head: () => ({
     meta: [
-      { title: "Workspace — NextOffer" },
+      { title: "Workspace — OfferLyst" },
       {
         name: "description",
         content:
-          "Your NextOffer workspace: jobs, applications, interviews, and resumes in one place.",
+          "Your OfferLyst workspace: jobs, applications, interviews, and resumes in one place.",
       },
       { name: "robots", content: "noindex" },
     ],

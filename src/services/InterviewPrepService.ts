@@ -1,4 +1,8 @@
-import type { InterviewPrep, InterviewPrepAnswer, InterviewPrepProgress } from "@/features/interview-prep/types";
+import type {
+  InterviewPrep,
+  InterviewPrepAnswer,
+  InterviewPrepProgress,
+} from "@/features/interview-prep/types";
 import { interviewPrepRepository } from "@/repositories/InterviewPrepRepository";
 import { interviewPrepAnswerRepository } from "@/repositories/InterviewPrepAnswerRepository";
 

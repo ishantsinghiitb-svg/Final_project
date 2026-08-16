@@ -1,7 +1,11 @@
 import type { AuthedContext } from "@/server/supabase";
 import { CalendarRepository } from "@/repositories/CalendarRepository";
 import { GoogleConnectionRepository } from "@/repositories/GoogleConnectionRepository";
-import { decideRelevance, tierForConfidence, type RelevanceContext } from "./CalendarRelevanceFilter";
+import {
+  decideRelevance,
+  tierForConfidence,
+  type RelevanceContext,
+} from "./CalendarRelevanceFilter";
 import { extractCompanyName } from "@/server/gmail/CompanyExtractor";
 import { matchApplication } from "@/server/gmail/ApplicationMatcher";
 

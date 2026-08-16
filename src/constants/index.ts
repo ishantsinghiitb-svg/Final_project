@@ -131,7 +131,7 @@ export const ROUTES = {
   CONTACT: "/contact",
   FAQ: "/faq",
   FEATURES: "/features",
-  PRICING: "/pricing",
+  EXTENSION: "/extension",
 } as const;
 
 // ── File Upload Limits ──

@@ -1,7 +1,7 @@
-import { Link } from "@tanstack/react-router";
 import { AlertCircle, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { aiErrorCopy, creditsReassurance } from "@/features/ai/errorMessages";
+import { NeedMoreCreditsLink } from "./NeedMoreCredits";
 
 // ── AI error notice (Module 6G) ──
 //
@@ -84,14 +84,7 @@ export function AIErrorNotice({
                   {retryLabel}
                 </button>
               )}
-              {outOfCredits && (
-                <Link
-                  to="/pricing"
-                  className="inline-flex items-center rounded-lg bg-gradient-to-br from-[#2563EB] to-[#7C3AED] px-2.5 py-1.5 text-xs font-semibold text-white transition-transform hover:-translate-y-px"
-                >
-                  See upgrade options
-                </Link>
-              )}
+              {outOfCredits && <NeedMoreCreditsLink variant="primary" />}
             </div>
           )}
         </div>

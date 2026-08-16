@@ -40,7 +40,9 @@ export const interviewPrepAIClient = {
    * preparation has an active editing session — the server verifies this,
    * never the client.
    */
-  async generateAnswer(params: GenerateInterviewAnswerParams): Promise<GenerateInterviewAnswerResult> {
+  async generateAnswer(
+    params: GenerateInterviewAnswerParams,
+  ): Promise<GenerateInterviewAnswerResult> {
     return generateInterviewAnswerFn({ data: { accessToken: await accessToken(), ...params } });
   },
 };

@@ -19,17 +19,13 @@ export class AvatarStorage {
 
     if (error) throw error;
 
-    const { data } = supabase.storage
-      .from(STORAGE_BUCKETS.AVATARS)
-      .getPublicUrl(path);
+    const { data } = supabase.storage.from(STORAGE_BUCKETS.AVATARS).getPublicUrl(path);
 
     return data.publicUrl;
   }
 
   async delete(userId: string): Promise<void> {
-    const { data: files } = await supabase.storage
-      .from(STORAGE_BUCKETS.AVATARS)
-      .list(userId);
+    const { data: files } = await supabase.storage.from(STORAGE_BUCKETS.AVATARS).list(userId);
 
     if (files && files.length > 0) {
       const paths = files.map((f) => `${userId}/${f.name}`);

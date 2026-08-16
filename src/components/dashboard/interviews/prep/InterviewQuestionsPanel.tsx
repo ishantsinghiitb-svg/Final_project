@@ -107,7 +107,9 @@ function QuestionRow({
         onClick={() => setExpanded((e) => !e)}
         className="flex w-full items-start gap-2 px-3 py-2.5 text-left"
       >
-        <span className="min-w-0 flex-1 text-sm text-[oklch(0.25_0.02_265)]">{question.question}</span>
+        <span className="min-w-0 flex-1 text-sm text-[oklch(0.25_0.02_265)]">
+          {question.question}
+        </span>
         <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
           <span className="text-[10px] text-[oklch(0.55_0.02_265)]">
             {QUESTION_DIFFICULTY_LABELS[question.difficulty]}

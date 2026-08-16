@@ -23,7 +23,11 @@ import { safeFileName, triggerBlobDownload } from "@/lib/download";
 const DEFAULT_DURATION_MINUTES = 60;
 
 function escapeIcsText(value: string): string {
-  return value.replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\n/g, "\\n");
+  return value
+    .replace(/\\/g, "\\\\")
+    .replace(/;/g, "\\;")
+    .replace(/,/g, "\\,")
+    .replace(/\n/g, "\\n");
 }
 
 /** RFC 5545 folds lines over 75 octets — not strictly required for these short fields, but cheap to do correctly. */
@@ -40,7 +44,10 @@ function foldLine(line: string): string {
 }
 
 function toIcsUtc(iso: string): string {
-  return new Date(iso).toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z");
+  return new Date(iso)
+    .toISOString()
+    .replace(/[-:]/g, "")
+    .replace(/\.\d{3}Z$/, "Z");
 }
 
 /** Builds a standards-compliant single-VEVENT .ics file for one interview. */
@@ -59,7 +66,7 @@ export function buildInterviewIcs(interview: Interview): string {
   const lines = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//NextOffer//Calendar Intelligence//EN",
+    "PRODID:-//OfferLyst//Calendar Intelligence//EN",
     "CALSCALE:GREGORIAN",
     "BEGIN:VEVENT",
     `UID:nextoffer-interview-${interview.id}@nextoffer`,

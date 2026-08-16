@@ -36,7 +36,7 @@ import type {
 
 export const Route = createFileRoute("/dashboard/resumes_/$resumeId/optimize")({
   head: () => ({
-    meta: [{ title: "Optimize resume — NextOffer" }, { name: "robots", content: "noindex" }],
+    meta: [{ title: "Optimize resume — OfferLyst" }, { name: "robots", content: "noindex" }],
   }),
   component: OptimizeResumePage,
 });

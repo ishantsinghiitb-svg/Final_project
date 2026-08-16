@@ -2,7 +2,7 @@ import { sendMessage } from "../../shared/messaging/bus";
 import { MessageType } from "../../shared/messaging/types";
 
 /**
- * Runs only on the NextOffer web app's own origin (see the second
+ * Runs only on the OfferLyst web app's own origin (see the second
  * content_scripts entry in manifest.config.ts, currently localhost-only).
  * Reads the Supabase session the web app already persisted to localStorage
  * and relays it to the background worker — this is the entire auth bridge;

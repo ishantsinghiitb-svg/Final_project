@@ -1,15 +1,7 @@
 import { useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { toast } from "sonner";
-import {
-  Inbox as InboxIcon,
-  Search,
-  Mail,
-  RefreshCw,
-  Loader2,
-  ChevronDown,
-  ChevronUp,
-} from "lucide-react";
+import { Inbox as InboxIcon, Search, Mail, RefreshCw, Loader2 } from "lucide-react";
 import {
   DashCard,
   PageHeader,
@@ -43,7 +35,7 @@ import type { SuggestionListItem } from "@/repositories/SuggestionRepository";
 
 export const Route = createFileRoute("/dashboard/inbox")({
   head: () => ({
-    meta: [{ title: "Recruiter Inbox — NextOffer" }, { name: "robots", content: "noindex" }],
+    meta: [{ title: "Recruiter Inbox — OfferLyst" }, { name: "robots", content: "noindex" }],
   }),
   component: InboxPage,
 });
@@ -68,13 +60,23 @@ function summarize(pending: SuggestionListItem[]): string[] {
   return parts;
 }
 
+/** Read-state filter options for the Inbox toggle. */
+type ReadState = "unread" | "read" | "all";
+
+const READ_STATES: { value: ReadState; label: string }[] = [
+  { value: "unread", label: "Unread" },
+  { value: "read", label: "Read" },
+  { value: "all", label: "All" },
+];
+
 function InboxPage() {
   const { data: connection } = useGoogleConnection();
   const [view, setView] = useState<InboxView>("needs_action");
-  // The Read section starts collapsed so the Inbox still opens as a short
-  // actionable list — but its count is always visible on the header, so
-  // "nothing to do" never reads as "nothing was found".
-  const [readOpen, setReadOpen] = useState(false);
+  // Explicit read-state filter. Previously the page always rendered Unread as
+  // a section with Read stacked underneath in a collapsed disclosure, so the
+  // two states were mixed in one scroll with no way to say "show me only the
+  // read ones". This is a deliberate switch instead.
+  const [readState, setReadState] = useState<ReadState>("unread");
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [reviewing, setReviewing] = useState<SuggestionListItem | null>(null);
@@ -89,10 +91,15 @@ function InboxPage() {
   const resolveOne = useResolveSuggestion();
   const resolveBulk = useResolveSuggestions();
 
-  const visible = useMemo(() => applyView(suggestions, view), [suggestions, view]);
-  const { unread, read } = useMemo(() => splitByReadState(visible), [visible]);
-  const unreadGroups = useMemo(() => groupSuggestions(unread), [unread]);
-  const readGroups = useMemo(() => groupSuggestions(read), [read]);
+  const inView = useMemo(() => applyView(suggestions, view), [suggestions, view]);
+  const { unread, read } = useMemo(() => splitByReadState(inView), [inView]);
+  // `visible` is what the user can actually see and therefore what bulk
+  // selection is allowed to act on.
+  const visible = useMemo(
+    () => (readState === "unread" ? unread : readState === "read" ? read : inView),
+    [readState, unread, read, inView],
+  );
+  const visibleGroups = useMemo(() => groupSuggestions(visible), [visible]);
   const summaryParts = useMemo(() => summarize(suggestions), [suggestions]);
   const isConnected = Boolean(connection) && connection?.gmail_status !== "disconnected";
 
@@ -237,7 +244,7 @@ function InboxPage() {
         <EmptyState
           icon={Mail}
           title="Gmail isn't connected yet"
-          body="Connect Gmail from Settings to automatically detect recruiter emails, turning them into reviewable suggestions — nothing is ever created without your approval."
+          body="Connect Gmail from Settings to detect recruiter emails and turn them into reviewable suggestions. Nothing is ever created without your approval."
           cta={<DashButtonLink to="/dashboard/settings">Go to Settings</DashButtonLink>}
         />
       </>
@@ -287,6 +294,31 @@ function InboxPage() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          {/* Unread / Read / All — an explicit state the user chooses, rather
+              than read mail being silently appended below unread mail. */}
+          <div className="inline-flex h-9 items-center rounded-lg border border-black/5 bg-white p-0.5 text-xs font-medium">
+            {READ_STATES.map((rs) => (
+              <button
+                key={rs.value}
+                onClick={() => setReadState(rs.value)}
+                aria-pressed={readState === rs.value}
+                className={`rounded-md px-2.5 py-1.5 transition-colors ${
+                  readState === rs.value
+                    ? "bg-[oklch(0.95_0.02_265)] text-[#2563EB]"
+                    : "text-[oklch(0.45_0.02_265)] hover:bg-black/[0.03]"
+                }`}
+              >
+                {rs.label}
+                <span className="ml-1.5 tabular-nums text-[oklch(0.6_0.02_265)]">
+                  {rs.value === "unread"
+                    ? unread.length
+                    : rs.value === "read"
+                      ? read.length
+                      : inView.length}
+                </span>
+              </button>
+            ))}
+          </div>
           <div className="flex h-9 items-center gap-1.5 rounded-lg border border-black/5 bg-white px-3">
             <Search className="h-3.5 w-3.5 text-[oklch(0.55_0.02_265)]" />
             <input
@@ -338,7 +370,7 @@ function InboxPage() {
             <button
               onClick={() => void handleSyncNow()}
               disabled={syncing}
-              title="Syncs every connected Google product together — the same action everywhere in NextOffer."
+              title="Syncs every connected Google product together — the same action everywhere in OfferLyst."
               className="ml-auto inline-flex h-9 items-center gap-1.5 rounded-lg border border-black/5 bg-white px-3 text-xs font-medium text-[oklch(0.3_0.02_265)] hover:bg-black/[0.03] disabled:opacity-50"
             >
               {syncing ? (
@@ -372,79 +404,20 @@ function InboxPage() {
           }
         />
       ) : (
-        <div className="space-y-6">
-          <section className="space-y-3">
-            <div className="flex items-center gap-2">
-              <h2 className="font-display text-sm font-semibold text-[oklch(0.2_0.02_265)]">
-                Unread
-              </h2>
-              <span className="rounded-full bg-[#2563EB]/10 px-2 py-0.5 text-xs font-semibold text-[#2563EB]">
-                {unread.length}
-              </span>
-            </div>
-            {unreadGroups.length === 0 ? (
-              <DashCard className="!p-3">
-                <p className="text-sm text-[oklch(0.5_0.02_265)]">
-                  No unread recruiter email — everything below has already been opened in Gmail.
-                </p>
-              </DashCard>
-            ) : (
-              <div className="space-y-4">
-                {unreadGroups.map((group) => (
-                  <SuggestionGroupCard
-                    key={group.key}
-                    group={group}
-                    googleEmail={connection?.google_email ?? null}
-                    selectedIds={effectiveSelected}
-                    busyId={busyId}
-                    onToggleSelect={toggleSelect}
-                    onToggleSelectGroup={toggleSelectGroup}
-                    onReview={setReviewing}
-                    onDismiss={handleDismiss}
-                  />
-                ))}
-              </div>
-            )}
-          </section>
-
-          {read.length > 0 && (
-            <section className="space-y-3">
-              <button
-                onClick={() => setReadOpen((o) => !o)}
-                aria-expanded={readOpen}
-                className="flex w-full items-center gap-2 text-left"
-              >
-                <h2 className="font-display text-sm font-semibold text-[oklch(0.2_0.02_265)]">
-                  Read
-                </h2>
-                <span className="rounded-full bg-black/[0.06] px-2 py-0.5 text-xs font-semibold text-[oklch(0.45_0.02_265)]">
-                  {read.length}
-                </span>
-                {readOpen ? (
-                  <ChevronUp className="h-4 w-4 text-[oklch(0.5_0.02_265)]" />
-                ) : (
-                  <ChevronDown className="h-4 w-4 text-[oklch(0.5_0.02_265)]" />
-                )}
-              </button>
-              {readOpen && (
-                <div className="space-y-4">
-                  {readGroups.map((group) => (
-                    <SuggestionGroupCard
-                      key={group.key}
-                      group={group}
-                      googleEmail={connection?.google_email ?? null}
-                      selectedIds={effectiveSelected}
-                      busyId={busyId}
-                      onToggleSelect={toggleSelect}
-                      onToggleSelectGroup={toggleSelectGroup}
-                      onReview={setReviewing}
-                      onDismiss={handleDismiss}
-                    />
-                  ))}
-                </div>
-              )}
-            </section>
-          )}
+        <div className="space-y-4">
+          {visibleGroups.map((group) => (
+            <SuggestionGroupCard
+              key={group.key}
+              group={group}
+              googleEmail={connection?.google_email ?? null}
+              selectedIds={effectiveSelected}
+              busyId={busyId}
+              onToggleSelect={toggleSelect}
+              onToggleSelectGroup={toggleSelectGroup}
+              onReview={setReviewing}
+              onDismiss={handleDismiss}
+            />
+          ))}
         </div>
       )}
 

@@ -45,7 +45,11 @@ export function Button({
   size,
 }: CommonProps & { onClick?: () => void; type?: "button" | "submit" }) {
   return (
-    <button type={type} onClick={onClick} className={classesFor({ children, className, variant, size })}>
+    <button
+      type={type}
+      onClick={onClick}
+      className={classesFor({ children, className, variant, size })}
+    >
       {children}
     </button>
   );

@@ -11,7 +11,8 @@ export function validateEmail(email: string): ValidationResult {
 
 export function validatePassword(password: string): ValidationResult {
   if (!password) return { valid: false, error: "Password is required." };
-  if (password.length < 8) return { valid: false, error: "Password must be at least 8 characters." };
+  if (password.length < 8)
+    return { valid: false, error: "Password must be at least 8 characters." };
   return { valid: true, error: null };
 }
 

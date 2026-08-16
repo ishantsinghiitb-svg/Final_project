@@ -1,5 +1,5 @@
-import { Link } from "@tanstack/react-router";
 import { Loader2, ShieldCheck, X } from "lucide-react";
+import { NeedMoreCreditsLink } from "../ai/NeedMoreCredits";
 
 // ── AnalyzeAtsDialog (Module 6C) ──
 //
@@ -72,12 +72,7 @@ export function AnalyzeAtsDialog({
               <p className="mt-2 text-sm text-muted-foreground">
                 You're out of AI credits, so this can't run right now.
               </p>
-              <Link
-                to="/pricing"
-                className="mt-4 inline-flex w-full items-center justify-center rounded-xl border border-black/10 bg-white py-2.5 text-sm font-medium text-[oklch(0.25_0.02_265)] transition-colors hover:bg-black/[0.03]"
-              >
-                See upgrade options
-              </Link>
+              <NeedMoreCreditsLink variant="secondary" context="the ATS check" className="mt-4" />
             </>
           ) : (
             <>

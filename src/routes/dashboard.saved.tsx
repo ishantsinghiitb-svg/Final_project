@@ -47,7 +47,7 @@ import type { GlobalJob } from "@/types";
 
 export const Route = createFileRoute("/dashboard/saved")({
   head: () => ({
-    meta: [{ title: "Saved jobs — NextOffer" }, { name: "robots", content: "noindex" }],
+    meta: [{ title: "Saved jobs — OfferLyst" }, { name: "robots", content: "noindex" }],
   }),
   component: SavedPage,
 });
@@ -140,7 +140,7 @@ function SavedPage() {
         <PageHeader
           eyebrow="Saved"
           title="Everything you bookmarked, in one place."
-          subtitle="Jobs you saved from the extension, LinkedIn, Wellfound, or added manually — organized by when you saved them."
+          subtitle="Jobs you saved with the extension or added yourself, ordered by when you saved them."
           actions={
             <div className="flex items-center gap-2">
               {isFetching && (
@@ -193,20 +193,20 @@ function SavedPage() {
           <EmptyState
             icon={Archive}
             title="No archived jobs"
-            body="Jobs you archive from your saved list will be tucked away here — still saved, just out of the way."
+            body="Jobs you archive from your saved list are tucked away here. They stay saved, just out of the way."
           />
         ) : (
           <EmptyState
             icon={Bookmark}
             title="Nothing saved yet"
             body="Install the extension and hit the bookmark icon on any job posting to send it here."
-            cta={<DashButtonLink to="/features">Get the extension</DashButtonLink>}
+            cta={<DashButtonLink to="/extension">Get the extension</DashButtonLink>}
           />
         )
       ) : (
         <div className="space-y-6">
           {/* Saved jobs grid */}
-          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          <div className="grid auto-rows-fr gap-3 sm:grid-cols-2 xl:grid-cols-3">
             {jobs.map((job) => {
               const isSaved = savedIds.includes(job.id);
               const salary = formatSalary(job);
@@ -216,7 +216,12 @@ function SavedPage() {
               return (
                 <DashCard
                   key={job.id}
-                  className="hover:shadow-md hover:-translate-y-0.5 transition-[box-shadow,transform] duration-200"
+                  /* flex column + h-full so every card in a row is the same
+                     height and the CTA row can be pinned to the bottom with
+                     mt-auto. Without this the buttons floated up to sit right
+                     under the content, so a one-line title and a three-line
+                     title produced visibly misaligned cards. */
+                  className="flex h-full flex-col hover:shadow-md hover:-translate-y-0.5 transition-[box-shadow,transform] duration-200"
                 >
                   <div className="flex items-start justify-between gap-2">
                     <CompanyMark
@@ -305,10 +310,12 @@ function SavedPage() {
                     params={{ jobId: job.id }}
                     className="group mt-3 block"
                   >
-                    <p className="font-display font-semibold transition-colors group-hover:text-[#2563EB]">
+                    <p className="line-clamp-2 font-display font-semibold leading-snug transition-colors group-hover:text-[#2563EB]">
                       {job.role}
                     </p>
-                    <p className="text-xs text-[oklch(0.5_0.02_265)]">{job.company_name}</p>
+                    <p className="mt-0.5 truncate text-xs text-[oklch(0.5_0.02_265)]">
+                      {job.company_name}
+                    </p>
                   </Link>
 
                   {(getJobBadges(job).length > 0 || trackedIds.includes(job.id)) && (
@@ -335,28 +342,32 @@ function SavedPage() {
                   )}
 
                   {job.employment_type && (
-                    <div className="mt-3 rounded-lg bg-[oklch(0.97_0.01_265)] px-3 py-2 text-xs">
-                      <span className="font-medium capitalize">{job.employment_type}</span>
-                    </div>
+                    <p className="mt-2 text-xs capitalize text-[oklch(0.5_0.02_265)]">
+                      {job.employment_type}
+                    </p>
                   )}
 
-                  {/* CTA row */}
-                  <div className="mt-3 flex items-center gap-2 border-t border-black/5 pt-3">
-                    {job.url && (
-                      <button
-                        onClick={() => setSelectedJob(job)}
-                        className="inline-flex flex-1 items-center justify-center gap-1 rounded-lg bg-gradient-to-br from-[#2563EB] to-[#7C3AED] px-3 py-1.5 text-xs font-medium text-white shadow-[0_2px_8px_-2px_rgba(37,99,235,0.5)] transition-transform hover:-translate-y-px"
+                  {/* CTA row — mt-auto pins it to the bottom of the card so
+                      Apply/View Job line up across the row whatever the title
+                      length. */}
+                  <div className="mt-auto pt-4">
+                    <div className="flex items-center gap-2 border-t border-black/5 pt-3">
+                      {job.url && (
+                        <button
+                          onClick={() => setSelectedJob(job)}
+                          className="inline-flex h-8 flex-1 items-center justify-center gap-1 rounded-lg bg-gradient-to-br from-[#2563EB] to-[#7C3AED] px-3 text-xs font-medium text-white shadow-[0_2px_8px_-2px_rgba(37,99,235,0.5)] transition-transform hover:-translate-y-px"
+                        >
+                          Apply <ArrowUpRight className="h-3 w-3" />
+                        </button>
+                      )}
+                      <Link
+                        to="/dashboard/jobs/$jobId"
+                        params={{ jobId: job.id }}
+                        className="inline-flex h-8 flex-1 items-center justify-center gap-1 rounded-lg border border-black/5 bg-white px-3 text-xs font-medium text-[oklch(0.35_0.02_265)] transition-colors hover:bg-black/[0.03]"
                       >
-                        Apply <ArrowUpRight className="h-3 w-3" />
-                      </button>
-                    )}
-                    <Link
-                      to="/dashboard/jobs/$jobId"
-                      params={{ jobId: job.id }}
-                      className="inline-flex flex-1 items-center justify-center gap-1 rounded-lg border border-black/5 bg-white px-3 py-1.5 text-xs font-medium text-[oklch(0.35_0.02_265)] transition-colors hover:bg-black/[0.03]"
-                    >
-                      View Job
-                    </Link>
+                        View Job
+                      </Link>
+                    </div>
                   </div>
                 </DashCard>
               );

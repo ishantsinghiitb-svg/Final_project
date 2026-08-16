@@ -111,7 +111,7 @@ export function GoogleConnectionCard() {
           <button
             onClick={() => void handleSyncNow()}
             disabled={syncPending}
-            title="Syncs every connected Google product together — the same action everywhere in NextOffer."
+            title="Syncs every connected Google product together — the same action everywhere in OfferLyst."
             className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-black/5 bg-white px-3 py-1.5 text-xs font-medium hover:bg-black/[0.03] disabled:opacity-50"
           >
             {syncPending ? (
@@ -153,7 +153,7 @@ export function GoogleConnectionCard() {
       <div className="mt-4 flex items-start gap-2 rounded-lg bg-black/[0.015] px-3 py-2.5 text-[11px] leading-relaxed text-[oklch(0.5_0.02_265)]">
         <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[oklch(0.55_0.02_265)]" />
         <p>
-          Read-only access — NextOffer can never modify or delete anything in your Gmail or
+          Read-only access — OfferLyst can never modify or delete anything in your Gmail or
           Calendar. Disconnect either one any time; disconnecting doesn't affect the other.
         </p>
       </div>
@@ -257,7 +257,7 @@ function ProductSection({
             <div>
               <p className="text-xs font-medium">Auto Sync</p>
               <p className="text-[11px] text-[oklch(0.5_0.02_265)]">
-                Check for updates when you open NextOffer.
+                Check for updates when you open OfferLyst.
               </p>
             </div>
             <AutoSyncToggle

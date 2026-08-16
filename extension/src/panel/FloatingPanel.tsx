@@ -80,9 +80,9 @@ function PanelBody({
     case "not-logged-in":
       return (
         <div className="nextoffer-panel__body">
-          <span>Log in to NextOffer to save or track this job.</span>
+          <span>Log in to OfferLyst to save or track this job.</span>
           <button className="nextoffer-panel__btn--primary" onClick={actions.onOpenInNextOffer}>
-            Open in NextOffer
+            Open in OfferLyst
           </button>
         </div>
       );
@@ -139,7 +139,7 @@ function PanelBody({
     case "extension-invalidated":
       return (
         <div className="nextoffer-panel__body">
-          <span className="nextoffer-panel__empty-title">NextOffer was updated.</span>
+          <span className="nextoffer-panel__empty-title">OfferLyst was updated.</span>
           <span>Refresh this page to keep using the extension here.</span>
           <button className="nextoffer-panel__btn--primary" onClick={() => location.reload()}>
             Refresh page

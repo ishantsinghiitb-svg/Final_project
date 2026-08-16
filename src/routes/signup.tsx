@@ -8,8 +8,8 @@ import { GuestRoute } from "@/components/auth/RouteGuards";
 export const Route = createFileRoute("/signup")({
   head: () => ({
     meta: [
-      { title: "Create account — NextOffer" },
-      { name: "description", content: "Create your NextOffer account." },
+      { title: "Create account — OfferLyst" },
+      { name: "description", content: "Create your OfferLyst account." },
     ],
   }),
   component: Signup,
@@ -59,7 +59,7 @@ function Signup() {
     }
 
     if (result.session) {
-      toast.success("Account created! Welcome to NextOffer.");
+      toast.success("Account created! Welcome to OfferLyst.");
       nav({ to: "/dashboard" });
     } else {
       setShowSuccess(true);
@@ -103,7 +103,7 @@ function Signup() {
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
               className="mt-1.5 w-full rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2.5 text-sm outline-none focus:border-white/25"
-              placeholder="Ada Lovelace"
+              placeholder="Your full name"
             />
           </label>
         }

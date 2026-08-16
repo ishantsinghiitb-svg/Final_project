@@ -88,7 +88,7 @@ import type { CoverLetterVersion } from "@/types";
 
 export const Route = createFileRoute("/dashboard/cover-letters/$coverLetterId")({
   head: () => ({
-    meta: [{ title: "Cover Letter Studio — NextOffer" }, { name: "robots", content: "noindex" }],
+    meta: [{ title: "Cover Letter Studio — OfferLyst" }, { name: "robots", content: "noindex" }],
   }),
   component: CoverLetterStudioPage,
 });

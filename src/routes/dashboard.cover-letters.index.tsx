@@ -38,7 +38,7 @@ import type { CoverLetter } from "@/types";
 
 export const Route = createFileRoute("/dashboard/cover-letters/")({
   head: () => ({
-    meta: [{ title: "Cover letters — NextOffer" }, { name: "robots", content: "noindex" }],
+    meta: [{ title: "Cover letters — OfferLyst" }, { name: "robots", content: "noindex" }],
   }),
   component: CoverLettersPage,
 });
@@ -116,7 +116,7 @@ function CoverLettersPage() {
   return (
     // Shared AI frame (Module 6G) — same measure as the AI Hub, the Studio and
     // the Optimizer, so the four AI surfaces read as one product.
-    <AIPage>
+    <AIPage width="full">
       <StickyPageHeader>
         <PageHeader
           eyebrow="AI Studio"

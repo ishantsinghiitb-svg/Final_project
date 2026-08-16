@@ -44,9 +44,7 @@ export class DocumentStorage {
   }
 
   async delete(userId: string, docId: string): Promise<void> {
-    const { data: files } = await supabase.storage
-      .from(STORAGE_BUCKETS.DOCUMENTS)
-      .list(userId);
+    const { data: files } = await supabase.storage.from(STORAGE_BUCKETS.DOCUMENTS).list(userId);
 
     if (files) {
       const matches = files.filter((f) => f.name.startsWith(docId));

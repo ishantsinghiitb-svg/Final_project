@@ -4,7 +4,10 @@ import type {
   GenerateInterviewPrepResult,
 } from "@/features/interview-prep/types";
 import { requireUser } from "@/server/supabase";
-import { generateInterviewAnswer, runInterviewPrepGeneration } from "@/server/ai/InterviewPrepAIService";
+import {
+  generateInterviewAnswer,
+  runInterviewPrepGeneration,
+} from "@/server/ai/InterviewPrepAIService";
 
 // ── Interview Preparation server functions (Module 7B) ──
 //

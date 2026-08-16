@@ -29,8 +29,20 @@ import { cn } from "@/lib/utils";
 //     same margins, rhythm and header treatment as the rest.
 
 const WIDTHS = {
-  /** Reading and list surfaces: the Hub, the Cover Letter library, the Optimizer. */
+  /**
+   * Reading surfaces: reports, prep, the Optimizer. Prose and scored breakdowns
+   * have a comfortable measure and genuinely should not run the full width of a
+   * wide monitor.
+   */
   default: "max-w-5xl",
+  /**
+   * Library/list surfaces. These are the same kind of page as Resumes or
+   * Applications and must line up with them exactly, so they take the width
+   * DashboardShell's own container gives every other page. The Cover Letter
+   * library used `default` and ended up visibly inset from every neighbouring
+   * page for no reason a user could see.
+   */
+  full: "max-w-none",
   /** Multi-pane workspaces that need the room. */
   workspace: "max-w-7xl",
 } as const;

@@ -176,7 +176,7 @@ export function buildCalendarInterviewDraft(input: {
 /**
  * Builds a `create_interview` draft with a CONFIRMED existing target
  * (`existingInterviewId` set, not a merge candidate) — used whenever a
- * calendar event is determined to BE an interview NextOffer already knows
+ * calendar event is determined to BE an interview OfferLyst already knows
  * about (whether that's the first time the link is confirmed, via
  * CalendarSyncService's merge ladder, or a later drift on an
  * already-confirmed link) and something about it (time or location)

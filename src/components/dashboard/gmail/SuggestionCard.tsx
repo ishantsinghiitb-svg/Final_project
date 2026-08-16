@@ -6,6 +6,7 @@ import {
   Paperclip,
   Loader2,
   Reply,
+  CircleAlert,
 } from "lucide-react";
 import { Chip } from "@/components/dashboard/primitives";
 import { gmailReplyLink } from "@/features/gmail/utils";
@@ -148,12 +149,15 @@ export function SuggestionCard({
           {reason}
         </p>
 
-        {/* Action required — omitted entirely for informational mail, so its
-            presence is itself the signal that something is needed. */}
+        {/* Omitted entirely for informational mail, so its presence is itself
+            the signal that something is needed. The literal "Action required:"
+            prefix used to lead this line on every actionable card, which made
+            the list read as a wall of repeated labels; the amber marker now
+            carries that meaning and the sentence carries the instruction. */}
         {action && (
-          <p className="mt-1 text-[13px] leading-snug">
-            <span className="font-semibold text-[#B45309]">Action required: </span>
-            <span className="text-[oklch(0.32_0.02_265)]">{action}</span>
+          <p className="mt-1.5 flex items-start gap-1.5 text-[13px] leading-snug text-[#B45309]">
+            <CircleAlert className="mt-[1px] h-3.5 w-3.5 shrink-0" aria-hidden />
+            <span>{action}</span>
           </p>
         )}
       </div>

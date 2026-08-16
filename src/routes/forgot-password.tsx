@@ -8,8 +8,8 @@ import { useAuth } from "@/context/AuthContext";
 export const Route = createFileRoute("/forgot-password")({
   head: () => ({
     meta: [
-      { title: "Reset password — NextOffer" },
-      { name: "description", content: "Reset your NextOffer password." },
+      { title: "Reset password — OfferLyst" },
+      { name: "description", content: "Reset your OfferLyst password." },
     ],
   }),
   component: ForgotPassword,
@@ -39,7 +39,7 @@ function ForgotPassword() {
     <section className="mx-auto flex min-h-[calc(100vh-4rem)] max-w-6xl items-center px-6 py-32">
       <div className="mx-auto w-full max-w-md">
         <div className="mb-6 flex items-center justify-center gap-2">
-          <Link to="/" aria-label="NextOffer home">
+          <Link to="/" aria-label="OfferLyst home">
             <Logo size={32} wordmarkClassName="text-lg" />
           </Link>
         </div>

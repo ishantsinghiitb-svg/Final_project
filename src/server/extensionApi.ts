@@ -30,6 +30,11 @@ const PATH_PREFIX = "/api/extension/";
 
 const ALLOWED_ORIGIN_PATTERNS = [
   /^chrome-extension:\/\//,
+  // Safari Web Extension background-fetch origin (Module 12). The UUID
+  // rotates every Safari launch (anti-fingerprinting) so it can never be
+  // pinned to a specific value — same scheme-level trust as chrome-extension:,
+  // no broader.
+  /^safari-web-extension:\/\//,
   /^https?:\/\/localhost(:\d+)?$/,
   /^https?:\/\/127\.0\.0\.1(:\d+)?$/,
 ];

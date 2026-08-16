@@ -10,6 +10,7 @@ import {
   Sparkles,
   Target,
   type LucideIcon,
+  ArrowRight,
 } from "lucide-react";
 import { DashCard, SectionTitle } from "@/components/dashboard/primitives";
 import { AIThinkingInline } from "@/components/dashboard/ai/AIThinking";
@@ -87,25 +88,30 @@ export function AIRecommendationsCard({ className }: { className?: string }) {
             We need a little more data
           </p>
           <p className="mt-1 text-sm text-[oklch(0.5_0.02_265)]">
-            Continue applying to jobs, preparing for interviews, and using NextOffer. We'll generate
+            Continue applying to jobs, preparing for interviews, and using OfferLyst. We'll generate
             personalized recommendations once there's enough reliable data.
           </p>
         </div>
       ) : (
         <>
-          <div className="mt-3 space-y-2">
+          <div className="mt-3 space-y-2 pb-3">
             {visible.map((item) => (
               <RecommendationRow key={item.type} item={item} />
             ))}
           </div>
 
+          {/* mt-auto pins this to the bottom of the card (the card is a flex
+              column and gets h-full from the page), so it reads as a footer
+              control instead of floating in the middle of leftover space. */}
           {overflow.length > 0 && (
-            <button
-              onClick={() => setShowAll(true)}
-              className="mt-2 text-xs font-medium text-[#2563EB] hover:underline"
-            >
-              Show all ({items.length})
-            </button>
+            <div className="mt-auto border-t border-black/5 pt-2.5">
+              <button
+                onClick={() => setShowAll(true)}
+                className="text-xs font-medium text-[#2563EB] hover:underline"
+              >
+                Show all ({items.length})
+              </button>
+            </div>
           )}
 
           <Dialog open={showAll} onOpenChange={setShowAll}>
@@ -135,25 +141,30 @@ function RecommendationRow({ item }: { item: RecommendationItem }) {
         <div className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-gradient-to-br from-[#2563EB]/10 to-[#7C3AED]/15 text-[#7C3AED]">
           <Icon className="h-3.5 w-3.5" />
         </div>
+        {/* Status first, then one line of why it matters, then a single CTA.
+            The row used to show the title, a two-line explanation AND a
+            separate "Action: …" sentence that repeated what the CTA button
+            already said, which is what made the card read as three paragraphs
+            per item. When there is a CTA the button carries the instruction;
+            the sentence is only rendered when there is nothing to link to. */}
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold text-[oklch(0.2_0.02_265)]">{item.title}</p>
-          <p className="mt-0.5 line-clamp-2 text-[13px] leading-snug text-[oklch(0.4_0.02_265)]">
+          <p className="text-[13px] font-semibold leading-snug text-[oklch(0.2_0.02_265)]">
+            {item.title}
+          </p>
+          <p className="mt-0.5 line-clamp-2 text-xs leading-snug text-[oklch(0.45_0.02_265)]">
             {item.explanation}
           </p>
-          <div className="mt-1.5 flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
-            <p className="min-w-0 text-[13px]">
-              <span className="font-medium text-[#2563EB]">Action: </span>
-              <span className="text-[oklch(0.3_0.02_265)]">{item.action}</span>
-            </p>
-            {cta && (
-              <Link
-                to={cta.to}
-                className="shrink-0 rounded-lg bg-[#2563EB]/10 px-2 py-1 text-[11px] font-medium text-[#2563EB] transition-colors hover:bg-[#2563EB]/15"
-              >
-                {cta.label}
-              </Link>
-            )}
-          </div>
+          {cta ? (
+            <Link
+              to={cta.to}
+              className="mt-2 inline-flex items-center gap-1 rounded-lg bg-[#2563EB]/10 px-2 py-1 text-[11px] font-medium text-[#2563EB] transition-colors hover:bg-[#2563EB]/15"
+            >
+              {cta.label}
+              <ArrowRight className="h-3 w-3" />
+            </Link>
+          ) : (
+            <p className="mt-1.5 line-clamp-2 text-xs text-[oklch(0.3_0.02_265)]">{item.action}</p>
+          )}
         </div>
       </div>
     </div>

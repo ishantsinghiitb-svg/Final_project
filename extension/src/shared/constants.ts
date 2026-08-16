@@ -1,4 +1,4 @@
-export const EXTENSION_NAME = "NextOffer – AI Job Copilot";
+export const EXTENSION_NAME = "OfferLyst – AI Job Copilot";
 
 export const EXTENSION_DESCRIPTION = "Track and manage job applications directly from job boards.";
 

@@ -34,17 +34,21 @@ export function ApplicationListView({ applications, onDelete, onArchive }: Props
   }
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-black/5 bg-white">
-      <table className="w-full text-sm">
+    <div className="overflow-x-auto rounded-2xl border border-black/5 bg-white">
+      <table className="w-full min-w-[640px] text-sm">
         <thead className="border-b border-black/5 text-left text-[10px] font-semibold uppercase tracking-widest text-[oklch(0.55_0.02_265)]">
+          {/* Explicit column widths. Left to auto-layout the table gave Company
+              and Role too little room while Location kept a wide empty column,
+              and the Applied cell was narrow enough to wrap "Aug 5, 2026" onto
+              two lines. */}
           <tr>
-            <th className="px-4 py-3">Company</th>
-            <th className="px-4 py-3">Role</th>
-            <th className="px-4 py-3">Status</th>
-            <th className="hidden px-4 py-3 md:table-cell">Applied</th>
-            <th className="hidden px-4 py-3 lg:table-cell">Location</th>
-            <th className="hidden px-4 py-3 lg:table-cell">Source</th>
-            <th className="w-8 px-4 py-3" />
+            <th className="w-[22%] px-3 py-2.5">Company</th>
+            <th className="w-[26%] px-3 py-2.5">Role</th>
+            <th className="w-[13%] whitespace-nowrap px-3 py-2.5">Status</th>
+            <th className="hidden w-[13%] whitespace-nowrap px-3 py-2.5 md:table-cell">Applied</th>
+            <th className="hidden w-[16%] px-3 py-2.5 lg:table-cell">Location</th>
+            <th className="hidden w-[10%] px-3 py-2.5 lg:table-cell">Source</th>
+            <th className="w-[92px] px-3 py-2.5" />
           </tr>
         </thead>
         <tbody className="divide-y divide-black/[0.03]">
@@ -61,34 +65,34 @@ export function ApplicationListView({ applications, onDelete, onArchive }: Props
                 className="group relative transition-colors hover:bg-[oklch(0.99_0.005_265)]"
               >
                 {/* Company */}
-                <td className="px-4 py-3">
+                <td className="px-3 py-2.5">
                   <div className="flex items-center gap-2.5">
                     <CompanyMark
                       company={app.company_name}
                       tone={tone}
-                      size={28}
+                      size={26}
                       logoUrl={app.company_logo_url}
                     />
-                    <span className="font-medium text-[oklch(0.2_0.02_265)]">
+                    <span className="truncate font-medium text-[oklch(0.2_0.02_265)]">
                       {app.company_name}
                     </span>
                   </div>
                 </td>
 
                 {/* Role */}
-                <td className="max-w-[200px] px-4 py-3">
-                  <span className="line-clamp-2 text-xs text-[oklch(0.35_0.02_265)]">
+                <td className="px-3 py-2.5">
+                  <span className="line-clamp-2 text-xs leading-snug text-[oklch(0.35_0.02_265)]">
                     {app.role}
                   </span>
                 </td>
 
                 {/* Status */}
-                <td className="px-4 py-3">
+                <td className="px-3 py-2.5">
                   <StatusBadge status={app.status} />
                 </td>
 
                 {/* Applied date */}
-                <td className="hidden px-4 py-3 text-xs text-[oklch(0.5_0.02_265)] md:table-cell">
+                <td className="hidden whitespace-nowrap px-3 py-2.5 text-xs text-[oklch(0.5_0.02_265)] md:table-cell">
                   <span className="flex items-center gap-1">
                     <Calendar className="h-3 w-3 shrink-0" />
                     {appliedDate}
@@ -96,11 +100,11 @@ export function ApplicationListView({ applications, onDelete, onArchive }: Props
                 </td>
 
                 {/* Location */}
-                <td className="hidden px-4 py-3 text-xs text-[oklch(0.5_0.02_265)] lg:table-cell">
+                <td className="hidden px-3 py-2.5 text-xs text-[oklch(0.5_0.02_265)] lg:table-cell">
                   {location ? (
                     <span className="flex items-center gap-1">
                       <MapPin className="h-3 w-3 shrink-0" />
-                      {location}
+                      <span className="truncate">{location}</span>
                     </span>
                   ) : (
                     <span className="text-[oklch(0.7_0.01_265)]">—</span>
@@ -108,7 +112,7 @@ export function ApplicationListView({ applications, onDelete, onArchive }: Props
                 </td>
 
                 {/* Source */}
-                <td className="hidden px-4 py-3 text-xs text-[oklch(0.5_0.02_265)] lg:table-cell">
+                <td className="hidden whitespace-nowrap px-3 py-2.5 text-xs text-[oklch(0.5_0.02_265)] lg:table-cell">
                   {app.source ? (
                     <span className="flex items-center gap-1">
                       <Globe className="h-3 w-3 shrink-0" />
@@ -120,8 +124,8 @@ export function ApplicationListView({ applications, onDelete, onArchive }: Props
                 </td>
 
                 {/* Actions */}
-                <td className="px-4 py-3">
-                  <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                <td className="px-3 py-2.5">
+                  <div className="flex items-center justify-end gap-0.5 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100">
                     <Link
                       to="/dashboard/applications/$applicationId"
                       params={{ applicationId: app.id }}

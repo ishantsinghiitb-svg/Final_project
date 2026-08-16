@@ -1,5 +1,9 @@
 import { supabase } from "@/lib/supabase";
-import type { InterviewPrep, InterviewPrepContent, InterviewPrepProgress } from "@/features/interview-prep/types";
+import type {
+  InterviewPrep,
+  InterviewPrepContent,
+  InterviewPrepProgress,
+} from "@/features/interview-prep/types";
 import type { Json } from "@/types/database";
 
 // Excludes `reasoning`, `resume_file_hash`, `job_hash`, `input_hash` — server-only
@@ -25,7 +29,9 @@ function mapRow(row: Record<string, unknown>): InterviewPrep {
     // Defensive against a stored progress value that's truthy but incomplete
     // (an empty `{}` bypasses a plain `??` fallback since it's neither null
     // nor undefined) — normalize checklistChecked to an array unconditionally.
-    progress: { checklistChecked: (row.progress as InterviewPrepProgress | null)?.checklistChecked ?? [] },
+    progress: {
+      checklistChecked: (row.progress as InterviewPrepProgress | null)?.checklistChecked ?? [],
+    },
     generated_at: (row.generated_at as string | null) ?? null,
     created_at: row.created_at as string,
     updated_at: row.updated_at as string,

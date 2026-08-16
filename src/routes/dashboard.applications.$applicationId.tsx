@@ -54,7 +54,7 @@ import { format, parseISO } from "date-fns";
 // ── Route definition ──────────────────────────────────────────────────────────
 export const Route = createFileRoute("/dashboard/applications/$applicationId")({
   head: () => ({
-    meta: [{ title: "Application Details — NextOffer" }, { name: "robots", content: "noindex" }],
+    meta: [{ title: "Application Details — OfferLyst" }, { name: "robots", content: "noindex" }],
   }),
   component: ApplicationDetailPage,
 });

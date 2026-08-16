@@ -54,7 +54,7 @@
 }
 
 :root {
-  /* NextOffer dark-first identity. Marketing site is always dark. */
+  /* OfferLyst dark-first identity. Marketing site is always dark. */
   --radius: 0.75rem;
   --background: oklch(0.13 0.02 265);       /* #030712-ish */
   --foreground: oklch(0.97 0.005 250);
@@ -128,6 +128,65 @@
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
+}
+
+/* Wordmark gradient for LIGHT surfaces (the dashboard shell). The
+   `text-gradient` above is tuned for the dark marketing site and renders
+   near-white, which is invisible on the white sidebar — see Logo's `tone`
+   prop. */
+@utility text-gradient-ink {
+  background: linear-gradient(100deg, oklch(0.58 0.21 260), oklch(0.55 0.24 295));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* ── Marketing container ──────────────────────────────────────────────────
+   Single source of truth for marketing-page width. A fixed `max-w-7xl`
+   (1280px) is why the site looked like a tiny centered column with large
+   empty gutters once the viewport got wide in CSS pixels (e.g. browser zoomed
+   out to 80%, where a 1920px screen reports 2400 CSS px). The max-width is
+   fluid between 1280px and 1536px so the layout keeps using the available
+   width, and the inline padding scales with the viewport so gutters stay
+   comfortable instead of constant. */
+@utility site-container {
+  width: 100%;
+  margin-inline: auto;
+  max-width: clamp(80rem, 88vw, 96rem);
+  padding-inline: clamp(1.25rem, 3.4vw, 3rem);
+}
+
+/* ── Dashboard page container ─────────────────────────────────────────────
+   The single source of truth for dashboard page gutters, applied once by
+   DashboardShell's <main>. Pages must not add their own horizontal padding or
+   max-width, otherwise they drift apart from each other the way the Cover
+   Letters library did. The cap keeps tables and boards from stretching to
+   unusable widths on very wide (or zoomed-out) viewports. */
+@utility dash-container {
+  width: 100%;
+  margin-inline: auto;
+  max-width: 105rem;
+  padding-inline: clamp(0.75rem, 1.6vw, 1.5rem);
+}
+
+/* Fluid marketing typography. Sizes track the viewport instead of stepping at
+   breakpoints, so nothing collapses to "tiny" at wide-but-zoomed-out widths
+   and nothing overflows at 360px. */
+@utility text-fluid-hero {
+  font-size: clamp(2.5rem, 1.6rem + 3.9vw, 5rem);
+  line-height: 1.04;
+}
+@utility text-fluid-h2 {
+  font-size: clamp(1.75rem, 1.35rem + 1.7vw, 2.75rem);
+  line-height: 1.12;
+}
+@utility text-fluid-h3 {
+  font-size: clamp(1.35rem, 1.15rem + 0.85vw, 1.9rem);
+  line-height: 1.18;
+}
+@utility text-fluid-lead {
+  font-size: clamp(1rem, 0.94rem + 0.28vw, 1.2rem);
+  line-height: 1.6;
 }
 
 @utility grid-bg {
@@ -226,6 +285,21 @@
 }
 
 ::selection { background: oklch(0.58 0.21 260 / 0.35); color: white; }
+
+/* ── Unstyled (custom) toasts ─────────────────────────────────────────────
+   sonner applies the shared toast classNames to every toast, including
+   `toast.custom(..., { unstyled: true })`. Those classNames include
+   `bg-background`, which is the dark marketing token, so a custom light card
+   (WorkflowPrompt) was drawn on top of a near-black rounded rectangle and the
+   wrapper's corners showed around it. Strip the wrapper entirely for unstyled
+   toasts and let the custom card own its own surface. */
+[data-sonner-toast][data-styled="false"] {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  width: auto !important;
+}
 
 /* Premium card hover elevation */
 .card-hover {

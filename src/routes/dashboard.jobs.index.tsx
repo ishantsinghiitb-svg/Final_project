@@ -76,7 +76,7 @@ function parseMultiOrEmpty(value: string | undefined): string[] {
 // ── Route definition with URL search param validation ────────────────────────
 export const Route = createFileRoute("/dashboard/jobs/")({
   head: () => ({
-    meta: [{ title: "Jobs — NextOffer" }, { name: "robots", content: "noindex" }],
+    meta: [{ title: "Jobs — OfferLyst" }, { name: "robots", content: "noindex" }],
   }),
   validateSearch: (search: Record<string, unknown>): JobsSearchParams => ({
     q: typeof search.q === "string" ? search.q : undefined,
@@ -404,6 +404,112 @@ function JobsPage() {
     search.location,
   ].filter(Boolean).length;
 
+  // One definition of the filter controls, mounted inline on desktop and
+  // inside the mobile drawer. Defined as an element (not a second component)
+  // so it closes over the existing handlers with no prop plumbing.
+  const filterControls = (
+    <>
+      <select
+        value={sortKey}
+        onChange={(e) => setFilter("sort", e.target.value)}
+        aria-label="Sort jobs"
+        className="h-9 rounded-lg border border-black/5 bg-white px-3 text-sm"
+      >
+        {(Object.keys(SORT_OPTIONS) as JobSortOption[]).map((key) => (
+          <option key={key} value={key}>
+            {SORT_OPTIONS[key].label}
+          </option>
+        ))}
+      </select>
+
+      <MultiSelectDropdown
+        label="Work mode"
+        options={WORK_MODE_OPTIONS}
+        selected={parseMultiOrEmpty(search.workMode)}
+        onChange={(v) => setMultiFilter("workMode", v)}
+      />
+
+      <MultiSelectDropdown
+        label="Employment type"
+        options={EMPLOYMENT_TYPE_OPTIONS}
+        selected={parseMultiOrEmpty(search.employmentType)}
+        onChange={(v) => setMultiFilter("employmentType", v)}
+      />
+
+      <MultiSelectDropdown
+        label="Experience level"
+        options={EXPERIENCE_LEVEL_OPTIONS}
+        selected={parseMultiOrEmpty(search.experienceLevel)}
+        onChange={(v) => setMultiFilter("experienceLevel", v)}
+      />
+
+      <MultiSelectDropdown
+        label="Role"
+        options={ROLE_CATEGORY_OPTIONS.map((r) => ({
+          value: r,
+          label: ROLE_CATEGORY_LABELS[r],
+        }))}
+        selected={parseMultiOrEmpty(search.roleCategory)}
+        onChange={(v) => setMultiFilter("roleCategory", v)}
+      />
+
+      <MultiSelectDropdown
+        label="Source"
+        options={SOURCE_OPTIONS}
+        selected={parseMultiOrEmpty(search.source)}
+        onChange={(v) => setMultiFilter("source", v)}
+      />
+
+      <select
+        value={search.postedAfter ?? ""}
+        onChange={(e) => setFilter("postedAfter", e.target.value)}
+        aria-label="Posted date"
+        className="h-9 rounded-lg border border-black/5 bg-white px-3 text-sm"
+      >
+        {POSTED_AFTER_OPTIONS.map((o) => (
+          <option key={o.label} value={o.value}>
+            {o.label}
+          </option>
+        ))}
+      </select>
+
+      <label className="inline-flex h-9 cursor-pointer select-none items-center gap-2 rounded-lg border border-black/5 bg-white px-3 text-sm">
+        <input
+          type="checkbox"
+          checked={Boolean(search.remote)}
+          onChange={(e) => setFilter("remote", e.target.checked ? true : undefined)}
+        />
+        Remote only
+      </label>
+
+      {(isFiltered || activeFilterCount > 0) && (
+        <button
+          onClick={resetFilters}
+          className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-black/5 bg-white px-3 text-xs font-medium text-[oklch(0.4_0.02_265)] transition-colors hover:bg-black/[0.03]"
+        >
+          <X className="h-3.5 w-3.5" />
+          Reset
+          {activeFilterCount > 0 && (
+            <span className="rounded-full bg-[#2563EB]/10 px-1.5 py-0.5 text-[10px] font-semibold text-[#2563EB]">
+              {activeFilterCount}
+            </span>
+          )}
+        </button>
+      )}
+    </>
+  );
+
+  const [filtersOpen, setFiltersOpen] = useState(false);
+
+  useEffect(() => {
+    if (!filtersOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setFiltersOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [filtersOpen]);
+
   // ── Render ────────────────────────────────────────────────────────────────
   return (
     <>
@@ -445,117 +551,45 @@ function JobsPage() {
         />
 
         <DashCard padded={false}>
-          {/* ── Filter bar ──────────────────────────────────────────────────── */}
+          {/* ── Filter bar ────────────────────────────────────────────────────
+              Search stays visible at every width. The remaining controls are
+              inline from md up (desktop unchanged) and collapse behind a
+              "Filters" button with an active count on phones, where fitting
+              eight controls into the header meant either a wall of wrapped
+              rows or unusably small targets. Both mount points render the SAME
+              `FilterControls` element, so there is one implementation. */}
           <div className="flex flex-wrap items-center gap-2 p-3">
             {/* Keyword search */}
-            <div className="flex h-9 flex-1 min-w-[220px] items-center gap-2 rounded-lg border border-black/5 bg-white px-3 text-sm">
+            <div className="flex h-9 min-w-[180px] flex-1 items-center gap-2 rounded-lg border border-black/5 bg-white px-3 text-sm">
               <Search className="h-4 w-4 shrink-0 text-[oklch(0.5_0.02_265)]" />
               <input
                 ref={searchInputRef}
                 defaultValue={q}
                 onChange={(e) => handleSearchChange(e.target.value)}
-                placeholder="Search role, company, location, type, skills…"
-                className="flex-1 bg-transparent outline-none placeholder:text-[oklch(0.55_0.02_265)] text-sm"
+                placeholder="Search role, company, location…"
+                className="flex-1 bg-transparent text-sm outline-none placeholder:text-[oklch(0.55_0.02_265)]"
               />
               {(view === "all" ? isFetching : recentlyViewedFetching) && (
                 <Loader2 className="h-3.5 w-3.5 animate-spin text-[oklch(0.5_0.02_265)]" />
               )}
             </div>
 
-            {/* Sort */}
-            <select
-              value={sortKey}
-              onChange={(e) => setFilter("sort", e.target.value)}
-              className="h-9 rounded-lg border border-black/5 bg-white px-3 text-sm"
+            {/* Mobile entry point into the same controls */}
+            <button
+              onClick={() => setFiltersOpen(true)}
+              aria-haspopup="dialog"
+              className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg border border-black/5 bg-white px-3 text-sm font-medium text-[oklch(0.35_0.02_265)] transition-colors hover:bg-black/[0.03] md:hidden"
             >
-              {(Object.keys(SORT_OPTIONS) as JobSortOption[]).map((key) => (
-                <option key={key} value={key}>
-                  {SORT_OPTIONS[key].label}
-                </option>
-              ))}
-            </select>
+              <SlidersHorizontal className="h-4 w-4" />
+              Filters
+              {activeFilterCount > 0 && (
+                <span className="rounded-full bg-[#2563EB]/10 px-1.5 py-0.5 text-[10px] font-semibold text-[#2563EB]">
+                  {activeFilterCount}
+                </span>
+              )}
+            </button>
 
-            {/* Work mode */}
-            <MultiSelectDropdown
-              label="Work mode"
-              options={WORK_MODE_OPTIONS}
-              selected={parseMultiOrEmpty(search.workMode)}
-              onChange={(v) => setMultiFilter("workMode", v)}
-            />
-
-            {/* Employment type */}
-            <MultiSelectDropdown
-              label="Employment type"
-              options={EMPLOYMENT_TYPE_OPTIONS}
-              selected={parseMultiOrEmpty(search.employmentType)}
-              onChange={(v) => setMultiFilter("employmentType", v)}
-            />
-
-            {/* Experience level */}
-            <MultiSelectDropdown
-              label="Experience level"
-              options={EXPERIENCE_LEVEL_OPTIONS}
-              selected={parseMultiOrEmpty(search.experienceLevel)}
-              onChange={(v) => setMultiFilter("experienceLevel", v)}
-            />
-
-            {/* Role category */}
-            <MultiSelectDropdown
-              label="Role"
-              options={ROLE_CATEGORY_OPTIONS.map((r) => ({
-                value: r,
-                label: ROLE_CATEGORY_LABELS[r],
-              }))}
-              selected={parseMultiOrEmpty(search.roleCategory)}
-              onChange={(v) => setMultiFilter("roleCategory", v)}
-            />
-
-            {/* Source */}
-            <MultiSelectDropdown
-              label="Source"
-              options={SOURCE_OPTIONS}
-              selected={parseMultiOrEmpty(search.source)}
-              onChange={(v) => setMultiFilter("source", v)}
-            />
-
-            {/* Posted date — stores relative-day string in URL */}
-            <select
-              value={search.postedAfter ?? ""}
-              onChange={(e) => setFilter("postedAfter", e.target.value)}
-              className="h-9 rounded-lg border border-black/5 bg-white px-3 text-sm"
-            >
-              {POSTED_AFTER_OPTIONS.map((o) => (
-                <option key={o.label} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
-
-            {/* Remote toggle */}
-            <label className="inline-flex h-9 items-center gap-2 rounded-lg border border-black/5 bg-white px-3 text-sm cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={Boolean(search.remote)}
-                onChange={(e) => setFilter("remote", e.target.checked ? true : undefined)}
-              />
-              Remote only
-            </label>
-
-            {/* Reset */}
-            {(isFiltered || activeFilterCount > 0) && (
-              <button
-                onClick={resetFilters}
-                className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-black/5 bg-white px-3 text-xs font-medium text-[oklch(0.4_0.02_265)] hover:bg-black/[0.03] transition-colors"
-              >
-                <X className="h-3.5 w-3.5" />
-                Reset
-                {activeFilterCount > 0 && (
-                  <span className="rounded-full bg-[#2563EB]/10 px-1.5 py-0.5 text-[10px] font-semibold text-[#2563EB]">
-                    {activeFilterCount}
-                  </span>
-                )}
-              </button>
-            )}
+            <div className="hidden flex-wrap items-center gap-2 md:flex">{filterControls}</div>
           </div>
         </DashCard>
       </StickyPageHeader>
@@ -650,7 +684,7 @@ function JobsPage() {
             <EmptyState
               icon={Filter}
               title="No recently viewed jobs"
-              body="Open a job's detail page and it'll show up here — up to your 10 most recent."
+              body="Open a job's detail page and it will show up here, up to your 10 most recent."
             />
           </div>
         ) : visibleRecentlyViewed.length === 0 ? (
@@ -706,6 +740,41 @@ function JobsPage() {
           onRemoveTracking={handleRemoveTracking}
           onClose={handleCloseAlreadyTracking}
         />
+      )}
+      {/* Mobile filter sheet. Slides up from the bottom, dismissed by the
+          backdrop, the Done button or Escape. Renders the same
+          `filterControls` element as the desktop bar, so filter behaviour and
+          state are identical on both. */}
+      {filtersOpen && (
+        <div
+          className="fixed inset-0 z-50 md:hidden"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Filters"
+        >
+          <div
+            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+            onClick={() => setFiltersOpen(false)}
+          />
+          <div className="absolute inset-x-0 bottom-0 max-h-[80vh] overflow-y-auto rounded-t-2xl border-t border-black/5 bg-white p-4 shadow-[0_-20px_60px_-20px_rgba(0,0,0,0.35)]">
+            <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-black/10" />
+            <div className="mb-3 flex items-center justify-between">
+              <p className="font-display text-sm font-semibold">Filters</p>
+              {activeFilterCount > 0 && (
+                <span className="text-xs text-[oklch(0.5_0.02_265)]">
+                  {activeFilterCount} active
+                </span>
+              )}
+            </div>
+            <div className="flex flex-col gap-2 [&>*]:w-full">{filterControls}</div>
+            <button
+              onClick={() => setFiltersOpen(false)}
+              className="mt-4 w-full rounded-xl bg-gradient-to-br from-[#2563EB] to-[#7C3AED] py-2.5 text-sm font-medium text-white"
+            >
+              Done
+            </button>
+          </div>
+        </div>
       )}
     </>
   );

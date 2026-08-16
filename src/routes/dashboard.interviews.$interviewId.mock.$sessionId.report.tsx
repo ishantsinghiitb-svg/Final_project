@@ -6,7 +6,7 @@ import { useInterview } from "@/features/interviews/hooks";
 
 export const Route = createFileRoute("/dashboard/interviews/$interviewId/mock/$sessionId/report")({
   head: () => ({
-    meta: [{ title: "Mock Interview Report — NextOffer" }, { name: "robots", content: "noindex" }],
+    meta: [{ title: "Mock Interview Report — OfferLyst" }, { name: "robots", content: "noindex" }],
   }),
   component: MockInterviewReportPage,
 });

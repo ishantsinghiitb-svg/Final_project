@@ -7,7 +7,6 @@ import {
   Briefcase,
   CalendarClock,
   ChevronRight,
-  Command,
   FileText,
   FolderKanban,
   Inbox,
@@ -26,6 +25,10 @@ import { CommandPalette } from "./CommandPalette";
 import { NotificationBell } from "./NotificationBell";
 import { Kbd } from "./primitives";
 import { Logo } from "@/components/site/Logo";
+import { UserAvatar } from "./UserAvatar";
+import { useUserIdentity } from "@/features/profile/identity";
+import { moreCreditsLinkProps } from "./ai/NeedMoreCredits";
+import { CREDITS_CTA_TITLE } from "@/content/credits";
 import { useAuth } from "@/context/AuthContext";
 import { useProfile } from "@/context/ProfileContext";
 import { useSidebarCounts } from "@/features/jobs/hooks";
@@ -36,13 +39,20 @@ type NavItem = {
   label: string;
   icon: React.ComponentType<{ className?: string }>;
   exact?: boolean;
-  /** badge key — looked up dynamically from useSidebarCounts() */
-  badgeKey?: "jobs" | "saved" | "applications" | "collections" | "gmailSuggestions";
+  /**
+   * Badge key, looked up dynamically from useSidebarCounts(). Only sections
+   * where a count is actionable carry one. Overview, Jobs and Analytics
+   * deliberately have none: Overview and Analytics are views over data the
+   * other sections already count, and the Jobs badge counted the whole
+   * discoverable job board (it read "999+" for everyone), which is a catalogue
+   * size rather than anything the user needs to act on.
+   */
+  badgeKey?: "saved" | "applications" | "collections" | "gmailSuggestions";
 };
 
 const nav: NavItem[] = [
   { to: "/dashboard", label: "Overview", icon: Activity, exact: true },
-  { to: "/dashboard/jobs", label: "Jobs", icon: Briefcase, badgeKey: "jobs" },
+  { to: "/dashboard/jobs", label: "Jobs", icon: Briefcase },
   { to: "/dashboard/saved", label: "Saved", icon: Bookmark, badgeKey: "saved" },
   // Badge shows the number of COLLECTIONS the user has, not the jobs inside
   // them — same badgeKey-driven mechanism as Jobs/Saved/Applications.
@@ -80,10 +90,10 @@ export function DashboardShell({ children }: { children: ReactNode }) {
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [mobileNav, setMobileNav] = useState(false);
 
-  const displayName =
-    profile?.full_name || user?.email?.split("@")[0]?.replace(/[._-]/g, " ") || "Account";
-  const displayEmail = user?.email ?? "";
-  const initials = displayName.slice(0, 2).toUpperCase();
+  // Single source of truth for name/email/avatar across the app — resolves the
+  // profile row against the auth provider's metadata so a Google picture shows
+  // even when the profile row predates it. See features/profile/identity.ts.
+  const { displayName, email: displayEmail, avatarUrl, initials } = useUserIdentity();
 
   async function handleSignOut() {
     setSigningOut(true);
@@ -135,11 +145,11 @@ export function DashboardShell({ children }: { children: ReactNode }) {
   );
 
   return (
-    <div className="min-h-screen bg-[oklch(0.98_0.005_250)] text-[oklch(0.2_0.02_265)]">
-      <div className="grid min-h-screen lg:grid-cols-[240px_1fr]">
+    <div className="min-h-screen bg-[oklch(0.985_0.003_250)] text-[oklch(0.2_0.02_265)]">
+      <div className="grid min-h-screen lg:grid-cols-[216px_1fr]">
         <aside
           className={cn(
-            "fixed inset-y-0 left-0 z-40 w-[240px] overflow-y-auto border-r border-black/5 bg-white/80 p-3 backdrop-blur transition-transform lg:sticky lg:top-0 lg:h-screen lg:translate-x-0",
+            "fixed inset-y-0 left-0 z-40 w-[216px] overflow-y-auto border-r border-black/5 bg-white/85 p-2.5 backdrop-blur transition-transform lg:sticky lg:top-0 lg:h-screen lg:translate-x-0",
             mobileNav ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
           )}
         >
@@ -147,9 +157,12 @@ export function DashboardShell({ children }: { children: ReactNode }) {
             <Link
               to="/"
               className="flex items-center gap-2 rounded-lg px-1"
-              aria-label="NextOffer home"
+              aria-label="OfferLyst home"
             >
-              <Logo size={26} wordmarkClassName="text-[15px] text-[oklch(0.2_0.02_265)]" />
+              {/* tone="onLight" is required here: the default wordmark ink is
+                  near-white for the dark marketing site and was rendering
+                  invisible against this white sidebar. */}
+              <Logo size={30} tone="onLight" />
             </Link>
             <button
               onClick={() => setMobileNav(false)}
@@ -160,7 +173,7 @@ export function DashboardShell({ children }: { children: ReactNode }) {
             </button>
           </div>
 
-          <div className="mt-5">
+          <div className="mt-4">
             <p className="mb-1 px-2 text-[10px] font-semibold uppercase tracking-widest text-[oklch(0.55_0.02_265)]">
               Workspace
             </p>
@@ -181,13 +194,13 @@ export function DashboardShell({ children }: { children: ReactNode }) {
                     to={n.to}
                     onClick={(e) => handleNavClick(e, n.to)}
                     className={cn(
-                      "group flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm transition-colors",
+                      "group flex items-center gap-2.5 rounded-lg px-2.5 py-[7px] text-[13px] transition-colors",
                       active
                         ? "bg-[oklch(0.95_0.02_265)] font-medium text-[#2563EB]"
                         : "text-[oklch(0.4_0.02_265)] hover:bg-black/[0.03] hover:text-[oklch(0.2_0.02_265)]",
                     )}
                   >
-                    <n.icon className={cn("h-4 w-4", active && "text-[#2563EB]")} />
+                    <n.icon className={cn("h-[15px] w-[15px]", active && "text-[#2563EB]")} />
                     <span className="flex-1">{n.label}</span>
                     {badgeValue !== undefined && badgeValue > 0 && (
                       <span
@@ -207,17 +220,21 @@ export function DashboardShell({ children }: { children: ReactNode }) {
             </nav>
           </div>
 
-          <div className="mt-5 rounded-xl border border-black/5 bg-gradient-to-br from-[#2563EB]/5 to-[#7C3AED]/10 p-4">
-            <p className="text-xs font-semibold">Upgrade to Pro</p>
+          {/* No paid plans exist, so this is a contact prompt rather than an
+              upgrade prompt. The mailto is shared with every other
+              out-of-credits surface via NeedMoreCredits. */}
+          <div className="mt-4 rounded-xl border border-black/5 bg-gradient-to-br from-[#2563EB]/5 to-[#7C3AED]/10 p-3.5">
+            <p className="text-xs font-semibold">{CREDITS_CTA_TITLE}</p>
             <p className="mt-1 text-[11px] leading-relaxed text-[oklch(0.45_0.02_265)]">
-              Unlimited AI tailoring, cover letters, and analytics.
+              Every account starts with a free allowance. Tell us what you need and we will top you
+              up.
             </p>
-            <Link
-              to="/pricing"
-              className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-[#2563EB] hover:underline"
+            <a
+              {...moreCreditsLinkProps()}
+              className="mt-1.5 inline-flex min-h-[28px] items-center gap-1 rounded py-1 text-xs font-medium text-[#2563EB] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2563EB]/40"
             >
-              See plans <ChevronRight className="h-3 w-3" />
-            </Link>
+              Contact us <ChevronRight className="h-3 w-3" />
+            </a>
           </div>
 
           <div className="mt-4 border-t border-black/5 pt-3">
@@ -225,25 +242,19 @@ export function DashboardShell({ children }: { children: ReactNode }) {
               to="/dashboard/settings"
               onClick={(e) => handleNavClick(e, "/dashboard/settings")}
               className={cn(
-                "flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm transition-colors",
+                "flex items-center gap-2.5 rounded-lg px-2.5 py-[7px] text-[13px] transition-colors",
                 pathname.startsWith("/dashboard/settings")
                   ? "bg-[oklch(0.95_0.02_265)] font-medium text-[#2563EB]"
                   : "text-[oklch(0.4_0.02_265)] hover:bg-black/[0.03] hover:text-[oklch(0.2_0.02_265)]",
               )}
             >
-              <Settings className="h-4 w-4" /> Settings
+              <Settings className="h-[15px] w-[15px]" /> Settings
             </Link>
-            <div className="mt-3 flex items-center gap-2 rounded-lg px-2 py-2">
-              <div className="grid h-8 w-8 place-items-center overflow-hidden rounded-full bg-gradient-to-br from-[#2563EB] to-[#7C3AED] text-xs font-semibold text-white">
-                {profile?.avatar_url ? (
-                  <img src={profile.avatar_url} alt="" className="h-full w-full object-cover" />
-                ) : (
-                  initials
-                )}
-              </div>
+            <div className="mt-2.5 flex items-center gap-2 rounded-lg px-2 py-1.5">
+              <UserAvatar avatarUrl={avatarUrl} initials={initials} size={28} />
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium">{displayName}</p>
-                <p className="truncate text-[11px] text-[oklch(0.5_0.02_265)]">{displayEmail}</p>
+                <p className="truncate text-[13px] font-medium">{displayName}</p>
+                <p className="truncate text-[10.5px] text-[oklch(0.5_0.02_265)]">{displayEmail}</p>
               </div>
               <button
                 onClick={handleSignOut}
@@ -269,41 +280,45 @@ export function DashboardShell({ children }: { children: ReactNode }) {
         )}
 
         <div className="flex min-w-0 flex-col">
-          <header className="sticky top-0 z-20 flex h-15 items-center justify-between gap-3 border-b border-black/5 bg-white/80 px-4 py-3 backdrop-blur md:px-6">
+          <header className="sticky top-0 z-20 flex h-14 items-center justify-between gap-3 border-b border-black/5 bg-white/85 px-3 backdrop-blur md:px-5">
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setMobileNav(true)}
-                className="grid h-9 w-9 place-items-center rounded-lg border border-black/5 bg-white lg:hidden"
+                className="grid h-8 w-8 place-items-center rounded-lg border border-black/5 bg-white lg:hidden"
                 aria-label="Open menu"
               >
                 <Menu className="h-4 w-4" />
               </button>
               <button
                 onClick={() => setPaletteOpen(true)}
-                className="flex h-9 w-[300px] max-w-[60vw] items-center gap-2 rounded-lg border border-black/5 bg-white px-3 text-sm text-[oklch(0.5_0.02_265)] transition-colors hover:border-black/10"
+                className="flex h-8 w-[280px] max-w-[60vw] items-center gap-2 rounded-lg border border-black/5 bg-white px-2.5 text-[13px] text-[oklch(0.5_0.02_265)] transition-colors hover:border-black/10"
               >
-                <Search className="h-4 w-4" />
-                <span className="flex-1 text-left">Search or jump to…</span>
-                <span className="flex items-center gap-1">
+                <Search className="h-[15px] w-[15px] shrink-0" />
+                {/* truncate + nowrap: at 390px the placeholder wrapped onto a
+                    second line and pushed the header taller. The ⌘K hint is
+                    keyboard-only affordance, so it is dropped on touch widths
+                    rather than competing for the space. */}
+                <span className="flex-1 truncate whitespace-nowrap text-left">
+                  Search or jump to…
+                </span>
+                <span className="hidden items-center gap-1 sm:flex">
                   <Kbd>⌘</Kbd>
                   <Kbd>K</Kbd>
                 </span>
               </button>
             </div>
             <div className="flex items-center gap-2">
-              <button
-                onClick={() => setPaletteOpen(true)}
-                className="hidden items-center gap-1.5 rounded-lg border border-black/5 bg-white px-2.5 py-2 text-xs text-[oklch(0.45_0.02_265)] hover:bg-black/[0.03] sm:flex"
-                aria-label="Open command palette"
-              >
-                <Command className="h-3.5 w-3.5" /> Commands
-              </button>
+              {/* The "Commands" button was removed as redundant: the search
+                  field to its left opens the same palette, and ⌘K/Ctrl+K still
+                  works. CommandPalette itself is untouched. */}
               <NotificationBell />
               {/* Add Job button removed — global jobs are not user-created */}
             </div>
           </header>
 
-          <main className="min-w-0 flex-1 space-y-4 p-3 md:p-5">{children}</main>
+          <main className="min-w-0 flex-1">
+            <div className="dash-container space-y-4 py-5">{children}</div>
+          </main>
         </div>
       </div>
 

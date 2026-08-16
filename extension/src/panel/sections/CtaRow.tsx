@@ -21,8 +21,8 @@ type CtaRowProps = {
  * separately tracked client flag):
  *
  *  - `ready`   (not saved):        primary "Apply & Track"      / secondary "Save for Later"
- *  - `saved`   (saved, untracked): primary "Track Application"  / secondary "View in NextOffer"
- *  - `tracked` (application on file): primary disabled success state / secondary "View in NextOffer"
+ *  - `saved`   (saved, untracked): primary "Track Application"  / secondary "View in OfferLyst"
+ *  - `tracked` (application on file): primary disabled success state / secondary "View in OfferLyst"
  *
  * Buttons disable while their own action is pending so a slow response can't
  * be triggered twice, and neither primary action ever navigates the user
@@ -38,7 +38,7 @@ export function CtaRow({ kind, isClosed, pending, actions, readyLabels }: CtaRow
           ✓ Application Tracked
         </button>
         <button className="nextoffer-panel__btn--secondary" onClick={actions.onViewInNextOffer}>
-          View in NextOffer
+          View in OfferLyst
         </button>
       </div>
     );
@@ -60,7 +60,7 @@ export function CtaRow({ kind, isClosed, pending, actions, readyLabels }: CtaRow
           onClick={actions.onViewInNextOffer}
           disabled={busy}
         >
-          View in NextOffer
+          View in OfferLyst
         </button>
       </div>
     );

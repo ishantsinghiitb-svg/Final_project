@@ -109,10 +109,10 @@ body {
  *   - The button base reset is normally scoped to `.nextoffer-shell--expanded`
  *     (the panel's own wrapper, which the popup doesn't render) — already
  *     restated below `.popup` from a prior fix.
- *   - The button color rules get an accent swap: NextOffer's own blue→purple
+ *   - The button color rules get an accent swap: OfferLyst's own blue→purple
  *     brand gradient (matching the dashboard's buttons) rather than the
  *     panel's LinkedIn-blue, which is intentional there but out of place on
- *     NextOffer's own surface.
+ *     OfferLyst's own surface.
  * Metadata chips (`.nextoffer-panel__chip`) are untouched by design — each is
  * a self-contained colored pill that already reads fine on any background.
  */

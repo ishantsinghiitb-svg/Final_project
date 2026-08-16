@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { ChevronDown, ChevronUp, Building2 } from "lucide-react";
 import { DashCard, Chip, CompanyMark } from "@/components/dashboard/primitives";
+import { useCompanyLogoIndex } from "@/features/companies/logoIndex";
 import { logoToneForCompany } from "@/features/jobs/utils";
 import { SuggestionCard } from "@/components/dashboard/gmail/SuggestionCard";
 import { relativeDay } from "@/features/gmail/summary";
@@ -75,6 +76,7 @@ export function SuggestionGroupCard({
   onDismiss,
 }: Props) {
   const [expanded, setExpanded] = useState(false);
+  const logoFor = useCompanyLogoIndex();
 
   const actionCount = group.pending.length;
   const hasTimeline = group.timeline.length > 1;
@@ -104,11 +106,18 @@ export function SuggestionGroupCard({
         )}
 
         {/* Reuses the same company mark the Applications/Interviews surfaces
-            use, so a company looks identical everywhere in the product. Falls
-            back to tinted initials when there's no logo — Gmail-derived
-            groups have no linked global_job to carry one. */}
+            use, so a company looks identical everywhere in the product. A
+            Gmail suggestion row carries no logo column of its own, so the logo
+            is looked up from the user's existing applications and saved jobs
+            (useCompanyLogoIndex); when nothing verified matches, CompanyMark's
+            tinted-initials placeholder is the correct answer. */}
         {group.company ? (
-          <CompanyMark company={group.company} tone={logoToneForCompany(group.company)} size={36} />
+          <CompanyMark
+            company={group.company}
+            tone={logoToneForCompany(group.company)}
+            size={36}
+            logoUrl={logoFor(group.company)}
+          />
         ) : (
           <div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-[oklch(0.96_0.015_265)] text-[oklch(0.45_0.02_265)]">
             <Building2 className="h-4 w-4" />

@@ -3,6 +3,7 @@ import "./lib/error-capture";
 import { consumeLastCapturedError } from "./lib/error-capture";
 import { renderErrorPage } from "./lib/error-page";
 import { handleExtensionApiRequest } from "./server/extensionApi";
+import { handleHealthRequest } from "./server/health";
 
 type ServerEntry = {
   fetch: (request: Request, env: unknown, ctx: unknown) => Promise<Response> | Response;
@@ -48,6 +49,12 @@ function isH3SwallowedErrorBody(body: string): boolean {
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
     try {
+      // Liveness check (/api/health), same interception style as the
+      // extension API below — see src/server/health.ts for why it stays
+      // dependency-free.
+      const healthResponse = handleHealthRequest(request);
+      if (healthResponse) return healthResponse;
+
       // Extension API routes (/api/extension/*) are plain fetch handlers, not
       // part of the TanStack Start router — intercepted here, before SSR, so
       // they never touch the router/RSC pipeline. Returns null for every

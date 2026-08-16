@@ -42,7 +42,13 @@ export function StickyPageHeader({
   return (
     <div
       className={cn(
-        "sticky top-15 z-10 space-y-3 bg-[oklch(0.98_0.005_250)]/95 pb-3 backdrop-blur-sm",
+        // Sticky from md up only. On a phone this wrapper also contains each
+        // page's filter/search bar, and pinning that ate a large share of a
+        // 360-430px viewport for the entire scroll. Below md it scrolls away
+        // with the page; desktop behaviour is unchanged.
+        // `top-14` matches DashboardShell's h-14 header exactly — at the
+        // previous top-15 a 4px strip of content showed through the gap.
+        "z-10 space-y-3 bg-[oklch(0.98_0.005_250)]/95 pb-3 backdrop-blur-sm md:sticky md:top-14",
         className,
       )}
     >

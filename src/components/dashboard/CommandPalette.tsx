@@ -16,7 +16,7 @@ import {
   Target,
   ArrowRight,
 } from "lucide-react";
-import { jobs } from "@/lib/dashboard-data";
+import { useSavedJobs } from "@/features/jobs/hooks";
 import { Kbd } from "./primitives";
 
 type Command = {
@@ -31,6 +31,10 @@ type Command = {
 export function CommandPalette({ open, onClose }: { open: boolean; onClose: () => void }) {
   const navigate = useNavigate();
   const [q, setQ] = useState("");
+  // The Jobs section used to be eight fixture rows (Linear, Vercel, Stripe…)
+  // that all navigated to the same generic /dashboard/jobs page. It now lists
+  // the user's own saved jobs and each row opens that job.
+  const { data: savedJobs } = useSavedJobs();
 
   useEffect(() => {
     if (!open) setQ("");
@@ -153,16 +157,19 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
         run: go("/dashboard/interviews"),
       },
     ];
-    const jobCommands: Command[] = jobs.slice(0, 8).map((j) => ({
+    const jobCommands: Command[] = (savedJobs?.data ?? []).slice(0, 8).map((j) => ({
       id: `j-${j.id}`,
-      label: `${j.company} — ${j.role}`,
-      hint: j.location,
+      label: `${j.company_name} · ${j.role}`,
+      hint: j.location ?? undefined,
       section: "Jobs",
       icon: Briefcase,
-      run: go("/dashboard/jobs"),
+      run: () => {
+        onClose();
+        void navigate({ to: "/dashboard/jobs/$jobId", params: { jobId: j.id } });
+      },
     }));
     return [...nav, ...actions, ...jobCommands];
-  }, [navigate, onClose]);
+  }, [navigate, onClose, savedJobs]);
 
   const filtered = q
     ? commands.filter((c) =>

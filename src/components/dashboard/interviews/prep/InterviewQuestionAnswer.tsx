@@ -189,7 +189,9 @@ export function InterviewQuestionAnswer({ interviewPrepId, question, answer }: P
           ) : (
             <div
               className="prose prose-sm max-w-none px-3 py-2.5 text-sm text-[oklch(0.3_0.02_265)]"
-              dangerouslySetInnerHTML={{ __html: renderRichTextHtml(draft) || "<p>Nothing written yet.</p>" }}
+              dangerouslySetInnerHTML={{
+                __html: renderRichTextHtml(draft) || "<p>Nothing written yet.</p>",
+              }}
             />
           )}
         </div>

@@ -1,3 +1,4 @@
+import { Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -26,11 +27,21 @@ import {
   attachmentKindLabel,
   formatBytes,
 } from "@/features/gmail/preview";
+
+/**
+ * True when a failed preview fetch was an authentication problem (expired or
+ * revoked Google credential) rather than a transient fetch failure — the two
+ * need different wording and different next steps.
+ */
+function isAuthError(message: string | null): boolean {
+  if (!message) return false;
+  return /token|revoked|expired|invalid_grant|unauthor/i.test(message);
+}
 import type { SuggestionListItem } from "@/repositories/SuggestionRepository";
 
 // ── ReviewPanel (Module 9A/9B) ──
 //
-// "The user should never have to leave NextOffer to understand an email."
+// "The user should never have to leave OfferLyst to understand an email."
 // The old Review surface was a small centred dialog showing only the edit
 // form — enough to accept a suggestion, not enough to decide whether to. This
 // is a full side panel: extracted facts at the top, then the real email body,
@@ -106,7 +117,7 @@ export function ReviewPanel({
   const bodyError = bodyQuery.data && !bodyQuery.data.ok ? bodyQuery.data.message : null;
 
   /**
-   * Downloads an attachment without leaving NextOffer. Bytes are fetched
+   * Downloads an attachment without leaving OfferLyst. Bytes are fetched
    * through the same accept-time server function (they're never stored), then
    * handed to the browser via a temporary object URL — revoked immediately so
    * the blob doesn't leak for the life of the page.
@@ -177,9 +188,9 @@ export function ReviewPanel({
               <p className="mt-1 text-sm text-[oklch(0.45_0.02_265)]">{summary.reason}</p>
             )}
             {summary?.action && (
-              <p className="mt-1.5 text-sm">
-                <span className="font-medium text-[#B45309]">Action required: </span>
-                <span className="text-[oklch(0.35_0.02_265)]">{summary.action}</span>
+              <p className="mt-2 flex items-start gap-1.5 rounded-lg bg-[#B45309]/[0.07] px-2.5 py-1.5 text-sm text-[#B45309]">
+                <AlertCircle className="mt-[3px] h-3.5 w-3.5 shrink-0" aria-hidden />
+                <span>{summary.action}</span>
               </p>
             )}
           </div>
@@ -294,11 +305,49 @@ export function ReviewPanel({
                     <Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading email…
                   </p>
                 ) : bodyError || bodyQuery.isError ? (
-                  <p className="flex items-start gap-1.5 text-xs text-[#B45309]">
-                    <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-                    {bodyError ?? "Couldn't load this email from Gmail."} You can still open it in
-                    Gmail above.
-                  </p>
+                  /* The preview is fetched live from Gmail and is not stored,
+                     so the usual reason it fails is that the stored Google
+                     credential has expired or been revoked. Google's own
+                     wording ("Token has been expired or revoked") was being
+                     surfaced verbatim, which is accurate but tells the user
+                     nothing they can act on. Never substitute invented email
+                     text here — say what happened and offer the two things
+                     that actually work. */
+                  <div className="flex items-start gap-2">
+                    <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-[#B45309]" />
+                    <div className="min-w-0">
+                      <p className="text-xs font-medium text-[oklch(0.3_0.02_265)]">
+                        {isAuthError(bodyError)
+                          ? "Your Google connection needs to be renewed"
+                          : "This email couldn't be loaded"}
+                      </p>
+                      <p className="mt-1 text-xs leading-relaxed text-[oklch(0.5_0.02_265)]">
+                        {isAuthError(bodyError)
+                          ? "OfferLyst can no longer read your mailbox, so the original message can't be shown here. Everything already extracted above is unaffected."
+                          : "The message couldn't be fetched from Gmail just now."}
+                      </p>
+                      <div className="mt-2 flex flex-wrap items-center gap-3">
+                        {googleEmail && suggestion.externalMessageId && (
+                          <a
+                            href={gmailDeepLink(googleEmail, suggestion.externalMessageId)}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center gap-1 text-xs font-medium text-[#2563EB] hover:underline"
+                          >
+                            Open in Gmail <ExternalLink className="h-3 w-3" />
+                          </a>
+                        )}
+                        {isAuthError(bodyError) && (
+                          <Link
+                            to="/dashboard/settings"
+                            className="text-xs font-medium text-[#2563EB] hover:underline"
+                          >
+                            Reconnect Google
+                          </Link>
+                        )}
+                      </div>
+                    </div>
+                  </div>
                 ) : body ? (
                   <div className="space-y-1">
                     {body.bodyText.split("\n").map((line, i) =>

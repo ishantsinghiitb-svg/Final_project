@@ -8,7 +8,7 @@ import { roundTone } from "@/features/interviews/constants";
 
 export const Route = createFileRoute("/dashboard/interviews/$interviewId/mock/")({
   head: () => ({
-    meta: [{ title: "AI Mock Interview — NextOffer" }, { name: "robots", content: "noindex" }],
+    meta: [{ title: "AI Mock Interview — OfferLyst" }, { name: "robots", content: "noindex" }],
   }),
   component: MockInterviewLauncherPage,
 });

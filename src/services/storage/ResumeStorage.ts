@@ -41,10 +41,7 @@ export class ResumeStorage {
    * @param path       Storage path as returned by `upload()`.
    * @param expiresIn  Expiry in seconds (default: 1 hour).
    */
-  async getSignedUrl(
-    path: string,
-    expiresIn = RESUME_SIGNED_URL_EXPIRY_SECONDS,
-  ): Promise<string> {
+  async getSignedUrl(path: string, expiresIn = RESUME_SIGNED_URL_EXPIRY_SECONDS): Promise<string> {
     const { data, error } = await supabase.storage
       .from(STORAGE_BUCKETS.RESUMES)
       .createSignedUrl(path, expiresIn);
@@ -54,9 +51,7 @@ export class ResumeStorage {
   }
 
   async delete(userId: string, resumeId: string): Promise<void> {
-    const { data: files } = await supabase.storage
-      .from(STORAGE_BUCKETS.RESUMES)
-      .list(userId);
+    const { data: files } = await supabase.storage.from(STORAGE_BUCKETS.RESUMES).list(userId);
 
     if (files && files.length > 0) {
       const matches = files.filter((f) => f.name.startsWith(resumeId));

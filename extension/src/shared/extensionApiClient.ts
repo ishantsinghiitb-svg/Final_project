@@ -26,7 +26,7 @@ export async function analyzeMatchDirect(
     });
     return (await res.json()) as AnalyzeMatchApiResult;
   } catch {
-    return { ok: false, message: "Couldn't reach NextOffer. Check your connection and try again." };
+    return { ok: false, message: "Couldn't reach OfferLyst. Check your connection and try again." };
   }
 }
 
@@ -50,6 +50,6 @@ export async function parseResumeDirect(
     if (data.ok) return { ok: true, reused: Boolean(data.reused) };
     return { ok: false, message: data.message ?? "Failed to parse resume." };
   } catch {
-    return { ok: false, message: "Couldn't reach NextOffer. Check your connection and try again." };
+    return { ok: false, message: "Couldn't reach OfferLyst. Check your connection and try again." };
   }
 }

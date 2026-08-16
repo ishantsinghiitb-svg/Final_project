@@ -106,7 +106,7 @@ export function AddApplicationDialog({ open, onClose }: Props) {
             Add Application
           </h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Track an application you made outside NextOffer.
+            Track an application you made outside OfferLyst.
           </p>
 
           <form onSubmit={handleSubmit} className="mt-5 space-y-3.5">

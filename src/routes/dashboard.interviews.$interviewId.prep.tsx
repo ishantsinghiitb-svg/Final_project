@@ -28,7 +28,7 @@ import { roundTone } from "@/features/interviews/constants";
 
 export const Route = createFileRoute("/dashboard/interviews/$interviewId/prep")({
   head: () => ({
-    meta: [{ title: "Interview Preparation — NextOffer" }, { name: "robots", content: "noindex" }],
+    meta: [{ title: "Interview Preparation — OfferLyst" }, { name: "robots", content: "noindex" }],
   }),
   component: InterviewPrepWorkspace,
 });

@@ -21,7 +21,13 @@ type Props = {
  * modules. Keeps the workspace scannable: a title and a one-line summary are
  * always visible, the detail is a click away.
  */
-export function CollapsibleSection({ icon: Icon, title, meta, defaultOpen = false, children }: Props) {
+export function CollapsibleSection({
+  icon: Icon,
+  title,
+  meta,
+  defaultOpen = false,
+  children,
+}: Props) {
   const [open, setOpen] = useState(defaultOpen);
 
   return (

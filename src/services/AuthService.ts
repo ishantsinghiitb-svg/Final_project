@@ -13,14 +13,16 @@ export class AuthService {
       options: fullName ? { data: { full_name: fullName } } : undefined,
     });
     if (error) return { user: null, session: null, error: error.message };
-    if (!data.user) return { user: null, session: null, error: "Sign-up failed. Please try again." };
+    if (!data.user)
+      return { user: null, session: null, error: "Sign-up failed. Please try again." };
     return { user: data.user, session: data.session, error: null };
   }
 
   async signIn(email: string, password: string): Promise<AuthResult> {
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) return { user: null, session: null, error: error.message };
-    if (!data.user) return { user: null, session: null, error: "Sign-in failed. Please try again." };
+    if (!data.user)
+      return { user: null, session: null, error: "Sign-in failed. Please try again." };
     return { user: data.user, session: data.session, error: null };
   }
 
@@ -45,12 +47,16 @@ export class AuthService {
   }
 
   async getCurrentUser(): Promise<User | null> {
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     return user;
   }
 
   async getSession(): Promise<Session | null> {
-    const { data: { session } } = await supabase.auth.getSession();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
     return session;
   }
 }

@@ -5,7 +5,7 @@ export function PanelHeader({ onCollapse }: { onCollapse: () => void }) {
     <div className="nextoffer-panel__header">
       <span className="nextoffer-panel__brand">
         <img src={logoMark} width="18" height="18" alt="" aria-hidden="true" />
-        NextOffer
+        OfferLyst
       </span>
       <button
         type="button"

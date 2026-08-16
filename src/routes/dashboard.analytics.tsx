@@ -43,7 +43,7 @@ import type {
 
 export const Route = createFileRoute("/dashboard/analytics")({
   head: () => ({
-    meta: [{ title: "Analytics — NextOffer" }, { name: "robots", content: "noindex" }],
+    meta: [{ title: "Analytics — OfferLyst" }, { name: "robots", content: "noindex" }],
   }),
   component: AnalyticsPage,
 });
@@ -59,7 +59,7 @@ function AnalyticsPage() {
         <PageHeader
           eyebrow="Analytics"
           title="Signal, not vanity metrics."
-          subtitle="See what's actually moving the needle — where you're getting traction and where things are stalling."
+          subtitle="Your application funnel, how each resume is performing, and where things are stalling."
           actions={
             <div className="flex flex-wrap items-center gap-1 rounded-xl border border-black/5 bg-white p-0.5">
               {RANGE_PRESET_OPTIONS.map((r) => (
@@ -93,7 +93,7 @@ function AnalyticsPage() {
         <EmptyState
           icon={Briefcase}
           title={`No applications in ${RANGE_PRESET_LABELS[range].toLowerCase()}`}
-          body="Log an application to start seeing your funnel, search health, and where things are getting stuck — or widen the time filter to see older activity."
+          body="Log an application to start seeing your funnel, search health and where things are getting stuck. You can also widen the time filter to include older activity."
           cta={<DashButtonLink to="/dashboard/applications">Go to Applications</DashButtonLink>}
         />
       ) : (
@@ -220,7 +220,7 @@ function AnalyticsContent({
             </div>
           </DashCard>
 
-          <GoalsCard goals={goals} onSave={setGoals} />
+          <GoalsCard goals={goals} onSave={setGoals} className="flex-1" />
         </div>
 
         <AIRecommendationsCard className="h-full" />
@@ -247,23 +247,45 @@ function AnalyticsContent({
 // ever-reached `health.stats` — that's what keeps this card from ever
 // disagreeing with the Kanban.
 
-const HEALTH_CARD_TONE: Record<SearchHealthTone, string> = {
-  good: "border-[#22C55E]/20 bg-gradient-to-br from-[#22C55E]/[0.07] to-[#16A34A]/[0.02]",
-  neutral: "border-black/5 bg-white",
-  warning: "border-[#F59E0B]/25 bg-gradient-to-br from-[#F59E0B]/[0.08] to-[#F59E0B]/[0.02]",
+/**
+ * Visual treatment for the health card.
+ *
+ * `health.tone` is computed by computeSearchHealth from real application data
+ * (untouched here — this is presentation only). One wrinkle: the `neutral`
+ * tone covers two genuinely different situations, "On Track" and "Just getting
+ * started" (fewer than the minimum sample). Painting both the same left the
+ * On Track state flat white, so it read as "no state at all" rather than as a
+ * positive verdict. `healthVariant` splits them: an on-track verdict gets a
+ * restrained green, while the not-enough-data state stays informational blue,
+ * because tinting it green would imply a result the data cannot support.
+ */
+type HealthVariant = "strong" | "onTrack" | "starting" | "attention";
+
+function healthVariant(health: SearchHealth): HealthVariant {
+  if (health.tone === "good") return "strong";
+  if (health.tone === "warning") return "attention";
+  return health.label === "On Track" ? "onTrack" : "starting";
+}
+
+const HEALTH_CARD_TONE: Record<HealthVariant, string> = {
+  strong: "border-[#22C55E]/20 bg-gradient-to-br from-[#22C55E]/[0.07] to-[#16A34A]/[0.02]",
+  onTrack: "border-[#16A34A]/15 bg-gradient-to-br from-[#22C55E]/[0.04] to-transparent",
+  starting: "border-black/5 bg-white",
+  attention: "border-[#F59E0B]/25 bg-gradient-to-br from-[#F59E0B]/[0.08] to-[#F59E0B]/[0.02]",
 };
 
-const HEALTH_BADGE_TONE: Record<SearchHealthTone, { bg: string; text: string; icon: LucideIcon }> =
-  {
-    good: { bg: "bg-[#16A34A]/15", text: "text-[#16A34A]", icon: TrendingUp },
-    neutral: { bg: "bg-[#2563EB]/12", text: "text-[#2563EB]", icon: Activity },
-    warning: { bg: "bg-[#F59E0B]/15", text: "text-[#B45309]", icon: AlertTriangle },
-  };
+const HEALTH_BADGE_TONE: Record<HealthVariant, { bg: string; text: string; icon: LucideIcon }> = {
+  strong: { bg: "bg-[#16A34A]/15", text: "text-[#16A34A]", icon: TrendingUp },
+  onTrack: { bg: "bg-[#16A34A]/10", text: "text-[#16A34A]", icon: Activity },
+  starting: { bg: "bg-[#2563EB]/12", text: "text-[#2563EB]", icon: Activity },
+  attention: { bg: "bg-[#F59E0B]/15", text: "text-[#B45309]", icon: AlertTriangle },
+};
 
-const HEALTH_OPPORTUNITY_TONE: Record<SearchHealthTone, string> = {
-  good: "border-[#16A34A]/15 bg-[#16A34A]/[0.06]",
-  neutral: "border-[#2563EB]/15 bg-[#2563EB]/[0.05]",
-  warning: "border-[#F59E0B]/20 bg-[#F59E0B]/[0.08]",
+const HEALTH_OPPORTUNITY_TONE: Record<HealthVariant, string> = {
+  strong: "border-[#16A34A]/15 bg-[#16A34A]/[0.06]",
+  onTrack: "border-[#16A34A]/12 bg-[#16A34A]/[0.04]",
+  starting: "border-[#2563EB]/15 bg-[#2563EB]/[0.05]",
+  attention: "border-[#F59E0B]/20 bg-[#F59E0B]/[0.08]",
 };
 
 const HEALTH_INLINE_STATS: {
@@ -278,11 +300,12 @@ const HEALTH_INLINE_STATS: {
 ];
 
 function HealthCard({ health, pipeline }: { health: SearchHealth; pipeline: PipelineCounts }) {
-  const badge = HEALTH_BADGE_TONE[health.tone];
+  const variant = healthVariant(health);
+  const badge = HEALTH_BADGE_TONE[variant];
   const BadgeIcon = badge.icon;
 
   return (
-    <DashCard className={cn("p-4", HEALTH_CARD_TONE[health.tone])}>
+    <DashCard className={cn("p-4", HEALTH_CARD_TONE[variant])}>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
           <div className="flex items-center gap-2.5">
@@ -311,7 +334,7 @@ function HealthCard({ health, pipeline }: { health: SearchHealth; pipeline: Pipe
         <div
           className={cn(
             "shrink-0 rounded-xl border px-3.5 py-2.5 sm:max-w-70",
-            HEALTH_OPPORTUNITY_TONE[health.tone],
+            HEALTH_OPPORTUNITY_TONE[variant],
           )}
         >
           <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[oklch(0.5_0.02_265)]">
@@ -340,9 +363,15 @@ function FunnelBar({ stage }: { stage: FunnelStage }) {
     <div>
       <div className="flex items-baseline justify-between text-xs">
         <span className="text-[oklch(0.4_0.02_265)]">{stage.label}</span>
-        <span className="font-medium">
+        {/* `pctOfPrevious` is a stage-to-stage conversion, so a sparse
+            intermediate stage can push it above 100% — a user with 1
+            assessment and 5 interview rounds saw "5 (500%)", which reads as
+            broken rather than informative. Above 100% the conversion is
+            dropped and the count speaks for itself; the underlying value is
+            unchanged (this is display only). */}
+        <span className="font-medium tabular-nums">
           {stage.count}
-          {stage.pctOfPrevious !== null && (
+          {stage.pctOfPrevious !== null && stage.pctOfPrevious <= 100 && (
             <span className="ml-1.5 font-normal text-[oklch(0.55_0.02_265)]">
               ({stage.pctOfPrevious}%)
             </span>
@@ -398,7 +427,7 @@ function ResumePerformanceCard({
         <EmptyState
           icon={FileText}
           title="No applications linked to a resume yet"
-          body={`You have ${totalResumeCount} resume${totalResumeCount === 1 ? "" : "s"} saved — attach one to an application to start tracking its performance.`}
+          body={`You have ${totalResumeCount} resume${totalResumeCount === 1 ? "" : "s"} saved. Attach one to an application to start tracking its performance.`}
           cta={
             <DashButtonLink to="/dashboard/applications" size="sm">
               Go to Applications
@@ -478,9 +507,11 @@ function ResumeStat({ label, value }: { label: string; value: number }) {
 function GoalsCard({
   goals,
   onSave,
+  className,
 }: {
   goals: GoalProgress[];
   onSave: (updates: GoalUpdates) => Promise<{ error: string | null }>;
+  className?: string;
 }) {
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -510,7 +541,7 @@ function GoalsCard({
   };
 
   return (
-    <DashCard>
+    <DashCard className={className}>
       <SectionTitle
         action={
           <button
@@ -555,11 +586,21 @@ function GoalsCard({
                     <span className="ml-1.5 text-[oklch(0.6_0.02_265)]">(recommended)</span>
                   )}
                 </span>
-                <span className="font-medium">
+                {/* "5 of 1" is correct but reads as a mistake on its own, and
+                    the bar is clamped at 100% so it cannot show the overshoot
+                    either. Naming the state explicitly is what makes the
+                    number legible. The underlying goal and progress are not
+                    modified. */}
+                <span className="flex items-center gap-1.5 font-medium tabular-nums">
                   {g.current} of {g.target}
+                  {g.current > g.target && (
+                    <span className="rounded-full bg-[#16A34A]/12 px-1.5 py-0.5 text-[10px] font-semibold text-[#16A34A]">
+                      Goal exceeded
+                    </span>
+                  )}
                 </span>
               </div>
-              <div className="mt-1 h-2 rounded-full bg-black/5">
+              <div className="mt-1 h-2 overflow-hidden rounded-full bg-black/5">
                 <div
                   className={cn(
                     "h-full rounded-full bg-gradient-to-r",

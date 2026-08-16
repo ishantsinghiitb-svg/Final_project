@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect } from "react";
+import { useCallback, useRef, useState, useEffect } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { toast } from "sonner";
 import {
@@ -14,15 +14,20 @@ import { JobCrawlersCard } from "@/components/dashboard/settings/JobCrawlersCard
 import { useCrawlAdminOverview } from "@/features/jobCrawlers/hooks";
 import { useAuth } from "@/context/AuthContext";
 import { useProfile } from "@/context/ProfileContext";
+import { useAICredits } from "@/features/ai/hooks";
+import { NeedMoreCreditsLink } from "@/components/dashboard/ai/NeedMoreCredits";
+import { CREDIT_COSTS, CREDITS_CTA_TITLE } from "@/content/credits";
+import { UserAvatar } from "@/components/dashboard/UserAvatar";
+import { useUserIdentity } from "@/features/profile/identity";
 
 export const Route = createFileRoute("/dashboard/settings")({
   head: () => ({
-    meta: [{ title: "Settings — NextOffer" }, { name: "robots", content: "noindex" }],
+    meta: [{ title: "Settings — OfferLyst" }, { name: "robots", content: "noindex" }],
   }),
   component: SettingsPage,
 });
 
-const tabs = ["Profile", "Notifications", "Integrations", "Billing"] as const;
+const tabs = ["Profile", "Notifications", "Integrations", "Credits"] as const;
 
 /** Module 10B.1: an operator-only tab, appended for admins only. */
 const ADMIN_TAB = "Job crawlers";
@@ -44,31 +49,42 @@ function SettingsPage() {
       <StickyPageHeader>
         <PageHeader
           eyebrow="Settings"
-          title="Make NextOffer yours."
+          title="Make OfferLyst yours."
           subtitle="Tune preferences, notifications, and integrations."
         />
       </StickyPageHeader>
 
-      <div className="flex flex-wrap gap-1 rounded-xl border border-black/5 bg-white p-0.5">
-        {visibleTabs.map((t) => (
-          <button
-            key={t}
-            onClick={() => setTab(t)}
-            className={`rounded-lg px-3 py-1.5 text-xs ${
-              tab === t
-                ? "bg-[oklch(0.95_0.02_265)] font-medium text-[#2563EB]"
-                : "text-[oklch(0.45_0.02_265)] hover:bg-black/[0.03]"
-            }`}
-          >
-            {t}
-          </button>
-        ))}
+      {/* Scrolls horizontally rather than wrapping onto a second row on
+          narrow screens, and the taller hit area keeps the tabs comfortable
+          to tap. */}
+      <div className="-mx-1 overflow-x-auto px-1 scrollbar-hide">
+        <div
+          role="tablist"
+          aria-label="Settings sections"
+          className="inline-flex min-w-full gap-1 rounded-xl border border-black/5 bg-white p-1"
+        >
+          {visibleTabs.map((t) => (
+            <button
+              key={t}
+              role="tab"
+              aria-selected={tab === t}
+              onClick={() => setTab(t)}
+              className={`whitespace-nowrap rounded-lg px-3 py-2 text-xs transition-colors ${
+                tab === t
+                  ? "bg-[oklch(0.95_0.02_265)] font-medium text-[#2563EB]"
+                  : "text-[oklch(0.45_0.02_265)] hover:bg-black/[0.03]"
+              }`}
+            >
+              {t}
+            </button>
+          ))}
+        </div>
       </div>
 
       {tab === "Profile" && <ProfileTab />}
       {tab === "Notifications" && <NotificationsTab />}
       {tab === "Integrations" && <IntegrationsTab />}
-      {tab === "Billing" && <BillingTab />}
+      {tab === "Credits" && <CreditsTab />}
       {tab === ADMIN_TAB && isAdmin && <JobCrawlersCard overview={crawlOverview} />}
     </>
   );
@@ -81,7 +97,7 @@ function ProfileTab() {
     update: updateProfileData,
     uploadAvatar: uploadProfileAvatar,
   } = useProfile();
-  const { user } = useAuth();
+  const { avatarUrl, initials, email } = useUserIdentity();
   const [fullName, setFullName] = useState("");
   const [location, setLocation] = useState("");
   const [targetRole, setTargetRole] = useState("");
@@ -89,15 +105,20 @@ function ProfileTab() {
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    if (profile) {
-      setFullName(profile.full_name ?? "");
-      setLocation(profile.location ?? "");
-      setTargetRole(profile.target_role ?? "");
-    }
+  const resetForm = useCallback(() => {
+    setFullName(profile?.full_name ?? "");
+    setLocation(profile?.location ?? "");
+    setTargetRole(profile?.target_role ?? "");
   }, [profile]);
 
-  const initials = (fullName || user?.email?.split("@")[0] || "U").slice(0, 2).toUpperCase();
+  useEffect(() => {
+    if (profile) resetForm();
+  }, [profile, resetForm]);
+
+  const isDirty =
+    fullName !== (profile?.full_name ?? "") ||
+    location !== (profile?.location ?? "") ||
+    targetRole !== (profile?.target_role ?? "");
 
   async function handleSave() {
     if (!fullName.trim()) {
@@ -149,28 +170,28 @@ function ProfileTab() {
     <DashCard>
       <SectionTitle>Profile</SectionTitle>
 
-      <div className="mt-4 flex items-center gap-4">
+      <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-center">
         <button
           onClick={() => fileRef.current?.click()}
           disabled={uploading}
-          className="relative grid h-16 w-16 place-items-center overflow-hidden rounded-full bg-gradient-to-br from-[#2563EB] to-[#7C3AED] text-lg font-semibold text-white transition-opacity hover:opacity-80 disabled:opacity-50"
+          className="relative grid h-16 w-16 shrink-0 place-items-center overflow-hidden rounded-full transition-opacity hover:opacity-80 disabled:opacity-50"
           aria-label="Change profile photo"
         >
-          {profile?.avatar_url ? (
-            <img src={profile.avatar_url} alt="" className="h-full w-full object-cover" />
-          ) : (
-            initials
-          )}
+          {/* Same resolver the sidebar uses, so an avatar supplied by Google
+              shows here too even when the profile row has none stored. */}
+          <UserAvatar avatarUrl={avatarUrl} initials={initials} size={64} />
           {uploading && (
-            <span className="absolute inset-0 grid place-items-center bg-black/40">
+            <span className="absolute inset-0 grid place-items-center rounded-full bg-black/40">
               <span className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
             </span>
           )}
         </button>
-        <div>
+        <div className="min-w-0">
           <p className="text-sm font-medium">Profile photo</p>
           <p className="text-xs text-[oklch(0.5_0.02_265)]">
-            Click to upload. PNG, JPG up to 5 MB.
+            {avatarUrl && !profile?.avatar_url
+              ? "Using the photo from your Google account. Upload one to override it."
+              : "Click the photo to upload. PNG or JPG, up to 5 MB."}
           </p>
         </div>
         <input
@@ -194,8 +215,9 @@ function ProfileTab() {
         <label className="block text-sm">
           <span className="text-xs font-medium text-[oklch(0.45_0.02_265)]">Email</span>
           <input
-            value={profile?.email ?? user?.email ?? ""}
+            value={email}
             readOnly
+            aria-label="Account email"
             className="mt-1 w-full cursor-not-allowed rounded-lg border border-black/5 bg-black/[0.02] px-3 py-2 text-sm text-[oklch(0.5_0.02_265)] outline-none"
           />
         </label>
@@ -218,11 +240,18 @@ function ProfileTab() {
           />
         </label>
       </div>
-      <div className="mt-4 flex justify-end gap-2">
-        <button className="rounded-lg border border-black/5 bg-white px-3 py-1.5 text-xs">
+      <div className="mt-5 flex flex-col-reverse gap-2 border-t border-black/5 pt-4 sm:flex-row sm:justify-end">
+        {/* Previously a no-op button. It now discards edits by restoring the
+            values currently stored on the profile. */}
+        <button
+          type="button"
+          onClick={resetForm}
+          disabled={saving || !isDirty}
+          className="rounded-lg border border-black/5 bg-white px-3 py-2 text-xs font-medium transition-colors hover:bg-black/[0.03] disabled:opacity-40"
+        >
           Cancel
         </button>
-        <DashButton onClick={handleSave} disabled={saving}>
+        <DashButton onClick={handleSave} disabled={saving || !isDirty}>
           {saving ? (
             <span className="flex items-center gap-2">
               <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
@@ -261,53 +290,110 @@ function NotificationsTab() {
   );
 }
 
+/**
+ * Google is the only integration that actually connects to anything, so it is
+ * the only one with a live status. The previous version of this tab listed
+ * LinkedIn as "Connected" and offered Slack and Notion cards with Connect
+ * buttons, none of which exist.
+ */
 function IntegrationsTab() {
   return (
     <div className="grid gap-3 md:grid-cols-2">
       <GoogleConnectionCard />
-      {[
-        { l: "Chrome extension", d: "Save jobs from any site with one click", status: "Connected" },
-        { l: "LinkedIn", d: "Auto-import jobs you view", status: "Connected" },
-        { l: "Slack", d: "Get nudges in your DMs", status: "Not connected" },
-        { l: "Notion", d: "Export applications to a database", status: "Not connected" },
-      ].map((i) => (
-        <DashCard key={i.l}>
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="font-display font-semibold">{i.l}</p>
-              <p className="mt-1 text-xs text-[oklch(0.5_0.02_265)]">{i.d}</p>
-            </div>
-            <Chip tone={i.status === "Connected" ? "green" : "default"}>{i.status}</Chip>
+      <DashCard>
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="font-display font-semibold">Chrome extension</p>
+            <p className="mt-1 text-xs text-[oklch(0.5_0.02_265)]">
+              Save jobs from supported sites in one click. It signs in with the session already in
+              this browser, so there is nothing to connect here.
+            </p>
           </div>
-          <button className="mt-4 rounded-lg border border-black/5 bg-white px-3 py-1.5 text-xs font-medium hover:bg-black/[0.03]">
-            {i.status === "Connected" ? "Manage" : "Connect"}
-          </button>
-        </DashCard>
-      ))}
+          <Chip tone="default">Early access</Chip>
+        </div>
+        <a
+          href="/extension"
+          className="mt-4 inline-block rounded-lg border border-black/5 bg-white px-3 py-1.5 text-xs font-medium hover:bg-black/[0.03]"
+        >
+          How it works
+        </a>
+      </DashCard>
     </div>
   );
 }
 
-function BillingTab() {
+/**
+ * Replaces the old "Billing" tab, which showed a hardcoded "Pro trial · 9 days
+ * left" and two buttons that did nothing. There are no paid plans, so this
+ * shows the user's real credit balance from `useAICredits` and the same
+ * contact route every other out-of-credits surface uses.
+ */
+function CreditsTab() {
+  const { data: credits, isLoading } = useAICredits();
+
+  const used = credits?.creditsUsed ?? 0;
+  const total = credits?.creditsTotal ?? 0;
+  const remaining = credits?.creditsRemaining ?? 0;
+  const pct = total > 0 ? Math.min(100, Math.round((used / total) * 100)) : 0;
+
   return (
-    <DashCard>
-      <SectionTitle>Billing</SectionTitle>
-      <div className="mt-4 rounded-xl border border-black/5 bg-gradient-to-br from-[#2563EB]/[0.05] to-[#7C3AED]/[0.08] p-4">
-        <p className="font-display font-semibold">Pro trial · 9 days left</p>
-        <p className="mt-1 text-xs text-[oklch(0.5_0.02_265)]">
-          Unlimited AI, cover letters, and analytics.
-        </p>
-        <div className="mt-3 flex gap-2">
-          <DashButton size="sm">Upgrade to Pro</DashButton>
-          <button className="rounded-lg border border-black/5 bg-white px-3 py-1.5 text-xs font-medium">
-            Manage plan
-          </button>
-        </div>
-      </div>
-      <div className="mt-4 text-sm text-[oklch(0.45_0.02_265)]">
-        No card on file. You won't be charged until you upgrade.
-      </div>
-    </DashCard>
+    <div className="space-y-4">
+      <DashCard>
+        <SectionTitle>AI credits</SectionTitle>
+        {isLoading ? (
+          <p className="mt-4 text-sm text-[oklch(0.5_0.02_265)]">Loading your balance…</p>
+        ) : (
+          <>
+            <div className="mt-4 rounded-xl border border-black/5 bg-gradient-to-br from-[#2563EB]/[0.05] to-[#7C3AED]/[0.08] p-4">
+              <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <p className="font-display text-2xl font-semibold tabular-nums">
+                  {remaining}
+                  <span className="ml-1 text-sm font-normal text-[oklch(0.5_0.02_265)]">
+                    of {total} left
+                  </span>
+                </p>
+                {remaining <= 0 && <Chip tone="amber">All used</Chip>}
+              </div>
+              <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-black/[0.06]">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-[#2563EB] to-[#7C3AED] transition-[width]"
+                  style={{ width: `${pct}%` }}
+                />
+              </div>
+              <p className="mt-2 text-xs text-[oklch(0.5_0.02_265)]">
+                {used} used so far. Saving jobs, tracking applications, notes and analytics never
+                use credits.
+              </p>
+            </div>
+
+            <div className="mt-4">
+              <p className="text-sm font-medium">{CREDITS_CTA_TITLE}</p>
+              <p className="mt-1 text-sm text-[oklch(0.45_0.02_265)]">
+                There are no paid plans right now. Tell us what you are working on and we will top
+                up your allowance.
+              </p>
+              <NeedMoreCreditsLink variant="primary" className="mt-3" context="the settings page">
+                Contact us
+              </NeedMoreCreditsLink>
+            </div>
+          </>
+        )}
+      </DashCard>
+
+      <DashCard>
+        <SectionTitle>What each action costs</SectionTitle>
+        <ul className="mt-3 divide-y divide-black/5 text-sm">
+          {CREDIT_COSTS.map((c) => (
+            <li key={c.label} className="flex items-center justify-between py-2.5">
+              <span className="text-[oklch(0.35_0.02_265)]">{c.label}</span>
+              <span className="tabular-nums text-[oklch(0.5_0.02_265)]">
+                {c.cost} {c.cost === 1 ? "credit" : "credits"}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </DashCard>
+    </div>
   );
 }
 

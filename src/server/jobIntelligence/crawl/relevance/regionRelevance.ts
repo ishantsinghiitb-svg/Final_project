@@ -1,6 +1,6 @@
 // ── Module 10B.3 Phase 1: India-first region relevance ──
 //
-// NextOffer is India-first: a source that publishes a hiring-eligibility
+// OfferLyst is India-first: a source that publishes a hiring-eligibility
 // restriction should not have postings imported that explicitly exclude
 // India. This is deliberately NOT "India-only" — a worldwide/unrestricted
 // remote role from a foreign company is genuinely reachable by an Indian

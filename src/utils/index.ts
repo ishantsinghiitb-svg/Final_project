@@ -42,11 +42,7 @@ export function isTomorrow(date: string | Date): boolean {
 }
 
 // ── Salary ──
-export function formatSalary(
-  min?: number,
-  max?: number,
-  currency = "USD",
-): string {
+export function formatSalary(min?: number, max?: number, currency = "USD"): string {
   const symbol = currency === "USD" ? "$" : currency === "EUR" ? "€" : "";
   if (min && max) return `${symbol}${min}–${symbol}${max}k`;
   if (min) return `${symbol}${min}k+`;

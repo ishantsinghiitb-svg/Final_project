@@ -51,7 +51,11 @@ function WeakAreaRow({ area }: { area: InterviewPrepContent["resumeWeakAreas"][n
 }
 
 /** §5 Resume Weak Areas — collapsed rows summarized by `area` only. */
-export function ResumeWeakAreasPanel({ areas }: { areas: InterviewPrepContent["resumeWeakAreas"] }) {
+export function ResumeWeakAreasPanel({
+  areas,
+}: {
+  areas: InterviewPrepContent["resumeWeakAreas"];
+}) {
   if (areas.length === 0) return null;
 
   return (

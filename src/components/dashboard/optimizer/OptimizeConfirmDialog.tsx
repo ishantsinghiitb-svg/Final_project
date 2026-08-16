@@ -1,7 +1,7 @@
-import { Link } from "@tanstack/react-router";
 import { Sparkles, X } from "lucide-react";
 import { AIThinkingPanel } from "@/components/dashboard/ai/AIThinking";
 import { AI_CAPABILITIES } from "@/features/ai/constants";
+import { NeedMoreCreditsLink } from "../ai/NeedMoreCredits";
 
 // ── OptimizeConfirmDialog (Module 6D) ──
 //
@@ -89,12 +89,11 @@ export function OptimizeConfirmDialog({
               <p className="mt-2 text-sm text-muted-foreground">
                 You're out of AI credits, so this can't run right now.
               </p>
-              <Link
-                to="/pricing"
-                className="mt-4 inline-flex w-full items-center justify-center rounded-xl border border-black/10 bg-white py-2.5 text-sm font-medium text-[oklch(0.25_0.02_265)] transition-colors hover:bg-black/[0.03]"
-              >
-                See upgrade options
-              </Link>
+              <NeedMoreCreditsLink
+                variant="secondary"
+                context="the resume optimizer"
+                className="mt-4"
+              />
             </>
           ) : (
             <>

@@ -53,7 +53,7 @@ import { format, parseISO } from "date-fns";
 
 export const Route = createFileRoute("/dashboard/collections/$collectionId")({
   head: () => ({
-    meta: [{ title: "Collection — NextOffer" }, { name: "robots", content: "noindex" }],
+    meta: [{ title: "Collection — OfferLyst" }, { name: "robots", content: "noindex" }],
   }),
   component: CollectionDetailPage,
 });

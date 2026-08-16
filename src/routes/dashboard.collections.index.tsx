@@ -16,7 +16,7 @@ import type { CollectionColor, CollectionWithStats } from "@/types";
 
 export const Route = createFileRoute("/dashboard/collections/")({
   head: () => ({
-    meta: [{ title: "Collections — NextOffer" }, { name: "robots", content: "noindex" }],
+    meta: [{ title: "Collections — OfferLyst" }, { name: "robots", content: "noindex" }],
   }),
   component: CollectionsPage,
 });
@@ -79,7 +79,7 @@ function CollectionsPage() {
         <PageHeader
           eyebrow="Collections"
           title="Organize saved roles your way."
-          subtitle="Group jobs into lists like Dream Companies, Summer 2027, or AI Jobs — a job can live in as many collections as you like."
+          subtitle="Group jobs into lists like Dream Companies or Summer 2027. A job can live in as many collections as you like."
           actions={
             <div className="flex items-center gap-2">
               {isFetching && !isLoading && (
@@ -110,7 +110,7 @@ function CollectionsPage() {
         <EmptyState
           icon={FolderKanban}
           title="No collections yet"
-          body="Create your first collection to start grouping jobs — from the Jobs board, Saved Jobs, or a job's detail page."
+          body="Create your first collection to start grouping jobs. You can add them from the Jobs board, Saved Jobs, or any job's detail page."
           cta={
             <DashButton size="sm" onClick={() => setCreateOpen(true)}>
               <Plus className="h-4 w-4" /> New Collection

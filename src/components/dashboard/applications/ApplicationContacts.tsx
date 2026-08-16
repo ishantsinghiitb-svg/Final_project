@@ -156,7 +156,7 @@ function ContactFormDialog({
                   required
                   value={form.name}
                   onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                  placeholder="Jane Doe"
+                  placeholder="Contact name"
                   className={inputClass}
                 />
               </div>

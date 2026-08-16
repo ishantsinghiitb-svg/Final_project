@@ -45,7 +45,7 @@ import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/dashboard/interviews/")({
   head: () => ({
-    meta: [{ title: "Interviews — NextOffer" }, { name: "robots", content: "noindex" }],
+    meta: [{ title: "Interviews — OfferLyst" }, { name: "robots", content: "noindex" }],
   }),
   component: InterviewsPage,
 });
@@ -237,7 +237,7 @@ function InterviewsPage() {
         <PageHeader
           eyebrow="Interviews"
           title="Every round, in one place."
-          subtitle="Schedule interviews from a tracked application, or add a standalone one — see what's next at a glance."
+          subtitle="Schedule interviews from a tracked application, or add a standalone one, and see what is coming up next."
           leftActions={
             <div className="inline-flex items-center rounded-lg border border-black/5 bg-white p-0.5 text-xs">
               {(["card", "table", "agenda"] as InterviewViewMode[]).map((v) => (
@@ -264,7 +264,7 @@ function InterviewsPage() {
               <button
                 onClick={() => void handleSyncNow()}
                 disabled={syncPending}
-                title="Syncs every connected Google product together — the same action everywhere in NextOffer."
+                title="Syncs every connected Google product together — the same action everywhere in OfferLyst."
                 className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-black/5 bg-white px-3 text-xs font-medium text-[oklch(0.3_0.02_265)] hover:bg-black/[0.03] disabled:opacity-50"
               >
                 {syncPending ? (

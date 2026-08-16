@@ -131,8 +131,7 @@ export function PrepSetupPanel({
             </div>
             <div>
               <label className={labelClass} htmlFor="prep-company-desc">
-                Company Description{" "}
-                <span className="text-[oklch(0.6_0.02_265)]">(optional)</span>
+                Company Description <span className="text-[oklch(0.6_0.02_265)]">(optional)</span>
               </label>
               <textarea
                 id="prep-company-desc"
@@ -156,7 +155,7 @@ export function PrepSetupPanel({
             value={additionalContext}
             onChange={(e) => onAdditionalContextChange(e.target.value)}
             rows={3}
-            placeholder="Anything else you know about this interview? e.g. &quot;Recruiter told me they'll focus on product metrics&quot;, &quot;This is the final hiring manager round&quot;, &quot;They asked me to prepare SQL&quot;."
+            placeholder='Anything else you know about this interview? e.g. "Recruiter told me they&apos;ll focus on product metrics", "This is the final hiring manager round", "They asked me to prepare SQL".'
             className={`${inputClass} resize-none`}
           />
           <p className="mt-1.5 text-xs text-[oklch(0.55_0.02_265)]">

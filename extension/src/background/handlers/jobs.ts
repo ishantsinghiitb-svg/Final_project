@@ -38,7 +38,7 @@ export async function syncGlobalJob(
   const resolvedJob = await DuplicateResolver.resolve(job);
 
   const validation = JobValidator.validate(resolvedJob);
-  console.log("[NextOffer] Validation:", validation);
+  console.log("[OfferLyst] Validation:", validation);
   if (!validation.valid) {
     throw new Error(validation.reason);
   }

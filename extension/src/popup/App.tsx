@@ -149,7 +149,7 @@ export function App() {
         if (!response.ok) return { ok: false, code: "error", message: response.error };
         return response.data;
       } catch {
-        return { ok: false, code: "error", message: "Couldn't reach NextOffer. Try again." };
+        return { ok: false, code: "error", message: "Couldn't reach OfferLyst. Try again." };
       }
     },
     onFetchResumeMatch: async (resumeId) => {
@@ -186,7 +186,7 @@ export function App() {
         });
         return { ok: true, resume: newResume };
       } catch {
-        return { ok: false, message: "Couldn't reach NextOffer. Try again." };
+        return { ok: false, message: "Couldn't reach OfferLyst. Try again." };
       }
     },
   };
@@ -201,7 +201,7 @@ export function App() {
 
       <section className="popup__brand">
         <img className="popup__logo" src={logoMark} width="40" height="40" alt="" />
-        <h1 className="popup__title">NextOffer</h1>
+        <h1 className="popup__title">OfferLyst</h1>
         <p className="popup__subtitle">AI Job Copilot</p>
         <p className="popup__tagline">
           Track jobs, save opportunities, manage applications and prepare for interviews.

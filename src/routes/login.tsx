@@ -9,8 +9,8 @@ import { GuestRoute } from "@/components/auth/RouteGuards";
 export const Route = createFileRoute("/login")({
   head: () => ({
     meta: [
-      { title: "Log in — NextOffer" },
-      { name: "description", content: "Sign in to NextOffer." },
+      { title: "Log in — OfferLyst" },
+      { name: "description", content: "Sign in to OfferLyst." },
     ],
   }),
   component: Login,
@@ -51,7 +51,7 @@ function Login() {
     <GuestRoute>
       <AuthCard
         title="Welcome back"
-        subtitle="Log in to your NextOffer workspace."
+        subtitle="Log in to your OfferLyst workspace."
         submitLabel="Log in"
         onSubmit={handleLogin}
         onGoogle={handleGoogle}
@@ -115,7 +115,7 @@ export function AuthCard({
     <section className="mx-auto flex min-h-[calc(100vh-4rem)] max-w-6xl items-center px-6 py-32">
       <div className="mx-auto w-full max-w-md">
         <div className="mb-6 flex items-center justify-center gap-2">
-          <Link to="/" aria-label="NextOffer home">
+          <Link to="/" aria-label="OfferLyst home">
             <Logo size={32} wordmarkClassName="text-lg" />
           </Link>
         </div>

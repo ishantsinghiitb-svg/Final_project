@@ -83,14 +83,14 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "NextOffer — The workspace for your job search" },
+      { title: "OfferLyst — The workspace for your job search" },
       {
         name: "description",
         content:
-          "NextOffer is the workspace for your entire job search. Save jobs from anywhere, tailor your resume with AI, track applications, and land your next offer.",
+          "OfferLyst is the workspace for your entire job search. Save jobs from anywhere, tailor your resume with AI, track applications, and land your next offer.",
       },
       { name: "theme-color", content: "#0B1120" },
-      { property: "og:title", content: "NextOffer — The workspace for your job search" },
+      { property: "og:title", content: "OfferLyst — The workspace for your job search" },
       {
         property: "og:description",
         content:
@@ -99,7 +99,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:type", content: "website" },
       { property: "og:image", content: "/image.png" },
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:title", content: "NextOffer — The workspace for your job search" },
+      { name: "twitter:title", content: "OfferLyst — The workspace for your job search" },
       { name: "twitter:image", content: "/image.png" },
     ],
     links: [
@@ -107,8 +107,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         rel: "stylesheet",
         href: appCss,
       },
-      { rel: "icon", type: "image/png", href: "/image.png" },
-      { rel: "apple-touch-icon", href: "/image.png" },
+      { rel: "icon", type: "image/png", href: "/icon.png" },
+      { rel: "apple-touch-icon", href: "/icon.png" },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       {

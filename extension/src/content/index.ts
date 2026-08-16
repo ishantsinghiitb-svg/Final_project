@@ -101,14 +101,14 @@ registerDisposer(() => clearInterval(contextWatchdog));
  * ParserFactory for a parser, hand its output to validation/sync, inject the
  * panel. No site-specific DOM selectors live in this file.
  */
-console.log("[NextOffer] Content script loaded");
-console.log("[NextOffer] Current URL:", window.location.href);
+console.log("[OfferLyst] Content script loaded");
+console.log("[OfferLyst] Current URL:", window.location.href);
 
 const detectedSite = SiteDetector.detect(location.hostname);
-console.log("[NextOffer] Site detected:", detectedSite);
+console.log("[OfferLyst] Site detected:", detectedSite);
 
 const parser = ParserFactory.getParser(location.hostname);
-console.log("[NextOffer] Parser:", parser?.constructor?.name);
+console.log("[OfferLyst] Parser:", parser?.constructor?.name);
 
 const listingParser = ListingParserFactory.getListingParser(location.hostname);
 const listingActive = listingParser?.matches({ document, url: location.href }) ?? false;
@@ -354,7 +354,7 @@ function runDetailCapture(activeParser: JobParser): void {
         if (err instanceof ExtensionContextInvalidatedError) {
           panel.update({ kind: "extension-invalidated" }, actions, null);
         }
-        return { ok: false, code: "error", message: "Couldn't reach NextOffer. Try again." };
+        return { ok: false, code: "error", message: "Couldn't reach OfferLyst. Try again." };
       }
     },
     onFetchResumeMatch: async (resumeId) => {
@@ -398,7 +398,7 @@ function runDetailCapture(activeParser: JobParser): void {
         if (err instanceof ExtensionContextInvalidatedError) {
           panel.update({ kind: "extension-invalidated" }, actions, null);
         }
-        return { ok: false, message: "Couldn't reach NextOffer. Try again." };
+        return { ok: false, message: "Couldn't reach OfferLyst. Try again." };
       }
     },
   };
@@ -439,7 +439,7 @@ function runDetailCapture(activeParser: JobParser): void {
         // "no job detected".
         hydrationAttempts += 1;
         if (gen === generation) {
-          console.log("[NextOffer] Panel state: loading (hydration retry)");
+          console.log("[OfferLyst] Panel state: loading (hydration retry)");
           panel.update({ kind: "loading" }, actions, null);
         }
         setTimeout(() => run(), HYDRATION_RETRY_MS);
@@ -458,7 +458,7 @@ function runDetailCapture(activeParser: JobParser): void {
       // observer that already watches this SPA (see watchForNavigation).
       if (urlNamesLinkedInJob(currentUrl)) {
         if (gen === generation) {
-          console.log("[NextOffer] Panel state: loading (url still names a job)");
+          console.log("[OfferLyst] Panel state: loading (url still names a job)");
           panel.update({ kind: "loading" }, actions, null);
         }
         return;
@@ -473,7 +473,7 @@ function runDetailCapture(activeParser: JobParser): void {
       renderedUrl = null;
       renderedKey = null;
       if (gen === generation) {
-        console.log("[NextOffer] Panel state: no-job (hydration grace exhausted)");
+        console.log("[OfferLyst] Panel state: no-job (hydration grace exhausted)");
         panel.update({ kind: "no-job" }, actions, null);
         publishCurrentJob(null);
       }
@@ -498,7 +498,7 @@ function runDetailCapture(activeParser: JobParser): void {
     const renderKey = `${dedupKey}${jobHasDescription ? ":d" : ""}`;
     if (currentUrl === renderedUrl && renderKey === renderedKey) return;
 
-    console.log("[NextOffer] Normalization:", job);
+    console.log("[OfferLyst] Normalization:", job);
 
     let authResponse: ExtensionResponse<AuthState>;
     try {
@@ -506,7 +506,7 @@ function runDetailCapture(activeParser: JobParser): void {
     } catch (err) {
       if (err instanceof ExtensionContextInvalidatedError) {
         if (gen === generation) {
-          console.log("[NextOffer] Panel state: extension-invalidated (auth call)");
+          console.log("[OfferLyst] Panel state: extension-invalidated (auth call)");
           panel.update({ kind: "extension-invalidated" }, actions, null);
         }
         return;
@@ -519,7 +519,7 @@ function runDetailCapture(activeParser: JobParser): void {
     if (gen !== generation) return; // superseded by a newer run
 
     if (!authResponse.ok || !authResponse.data.authenticated) {
-      console.log("[NextOffer] Panel state: not-logged-in");
+      console.log("[OfferLyst] Panel state: not-logged-in");
       panel.update({ kind: "not-logged-in" }, actions, null);
       publishCurrentJob(null);
       return;
@@ -528,7 +528,7 @@ function runDetailCapture(activeParser: JobParser): void {
     // Only show "loading" if we don't already have this exact page rendered —
     // avoids a re-sync (e.g. description enrichment) blanking the visible card.
     if (currentUrl !== renderedUrl) {
-      console.log("[NextOffer] Panel state: loading (pre-sync)");
+      console.log("[OfferLyst] Panel state: loading (pre-sync)");
       panel.update({ kind: "loading" }, actions, null);
     }
 
@@ -550,16 +550,16 @@ function runDetailCapture(activeParser: JobParser): void {
 
     let syncResponse: ExtensionResponse<GlobalJobSyncResult>;
     try {
-      console.log("[NextOffer] Sending SYNC_GLOBAL_JOB");
+      console.log("[OfferLyst] Sending SYNC_GLOBAL_JOB");
       syncResponse = await sendMessageWithRetry<GlobalJobSyncResult>({
         type: MessageType.SYNC_GLOBAL_JOB,
         payload: job,
       });
-      console.log("[NextOffer] Response:", syncResponse);
+      console.log("[OfferLyst] Response:", syncResponse);
     } catch (err) {
       if (err instanceof ExtensionContextInvalidatedError) {
         if (gen === generation) {
-          console.log("[NextOffer] Panel state: extension-invalidated (sync call)");
+          console.log("[OfferLyst] Panel state: extension-invalidated (sync call)");
           panel.update({ kind: "extension-invalidated" }, actions, null);
         }
         return;
@@ -579,11 +579,11 @@ function runDetailCapture(activeParser: JobParser): void {
       // parse the moment the details pane finishes mounting (same rationale as
       // the hydration-grace branch above).
       if (urlNamesLinkedInJob(currentUrl)) {
-        console.log("[NextOffer] Panel state: loading (url still names a job)");
+        console.log("[OfferLyst] Panel state: loading (url still names a job)");
         panel.update({ kind: "loading" }, actions, null);
         return;
       }
-      console.log("[NextOffer] Panel state: no-job (invalid sync response)");
+      console.log("[OfferLyst] Panel state: no-job (invalid sync response)");
       panel.update({ kind: "no-job" }, actions, null);
       publishCurrentJob(null);
       return;
@@ -619,7 +619,7 @@ function runDetailCapture(activeParser: JobParser): void {
         : "ready";
     const state: PanelViewState = { kind, job: panelJob };
 
-    console.log("[NextOffer] Rendering:", state);
+    console.log("[OfferLyst] Rendering:", state);
     panel.update(state, actions, pending);
     // Same state the floating panel just rendered — republished on every
     // sync and every CTA response so the popup (which has no direct channel
@@ -660,7 +660,7 @@ function runDetailCapture(activeParser: JobParser): void {
    * Primary CTA for the `ready` state — reuses the existing Save and Track
    * messages' server-side idempotency (never a duplicate save or
    * application) rather than reimplementing dedup on the client. Per the
-   * Module 2 spec, this only prepares the job inside NextOffer — it never
+   * Module 2 spec, this only prepares the job inside OfferLyst — it never
    * redirects the user off the LinkedIn page; LinkedIn's own "Apply" button
    * remains the way the user actually submits the application.
    */

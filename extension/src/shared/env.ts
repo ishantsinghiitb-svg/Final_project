@@ -11,6 +11,6 @@ export const env = {
   appEnv: import.meta.env.VITE_APP_ENV ?? "development",
   supabaseUrl: import.meta.env.VITE_SUPABASE_URL,
   supabaseAnonKey: import.meta.env.VITE_SUPABASE_ANON_KEY,
-  /** Used only to build "Open in NextOffer" links — not part of the auth bridge. */
+  /** Used only to build "Open in OfferLyst" links — not part of the auth bridge. */
   appUrl: import.meta.env.VITE_APP_URL ?? "http://localhost:8080",
 } as const;

@@ -89,7 +89,7 @@ export type CurrentJobState =
       job: PanelJob;
       state: "ready" | "saved" | "tracked";
       globalJobId: string;
-      /** Set once an application exists, so "View in NextOffer" can deep-link to it instead of the job. */
+      /** Set once an application exists, so "View in OfferLyst" can deep-link to it instead of the job. */
       applicationId: string | null;
     }
   | { kind: "unsupported-hiring-page" };

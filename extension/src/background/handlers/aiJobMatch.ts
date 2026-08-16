@@ -25,7 +25,7 @@ export async function analyzeMatch(
 ): Promise<AnalyzeMatchResult> {
   const accessToken = await getValidAccessToken();
   if (!accessToken) {
-    return { ok: false, code: "not_authenticated", message: "Please sign in to NextOffer." };
+    return { ok: false, code: "not_authenticated", message: "Please sign in to OfferLyst." };
   }
   const result = await analyzeMatchDirect(accessToken, resumeId, globalJobId, forceRefresh);
   if (!result.ok) {
@@ -47,7 +47,7 @@ export async function uploadResume(
 ): Promise<UploadResumeResult> {
   const auth = await getAuthState();
   if (!auth.authenticated || !auth.user) {
-    return { ok: false, message: "Please sign in to NextOffer." };
+    return { ok: false, message: "Please sign in to OfferLyst." };
   }
   if (mimeType !== "application/pdf") {
     return { ok: false, message: "Only PDF resumes can be analyzed." };

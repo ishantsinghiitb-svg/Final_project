@@ -84,7 +84,7 @@ export type PanelActions = {
   onTrackApplication: () => void;
   /** Secondary CTA for `saved`/`tracked` — deep-links to the job/application in the dashboard. */
   onViewInNextOffer: () => void;
-  /** `not-logged-in` only — opens the NextOffer app root. */
+  /** `not-logged-in` only — opens the OfferLyst app root. */
   onOpenInNextOffer: () => void;
   /**
    * "View Details" — deep-links to this job's dashboard page for the selected

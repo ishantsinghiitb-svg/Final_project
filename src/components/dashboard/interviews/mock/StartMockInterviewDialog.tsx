@@ -1,9 +1,9 @@
-import { Link } from "@tanstack/react-router";
 import { Sparkles, X } from "lucide-react";
 import { AIThinkingPanel } from "@/components/dashboard/ai/AIThinking";
 import { AI_CAPABILITIES } from "@/features/ai/constants";
 import { MOCK_INTERVIEW_CREDIT_COST } from "@/features/mock-interview/constants";
 import { useDialogA11y } from "@/hooks/useDialogA11y";
+import { NeedMoreCreditsLink } from "../../ai/NeedMoreCredits";
 
 // ── StartMockInterviewDialog (Module 7C) ──
 //
@@ -94,12 +94,11 @@ export function StartMockInterviewDialog({
                 <span className="font-medium">{creditsRemaining}</span> remaining — so this can't
                 start right now.
               </p>
-              <Link
-                to="/pricing"
-                className="mt-4 inline-flex w-full items-center justify-center rounded-xl border border-black/10 bg-white py-2.5 text-sm font-medium text-[oklch(0.25_0.02_265)] transition-colors hover:bg-black/[0.03]"
-              >
-                See upgrade options
-              </Link>
+              <NeedMoreCreditsLink
+                variant="secondary"
+                context="a mock interview"
+                className="mt-4"
+              />
             </>
           ) : (
             <>

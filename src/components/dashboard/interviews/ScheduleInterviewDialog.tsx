@@ -411,7 +411,7 @@ export function ScheduleInterviewDialog({
                     type="text"
                     value={interviewer}
                     onChange={(e) => setInterviewer(e.target.value)}
-                    placeholder="Jane Doe"
+                    placeholder="Interviewer name"
                     className={inputClass}
                   />
                 </div>

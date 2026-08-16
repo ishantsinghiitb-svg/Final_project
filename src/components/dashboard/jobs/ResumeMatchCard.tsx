@@ -13,6 +13,7 @@ import { AIMetaStrip, AIOutdatedNotice } from "@/components/dashboard/ai/AIMeta"
 import type { Resume } from "@/types";
 import { AnalyzeMatchDialog } from "./AnalyzeMatchDialog";
 import { ResumeMatchReportDialog } from "./ResumeMatchReportDialog";
+import { NeedMoreCreditsLink } from "../ai/NeedMoreCredits";
 
 // ── AI Resume Match card (Module 6B, compacted in the Module 6C polish pass) ──
 //
@@ -338,9 +339,7 @@ export function ResumeMatchCard({
             {locked && (
               <p className="text-xs text-[oklch(0.5_0.02_265)]">
                 You've used all your AI credits.{" "}
-                <Link to="/pricing" className="font-medium text-[#2563EB] hover:underline">
-                  See upgrade options
-                </Link>
+                <NeedMoreCreditsLink variant="inline" context="resume match" />
               </p>
             )}
           </div>

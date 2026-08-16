@@ -75,7 +75,12 @@ export function PreparationProgressPanel({
 
   return (
     <DashCard className="flex flex-wrap gap-5">
-      <Stat icon={CalendarClock} label="Interview" value={time.label} tone={time.tone === "soon" ? "soon" : undefined} />
+      <Stat
+        icon={CalendarClock}
+        label="Interview"
+        value={time.label}
+        tone={time.tone === "soon" ? "soon" : undefined}
+      />
       <Stat
         icon={MessageSquareText}
         label="Questions answered"

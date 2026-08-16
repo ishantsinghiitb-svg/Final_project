@@ -77,8 +77,7 @@ export type InterviewPrepGeneration = {
 };
 
 export type GenerateInterviewPrepResult =
-  | { ok: true; generation: InterviewPrepGeneration; credits: AICreditStatus }
-  | AIFailure;
+  { ok: true; generation: InterviewPrepGeneration; credits: AICreditStatus } | AIFailure;
 
 // ── Per-question answer ─────────────────────────────────────────────────
 
@@ -90,5 +89,4 @@ export type GenerateInterviewAnswerParams = {
 };
 
 export type GenerateInterviewAnswerResult =
-  | { ok: true; answer: InterviewPrepAnswer; draft: InterviewAnswerDraft }
-  | AIFailure;
+  { ok: true; answer: InterviewPrepAnswer; draft: InterviewAnswerDraft } | AIFailure;

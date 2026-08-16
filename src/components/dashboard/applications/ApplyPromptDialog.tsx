@@ -102,7 +102,7 @@ export function TrackApplicationModal({
               Ready to apply?
             </h2>
             <p className="mt-2 text-sm text-muted-foreground">
-              Track this application in NextOffer so you can:
+              Track this application in OfferLyst so you can:
             </p>
 
             <ul className="mt-3 space-y-2 text-sm text-muted-foreground">

@@ -1,109 +1,144 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useId, useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { Section } from "@/components/site/Section";
+import {
+  CONTACT_EMAIL,
+  SUPPORTED_PLATFORM_NAMES,
+  extensionAccessSentence,
+} from "@/content/extension";
+import { contactLinkProps } from "@/content/contact";
+import { CREDIT_COSTS, FREE_CREDITS } from "@/content/credits";
 
 export const Route = createFileRoute("/faq")({
   head: () => ({
     meta: [
-      { title: "FAQ — NextOffer" },
+      { title: "FAQ — OfferLyst" },
       {
         name: "description",
         content:
-          "Answers about resume matching, ATS scoring, AI usage, privacy, the Chrome extension, billing, and student plans.",
+          "Answers about the Chrome extension, supported job sites, AI resume matching, application tracking, the Gmail inbox review, privacy, and AI credits.",
       },
-      { property: "og:title", content: "FAQ — NextOffer" },
+      { property: "og:title", content: "FAQ — OfferLyst" },
       {
         property: "og:description",
-        content: "Everything you might want to know before signing up.",
+        content: "Everything worth knowing before you sign up.",
       },
     ],
   }),
   component: FAQ,
 });
 
+const platformList = `${SUPPORTED_PLATFORM_NAMES.slice(0, -1).join(", ")} and ${SUPPORTED_PLATFORM_NAMES.at(-1)}`;
+const costList = CREDIT_COSTS.map((c) => `${c.label} (${c.cost})`).join(", ");
+
 const groups = [
   {
-    title: "Product & features",
+    title: "The basics",
     faqs: [
       {
-        q: "Is NextOffer a job board?",
-        a: "No. NextOffer works with the platforms you already use — LinkedIn, Wellfound, Greenhouse, Lever, Ashby, Naukri, and any company career page. We help you save, tailor, and track the roles you find there.",
+        q: "What is OfferLyst?",
+        a: "A workspace for a job search. You save roles you find, tailor your resume against them with AI, track each application through its stages, prepare for interviews, and see what is actually working. It replaces the spreadsheet and the folder of resume versions.",
       },
       {
-        q: "How does resume match work?",
-        a: "When you save a job, NextOffer compares your resume against the actual job description across four dimensions: skills coverage, experience level, keyword density, and tone. You get an overall score plus a breakdown, so you know exactly where you're strong and what to improve.",
+        q: "Is OfferLyst a job board?",
+        a: "No. OfferLyst does not run a hiring marketplace and employers do not post to us. You bring roles from the sites you already use, either through the Chrome extension or by adding them yourself, and OfferLyst is where the rest of the process lives.",
       },
       {
-        q: "What is the ATS score?",
-        a: "The ATS score checks how well your resume will parse through modern applicant tracking systems (the software most companies use to filter applications). It looks at formatting, keyword density, and section completeness, then suggests fixes ranked by impact.",
-      },
-      {
-        q: "Do I need the Chrome extension?",
-        a: "It's optional but recommended. Without it you can add jobs manually. With it, you save any job in one click and NextOffer extracts the title, company, salary, and requirements automatically.",
-      },
-      {
-        q: "Which job sites does the extension support?",
-        a: "LinkedIn, Wellfound, Greenhouse, Lever, Ashby, Naukri, and most company career pages. We're adding more continuously — if a site doesn't extract cleanly, you can edit the saved job before it lands in your library.",
+        q: "What does it cost?",
+        a: `Nothing to start. There are no paid plans right now. Every account gets a free allowance of ${FREE_CREDITS} AI credits, and if you need more you can write to us at ${CONTACT_EMAIL}.`,
       },
     ],
   },
   {
-    title: "AI & your data",
+    title: "Chrome extension",
     faqs: [
       {
-        q: "How is my resume used by AI?",
-        a: "Only for the specific action you trigger — a match score, a tailoring suggestion, a cover letter. We never train models on your resume or applications, and we never share your data with third parties.",
+        q: "How does the Chrome extension work?",
+        a: "On a supported job page it reads the posting and shows a floating panel with the title, company, location, salary and job type it found. Save for Later puts the job in your library. Apply & Track does that and opens an application in your pipeline at the same time. Neither button navigates you away from the posting.",
       },
       {
-        q: "Where is my data stored?",
-        a: "In EU/US data centers, encrypted at rest with AES-256 and in transit with TLS 1.3. You can export everything at any time, or delete your account and all its data in one click.",
+        q: "Which websites are supported?",
+        a: `${platformList}. Those are the sites the extension has a dedicated parser for. On other hiring pages it tells you tracking is not available there yet rather than saving details it may have read incorrectly.`,
       },
       {
-        q: "Do you sell or share my applications?",
-        a: "No. Ever. Your job search is yours. We don't sell data to recruiters, employers, or data brokers.",
+        q: "Do I need the extension?",
+        a: "No. It saves you the copying, but you can add roles by hand from the dashboard and use everything else exactly the same way.",
+      },
+      {
+        q: "How do I get the extension?",
+        a: extensionAccessSentence(),
+      },
+      {
+        q: "Do I sign in separately in the extension?",
+        a: "No. The extension uses the OfferLyst session already in your browser, so you log in once on the website and the extension picks it up. It never asks for your password.",
+      },
+    ],
+  },
+  {
+    title: "AI features",
+    faqs: [
+      {
+        q: "How does AI resume matching work?",
+        a: "You pick one of your resumes and a specific saved job. OfferLyst compares the resume against that posting's actual text and returns a score with a breakdown of where you line up and where you do not, plus an improvement plan. It is scored per job, so the same resume gets different results against different postings.",
+      },
+      {
+        q: "What is the ATS check?",
+        a: "A separate check that looks at how well a resume is likely to survive an applicant tracking system for a particular role. It combines deterministic checks on structure and keywords with an AI review, and returns a report of what to fix.",
+      },
+      {
+        q: "Does AI write my cover letters from nothing?",
+        a: "No. Cover letters are drafted from your resume and the job posting, and the system is built to prefer what your resume actually says over what would sound impressive. You can edit the draft freely afterwards.",
+      },
+      {
+        q: "How do interview prep and mock interviews work?",
+        a: "Prep generates a workspace for one specific interview: what to expect, priority topics, questions to practise and weak areas from your resume. A mock interview is a live practice session that ends with a scored report on your answers.",
+      },
+    ],
+  },
+  {
+    title: "Tracking and inbox",
+    faqs: [
+      {
+        q: "How are applications tracked?",
+        a: "Each application moves through stages from applied to offer, on a board you drag between or a list you sort. Every application keeps its own notes, the resume you used, and any interviews attached to it, so nothing is scattered.",
+      },
+      {
+        q: "How does the Gmail and Calendar integration work?",
+        a: "Connecting Google is optional and separate from signing in. Once connected, OfferLyst reviews incoming mail and calendar events for things that look like your job search: interview invitations, assessments, offers and rejections. It then proposes updates for you to review.",
+      },
+      {
+        q: "Will it change my applications without asking?",
+        a: "No. Everything Gmail or Calendar finds arrives as a suggestion in your Inbox with the reason it was flagged. Nothing is created or changed until you approve it, and you can edit the details before accepting.",
+      },
+      {
+        q: "Does OfferLyst send email on my behalf?",
+        a: "No. It reads to make suggestions. Replying is something you do yourself.",
+      },
+    ],
+  },
+  {
+    title: "Credits and privacy",
+    faqs: [
+      {
+        q: "How do AI credits work?",
+        a: `Every account starts with ${FREE_CREDITS} credits. Each AI action costs a set amount: ${costList}. A mock interview charges once for the whole session, not per question, and interview prep charges once for the whole workspace. Analytics recommendations and the Gmail review never charge.`,
+      },
+      {
+        q: "How can I get more AI credits?",
+        a: `Write to ${CONTACT_EMAIL} and tell us what you are working on. There is no checkout to go through, because there are no paid plans at this stage.`,
+      },
+      {
+        q: "What happens when I run out?",
+        a: "The AI features tell you the allowance is used up instead of failing oddly. Everything that does not use AI, including saving jobs, tracking applications, notes and analytics, keeps working normally.",
+      },
+      {
+        q: "Are my documents and data private?",
+        a: "Your resumes, applications and notes belong to your account and are protected by per-user access rules in the database, so other users cannot read them. Your data is not sold or shared, and it is not used to train models. AI features send only what a given action needs, at the moment you trigger it.",
       },
       {
         q: "Can I delete my data?",
-        a: "Yes, at any time, from Settings. Deleting your account removes your resumes, saved jobs, applications, and notes permanently. There's no retention period and no backup that lingers.",
-      },
-    ],
-  },
-  {
-    title: "Billing & plans",
-    faqs: [
-      {
-        q: "Is there a free plan?",
-        a: "Yes — Starter is free forever and includes the Chrome extension, up to 25 saved jobs, one resume, 10 AI actions per month, and the kanban tracker. No credit card required.",
-      },
-      {
-        q: "Can I cancel any time?",
-        a: "Yes, in one click from your dashboard. No support email, no phone call, no retention flow. You keep access until the end of your billing period.",
-      },
-      {
-        q: "Do you offer student pricing?",
-        a: "Yes — 50% off Pro for verified .edu (or equivalent) addresses. After signing up, reach out from your school email and we'll apply the discount. That's $6/mo billed annually.",
-      },
-      {
-        q: "What happens to my data if I downgrade from Pro?",
-        a: "Nothing is deleted. Your data stays, and you can export it whenever. If you exceed Starter's limits after downgrading, some saved jobs become read-only until you're back under the limit.",
-      },
-    ],
-  },
-  {
-    title: "Integrations & support",
-    faqs: [
-      {
-        q: "Which integrations are available?",
-        a: "Today: the Chrome extension and LinkedIn job importing. In progress: Google Calendar sync for interviews and Gmail recruiter-email detection. Planned: Slack nudges and Notion export.",
-      },
-      {
-        q: "How do I get support?",
-        a: "Email hello@nextoffer.io. A real person replies within one business day. Pro and Team plan members get priority handling.",
-      },
-      {
-        q: "What's on the roadmap?",
-        a: "Smarter follow-up nudges, calendar sync, recruiter email detection, shared job libraries, and a coach workspace. We ship continuously and adjust based on feedback — see our About page for the full picture.",
+        a: "Yes. You can remove resumes, saved jobs and applications from the dashboard at any time, and disconnecting Google stops any further inbox or calendar review.",
       },
     ],
   },
@@ -115,8 +150,9 @@ function FAQ() {
       align="center"
       eyebrow="FAQ"
       title="Answers, before you ask."
-      description="Still curious? Reach out — a real human replies within a day."
-      className="pt-20 md:pt-28 pb-16"
+      description="Still curious? Write to us and a person will reply."
+      spacing="last"
+      className="pt-24 md:pt-32"
     >
       <div className="mx-auto max-w-3xl space-y-10 text-left">
         {groups.map((g) => (
@@ -124,13 +160,22 @@ function FAQ() {
             <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
               {g.title}
             </p>
-            <div className="divide-y divide-white/5 rounded-2xl border border-white/8 bg-white/[0.02]">
+            <div className="divide-y divide-white/5 overflow-hidden rounded-2xl border border-white/8 bg-white/[0.02]">
               {g.faqs.map((f) => (
                 <FAQItem key={f.q} q={f.q} a={f.a} />
               ))}
             </div>
           </div>
         ))}
+        <p className="text-center text-sm text-muted-foreground">
+          Something not covered here?{" "}
+          <a
+            {...contactLinkProps({ subject: "a question" })}
+            className="rounded text-[#93C5FD] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[oklch(0.58_0.21_260)]/60"
+          >
+            {CONTACT_EMAIL}
+          </a>
+        </p>
       </div>
     </Section>
   );
@@ -138,28 +183,32 @@ function FAQ() {
 
 function FAQItem({ q, a }: { q: string; a: string }) {
   const [open, setOpen] = useState(false);
+  const panelId = useId();
   return (
-    <button
-      type="button"
-      onClick={() => setOpen((o) => !o)}
-      className="w-full px-6 py-5 text-left"
-      aria-expanded={open}
-    >
-      <div className="flex items-center justify-between gap-4">
-        <p className="font-medium">{q}</p>
+    <div>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="flex w-full items-center justify-between gap-4 px-5 py-5 text-left transition-colors hover:bg-white/[0.02] sm:px-6"
+        aria-expanded={open}
+        aria-controls={panelId}
+      >
+        <span className="font-medium">{q}</span>
         <ChevronDown
+          aria-hidden
           className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 ${
             open ? "rotate-180" : ""
           }`}
         />
-      </div>
+      </button>
       <div
-        className={`grid overflow-hidden text-sm text-muted-foreground transition-all duration-300 ${
-          open ? "mt-3 grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
-        }`}
+        id={panelId}
+        role="region"
+        hidden={!open}
+        className="px-5 pb-5 text-sm leading-relaxed text-muted-foreground sm:px-6"
       >
-        <div className="min-h-0">{a}</div>
+        {a}
       </div>
-    </button>
+    </div>
   );
 }

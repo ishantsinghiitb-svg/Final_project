@@ -48,14 +48,14 @@ function DashboardMock() {
         </div>
         <div className="ml-3 flex flex-1 items-center gap-2 rounded-md bg-white/[0.03] px-2 py-1 text-[11px] text-muted-foreground">
           <Search className="h-3 w-3" />
-          app.nextoffer.io / dashboard
+          app.offerlyst.io / dashboard
         </div>
       </div>
       <div className="grid grid-cols-[180px_1fr]">
         <aside className="border-r border-white/5 p-3">
           <div className="mb-3 flex items-center gap-2 px-2 py-1">
             <LogoMark size={22} />
-            <span className="text-[12px] font-semibold">NextOffer</span>
+            <span className="text-[12px] font-semibold">OfferLyst</span>
           </div>
           {[
             { icon: Activity, label: "Overview", active: true },
@@ -79,10 +79,8 @@ function DashboardMock() {
         <div className="p-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
-                Overview
-              </p>
-              <h3 className="mt-0.5 text-base font-semibold">Good afternoon, Ava</h3>
+              <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Overview</p>
+              <h3 className="mt-0.5 text-base font-semibold">Good afternoon</h3>
             </div>
             <div className="h-6 w-6 rounded-full bg-gradient-to-br from-[oklch(0.55_0.24_295)] to-[oklch(0.58_0.21_260)]" />
           </div>
@@ -93,10 +91,7 @@ function DashboardMock() {
               { label: "Interviews this week", value: "5", tone: "text-[#22C55E]" },
               { label: "Match score avg.", value: "87%", tone: "text-[#A78BFA]" },
             ].map((s) => (
-              <div
-                key={s.label}
-                className="rounded-lg border border-white/5 bg-white/[0.02] p-3"
-              >
+              <div key={s.label} className="rounded-lg border border-white/5 bg-white/[0.02] p-3">
                 <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
                   {s.label}
                 </p>
@@ -161,14 +156,21 @@ function DashboardMock() {
             </div>
             <div className="divide-y divide-white/5">
               {[
-                { c: "Linear", r: "Sr. Product Designer", s: "Interview", t: "text-[#A78BFA]" },
-                { c: "Vercel", r: "Frontend Engineer", s: "Applied", t: "text-[#93C5FD]" },
-                { c: "Stripe", r: "Design Engineer", s: "Offer", t: "text-[#22C55E]" },
+                {
+                  c: "Product Manager",
+                  r: "Applied 3 days ago",
+                  s: "Interview",
+                  t: "text-[#A78BFA]",
+                },
+                {
+                  c: "Frontend Engineer",
+                  r: "Applied last week",
+                  s: "Applied",
+                  t: "text-[#93C5FD]",
+                },
+                { c: "Data Analyst", r: "Applied this month", s: "Offer", t: "text-[#22C55E]" },
               ].map((r) => (
-                <div
-                  key={r.c}
-                  className="flex items-center justify-between px-3 py-2 text-[11px]"
-                >
+                <div key={r.c} className="flex items-center justify-between px-3 py-2 text-[11px]">
                   <div className="flex items-center gap-2">
                     <div className="grid h-5 w-5 place-items-center rounded bg-white/10 text-[9px]">
                       {r.c[0]}
@@ -206,14 +208,14 @@ function ExtensionPopup({ className }: { className?: string }) {
         <div className="h-2 w-2 rounded-full bg-[#22C55E]" />
         <p className="text-[11px] text-muted-foreground">Chrome Extension</p>
       </div>
-      <p className="mt-2 text-[12px] font-medium">Job saved from LinkedIn</p>
-      <p className="text-[11px] text-muted-foreground">Sr. Product Designer · Linear</p>
+      <p className="mt-2 text-[12px] font-medium">Job saved</p>
+      <p className="text-[11px] text-muted-foreground">Product Manager</p>
       <div className="mt-2 flex items-center gap-1.5">
         <span className="rounded bg-[#2563EB]/20 px-1.5 py-0.5 text-[10px] text-[#93C5FD]">
           Remote
         </span>
         <span className="rounded bg-white/5 px-1.5 py-0.5 text-[10px] text-muted-foreground">
-          $180k+
+          Full-time
         </span>
       </div>
     </Chip>
@@ -303,7 +305,7 @@ function InterviewCard({ className }: { className?: string }) {
         <Bell className="h-3.5 w-3.5 text-[#F59E0B]" />
         <p className="text-[11px] text-muted-foreground">Interview in 45 min</p>
       </div>
-      <p className="mt-2 text-[12px] font-medium">Vercel — Frontend loop</p>
+      <p className="mt-2 text-[12px] font-medium">Frontend Engineer, round 2</p>
       <div className="mt-2 flex items-center justify-between text-[10px] text-muted-foreground">
         <span>Wed · 2:30 PM</span>
         <span className="flex items-center gap-1 text-[#22C55E]">
@@ -321,7 +323,7 @@ function OfferToast({ className }: { className?: string }) {
         <Trophy className="h-4 w-4 text-[#22C55E]" />
         <div>
           <p className="text-[12px] font-medium">Offer received</p>
-          <p className="text-[11px] text-muted-foreground">Stripe · Design Engineer</p>
+          <p className="text-[11px] text-muted-foreground">Data Analyst</p>
         </div>
       </div>
     </Chip>

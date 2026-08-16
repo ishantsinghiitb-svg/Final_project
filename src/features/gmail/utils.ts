@@ -13,7 +13,7 @@ export function gmailDeepLink(googleEmail: string, externalMessageId: string): s
 /**
  * Opens the message in Gmail with the reply composer already focused.
  *
- * NextOffer holds only the `gmail.readonly` scope and is therefore incapable
+ * OfferLyst holds only the `gmail.readonly` scope and is therefore incapable
  * of sending mail — replying happens in Gmail itself, and this link is what
  * makes that one click instead of a search. Gmail's `?compose=` fragment
  * parameter opens the reply box on the thread being viewed; if Gmail ignores
