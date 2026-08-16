@@ -973,6 +973,8 @@ export type CoverLetterRow = {
   /** Non-null while a paid-for AI editing session is active — see CoverLetterAIService. */
   ai_session_id: string | null;
   ai_session_started_at: string | null;
+  /** Free actions spent on the current session — see COVER_LETTER_MAX_SESSION_ACTIONS. */
+  ai_action_count: number;
 };
 
 export type CoverLetterInsert = {
@@ -999,6 +1001,7 @@ export type CoverLetterInsert = {
   downloaded_at?: string | null;
   ai_session_id?: string | null;
   ai_session_started_at?: string | null;
+  ai_action_count?: number;
 };
 
 // ── Module 6E: Cover Letter Studio version history (append-only) ──
@@ -1498,6 +1501,8 @@ export type InterviewPrepRow = {
   input_snapshot: Json | null;
   ai_session_id: string | null;
   ai_session_started_at: string | null;
+  /** Free actions spent on the current session — see INTERVIEW_PREP_MAX_SESSION_ACTIONS. */
+  ai_action_count: number;
   progress: Json;
   generated_at: string | null;
   created_at: string;
@@ -1522,6 +1527,7 @@ export type InterviewPrepInsert = {
   input_snapshot?: Json | null;
   ai_session_id?: string | null;
   ai_session_started_at?: string | null;
+  ai_action_count?: number;
   progress?: Json;
   generated_at?: string | null;
   created_at?: string;

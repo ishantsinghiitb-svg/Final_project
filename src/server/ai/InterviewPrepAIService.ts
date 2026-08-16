@@ -8,6 +8,7 @@ import {
   type InterviewPrepDraft,
   type InterviewQuestionDraft,
 } from "@/features/interview-prep/schema";
+import { INTERVIEW_PREP_MAX_SESSION_ACTIONS } from "@/features/interview-prep/constants";
 import {
   buildAnswerPrompt,
   buildGeneratePrompt,
@@ -300,14 +301,22 @@ async function loadSupplementaryContext(
   return supplementary;
 }
 
-/** Server-authoritative gate for a free (session-covered) action — mirrors CoverLetterAIService. */
-async function requireActiveSession(
+/**
+ * Server-authoritative gate for a free (session-covered) action — mirrors
+ * CoverLetterAIService, including the session's free-action budget
+ * (INTERVIEW_PREP_MAX_SESSION_ACTIONS, Module 13 · Phase 2 · B1): the
+ * session marker alone only ever proved the 3-credit generation had been
+ * charged once, not how many free answer calls it could be spent on.
+ */
+// Exported for direct testing (InterviewPrepAIService.test.ts) — see the
+// note in CoverLetterAIService.ts.
+export async function requireActiveSession(
   sb: ServerSupabase,
   interviewPrepId: string,
 ): Promise<{ ok: true } | AIFailure> {
   const { data, error } = await sb
     .from("interview_preps")
-    .select("id, ai_session_id")
+    .select("id, ai_session_id, ai_action_count")
     .eq("id", interviewPrepId)
     .maybeSingle();
   if (error) throw error;
@@ -318,7 +327,32 @@ async function requireActiveSession(
       message: "Generate this preparation first.",
     };
   }
+  if ((data.ai_action_count ?? 0) >= INTERVIEW_PREP_MAX_SESSION_ACTIONS) {
+    return {
+      ok: false,
+      code: "session_action_limit_reached",
+      message:
+        "This preparation has reached its free-answer limit for this session. Regenerate to continue.",
+    };
+  }
   return { ok: true };
+}
+
+/** Counts one free provider call against the active session's budget — called only right before making it, never on a cache hit. */
+export async function recordSessionAction(
+  sb: ServerSupabase,
+  interviewPrepId: string,
+): Promise<void> {
+  const { data, error } = await sb
+    .from("interview_preps")
+    .select("ai_action_count")
+    .eq("id", interviewPrepId)
+    .maybeSingle();
+  if (error) throw error;
+  await sb
+    .from("interview_preps")
+    .update({ ai_action_count: (data?.ai_action_count ?? 0) + 1 })
+    .eq("id", interviewPrepId);
 }
 
 async function lookupCache(
@@ -695,6 +729,8 @@ export async function runInterviewPrepGeneration(
           input_snapshot: inputSnapshot as unknown as Json,
           ai_session_id: newSessionId,
           ai_session_started_at: nowIso,
+          // A fresh charge resets the free-answer budget along with the session.
+          ai_action_count: 0,
           // Reset on every generation: question/checklist ids are re-assigned
           // each time, so any prior checklist-checked state no longer maps to
           // anything meaningful. Must be the FULL default shape, not `{}` —
@@ -957,6 +993,11 @@ export async function generateInterviewAnswer(
     };
 
     if (!draft) {
+      // Count this call against the session's budget before spending it — a
+      // cache hit above never reaches here, so a replayed identical request
+      // never counts twice.
+      await recordSessionAction(sb, params.interviewPrepId);
+
       const provider = getProvider(cap.provider);
       const produced = await withRetry(
         async () => {

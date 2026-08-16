@@ -77,7 +77,7 @@ export function AuthCard({
   subtitle,
   submitLabel,
   onSubmit,
-  alt,
+  alt = null,
   extra,
   loading = false,
   error = null,
@@ -89,12 +89,13 @@ export function AuthCard({
   successMessage = null,
   onGoogle,
   googleLoading = false,
+  hideEmail = false,
 }: {
   title: string;
   subtitle: string;
   submitLabel: string;
   onSubmit: (email: string, password: string, confirm?: string) => void;
-  alt: React.ReactNode;
+  alt?: React.ReactNode;
   extra?: React.ReactNode;
   loading?: boolean;
   error?: string | null;
@@ -106,6 +107,8 @@ export function AuthCard({
   successMessage?: string | null;
   onGoogle?: () => void;
   googleLoading?: boolean;
+  /** Omits the email field — for a form where the user is already authenticated (e.g. setting a new password from a reset link) and doesn't need to re-enter it. */
+  hideEmail?: boolean;
 }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -129,26 +132,30 @@ export function AuthCard({
             </div>
           ) : (
             <>
-              <div className="mt-6 grid gap-2">
-                <button
-                  type="button"
-                  onClick={onGoogle}
-                  disabled={googleLoading || !onGoogle}
-                  className="flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2.5 text-sm transition-colors hover:border-white/20 hover:bg-white/[0.05] disabled:opacity-50"
-                >
-                  {googleLoading ? (
-                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/20 border-t-white/60" />
-                  ) : (
-                    <GoogleIcon />
-                  )}
-                  Continue with Google
-                </button>
-              </div>
+              {onGoogle && (
+                <>
+                  <div className="mt-6 grid gap-2">
+                    <button
+                      type="button"
+                      onClick={onGoogle}
+                      disabled={googleLoading}
+                      className="flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2.5 text-sm transition-colors hover:border-white/20 hover:bg-white/[0.05] disabled:opacity-50"
+                    >
+                      {googleLoading ? (
+                        <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/20 border-t-white/60" />
+                      ) : (
+                        <GoogleIcon />
+                      )}
+                      Continue with Google
+                    </button>
+                  </div>
 
-              <div className="my-6 flex items-center gap-3 text-[10px] uppercase tracking-widest text-muted-foreground">
-                <span className="h-px flex-1 bg-white/10" /> or with password{" "}
-                <span className="h-px flex-1 bg-white/10" />
-              </div>
+                  <div className="my-6 flex items-center gap-3 text-[10px] uppercase tracking-widest text-muted-foreground">
+                    <span className="h-px flex-1 bg-white/10" /> or with password{" "}
+                    <span className="h-px flex-1 bg-white/10" />
+                  </div>
+                </>
+              )}
 
               {error && (
                 <p className="mb-3 rounded-lg border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-400">
@@ -165,20 +172,22 @@ export function AuthCard({
                 className="space-y-3"
               >
                 {extra}
-                <label className="block">
-                  <span className="text-xs uppercase tracking-widest text-muted-foreground">
-                    Email
-                  </span>
-                  <input
-                    required
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    disabled={loading}
-                    className="mt-1.5 w-full rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2.5 text-sm outline-none focus:border-white/25 disabled:opacity-50"
-                    placeholder="you@work.com"
-                  />
-                </label>
+                {!hideEmail && (
+                  <label className="block">
+                    <span className="text-xs uppercase tracking-widest text-muted-foreground">
+                      Email
+                    </span>
+                    <input
+                      required
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      disabled={loading}
+                      className="mt-1.5 w-full rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2.5 text-sm outline-none focus:border-white/25 disabled:opacity-50"
+                      placeholder="you@work.com"
+                    />
+                  </label>
+                )}
                 <label className="block">
                   <span className="text-xs uppercase tracking-widest text-muted-foreground">
                     Password

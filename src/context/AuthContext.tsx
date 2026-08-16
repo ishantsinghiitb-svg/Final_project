@@ -12,6 +12,7 @@ type AuthContextValue = {
   signUp: (email: string, password: string, fullName?: string) => Promise<AuthResult>;
   signOut: () => Promise<{ error: string | null }>;
   resetPassword: (email: string) => Promise<{ error: string | null }>;
+  updatePassword: (newPassword: string) => Promise<{ error: string | null }>;
 };
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -55,6 +56,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signUp: (email, password, fullName) => authService.signUp(email, password, fullName),
       signOut: () => authService.signOut(),
       resetPassword: (email) => authService.resetPassword(email),
+      updatePassword: (newPassword) => authService.updatePassword(newPassword),
     }),
     [user, session, loading],
   );

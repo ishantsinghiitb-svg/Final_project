@@ -18,6 +18,7 @@ import {
 } from "@/features/cover-letters/prompt";
 import {
   COVER_LETTER_AI_ACTIONS,
+  COVER_LETTER_MAX_SESSION_ACTIONS,
   MAX_LETTER_CHARS,
   sanitizeCustomInstructions,
   type CoverLetterAIAction,
@@ -126,10 +127,17 @@ async function loadContext(
 
 /**
  * Server-authoritative gate for a free (session-covered) action: the document
- * must exist and must already carry a non-null `ai_session_id`. Read-only —
- * opening/rotating a session only ever happens on a CHARGED call.
+ * must exist, must already carry a non-null `ai_session_id`, AND must not
+ * have exhausted its session's free-action budget (COVER_LETTER_MAX_SESSION_ACTIONS)
+ * — the session marker alone only ever proved a credit had been charged
+ * ONCE, not how many free calls it could be spent on (Module 13 · Phase 2 ·
+ * B1). Read-only — opening/rotating a session, and resetting the budget,
+ * only ever happens on a CHARGED call (see openSession).
  */
-async function requireActiveSession(
+// Exported for direct testing (CoverLetterAIService.test.ts) — this is the
+// actual security boundary Module 13 · Phase 2 · B1 closes, so it's tested
+// directly rather than only indirectly through the full generation flow.
+export async function requireActiveSession(
   sb: ServerSupabase,
   coverLetterId: string | undefined,
 ): Promise<{ ok: true } | AIFailure> {
@@ -142,7 +150,7 @@ async function requireActiveSession(
   }
   const { data, error } = await sb
     .from("cover_letters")
-    .select("id, ai_session_id")
+    .select("id, ai_session_id, ai_action_count")
     .eq("id", coverLetterId)
     .maybeSingle();
   if (error) throw error;
@@ -153,7 +161,32 @@ async function requireActiveSession(
       message: "Start a new generation to continue editing this letter.",
     };
   }
+  if ((data.ai_action_count ?? 0) >= COVER_LETTER_MAX_SESSION_ACTIONS) {
+    return {
+      ok: false,
+      code: "session_action_limit_reached",
+      message:
+        "This letter has reached its free-edit limit for this session. Regenerate to continue.",
+    };
+  }
   return { ok: true };
+}
+
+/** Counts one free provider call against the active session's budget — called only right before making it, never on a cache hit. */
+export async function recordSessionAction(
+  sb: ServerSupabase,
+  coverLetterId: string,
+): Promise<void> {
+  const { data, error } = await sb
+    .from("cover_letters")
+    .select("ai_action_count")
+    .eq("id", coverLetterId)
+    .maybeSingle();
+  if (error) throw error;
+  await sb
+    .from("cover_letters")
+    .update({ ai_action_count: (data?.ai_action_count ?? 0) + 1 })
+    .eq("id", coverLetterId);
 }
 
 async function lookupCache(
@@ -211,11 +244,15 @@ async function writeCache(
   if (error) throw error;
 }
 
-/** Rotate the document's editing session — called only on a CHARGED event. */
+/** Rotate the document's editing session — called only on a CHARGED event. Resets the free-action budget along with it. */
 async function openSession(sb: ServerSupabase, coverLetterId: string, sessionId: string) {
   await sb
     .from("cover_letters")
-    .update({ ai_session_id: sessionId, ai_session_started_at: new Date().toISOString() })
+    .update({
+      ai_session_id: sessionId,
+      ai_session_started_at: new Date().toISOString(),
+      ai_action_count: 0,
+    })
     .eq("id", coverLetterId);
 }
 
@@ -529,6 +566,10 @@ export async function runCoverLetterAI(
     } else {
       // ── Free path: a refinement action inside an already-active session ──
       creditStatus = await credits.getStatus();
+      // requireActiveSession already confirmed coverLetterId names a real,
+      // active session — count this call against its budget before making
+      // the provider call it's about to spend.
+      await recordSessionAction(sb, params.coverLetterId!);
 
       const produced = await callProvider();
       content = produced.mapped.content;
@@ -762,6 +803,11 @@ export async function explainCoverLetterAI(
         jobId: params.jobId,
       });
     } else {
+      // Count this call against the session's budget before spending it —
+      // a cache hit above never reaches here, so a repeated identical
+      // explain request never counts twice.
+      await recordSessionAction(sb, params.coverLetterId);
+
       const provider = getProvider(cap.provider);
       const validated = await withRetry(
         async () => {

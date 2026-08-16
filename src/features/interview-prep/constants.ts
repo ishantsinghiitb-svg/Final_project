@@ -120,3 +120,15 @@ export const QUESTION_DIFFICULTY_LABELS: Record<QuestionDifficulty, string> = {
 };
 
 export const INTERVIEW_PREP_CREDIT_COST = 3;
+
+/**
+ * Module 13 · Phase 2 (B1): generating/regenerating an answer for any
+ * question is free within an active session, otherwise uncapped — the
+ * session marker only ever proved the 3-credit generation had been paid
+ * once, not how many free answer calls it could be spent on. A prep
+ * typically has 8-25 questions; 60 gives generous headroom for answering
+ * every question plus several regenerates, while bounding a scripted loop
+ * against a single paid session to a fixed number of provider calls.
+ * Matches the same order of magnitude as MOCK_INTERVIEW_MAX_TURNS.
+ */
+export const INTERVIEW_PREP_MAX_SESSION_ACTIONS = 60;

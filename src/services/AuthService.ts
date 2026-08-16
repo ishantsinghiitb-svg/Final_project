@@ -41,8 +41,19 @@ export class AuthService {
 
   async resetPassword(email: string): Promise<{ error: string | null }> {
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/login`,
+      // Module 13 · Phase 2 (B3): must land on a page that actually lets the
+      // user set a new password. /login previously redirected the newly
+      // established recovery session straight to /dashboard (GuestRoute
+      // sees a signed-in user and bounces away) without ever calling
+      // updateUser — the password was never changed. See reset-password.tsx.
+      redirectTo: `${window.location.origin}/reset-password`,
     });
+    return { error: error?.message ?? null };
+  }
+
+  /** Sets a new password for the CURRENTLY authenticated session — used by the reset-password completion page (see reset-password.tsx) and available for an in-app "change password" flow later. */
+  async updatePassword(newPassword: string): Promise<{ error: string | null }> {
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
     return { error: error?.message ?? null };
   }
 

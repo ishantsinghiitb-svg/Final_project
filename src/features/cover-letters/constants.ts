@@ -294,6 +294,18 @@ export const MAX_VERSION_LABEL = 60;
 /** Hard ceiling on stored letter text — well above the longest Detailed letter. */
 export const MAX_LETTER_CHARS = 20_000;
 
+/**
+ * Module 13 · Phase 2 (B1): a session's free AI actions (rewrite a section,
+ * change tone/length, grammar, persuasive, simplify, highlight achievements,
+ * explain) are uncapped otherwise — the session marker only ever proved a
+ * credit had been paid once, not how many free calls it could be spent on.
+ * 30 is generous headroom over realistic editing (rewriting every section,
+ * trying a couple of tones/lengths, a few refinements, explaining once or
+ * twice — well under 15 in practice) while bounding a scripted loop against
+ * a single paid session to a fixed number of provider calls instead of none.
+ */
+export const COVER_LETTER_MAX_SESSION_ACTIONS = 30;
+
 export function sanitizeCustomInstructions(value: string | null | undefined): string | undefined {
   const trimmed = (value ?? "").trim();
   if (!trimmed) return undefined;
