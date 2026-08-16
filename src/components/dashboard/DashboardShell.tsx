@@ -16,6 +16,7 @@ import {
   MessageSquarePlus,
   Search,
   Settings,
+  ShieldCheck,
   Target,
   X,
   Menu,
@@ -36,6 +37,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useProfile } from "@/context/ProfileContext";
 import { useSidebarCounts } from "@/features/jobs/hooks";
 import { useGoogleAutoSyncOnOpen } from "@/features/google/hooks";
+import { useIsAdmin } from "@/features/admin/hooks";
 
 type NavItem = {
   to: string;
@@ -83,6 +85,8 @@ export function DashboardShell({ children }: { children: ReactNode }) {
   const { user, signOut } = useAuth();
   const { profile } = useProfile();
   const counts = useSidebarCounts();
+  const { data: adminCheck } = useIsAdmin();
+  const isAdmin = adminCheck?.isAdmin === true;
   // Module 9A "app open" sync trigger — fires the cheap due-check once per
   // session mount; no-ops unless a sync is actually due. See the hook's own
   // comment for why there's no platform-level background execution here.
@@ -266,6 +270,20 @@ export function DashboardShell({ children }: { children: ReactNode }) {
             >
               <HelpCircle className="h-[15px] w-[15px]" /> Help
             </Link>
+            {isAdmin && (
+              <Link
+                to="/dashboard/admin"
+                onClick={(e) => handleNavClick(e, "/dashboard/admin")}
+                className={cn(
+                  "flex items-center gap-2.5 rounded-lg px-2.5 py-[7px] text-[13px] transition-colors",
+                  pathname.startsWith("/dashboard/admin")
+                    ? "bg-[oklch(0.95_0.02_265)] font-medium text-[#2563EB]"
+                    : "text-[oklch(0.4_0.02_265)] hover:bg-black/[0.03] hover:text-[oklch(0.2_0.02_265)]",
+                )}
+              >
+                <ShieldCheck className="h-[15px] w-[15px]" /> Admin
+              </Link>
+            )}
             <div className="mt-2.5 flex items-center gap-2 rounded-lg px-2 py-1.5">
               <UserAvatar avatarUrl={avatarUrl} initials={initials} size={28} />
               <div className="min-w-0 flex-1">

@@ -12,12 +12,14 @@ import {
   Plus,
   Search,
   Settings,
+  ShieldCheck,
   Sparkles,
   StickyNote,
   Target,
   ArrowRight,
 } from "lucide-react";
 import { useSavedJobs } from "@/features/jobs/hooks";
+import { useIsAdmin } from "@/features/admin/hooks";
 import { Kbd } from "./primitives";
 
 type Command = {
@@ -36,6 +38,8 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
   // that all navigated to the same generic /dashboard/jobs page. It now lists
   // the user's own saved jobs and each row opens that job.
   const { data: savedJobs } = useSavedJobs();
+  const { data: adminCheck } = useIsAdmin();
+  const isAdmin = adminCheck?.isAdmin === true;
 
   useEffect(() => {
     if (!open) setQ("");
@@ -133,6 +137,17 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
         icon: HelpCircle,
         run: go("/dashboard/help"),
       },
+      ...(isAdmin
+        ? [
+            {
+              id: "n-admin",
+              label: "Go to Admin",
+              section: "Navigate" as const,
+              icon: ShieldCheck,
+              run: go("/dashboard/admin"),
+            },
+          ]
+        : []),
     ];
     const actions: Command[] = [
       {
@@ -177,7 +192,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
       },
     }));
     return [...nav, ...actions, ...jobCommands];
-  }, [navigate, onClose, savedJobs]);
+  }, [navigate, onClose, savedJobs, isAdmin]);
 
   const filtered = q
     ? commands.filter((c) =>

@@ -1,15 +1,17 @@
 import { requireUser, type AuthedContext } from "@/server/supabase";
 import { serverEnv } from "@/server/env";
 
-// ── Module 10A: admin gating for the manual crawl framework ──
+// ── Admin gating (Module 10A, now the platform-wide admin gate as of
+//    Module 13 · Phase 5) ──
 //
 // There is no `is_admin` role/column anywhere in this project (checked —
-// see MEMORY). Crawling is explicitly "admin-only manual" and "never
-// user-triggered" (module scope), so gating needs to reject every ordinary
-// authenticated user by default. A small env allowlist checked against the
-// caller's Supabase-verified email is the simplest thing that satisfies
-// that without inventing a roles/permissions system this module doesn't
-// otherwise need.
+// see MEMORY). A small env allowlist checked against the caller's
+// Supabase-verified email is the simplest thing that satisfies "reject
+// every ordinary authenticated user by default" without inventing a
+// roles/permissions system this project doesn't otherwise need. Originally
+// built for the manual crawl framework; nothing about it is crawl-specific,
+// so the Admin Platform (src/server-functions/admin.ts) reuses it as-is
+// rather than duplicating the allowlist check.
 
 function adminAllowlist(): string[] {
   return serverEnv.adminEmails

@@ -35,16 +35,20 @@ import { Route as DashboardCoverLettersRouteImport } from './routes/dashboard.co
 import { Route as DashboardCollectionsRouteImport } from './routes/dashboard.collections'
 import { Route as DashboardApplicationsRouteImport } from './routes/dashboard.applications'
 import { Route as DashboardAnalyticsRouteImport } from './routes/dashboard.analytics'
+import { Route as DashboardAdminRouteImport } from './routes/dashboard.admin'
 import { Route as DashboardJobsIndexRouteImport } from './routes/dashboard.jobs.index'
 import { Route as DashboardInterviewsIndexRouteImport } from './routes/dashboard.interviews.index'
 import { Route as DashboardCoverLettersIndexRouteImport } from './routes/dashboard.cover-letters.index'
 import { Route as DashboardCollectionsIndexRouteImport } from './routes/dashboard.collections.index'
 import { Route as DashboardApplicationsIndexRouteImport } from './routes/dashboard.applications.index'
+import { Route as DashboardAdminIndexRouteImport } from './routes/dashboard.admin.index'
 import { Route as DashboardJobsJobIdRouteImport } from './routes/dashboard.jobs.$jobId'
 import { Route as DashboardInterviewsInterviewIdRouteImport } from './routes/dashboard.interviews.$interviewId'
 import { Route as DashboardCoverLettersCoverLetterIdRouteImport } from './routes/dashboard.cover-letters.$coverLetterId'
 import { Route as DashboardCollectionsCollectionIdRouteImport } from './routes/dashboard.collections.$collectionId'
 import { Route as DashboardApplicationsApplicationIdRouteImport } from './routes/dashboard.applications.$applicationId'
+import { Route as DashboardAdminUsersRouteImport } from './routes/dashboard.admin.users'
+import { Route as DashboardAdminFeedbackRouteImport } from './routes/dashboard.admin.feedback'
 import { Route as AuthGoogleCallbackRouteImport } from './routes/auth.google.callback'
 import { Route as DashboardInterviewsInterviewIdIndexRouteImport } from './routes/dashboard.interviews.$interviewId.index'
 import { Route as DashboardResumesResumeIdOptimizeRouteImport } from './routes/dashboard.resumes_.$resumeId.optimize'
@@ -184,6 +188,11 @@ const DashboardAnalyticsRoute = DashboardAnalyticsRouteImport.update({
   path: '/analytics',
   getParentRoute: () => DashboardRoute,
 } as any)
+const DashboardAdminRoute = DashboardAdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => DashboardRoute,
+} as any)
 const DashboardJobsIndexRoute = DashboardJobsIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -213,6 +222,11 @@ const DashboardApplicationsIndexRoute =
     path: '/',
     getParentRoute: () => DashboardApplicationsRoute,
   } as any)
+const DashboardAdminIndexRoute = DashboardAdminIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => DashboardAdminRoute,
+} as any)
 const DashboardJobsJobIdRoute = DashboardJobsJobIdRouteImport.update({
   id: '/$jobId',
   path: '/$jobId',
@@ -242,6 +256,16 @@ const DashboardApplicationsApplicationIdRoute =
     path: '/$applicationId',
     getParentRoute: () => DashboardApplicationsRoute,
   } as any)
+const DashboardAdminUsersRoute = DashboardAdminUsersRouteImport.update({
+  id: '/users',
+  path: '/users',
+  getParentRoute: () => DashboardAdminRoute,
+} as any)
+const DashboardAdminFeedbackRoute = DashboardAdminFeedbackRouteImport.update({
+  id: '/feedback',
+  path: '/feedback',
+  getParentRoute: () => DashboardAdminRoute,
+} as any)
 const AuthGoogleCallbackRoute = AuthGoogleCallbackRouteImport.update({
   id: '/auth/google/callback',
   path: '/auth/google/callback',
@@ -304,6 +328,7 @@ export interface FileRoutesByFullPath {
   '/signup': typeof SignupRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/supabase-status': typeof SupabaseStatusRoute
+  '/dashboard/admin': typeof DashboardAdminRouteWithChildren
   '/dashboard/analytics': typeof DashboardAnalyticsRoute
   '/dashboard/applications': typeof DashboardApplicationsRouteWithChildren
   '/dashboard/collections': typeof DashboardCollectionsRouteWithChildren
@@ -318,11 +343,14 @@ export interface FileRoutesByFullPath {
   '/dashboard/settings': typeof DashboardSettingsRoute
   '/dashboard/': typeof DashboardIndexRoute
   '/auth/google/callback': typeof AuthGoogleCallbackRoute
+  '/dashboard/admin/feedback': typeof DashboardAdminFeedbackRoute
+  '/dashboard/admin/users': typeof DashboardAdminUsersRoute
   '/dashboard/applications/$applicationId': typeof DashboardApplicationsApplicationIdRoute
   '/dashboard/collections/$collectionId': typeof DashboardCollectionsCollectionIdRoute
   '/dashboard/cover-letters/$coverLetterId': typeof DashboardCoverLettersCoverLetterIdRoute
   '/dashboard/interviews/$interviewId': typeof DashboardInterviewsInterviewIdRouteWithChildren
   '/dashboard/jobs/$jobId': typeof DashboardJobsJobIdRoute
+  '/dashboard/admin/': typeof DashboardAdminIndexRoute
   '/dashboard/applications/': typeof DashboardApplicationsIndexRoute
   '/dashboard/collections/': typeof DashboardCollectionsIndexRoute
   '/dashboard/cover-letters/': typeof DashboardCoverLettersIndexRoute
@@ -358,10 +386,13 @@ export interface FileRoutesByTo {
   '/dashboard/settings': typeof DashboardSettingsRoute
   '/dashboard': typeof DashboardIndexRoute
   '/auth/google/callback': typeof AuthGoogleCallbackRoute
+  '/dashboard/admin/feedback': typeof DashboardAdminFeedbackRoute
+  '/dashboard/admin/users': typeof DashboardAdminUsersRoute
   '/dashboard/applications/$applicationId': typeof DashboardApplicationsApplicationIdRoute
   '/dashboard/collections/$collectionId': typeof DashboardCollectionsCollectionIdRoute
   '/dashboard/cover-letters/$coverLetterId': typeof DashboardCoverLettersCoverLetterIdRoute
   '/dashboard/jobs/$jobId': typeof DashboardJobsJobIdRoute
+  '/dashboard/admin': typeof DashboardAdminIndexRoute
   '/dashboard/applications': typeof DashboardApplicationsIndexRoute
   '/dashboard/collections': typeof DashboardCollectionsIndexRoute
   '/dashboard/cover-letters': typeof DashboardCoverLettersIndexRoute
@@ -389,6 +420,7 @@ export interface FileRoutesById {
   '/signup': typeof SignupRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/supabase-status': typeof SupabaseStatusRoute
+  '/dashboard/admin': typeof DashboardAdminRouteWithChildren
   '/dashboard/analytics': typeof DashboardAnalyticsRoute
   '/dashboard/applications': typeof DashboardApplicationsRouteWithChildren
   '/dashboard/collections': typeof DashboardCollectionsRouteWithChildren
@@ -403,11 +435,14 @@ export interface FileRoutesById {
   '/dashboard/settings': typeof DashboardSettingsRoute
   '/dashboard/': typeof DashboardIndexRoute
   '/auth/google/callback': typeof AuthGoogleCallbackRoute
+  '/dashboard/admin/feedback': typeof DashboardAdminFeedbackRoute
+  '/dashboard/admin/users': typeof DashboardAdminUsersRoute
   '/dashboard/applications/$applicationId': typeof DashboardApplicationsApplicationIdRoute
   '/dashboard/collections/$collectionId': typeof DashboardCollectionsCollectionIdRoute
   '/dashboard/cover-letters/$coverLetterId': typeof DashboardCoverLettersCoverLetterIdRoute
   '/dashboard/interviews/$interviewId': typeof DashboardInterviewsInterviewIdRouteWithChildren
   '/dashboard/jobs/$jobId': typeof DashboardJobsJobIdRoute
+  '/dashboard/admin/': typeof DashboardAdminIndexRoute
   '/dashboard/applications/': typeof DashboardApplicationsIndexRoute
   '/dashboard/collections/': typeof DashboardCollectionsIndexRoute
   '/dashboard/cover-letters/': typeof DashboardCoverLettersIndexRoute
@@ -437,6 +472,7 @@ export interface FileRouteTypes {
     | '/signup'
     | '/sitemap.xml'
     | '/supabase-status'
+    | '/dashboard/admin'
     | '/dashboard/analytics'
     | '/dashboard/applications'
     | '/dashboard/collections'
@@ -451,11 +487,14 @@ export interface FileRouteTypes {
     | '/dashboard/settings'
     | '/dashboard/'
     | '/auth/google/callback'
+    | '/dashboard/admin/feedback'
+    | '/dashboard/admin/users'
     | '/dashboard/applications/$applicationId'
     | '/dashboard/collections/$collectionId'
     | '/dashboard/cover-letters/$coverLetterId'
     | '/dashboard/interviews/$interviewId'
     | '/dashboard/jobs/$jobId'
+    | '/dashboard/admin/'
     | '/dashboard/applications/'
     | '/dashboard/collections/'
     | '/dashboard/cover-letters/'
@@ -491,10 +530,13 @@ export interface FileRouteTypes {
     | '/dashboard/settings'
     | '/dashboard'
     | '/auth/google/callback'
+    | '/dashboard/admin/feedback'
+    | '/dashboard/admin/users'
     | '/dashboard/applications/$applicationId'
     | '/dashboard/collections/$collectionId'
     | '/dashboard/cover-letters/$coverLetterId'
     | '/dashboard/jobs/$jobId'
+    | '/dashboard/admin'
     | '/dashboard/applications'
     | '/dashboard/collections'
     | '/dashboard/cover-letters'
@@ -521,6 +563,7 @@ export interface FileRouteTypes {
     | '/signup'
     | '/sitemap.xml'
     | '/supabase-status'
+    | '/dashboard/admin'
     | '/dashboard/analytics'
     | '/dashboard/applications'
     | '/dashboard/collections'
@@ -535,11 +578,14 @@ export interface FileRouteTypes {
     | '/dashboard/settings'
     | '/dashboard/'
     | '/auth/google/callback'
+    | '/dashboard/admin/feedback'
+    | '/dashboard/admin/users'
     | '/dashboard/applications/$applicationId'
     | '/dashboard/collections/$collectionId'
     | '/dashboard/cover-letters/$coverLetterId'
     | '/dashboard/interviews/$interviewId'
     | '/dashboard/jobs/$jobId'
+    | '/dashboard/admin/'
     | '/dashboard/applications/'
     | '/dashboard/collections/'
     | '/dashboard/cover-letters/'
@@ -756,6 +802,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardAnalyticsRouteImport
       parentRoute: typeof DashboardRoute
     }
+    '/dashboard/admin': {
+      id: '/dashboard/admin'
+      path: '/admin'
+      fullPath: '/dashboard/admin'
+      preLoaderRoute: typeof DashboardAdminRouteImport
+      parentRoute: typeof DashboardRoute
+    }
     '/dashboard/jobs/': {
       id: '/dashboard/jobs/'
       path: '/'
@@ -791,6 +844,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardApplicationsIndexRouteImport
       parentRoute: typeof DashboardApplicationsRoute
     }
+    '/dashboard/admin/': {
+      id: '/dashboard/admin/'
+      path: '/'
+      fullPath: '/dashboard/admin/'
+      preLoaderRoute: typeof DashboardAdminIndexRouteImport
+      parentRoute: typeof DashboardAdminRoute
+    }
     '/dashboard/jobs/$jobId': {
       id: '/dashboard/jobs/$jobId'
       path: '/$jobId'
@@ -825,6 +885,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/dashboard/applications/$applicationId'
       preLoaderRoute: typeof DashboardApplicationsApplicationIdRouteImport
       parentRoute: typeof DashboardApplicationsRoute
+    }
+    '/dashboard/admin/users': {
+      id: '/dashboard/admin/users'
+      path: '/users'
+      fullPath: '/dashboard/admin/users'
+      preLoaderRoute: typeof DashboardAdminUsersRouteImport
+      parentRoute: typeof DashboardAdminRoute
+    }
+    '/dashboard/admin/feedback': {
+      id: '/dashboard/admin/feedback'
+      path: '/feedback'
+      fullPath: '/dashboard/admin/feedback'
+      preLoaderRoute: typeof DashboardAdminFeedbackRouteImport
+      parentRoute: typeof DashboardAdminRoute
     }
     '/auth/google/callback': {
       id: '/auth/google/callback'
@@ -884,6 +958,22 @@ declare module '@tanstack/react-router' {
     }
   }
 }
+
+interface DashboardAdminRouteChildren {
+  DashboardAdminFeedbackRoute: typeof DashboardAdminFeedbackRoute
+  DashboardAdminUsersRoute: typeof DashboardAdminUsersRoute
+  DashboardAdminIndexRoute: typeof DashboardAdminIndexRoute
+}
+
+const DashboardAdminRouteChildren: DashboardAdminRouteChildren = {
+  DashboardAdminFeedbackRoute: DashboardAdminFeedbackRoute,
+  DashboardAdminUsersRoute: DashboardAdminUsersRoute,
+  DashboardAdminIndexRoute: DashboardAdminIndexRoute,
+}
+
+const DashboardAdminRouteWithChildren = DashboardAdminRoute._addFileChildren(
+  DashboardAdminRouteChildren,
+)
 
 interface DashboardApplicationsRouteChildren {
   DashboardApplicationsApplicationIdRoute: typeof DashboardApplicationsApplicationIdRoute
@@ -998,6 +1088,7 @@ const DashboardJobsRouteWithChildren = DashboardJobsRoute._addFileChildren(
 )
 
 interface DashboardRouteChildren {
+  DashboardAdminRoute: typeof DashboardAdminRouteWithChildren
   DashboardAnalyticsRoute: typeof DashboardAnalyticsRoute
   DashboardApplicationsRoute: typeof DashboardApplicationsRouteWithChildren
   DashboardCollectionsRoute: typeof DashboardCollectionsRouteWithChildren
@@ -1015,6 +1106,7 @@ interface DashboardRouteChildren {
 }
 
 const DashboardRouteChildren: DashboardRouteChildren = {
+  DashboardAdminRoute: DashboardAdminRouteWithChildren,
   DashboardAnalyticsRoute: DashboardAnalyticsRoute,
   DashboardApplicationsRoute: DashboardApplicationsRouteWithChildren,
   DashboardCollectionsRoute: DashboardCollectionsRouteWithChildren,
