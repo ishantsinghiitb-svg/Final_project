@@ -63,6 +63,9 @@ export function createFakeSupabase(options: FakeSupabaseOptions = {}): FakeSupab
   const consumeQueue = [...(options.consumeResults ?? [])];
   let refundFailuresLeft = options.refundFailures ?? 0;
 
+  const runsById = new Map<string, Record<string, unknown>>();
+  let nextRunId = 1;
+
   const rpc = vi.fn(async (name: string, args: Record<string, unknown>) => {
     rpcCalls.push({ name, args });
 
@@ -71,6 +74,23 @@ export function createFakeSupabase(options: FakeSupabaseOptions = {}): FakeSupab
         refundFailuresLeft -= 1;
         return { data: null, error: { message: "refund rpc unavailable" } };
       }
+      // Mirrors refund_ai_credit's own checks (migration
+      // 20260824000001_module13_secure_ai_credit_refund.sql): the amount
+      // comes from the referenced ai_runs row, never from the caller, and a
+      // row can't be refunded twice.
+      const run = runsById.get(args.p_ai_run_id as string);
+      if (!run) return { data: null, error: { message: "ai run not found" } };
+      if (run.status !== "error") {
+        return { data: null, error: { message: "ai run is not in a refundable state" } };
+      }
+      if (run.refunded_at) {
+        return { data: null, error: { message: "ai run has already been refunded" } };
+      }
+      if (!((run.credits_charged as number) > 0)) {
+        return { data: null, error: { message: "ai run has nothing to refund" } };
+      }
+      run.refunded_at = new Date().toISOString();
+      run.credits_charged = 0;
       return { data: { ...DEFAULT_USAGE, credits_used: 0, credits_remaining: 5 }, error: null };
     }
 
@@ -115,8 +135,17 @@ export function createFakeSupabase(options: FakeSupabaseOptions = {}): FakeSupab
         return Promise.resolve({ error: null });
       },
       insert(values: Record<string, unknown>) {
-        inserts.push({ table, values });
-        return Promise.resolve({ error: null });
+        // Mirrors `gen_random_uuid() DEFAULT` — refund_ai_credit's ai_run_id
+        // scoping needs every inserted ai_runs row to come back with an id.
+        const id = `fake-run-${nextRunId++}`;
+        const row = { id, ...values };
+        inserts.push({ table, values: row });
+        if (table === "ai_runs") runsById.set(id, row);
+        return {
+          select: () => ({
+            single: async () => ({ data: { id }, error: null }),
+          }),
+        };
       },
     };
   }

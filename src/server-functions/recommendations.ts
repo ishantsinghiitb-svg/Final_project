@@ -1,7 +1,9 @@
 import { createServerFn } from "@tanstack/react-start";
+import { z } from "zod";
 import type { GetRecommendationsResult } from "@/features/recommendations/types";
 import { requireUser } from "@/server/supabase";
 import { getAIRecommendations } from "@/server/ai/RecommendationsService";
+import { accessToken, validate } from "./validation";
 
 // ── AI Recommendations server function (Module 8B) ──
 //
@@ -12,10 +14,10 @@ import { getAIRecommendations } from "@/server/ai/RecommendationsService";
 //
 // No credit gate — this capability is free (see AI_CREDIT_COSTS.recommendations).
 
-type GetRecommendationsInput = { accessToken: string };
+const GetRecommendationsSchema = z.object({ accessToken });
 
 export const getRecommendations = createServerFn({ method: "POST" })
-  .validator((data: GetRecommendationsInput) => data)
+  .validator((data: unknown) => validate(GetRecommendationsSchema, data))
   .handler(async ({ data }): Promise<GetRecommendationsResult> => {
     const authed = await requireUser(data.accessToken);
     return getAIRecommendations(authed);

@@ -234,29 +234,36 @@ type RunLog = {
   errorMessage?: string;
 };
 
-async function logRun(sb: ServerSupabase, userId: string, log: RunLog): Promise<void> {
+/** Returns the new row's id — the error path needs it to request a refund tied to this exact run. */
+async function logRun(sb: ServerSupabase, userId: string, log: RunLog): Promise<string> {
   const cap = getCapability(AI_CAPABILITIES.COVER_LETTER);
-  await sb.from("ai_runs").insert({
-    user_id: userId,
-    capability: cap.id,
-    provider: cap.provider,
-    model: cap.model,
-    prompt_id: cap.promptId,
-    prompt_version: cap.promptVersion,
-    analysis_version: cap.analysisVersion,
-    input_hash: log.inputHash ?? null,
-    job_hash: log.jobHash ?? null,
-    resume_id: log.resumeId ?? null,
-    job_id: log.jobId ?? null,
-    status: log.status,
-    cache_hit: log.cacheHit,
-    credits_charged: log.creditsCharged,
-    input_tokens: log.inputTokens ?? null,
-    output_tokens: log.outputTokens ?? null,
-    latency_ms: log.latencyMs,
-    error_code: log.errorCode ?? null,
-    error_message: log.errorMessage ?? null,
-  });
+  const { data, error } = await sb
+    .from("ai_runs")
+    .insert({
+      user_id: userId,
+      capability: cap.id,
+      provider: cap.provider,
+      model: cap.model,
+      prompt_id: cap.promptId,
+      prompt_version: cap.promptVersion,
+      analysis_version: cap.analysisVersion,
+      input_hash: log.inputHash ?? null,
+      job_hash: log.jobHash ?? null,
+      resume_id: log.resumeId ?? null,
+      job_id: log.jobId ?? null,
+      status: log.status,
+      cache_hit: log.cacheHit,
+      credits_charged: log.creditsCharged,
+      input_tokens: log.inputTokens ?? null,
+      output_tokens: log.outputTokens ?? null,
+      latency_ms: log.latencyMs,
+      error_code: log.errorCode ?? null,
+      error_message: log.errorMessage ?? null,
+    })
+    .select("id")
+    .single();
+  if (error) throw error;
+  return (data as { id: string }).id;
 }
 
 export type RunCoverLetterParams = {
@@ -624,9 +631,25 @@ export async function runCoverLetterAI(
     const code = toResultCode(err);
     let status: AICreditStatus | undefined;
     let refunded = false;
+    // The refund RPC is ai_run_id-scoped, so the audit row must exist first.
+    let runId: string | undefined;
     try {
-      if (chargedCost > 0) {
-        status = await withRetry(() => credits.refund(cap.id, chargedCost), {
+      runId = await logRun(sb, user.id, {
+        status: "error",
+        cacheHit: false,
+        creditsCharged: chargedCost,
+        latencyMs: Date.now() - startedAt,
+        resumeId: params.resumeId,
+        jobId: params.jobId,
+        errorCode: code,
+        errorMessage: err instanceof Error ? err.message : String(err),
+      });
+    } catch {
+      /* best-effort */
+    }
+    try {
+      if (chargedCost > 0 && runId) {
+        status = await withRetry(() => credits.refund(runId!), {
           attempts: 3,
           baseDelayMs: 200,
           maxDelayMs: 1000,
@@ -635,22 +658,6 @@ export async function runCoverLetterAI(
       } else {
         status = await credits.getStatus();
       }
-    } catch {
-      /* best-effort */
-    }
-    try {
-      await logRun(sb, user.id, {
-        status: "error",
-        cacheHit: false,
-        creditsCharged: 0,
-        latencyMs: Date.now() - startedAt,
-        resumeId: params.resumeId,
-        jobId: params.jobId,
-        errorCode: code,
-        errorMessage:
-          (err instanceof Error ? err.message : String(err)) +
-          (refunded ? " (credit refunded)" : ""),
-      });
     } catch {
       /* best-effort */
     }

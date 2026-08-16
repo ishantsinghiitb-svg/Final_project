@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { z } from "zod";
 import { requireUser, createServiceSupabase } from "@/server/supabase";
 import { rebuildSuggestions, type RebuildOutcome } from "@/server/gmail/SuggestionRebuilder";
 import { serverEnv, requireEnv } from "@/server/env";
@@ -23,6 +24,13 @@ import { getAttachment, getFullMessage } from "@/server/gmail/GmailApiClient";
 import { base64Encode } from "@/server/gmail/base64";
 import { parseFromHeader } from "@/server/gmail/emailParsing";
 import { cleanEmailBody } from "@/server/gmail/EmailCleaner";
+// Aliased: several handlers below destructure Google's own OAuth access
+// token into a local `accessToken` (a different concept from the caller's
+// Supabase access token this schema validates), so the plain name would
+// shadow confusingly.
+import { accessToken as accessTokenSchema, uuid, validate } from "./validation";
+
+const GoogleProductSchema = z.enum(["gmail", "calendar"]);
 
 // ── Google (Gmail + Calendar) server functions (Module 9A/9B) ──
 //
@@ -45,7 +53,10 @@ import { cleanEmailBody } from "@/server/gmail/EmailCleaner";
 // no background-execution mechanism (see GmailSyncService's header comment).
 // Calendar's equivalent triggers land alongside CalendarSyncService.
 
-type GetConnectUrlInput = { accessToken: string; product: GoogleProduct };
+const GetConnectUrlSchema = z.object({
+  accessToken: accessTokenSchema,
+  product: GoogleProductSchema,
+});
 
 const SCOPE_FOR: Record<GoogleProduct, string> = {
   gmail: GMAIL_SCOPE,
@@ -54,7 +65,7 @@ const SCOPE_FOR: Record<GoogleProduct, string> = {
 
 /** Builds the Google consent URL for "Connect"/"Reconnect" a single product, bound to the caller via a signed state param. `include_granted_scopes` (see GoogleOAuthClient) means this never narrows whatever the other product already has. */
 export const getGoogleConnectUrl = createServerFn({ method: "POST" })
-  .validator((data: GetConnectUrlInput) => data)
+  .validator((data: unknown) => validate(GetConnectUrlSchema, data))
   .handler(async ({ data }): Promise<{ url: string }> => {
     const { user } = await requireUser(data.accessToken);
     const stateSecret = requireEnv("GOOGLE_OAUTH_STATE_SECRET", serverEnv.googleOAuthStateSecret);
@@ -62,7 +73,10 @@ export const getGoogleConnectUrl = createServerFn({ method: "POST" })
     return { url: buildConsentUrl(state, [SCOPE_FOR[data.product]]) };
   });
 
-type DisconnectGoogleProductInput = { accessToken: string; product: GoogleProduct };
+const DisconnectGoogleProductSchema = z.object({
+  accessToken: accessTokenSchema,
+  product: GoogleProductSchema,
+});
 type DisconnectGoogleProductResult = { ok: true } | { ok: false; message: string };
 
 /**
@@ -73,7 +87,7 @@ type DisconnectGoogleProductResult = { ok: true } | { ok: false; message: string
  * must not kill an active Calendar connection, and vice versa.
  */
 export const disconnectGoogleProduct = createServerFn({ method: "POST" })
-  .validator((data: DisconnectGoogleProductInput) => data)
+  .validator((data: unknown) => validate(DisconnectGoogleProductSchema, data))
   .handler(async ({ data }): Promise<DisconnectGoogleProductResult> => {
     const { supabase, user } = await requireUser(data.accessToken);
     const repo = new GoogleConnectionRepository(supabase);
@@ -129,12 +143,12 @@ export const disconnectGoogleProduct = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
-type CheckAndSyncGmailInput = { accessToken: string };
+const AccessTokenOnlySchema = z.object({ accessToken: accessTokenSchema });
 type CheckAndSyncGmailResult = SyncOutcome | { status: "not_due" };
 
 /** The "app open" trigger — a cheap due-check; only calls into GmailSyncService when actually due (and auto-sync is enabled). */
 export const checkAndSyncGmail = createServerFn({ method: "POST" })
-  .validator((data: CheckAndSyncGmailInput) => data)
+  .validator((data: unknown) => validate(AccessTokenOnlySchema, data))
   .handler(async ({ data }): Promise<CheckAndSyncGmailResult> => {
     const authed = await requireUser(data.accessToken);
     const repo = new GoogleConnectionRepository(authed.supabase);
@@ -144,17 +158,14 @@ export const checkAndSyncGmail = createServerFn({ method: "POST" })
     return syncUser(authed);
   });
 
-type SyncGmailNowInput = { accessToken: string };
-
 /** The manual "Sync Now" trigger — always runs, regardless of the due-check (that's the point of a manual override). */
 export const syncGmailNow = createServerFn({ method: "POST" })
-  .validator((data: SyncGmailNowInput) => data)
+  .validator((data: unknown) => validate(AccessTokenOnlySchema, data))
   .handler(async ({ data }): Promise<SyncOutcome> => {
     const authed = await requireUser(data.accessToken);
     return syncUser(authed);
   });
 
-type RebuildSuggestionsInput = { accessToken: string };
 type RebuildSuggestionsResult =
   { ok: true; outcome: RebuildOutcome } | { ok: false; message: string };
 
@@ -172,7 +183,7 @@ type RebuildSuggestionsResult =
  * endpoint that merely refuses at runtime.
  */
 export const rebuildGmailSuggestions = createServerFn({ method: "POST" })
-  .validator((data: RebuildSuggestionsInput) => data)
+  .validator((data: unknown) => validate(AccessTokenOnlySchema, data))
   .handler(async ({ data }): Promise<RebuildSuggestionsResult> => {
     if (!import.meta.env.DEV) {
       return { ok: false, message: "This utility is only available in development." };
@@ -189,7 +200,10 @@ export const rebuildGmailSuggestions = createServerFn({ method: "POST" })
     }
   });
 
-type FetchMessageBodyInput = { accessToken: string; gmailMessageRowId: string };
+const FetchMessageBodySchema = z.object({
+  accessToken: accessTokenSchema,
+  gmailMessageRowId: uuid,
+});
 
 export type GmailMessageBody = {
   subject: string | null;
@@ -217,7 +231,7 @@ type FetchMessageBodyResult = { ok: true; body: GmailMessageBody } | { ok: false
  * hostile email can't inject markup or script into the dashboard.
  */
 export const fetchGmailMessageBody = createServerFn({ method: "POST" })
-  .validator((data: FetchMessageBodyInput) => data)
+  .validator((data: unknown) => validate(FetchMessageBodySchema, data))
   .handler(async ({ data }): Promise<FetchMessageBodyResult> => {
     const authed = await requireUser(data.accessToken);
     try {
@@ -270,11 +284,12 @@ export const fetchGmailMessageBody = createServerFn({ method: "POST" })
     }
   });
 
-type FetchAttachmentBytesInput = {
-  accessToken: string;
-  gmailMessageRowId: string;
-  gmailAttachmentId: string;
-};
+const FetchAttachmentBytesSchema = z.object({
+  accessToken: accessTokenSchema,
+  gmailMessageRowId: uuid,
+  // Gmail's own opaque attachment id — not one of our uuids.
+  gmailAttachmentId: z.string().min(1).max(500),
+});
 type FetchAttachmentBytesResult = { ok: true; base64Data: string } | { ok: false; message: string };
 
 /**
@@ -286,7 +301,7 @@ type FetchAttachmentBytesResult = { ok: true; base64Data: string } | { ok: false
  * unchanged, back on the client where a real session already exists.
  */
 export const fetchGmailAttachmentBytes = createServerFn({ method: "POST" })
-  .validator((data: FetchAttachmentBytesInput) => data)
+  .validator((data: unknown) => validate(FetchAttachmentBytesSchema, data))
   .handler(async ({ data }): Promise<FetchAttachmentBytesResult> => {
     const authed = await requireUser(data.accessToken);
     try {

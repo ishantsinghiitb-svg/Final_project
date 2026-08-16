@@ -329,6 +329,7 @@ export type AiRunRow = {
   error_code: string | null;
   error_message: string | null;
   created_at: string;
+  refunded_at: string | null;
 };
 
 export type AiRunInsert = {
@@ -354,6 +355,7 @@ export type AiRunInsert = {
   error_code?: string | null;
   error_message?: string | null;
   created_at?: string;
+  refunded_at?: string | null;
 };
 
 export type AiCacheRow = {
@@ -2050,7 +2052,7 @@ export type Database = {
       };
       // ── Module 6B ──
       refund_ai_credit: {
-        Args: { p_capability: string; p_cost: number };
+        Args: { p_ai_run_id: string };
         Returns: Json;
       };
       // ── Module 10A: admin-only manual crawl write path (service_role only) ──

@@ -165,29 +165,36 @@ type RunLog = {
   errorMessage?: string;
 };
 
-async function logRun(sb: ServerSupabase, userId: string, log: RunLog): Promise<void> {
+/** Returns the new row's id — the error path needs it to request a refund tied to this exact run. */
+async function logRun(sb: ServerSupabase, userId: string, log: RunLog): Promise<string> {
   const cap = getCapability(AI_CAPABILITIES.MOCK_INTERVIEW);
-  await sb.from("ai_runs").insert({
-    user_id: userId,
-    capability: cap.id,
-    provider: cap.provider,
-    model: cap.model,
-    prompt_id: cap.promptId,
-    prompt_version: cap.promptVersion,
-    analysis_version: cap.analysisVersion,
-    input_hash: log.inputHash ?? null,
-    job_hash: null,
-    resume_id: log.resumeId ?? null,
-    job_id: log.jobId ?? null,
-    status: log.status,
-    cache_hit: false,
-    credits_charged: log.creditsCharged,
-    input_tokens: log.inputTokens ?? null,
-    output_tokens: log.outputTokens ?? null,
-    latency_ms: log.latencyMs,
-    error_code: log.errorCode ?? null,
-    error_message: log.errorMessage ?? null,
-  });
+  const { data, error } = await sb
+    .from("ai_runs")
+    .insert({
+      user_id: userId,
+      capability: cap.id,
+      provider: cap.provider,
+      model: cap.model,
+      prompt_id: cap.promptId,
+      prompt_version: cap.promptVersion,
+      analysis_version: cap.analysisVersion,
+      input_hash: log.inputHash ?? null,
+      job_hash: null,
+      resume_id: log.resumeId ?? null,
+      job_id: log.jobId ?? null,
+      status: log.status,
+      cache_hit: false,
+      credits_charged: log.creditsCharged,
+      input_tokens: log.inputTokens ?? null,
+      output_tokens: log.outputTokens ?? null,
+      latency_ms: log.latencyMs,
+      error_code: log.errorCode ?? null,
+      error_message: log.errorMessage ?? null,
+    })
+    .select("id")
+    .single();
+  if (error) throw error;
+  return (data as { id: string }).id;
 }
 
 async function fetchInterview(sb: ServerSupabase, interviewId: string) {
@@ -479,7 +486,20 @@ export async function startMockInterview(
           .eq("client_key", params.clientKey)
           .maybeSingle();
         if (winner) {
-          const status = await withRetry(() => credits.refund(cap.id, chargedCost), {
+          // The refund RPC is ai_run_id-scoped — this duplicate attempt has no
+          // audit row yet (it never reached the normal logRun call site), so
+          // one is written here first, purely to give the refund something to
+          // reference.
+          const runId = await logRun(sb, user.id, {
+            status: "error",
+            creditsCharged: chargedCost,
+            latencyMs: Date.now() - startedAt,
+            resumeId: resumeIdForLog,
+            jobId: jobIdForLog,
+            errorCode: "duplicate_request",
+            errorMessage: "Duplicate concurrent start request; refunded in favor of the winner.",
+          });
+          const status = await withRetry(() => credits.refund(runId), {
             attempts: 3,
             baseDelayMs: 200,
             maxDelayMs: 1000,
@@ -495,9 +515,24 @@ export async function startMockInterview(
     const code = toResultCode(err);
     let status: AICreditStatus | undefined;
     let refunded = false;
+    // The refund RPC is ai_run_id-scoped, so the audit row must exist first.
+    let runId: string | undefined;
     try {
-      if (chargedCost > 0) {
-        status = await withRetry(() => credits.refund(cap.id, chargedCost), {
+      runId = await logRun(sb, user.id, {
+        status: "error",
+        creditsCharged: chargedCost,
+        latencyMs: Date.now() - startedAt,
+        resumeId: resumeIdForLog,
+        jobId: jobIdForLog,
+        errorCode: code,
+        errorMessage: err instanceof Error ? err.message : String(err),
+      });
+    } catch {
+      /* best-effort */
+    }
+    try {
+      if (chargedCost > 0 && runId) {
+        status = await withRetry(() => credits.refund(runId!), {
           attempts: 3,
           baseDelayMs: 200,
           maxDelayMs: 1000,
@@ -506,21 +541,6 @@ export async function startMockInterview(
       } else {
         status = await credits.getStatus();
       }
-    } catch {
-      /* best-effort */
-    }
-    try {
-      await logRun(sb, user.id, {
-        status: "error",
-        creditsCharged: 0,
-        latencyMs: Date.now() - startedAt,
-        resumeId: resumeIdForLog,
-        jobId: jobIdForLog,
-        errorCode: code,
-        errorMessage:
-          (err instanceof Error ? err.message : String(err)) +
-          (refunded ? " (credit refunded)" : ""),
-      });
     } catch {
       /* best-effort */
     }

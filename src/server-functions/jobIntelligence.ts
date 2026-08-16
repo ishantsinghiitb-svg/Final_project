@@ -1,9 +1,9 @@
 import { createServerFn } from "@tanstack/react-start";
+import { z } from "zod";
 import { requireAdmin } from "@/server/jobIntelligence/adminAuth";
 import { runPlatformCrawl, type CrawlRunResult } from "@/server/jobIntelligence/CrawlRunner";
 import { adapterRegistry } from "@/server/jobIntelligence/adapters/AdapterRegistry";
 import { SupabaseJobIntelligenceStore } from "@/server/jobIntelligence/store/SupabaseJobIntelligenceStore";
-import type { CrawlTarget } from "@/server/jobIntelligence/adapters/types";
 import {
   ensureAdaptersRegistered,
   getCrawlFetcher,
@@ -27,8 +27,20 @@ import {
   type SourceHealthReport,
 } from "@/server/jobIntelligence/crawl/verify/SourceHealthService";
 import { SupabaseSourceVerificationStore } from "@/server/jobIntelligence/crawl/verify/SourceVerificationStore";
+import { accessToken, uuid, validate } from "./validation";
 
 export type { RegistrySummary } from "@/server/jobIntelligence/crawl/registry/registrySummary";
+
+const platform = z.string().min(1).max(100);
+const CrawlTargetSchema = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("url"), url: z.string().url().max(2048) }),
+  z.object({
+    kind: z.literal("query"),
+    query: z.string().min(1).max(200),
+    location: z.string().max(200).optional(),
+  }),
+  z.object({ kind: z.literal("company"), companyCareerUrl: z.string().url().max(2048) }),
+]);
 
 // ── runManualCrawl (Module 10A) ──
 //
@@ -46,14 +58,14 @@ export type { RegistrySummary } from "@/server/jobIntelligence/crawl/registry/re
 // on first use; it is idempotent and safe on every request. Nothing else in
 // this function changed — the registry lookup and error path are Module 10A's.
 
-type RunManualCrawlInput = {
-  accessToken: string;
-  platform: string;
-  target: CrawlTarget;
-};
+const RunManualCrawlSchema = z.object({
+  accessToken,
+  platform,
+  target: CrawlTargetSchema,
+});
 
 export const runManualCrawl = createServerFn({ method: "POST" })
-  .validator((data: RunManualCrawlInput) => data)
+  .validator((data: unknown) => validate(RunManualCrawlSchema, data))
   .handler(async ({ data }): Promise<CrawlRunResult> => {
     await requireAdmin(data.accessToken);
     ensureAdaptersRegistered();
@@ -143,8 +155,10 @@ export type CrawlAdminOverview = {
  * simply not render — an ordinary user hitting this is the expected case, not
  * an exceptional one.
  */
+const AccessTokenOnlySchema = z.object({ accessToken });
+
 export const getCrawlAdminOverview = createServerFn({ method: "POST" })
-  .validator((data: { accessToken: string }) => data)
+  .validator((data: unknown) => validate(AccessTokenOnlySchema, data))
   .handler(async ({ data }): Promise<CrawlAdminOverview> => {
     try {
       await requireAdmin(data.accessToken);
@@ -204,13 +218,20 @@ export type RunCrawlInput = {
   force?: boolean;
 };
 
+const RunCrawlSchema = z.object({
+  accessToken,
+  platform: platform.nullable().optional(),
+  dryRun: z.boolean().optional(),
+  force: z.boolean().optional(),
+});
+
 /**
  * Crawl Selected Platform / Crawl All / Dry Run — one function, because the
  * three differ only in `platform` and `mode`. Returns the full report so the
  * panel can render it immediately without a second fetch.
  */
 export const runRegistryCrawl = createServerFn({ method: "POST" })
-  .validator((data: RunCrawlInput) => data)
+  .validator((data: unknown) => validate(RunCrawlSchema, data))
   .handler(async ({ data }): Promise<CrawlReport> => {
     const authed = await requireAdmin(data.accessToken);
     ensureAdaptersRegistered();
@@ -227,9 +248,11 @@ export const runRegistryCrawl = createServerFn({ method: "POST" })
     });
   });
 
+const GetCrawlReportSchema = z.object({ accessToken, runId: uuid });
+
 /** One stored report by id, for "View Last Crawl Report" on an older run. */
 export const getCrawlReport = createServerFn({ method: "POST" })
-  .validator((data: { accessToken: string; runId: string }) => data)
+  .validator((data: unknown) => validate(GetCrawlReportSchema, data))
   .handler(async ({ data }): Promise<CrawlReport | null> => {
     await requireAdmin(data.accessToken);
     const run = await new SupabaseCrawlReportStore().getRun(data.runId);
@@ -246,6 +269,12 @@ export type VerifySourcesInput = {
   includeDisabled?: boolean;
 };
 
+const VerifySourcesSchema = z.object({
+  accessToken,
+  platform: platform.nullable().optional(),
+  includeDisabled: z.boolean().optional(),
+});
+
 /**
  * Verifies every registered source URL and records its health. This imports
  * NOTHING: it is a read-only sweep over the registry that answers "are these
@@ -253,7 +282,7 @@ export type VerifySourcesInput = {
  * succeed" and is tracked in its own columns.
  */
 export const verifyRegistrySources = createServerFn({ method: "POST" })
-  .validator((data: VerifySourcesInput) => data)
+  .validator((data: unknown) => validate(VerifySourcesSchema, data))
   .handler(async ({ data }): Promise<SourceHealthReport> => {
     const authed = await requireAdmin(data.accessToken);
 

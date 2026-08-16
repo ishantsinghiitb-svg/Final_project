@@ -172,12 +172,32 @@ export async function runCapability(params: RunCapabilityParams): Promise<AIResu
     const code = toResultCode(err);
     let status: AICreditStatus | undefined;
     let refunded = false;
+    // The refund RPC is ai_run_id-scoped (see AICreditService.refund), so the
+    // audit row must exist BEFORE we can ask for a refund — the charge amount
+    // it derives the refund from lives on this row, never on client input.
+    // credits_charged starts as the true charge; refund_ai_credit zeros it
+    // atomically once the refund below actually lands.
+    let runId: string | undefined;
     try {
-      if (chargedCost > 0) {
+      runId = await logRun(supabase, {
+        userId: user.id,
+        cap,
+        status: "error",
+        cacheHit: false,
+        creditsCharged: chargedCost,
+        latencyMs: Date.now() - startedAt,
+        errorCode: code,
+        errorMessage: err instanceof Error ? err.message : String(err),
+      });
+    } catch {
+      /* best-effort */
+    }
+    try {
+      if (chargedCost > 0 && runId) {
         // A refund is the one thing here that must not silently no-op on a
         // transient failure — unlike the provider call, there's no user-facing
         // retry for "your credit wasn't given back." Retry before giving up.
-        status = await withRetry(() => credits.refund(capability, chargedCost), {
+        status = await withRetry(() => credits.refund(runId!), {
           attempts: 3,
           baseDelayMs: 200,
           maxDelayMs: 1000,
@@ -188,24 +208,6 @@ export async function runCapability(params: RunCapabilityParams): Promise<AIResu
       }
     } catch {
       /* ignore — best-effort status/refund */
-    }
-    try {
-      await logRun(supabase, {
-        userId: user.id,
-        cap,
-        status: "error",
-        cacheHit: false,
-        // Net cost to the user for this run — 0 whenever the charge above was
-        // refunded, so this log line never overstates what the user actually paid.
-        creditsCharged: 0,
-        latencyMs: Date.now() - startedAt,
-        errorCode: code,
-        errorMessage:
-          (err instanceof Error ? err.message : String(err)) +
-          (refunded ? " (credit refunded)" : ""),
-      });
-    } catch {
-      /* best-effort */
     }
     const errorResult: AIErrorResult = {
       ok: false,
@@ -323,26 +325,33 @@ type RunLog = {
   errorMessage?: string;
 };
 
-async function logRun(sb: ServerSupabase, log: RunLog): Promise<void> {
-  await sb.from("ai_runs").insert({
-    user_id: log.userId,
-    capability: log.cap.id,
-    provider: log.cap.provider,
-    model: log.cap.model,
-    prompt_id: log.cap.promptId,
-    prompt_version: log.cap.promptVersion,
-    analysis_version: log.cap.analysisVersion,
-    input_hash: log.inputHash ?? null,
-    job_hash: log.jobHash ?? null,
-    resume_id: log.resumeId ?? null,
-    job_id: log.jobId ?? null,
-    status: log.status,
-    cache_hit: log.cacheHit,
-    credits_charged: log.creditsCharged,
-    input_tokens: log.inputTokens ?? null,
-    output_tokens: log.outputTokens ?? null,
-    latency_ms: log.latencyMs,
-    error_code: log.errorCode ?? null,
-    error_message: log.errorMessage ?? null,
-  });
+/** Returns the new row's id — the error path needs it to request a refund tied to this exact run. */
+async function logRun(sb: ServerSupabase, log: RunLog): Promise<string> {
+  const { data, error } = await sb
+    .from("ai_runs")
+    .insert({
+      user_id: log.userId,
+      capability: log.cap.id,
+      provider: log.cap.provider,
+      model: log.cap.model,
+      prompt_id: log.cap.promptId,
+      prompt_version: log.cap.promptVersion,
+      analysis_version: log.cap.analysisVersion,
+      input_hash: log.inputHash ?? null,
+      job_hash: log.jobHash ?? null,
+      resume_id: log.resumeId ?? null,
+      job_id: log.jobId ?? null,
+      status: log.status,
+      cache_hit: log.cacheHit,
+      credits_charged: log.creditsCharged,
+      input_tokens: log.inputTokens ?? null,
+      output_tokens: log.outputTokens ?? null,
+      latency_ms: log.latencyMs,
+      error_code: log.errorCode ?? null,
+      error_message: log.errorMessage ?? null,
+    })
+    .select("id")
+    .single();
+  if (error) throw error;
+  return (data as { id: string }).id;
 }

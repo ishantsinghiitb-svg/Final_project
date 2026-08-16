@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { z } from "zod";
 import { requireUser } from "@/server/supabase";
 import { GoogleConnectionRepository } from "@/repositories/GoogleConnectionRepository";
 import {
@@ -7,6 +8,9 @@ import {
   type CalendarSyncOutcome,
 } from "@/server/calendar/CalendarSyncService";
 import { rescanCalendarEvents, type CalendarRescanOutcome } from "@/server/calendar/CalendarRescan";
+import { accessToken, validate } from "./validation";
+
+const AccessTokenSchema = z.object({ accessToken });
 
 // ── Calendar server functions (Module 9B) ──
 //
@@ -19,12 +23,11 @@ import { rescanCalendarEvents, type CalendarRescanOutcome } from "@/server/calen
 // shared google-product functions in server-functions/gmail.ts — this file
 // is only the Calendar-specific sync triggers.
 
-type CheckAndSyncCalendarInput = { accessToken: string };
 type CheckAndSyncCalendarResult = CalendarSyncOutcome | { status: "not_due" };
 
 /** The "app open" trigger — a cheap due-check; only calls into CalendarSyncService when actually due (and auto-sync is enabled). */
 export const checkAndSyncCalendar = createServerFn({ method: "POST" })
-  .validator((data: CheckAndSyncCalendarInput) => data)
+  .validator((data: unknown) => validate(AccessTokenSchema, data))
   .handler(async ({ data }): Promise<CheckAndSyncCalendarResult> => {
     const authed = await requireUser(data.accessToken);
     const repo = new GoogleConnectionRepository(authed.supabase);
@@ -34,17 +37,14 @@ export const checkAndSyncCalendar = createServerFn({ method: "POST" })
     return syncCalendarForUser(authed);
   });
 
-type SyncCalendarNowInput = { accessToken: string };
-
 /** The manual "Sync Now" trigger — always runs, regardless of the due-check. */
 export const syncCalendarNow = createServerFn({ method: "POST" })
-  .validator((data: SyncCalendarNowInput) => data)
+  .validator((data: unknown) => validate(AccessTokenSchema, data))
   .handler(async ({ data }): Promise<CalendarSyncOutcome> => {
     const authed = await requireUser(data.accessToken);
     return syncCalendarForUser(authed);
   });
 
-type RescanCalendarInput = { accessToken: string };
 type RescanCalendarResult =
   { ok: true; outcome: CalendarRescanOutcome } | { ok: false; message: string };
 
@@ -57,7 +57,7 @@ type RescanCalendarResult =
  * runtime.
  */
 export const rebuildCalendarEvents = createServerFn({ method: "POST" })
-  .validator((data: RescanCalendarInput) => data)
+  .validator((data: unknown) => validate(AccessTokenSchema, data))
   .handler(async ({ data }): Promise<RescanCalendarResult> => {
     if (!import.meta.env.DEV) {
       return { ok: false, message: "This utility is only available in development." };

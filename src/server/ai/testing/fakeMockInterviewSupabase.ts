@@ -58,7 +58,9 @@ class Chain implements PromiseLike<{ data: unknown; error: unknown }> {
     const table = this.tables.get(this.table) ?? [];
 
     if (this.op === "insert") {
-      const row = { ...this.payload };
+      // Mirrors `gen_random_uuid() DEFAULT` — refund_ai_credit's ai_run_id
+      // scoping needs every inserted ai_runs row to come back with an id.
+      const row = { id: `fake-${this.table}-${table.length + 1}`, ...this.payload };
       table.push(row);
       this.tables.set(this.table, table);
       this.resolved = [row];
@@ -152,6 +154,24 @@ export function createFakeMockInterviewSupabase(
         refundFailuresLeft -= 1;
         return { data: null, error: { message: "refund rpc unavailable" } };
       }
+      // Mirrors refund_ai_credit's own checks (migration
+      // 20260824000001_module13_secure_ai_credit_refund.sql): the amount
+      // comes from the referenced ai_runs row, never from the caller, and a
+      // row can't be refunded twice.
+      const runId = args.p_ai_run_id as string | undefined;
+      const run = (tables.get("ai_runs") ?? []).find((r) => r.id === runId);
+      if (!run) return { data: null, error: { message: "ai run not found" } };
+      if (run.status !== "error") {
+        return { data: null, error: { message: "ai run is not in a refundable state" } };
+      }
+      if (run.refunded_at) {
+        return { data: null, error: { message: "ai run has already been refunded" } };
+      }
+      if (!((run.credits_charged as number) > 0)) {
+        return { data: null, error: { message: "ai run has nothing to refund" } };
+      }
+      run.refunded_at = new Date().toISOString();
+      run.credits_charged = 0;
       return { data: { ...DEFAULT_USAGE, credits_used: 0, credits_remaining: 5 }, error: null };
     }
 

@@ -211,8 +211,17 @@ describe("a failed generation refunds the credit", () => {
     expect(fake.rpcsNamed("consume_ai_credit")).toHaveLength(1);
     const refunds = fake.rpcsNamed("refund_ai_credit");
     expect(refunds).toHaveLength(1);
-    // Refunded exactly what was charged — never a different amount.
-    expect(refunds[0].args).toMatchObject({ p_capability: CAPABILITY, p_cost: CREDIT_COST });
+    // The refund is scoped to a specific ai_runs row — never a client-chosen
+    // capability/cost pair (that RPC signature no longer exists at all).
+    expect(refunds[0].args).not.toHaveProperty("p_cost");
+    expect(refunds[0].args).not.toHaveProperty("p_capability");
+    expect(typeof refunds[0].args.p_ai_run_id).toBe("string");
+    // The amount actually reversed is derived from that row's own
+    // credits_charged (set by refund_ai_credit itself), never overstated.
+    const logged = fake.runLogs()[0];
+    expect(logged.id).toBe(refunds[0].args.p_ai_run_id);
+    expect(logged.credits_charged).toBe(0);
+    expect(logged.refunded_at).toEqual(expect.any(String));
   });
 
   it("refunds when every attempt returns an unparseable response", async () => {
@@ -275,14 +284,35 @@ describe("the refund retries before giving up", () => {
 
     await run(fake);
 
-    // Two calls: one failed, one succeeded. The succeeding call must be the
-    // only one that moved the balance — asserted via the cost argument being
-    // the single charged cost each time, never an accumulated amount.
+    // Two calls: one failed, one succeeded. Both reference the SAME ai_runs
+    // row — a retry must never create a second charge to refund.
     const refunds = fake.rpcsNamed("refund_ai_credit");
     expect(refunds).toHaveLength(2);
-    for (const refund of refunds) {
-      expect(refund.args.p_cost).toBe(CREDIT_COST);
-    }
+    const runIds = new Set(refunds.map((r) => r.args.p_ai_run_id));
+    expect(runIds.size).toBe(1);
+    expect(fake.runLogs()).toHaveLength(1);
+  });
+
+  it("does not restore credits when a refund is replayed for an already-refunded run", async () => {
+    // Simulates a raw, out-of-band replay of the RPC call for the same
+    // ai_run_id (e.g. a malicious direct `supabase.rpc(...)` call) — the fake
+    // enforces the same "already refunded" rule the real migration does.
+    const fake = setup();
+    complete.mockRejectedValue(new Error("provider exploded"));
+
+    await run(fake);
+    const runId = fake.runLogs()[0].id as string;
+
+    // A second, independent refund attempt for the same run must be
+    // rejected rather than crediting the user twice.
+    const rawClient = fake.client as {
+      rpc: (
+        name: string,
+        args: Record<string, unknown>,
+      ) => Promise<{ data: unknown; error: { message: string } | null }>;
+    };
+    const replay = await rawClient.rpc("refund_ai_credit", { p_ai_run_id: runId });
+    expect(replay.error?.message).toMatch(/already been refunded/);
   });
 });
 

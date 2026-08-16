@@ -1,6 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
+import { z } from "zod";
 import { requireUser } from "@/server/supabase";
 import { parseResumeForUser, type ParseResumeResult } from "@/server/ai/ResumeUpload";
+import { accessToken, uuid, validate } from "./validation";
 
 // ── parseResume server function (Module 6A; logic extracted to
 // src/server/ai/ResumeUpload.ts in Module 6C so the extension's
@@ -14,10 +16,13 @@ import { parseResumeForUser, type ParseResumeResult } from "@/server/ai/ResumeUp
 // the .handler() closure (and everything it imports from src/server/**) into
 // the server-only bundle; the client only ever receives an RPC stub.
 
-type ParseResumeInput = { accessToken: string; resumeId: string };
+const ParseResumeSchema = z.object({
+  accessToken,
+  resumeId: uuid,
+});
 
 export const parseResume = createServerFn({ method: "POST" })
-  .validator((data: ParseResumeInput) => data)
+  .validator((data: unknown) => validate(ParseResumeSchema, data))
   .handler(async ({ data }): Promise<ParseResumeResult> => {
     const { supabase, user } = await requireUser(data.accessToken);
     return parseResumeForUser(supabase, user, data.resumeId);

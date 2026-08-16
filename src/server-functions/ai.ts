@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { z } from "zod";
 import type {
   AICreditStatus,
   AIFailure,
@@ -15,6 +16,7 @@ import {
   getAtsScore as fetchAtsScore,
   analyzeAtsScore as runAtsScoreAnalysis,
 } from "@/server/ai/AtsScoreService";
+import { accessToken, uuid, validate } from "./validation";
 
 // ── AI server functions (Module 6A credits + Module 6B Resume Match) ──
 //
@@ -27,10 +29,10 @@ import {
 // getAICredits exposes the caller's credit balance so the frontend can detect
 // exhaustion / show an upgrade screen later.
 
-type CreditsInput = { accessToken: string };
+const CreditsSchema = z.object({ accessToken });
 
 export const getAICredits = createServerFn({ method: "POST" })
-  .validator((data: CreditsInput) => data)
+  .validator((data: unknown) => validate(CreditsSchema, data))
   .handler(async ({ data }): Promise<AICreditStatus> => {
     const { supabase } = await requireUser(data.accessToken);
     return new AICreditService(supabase).getStatus();
@@ -52,7 +54,7 @@ export const getAICredits = createServerFn({ method: "POST" })
 // whatToImprove/summary. `internal` still lives in the `ai_analyses.result`
 // column for future capabilities to read server-side.
 
-type GetResumeMatchInput = { accessToken: string; resumeId: string; jobId: string };
+const GetResumeMatchSchema = z.object({ accessToken, resumeId: uuid, jobId: uuid });
 
 type GetResumeMatchResult =
   | {
@@ -65,7 +67,7 @@ type GetResumeMatchResult =
   | AIFailure;
 
 export const getResumeMatch = createServerFn({ method: "POST" })
-  .validator((data: GetResumeMatchInput) => data)
+  .validator((data: unknown) => validate(GetResumeMatchSchema, data))
   .handler(async ({ data }): Promise<GetResumeMatchResult> => {
     const authed = await requireUser(data.accessToken);
     try {
@@ -83,19 +85,19 @@ export const getResumeMatch = createServerFn({ method: "POST" })
     }
   });
 
-type AnalyzeResumeMatchInput = {
-  accessToken: string;
-  resumeId: string;
-  jobId: string;
-  forceRefresh?: boolean;
-};
+const AnalyzeResumeMatchSchema = z.object({
+  accessToken,
+  resumeId: uuid,
+  jobId: uuid,
+  forceRefresh: z.boolean().optional(),
+});
 
 type AnalyzeResumeMatchResult =
   | { ok: true; analysis: ResumeMatchSummary; cacheHit: boolean; credits: AICreditStatus }
   | AIFailure;
 
 export const analyzeResumeMatch = createServerFn({ method: "POST" })
-  .validator((data: AnalyzeResumeMatchInput) => data)
+  .validator((data: unknown) => validate(AnalyzeResumeMatchSchema, data))
   .handler(async ({ data }): Promise<AnalyzeResumeMatchResult> => {
     const authed = await requireUser(data.accessToken);
     return runResumeMatchAnalysis(authed, data.resumeId, data.jobId, {
@@ -113,7 +115,7 @@ export const analyzeResumeMatch = createServerFn({ method: "POST" })
 //     parser checks + AI component evaluations, combined server-side). The
 //     client must show the "this will use 1 AI Credit" confirmation first.
 
-type GetAtsScoreInput = { accessToken: string; resumeId: string; jobId: string };
+const GetAtsScoreSchema = z.object({ accessToken, resumeId: uuid, jobId: uuid });
 
 type GetAtsScoreResult =
   | {
@@ -126,7 +128,7 @@ type GetAtsScoreResult =
   | AIFailure;
 
 export const getAtsScore = createServerFn({ method: "POST" })
-  .validator((data: GetAtsScoreInput) => data)
+  .validator((data: unknown) => validate(GetAtsScoreSchema, data))
   .handler(async ({ data }): Promise<GetAtsScoreResult> => {
     const authed = await requireUser(data.accessToken);
     try {
@@ -144,18 +146,18 @@ export const getAtsScore = createServerFn({ method: "POST" })
     }
   });
 
-type AnalyzeAtsScoreInput = {
-  accessToken: string;
-  resumeId: string;
-  jobId: string;
-  forceRefresh?: boolean;
-};
+const AnalyzeAtsScoreSchema = z.object({
+  accessToken,
+  resumeId: uuid,
+  jobId: uuid,
+  forceRefresh: z.boolean().optional(),
+});
 
 type AnalyzeAtsScoreResult =
   { ok: true; analysis: AtsScoreSummary; cacheHit: boolean; credits: AICreditStatus } | AIFailure;
 
 export const analyzeAtsScore = createServerFn({ method: "POST" })
-  .validator((data: AnalyzeAtsScoreInput) => data)
+  .validator((data: unknown) => validate(AnalyzeAtsScoreSchema, data))
   .handler(async ({ data }): Promise<AnalyzeAtsScoreResult> => {
     const authed = await requireUser(data.accessToken);
     return runAtsScoreAnalysis(authed, data.resumeId, data.jobId, {

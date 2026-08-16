@@ -1,10 +1,36 @@
-import { STORAGE_BUCKETS, PARSEABLE_RESUME_TYPES } from "@/constants";
+import {
+  STORAGE_BUCKETS,
+  PARSEABLE_RESUME_TYPES,
+  FILE_LIMITS,
+  RESUME_PARSE_TIMEOUT_MS,
+} from "@/constants";
 import type { Json } from "@/types/database";
 import type { ResumeHealth } from "@/features/ai/schemas";
 import { RESUME_PARSER_VERSION } from "@/features/ai/constants";
 import type { ServerSupabase } from "@/server/supabase";
 import type { User } from "@supabase/supabase-js";
 import { parseResumeFile } from "./ResumeParser";
+
+// "%PDF-" — every valid PDF starts with this, regardless of what MIME type
+// the uploader claimed. Cheap to check, and catches a mislabeled/renamed
+// file before it ever reaches unpdf.
+const PDF_MAGIC_BYTES = [0x25, 0x50, 0x44, 0x46, 0x2d];
+
+function hasPdfSignature(bytes: Uint8Array): boolean {
+  if (bytes.length < PDF_MAGIC_BYTES.length) return false;
+  return PDF_MAGIC_BYTES.every((byte, i) => bytes[i] === byte);
+}
+
+/** Bounds a promise to `timeoutMs` — used so a pathological PDF can't hold a parse open indefinitely. */
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_resolve, reject) => {
+    timer = setTimeout(() => reject(new Error(message)), timeoutMs);
+  });
+  return Promise.race([promise, timeout]).finally(() => {
+    if (timer) clearTimeout(timer);
+  });
+}
 
 // ── Resume parse pipeline (Module 6A logic, extracted Module 6C) ──
 //
@@ -113,11 +139,30 @@ export async function parseResumeForUser(
     if (dlErr || !blob) throw dlErr ?? new Error("Failed to download resume file.");
 
     const bytes = new Uint8Array(await blob.arrayBuffer());
-    const result = await parseResumeFile({
-      bytes,
-      mimeType,
-      fileSizeBytes: resume.file_size_bytes ?? bytes.byteLength,
-    });
+
+    // Server-side size guard, independent of the bucket's own
+    // file_size_limit (which only protects uploads made AFTER it was set)
+    // and of whatever resume.file_size_bytes claims — this checks the bytes
+    // actually downloaded.
+    if (bytes.byteLength > FILE_LIMITS.RESUME_MAX_BYTES) {
+      throw new Error("Resume file is too large to parse (must be under 10 MB).");
+    }
+
+    // The client-declared MIME type alone is not trusted — verify the PDF
+    // magic header before handing the bytes to unpdf.
+    if (mimeType === "application/pdf" && !hasPdfSignature(bytes)) {
+      throw new Error("File does not appear to be a valid PDF.");
+    }
+
+    const result = await withTimeout(
+      parseResumeFile({
+        bytes,
+        mimeType,
+        fileSizeBytes: resume.file_size_bytes ?? bytes.byteLength,
+      }),
+      RESUME_PARSE_TIMEOUT_MS,
+      "Resume parsing took too long and was stopped.",
+    );
 
     await supabase.from("resume_parsed").upsert(
       {

@@ -63,12 +63,19 @@ export class AICreditService {
   /**
    * Compensating action for `consume` — used when a charged generation
    * ultimately fails (provider/validation error) so the user isn't billed for
-   * nothing. Symmetric RPC; never lets credits_used go below 0.
+   * nothing.
+   *
+   * Takes the `ai_runs.id` of the failed run being refunded — NEVER a
+   * client-suppliable capability/cost pair. The RPC derives the refund
+   * amount from that row's own `credits_charged` and enforces ownership,
+   * refundable state, and single-use server-side (see migration
+   * 20260824000001_module13_secure_ai_credit_refund.sql); this method is a
+   * thin, trusting pass-through — it does not (and should not) re-validate
+   * those rules in application code.
    */
-  async refund(capability: AICapability, cost: number): Promise<AICreditStatus> {
+  async refund(aiRunId: string): Promise<AICreditStatus> {
     const { data, error } = await this.sb.rpc("refund_ai_credit", {
-      p_capability: capability,
-      p_cost: cost,
+      p_ai_run_id: aiRunId,
     });
     if (error) throw error;
     return toStatus(

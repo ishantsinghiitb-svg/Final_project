@@ -141,6 +141,13 @@ export const FILE_LIMITS = {
   DOCUMENT_MAX_BYTES: 20 * 1024 * 1024,
 } as const;
 
+// ── Resume parsing (Module 13 · Phase 2 · A2) ──
+// Upper bound on how long a single PDF parse may run server-side — guards
+// against a pathological/malformed PDF consuming Worker CPU indefinitely.
+// Legitimate resumes parse in well under a second; this is a generous
+// ceiling for large multi-page documents, not a typical-case budget.
+export const RESUME_PARSE_TIMEOUT_MS = 20_000;
+
 export const ACCEPTED_IMAGE_TYPES = ["image/png", "image/jpeg", "image/webp"];
 export const ACCEPTED_RESUME_TYPES = [
   "application/pdf",
