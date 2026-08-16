@@ -407,6 +407,25 @@ export type UserAiUsageInsert = {
   updated_at?: string;
 };
 
+// ── Module 13 · Phase 2 (B2): resume-parse rate limit / daily quota ──
+export type ResumeParseUsageRow = {
+  user_id: string;
+  window_started_at: string;
+  window_count: number;
+  day_bucket: string;
+  day_count: number;
+  updated_at: string;
+};
+
+export type ResumeParseUsageInsert = {
+  user_id: string;
+  window_started_at?: string;
+  window_count?: number;
+  day_bucket?: string;
+  day_count?: number;
+  updated_at?: string;
+};
+
 // ── Module 6B: Resume Match ──
 export type AiAnalysisRow = {
   id: string;
@@ -1955,6 +1974,12 @@ export type Database = {
         Update: Partial<UserAiUsageRow>;
         Relationships: TableRelationship[];
       };
+      resume_parse_usage: {
+        Row: ResumeParseUsageRow;
+        Insert: ResumeParseUsageInsert;
+        Update: Partial<ResumeParseUsageRow>;
+        Relationships: TableRelationship[];
+      };
       ai_analyses: {
         Row: AiAnalysisRow;
         Insert: AiAnalysisInsert;
@@ -2065,6 +2090,20 @@ export type Database = {
       admin_upsert_global_job: {
         Args: { payload: Json };
         Returns: Json; // { id: string; created: boolean }
+      };
+      // ── Module 13 · Phase 2 (B2): resume-parse rate limit / daily quota ──
+      check_resume_parse_rate_limit: {
+        Args: {
+          p_window_seconds: number;
+          p_window_max: number;
+          p_daily_limit_free: number;
+          p_daily_limit_paid: number;
+        };
+        Returns: Json;
+      };
+      record_resume_parse_success: {
+        Args: Record<string, never>;
+        Returns: undefined;
       };
     };
   };

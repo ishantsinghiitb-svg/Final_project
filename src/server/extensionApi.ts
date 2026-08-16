@@ -1,6 +1,10 @@
 import { requireUser } from "@/server/supabase";
 import { analyzeResumeMatch } from "@/server/ai/ResumeMatchService";
 import { parseResumeForUser } from "@/server/ai/ResumeUpload";
+import {
+  checkResumeParseRateLimit,
+  recordResumeParseSuccess,
+} from "@/server/ai/ResumeParseRateLimit";
 
 // ── Extension API (Module 6C) ──
 //
@@ -148,6 +152,35 @@ async function handleParseResume(
     return json({ ok: false, message: "Not authenticated." }, 401, cors);
   }
 
+  // Module 13 · Phase 2 (B2): burst + daily-quota gate, BEFORE any parsing
+  // work. Identity comes from `authed` (the server-verified caller), never
+  // from anything else in the request — a client cannot claim a different
+  // user or supply its own usage count. Throws on an unexpected error,
+  // which the outer handleExtensionApiRequest catch-all maps to a 500 —
+  // this never silently falls through to parsing on failure.
+  const rateLimit = await checkResumeParseRateLimit(authed.supabase);
+  if (!rateLimit.ok) {
+    const message =
+      rateLimit.code === "rate_limited"
+        ? "Too many requests. Please wait a moment and try again."
+        : "Daily resume-parsing limit reached. Try again tomorrow.";
+    return json({ ok: false, code: rateLimit.code, message }, 429, cors);
+  }
+
   const result = await parseResumeForUser(authed.supabase, authed.user, body.resumeId);
+
+  // Only a genuinely new, successful parse counts against the daily quota —
+  // a rejected/invalid file (A2's size/signature/timeout guards, still
+  // fully intact and unchanged) or a byte-identical cached reuse never
+  // does. Best-effort: a failure to record usage must not turn a
+  // successful parse into an error response for the caller.
+  if (result.ok && !result.reused) {
+    try {
+      await recordResumeParseSuccess(authed.supabase);
+    } catch (err) {
+      console.error("[extensionApi] failed to record resume-parse usage", err);
+    }
+  }
+
   return json(result, 200, cors);
 }
