@@ -49,6 +49,18 @@ export type Preference = {
   updated_at: string;
 };
 
+// ── Feedback (Module 13 · Phase 3) ──
+export type FeedbackCategory = "bug" | "idea" | "other";
+
+export type Feedback = {
+  id: string;
+  user_id: string;
+  category: FeedbackCategory;
+  message: string;
+  page_path: string | null;
+  created_at: string;
+};
+
 // ── Company ──
 export type Company = {
   id: string;

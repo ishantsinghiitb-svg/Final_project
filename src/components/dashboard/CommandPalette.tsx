@@ -6,6 +6,7 @@ import {
   Briefcase,
   CalendarClock,
   FileText,
+  HelpCircle,
   LineChart,
   Mail,
   Plus,
@@ -124,6 +125,13 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
         section: "Navigate",
         icon: Settings,
         run: go("/dashboard/settings"),
+      },
+      {
+        id: "n-help",
+        label: "Go to Help Center",
+        section: "Navigate",
+        icon: HelpCircle,
+        run: go("/dashboard/help"),
       },
     ];
     const actions: Command[] = [

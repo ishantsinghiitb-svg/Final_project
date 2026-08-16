@@ -45,6 +45,15 @@ export type ProfileRow = {
   updated_at: string;
 };
 
+export type FeedbackRow = {
+  id: string;
+  user_id: string;
+  category: "bug" | "idea" | "other";
+  message: string;
+  page_path: string | null;
+  created_at: string;
+};
+
 export type CompanyRow = {
   id: string;
   name: string;
@@ -598,6 +607,15 @@ export type ProfileInsert = {
   goal_offers?: number | null;
   created_at?: string;
   updated_at?: string;
+};
+
+export type FeedbackInsert = {
+  id?: string;
+  user_id: string; // NOT NULL, no DEFAULT — must match auth.uid()
+  category?: "bug" | "idea" | "other";
+  message: string; // NOT NULL, no DEFAULT
+  page_path?: string | null;
+  created_at?: string;
 };
 
 export type CompanyInsert = {
@@ -1773,6 +1791,12 @@ export type Database = {
         Row: ProfileRow;
         Insert: ProfileInsert;
         Update: Partial<ProfileRow>;
+        Relationships: TableRelationship[];
+      };
+      feedback: {
+        Row: FeedbackRow;
+        Insert: FeedbackInsert;
+        Update: Partial<FeedbackRow>;
         Relationships: TableRelationship[];
       };
       companies: {

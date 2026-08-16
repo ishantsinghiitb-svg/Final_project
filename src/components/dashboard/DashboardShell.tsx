@@ -9,9 +9,11 @@ import {
   ChevronRight,
   FileText,
   FolderKanban,
+  HelpCircle,
   Inbox,
   ChartLine as LineChart,
   Mail,
+  MessageSquarePlus,
   Search,
   Settings,
   Target,
@@ -23,6 +25,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { CommandPalette } from "./CommandPalette";
 import { NotificationBell } from "./NotificationBell";
+import { FeedbackDialog } from "./FeedbackDialog";
 import { Kbd } from "./primitives";
 import { Logo } from "@/components/site/Logo";
 import { UserAvatar } from "./UserAvatar";
@@ -89,6 +92,7 @@ export function DashboardShell({ children }: { children: ReactNode }) {
   const [signingOut, setSigningOut] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [mobileNav, setMobileNav] = useState(false);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
 
   // Single source of truth for name/email/avatar across the app — resolves the
   // profile row against the auth provider's metadata so a Google picture shows
@@ -250,6 +254,18 @@ export function DashboardShell({ children }: { children: ReactNode }) {
             >
               <Settings className="h-[15px] w-[15px]" /> Settings
             </Link>
+            <Link
+              to="/dashboard/help"
+              onClick={(e) => handleNavClick(e, "/dashboard/help")}
+              className={cn(
+                "flex items-center gap-2.5 rounded-lg px-2.5 py-[7px] text-[13px] transition-colors",
+                pathname.startsWith("/dashboard/help")
+                  ? "bg-[oklch(0.95_0.02_265)] font-medium text-[#2563EB]"
+                  : "text-[oklch(0.4_0.02_265)] hover:bg-black/[0.03] hover:text-[oklch(0.2_0.02_265)]",
+              )}
+            >
+              <HelpCircle className="h-[15px] w-[15px]" /> Help
+            </Link>
             <div className="mt-2.5 flex items-center gap-2 rounded-lg px-2 py-1.5">
               <UserAvatar avatarUrl={avatarUrl} initials={initials} size={28} />
               <div className="min-w-0 flex-1">
@@ -311,6 +327,14 @@ export function DashboardShell({ children }: { children: ReactNode }) {
               {/* The "Commands" button was removed as redundant: the search
                   field to its left opens the same palette, and ⌘K/Ctrl+K still
                   works. CommandPalette itself is untouched. */}
+              <button
+                onClick={() => setFeedbackOpen(true)}
+                aria-label="Send feedback"
+                title="Send feedback"
+                className="grid h-9 w-9 place-items-center rounded-lg border border-black/5 bg-white text-[oklch(0.4_0.02_265)] hover:bg-black/[0.03]"
+              >
+                <MessageSquarePlus className="h-4 w-4" />
+              </button>
               <NotificationBell />
               {/* Add Job button removed — global jobs are not user-created */}
             </div>
@@ -323,6 +347,7 @@ export function DashboardShell({ children }: { children: ReactNode }) {
       </div>
 
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
+      <FeedbackDialog open={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
     </div>
   );
 }

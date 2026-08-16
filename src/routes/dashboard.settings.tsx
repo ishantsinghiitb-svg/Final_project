@@ -266,26 +266,33 @@ function ProfileTab() {
   );
 }
 
+/**
+ * The previous version of this tab listed four notification types with
+ * per-item toggles — none of them were backed by anything; every toggle was
+ * local `useState` that reset on reload and controlled nothing. The two
+ * notification types that actually exist (Gmail-derived calendar suggestions,
+ * and calendar-linked interviews whose Google event was cancelled) are
+ * computed in real time by NotificationBell, not sent on a schedule, so
+ * there is nothing to opt in or out of yet.
+ */
 function NotificationsTab() {
   return (
     <DashCard>
       <SectionTitle>Notifications</SectionTitle>
       <ul className="mt-3 divide-y divide-black/5">
-        {[
-          { l: "New matches above 85%", d: "Daily digest at 9:00 AM local time", on: true },
-          { l: "Interview reminders", d: "1 hour and 15 minutes before", on: true },
-          { l: "Follow-up nudges", d: "After 5 days of silence", on: true },
-          { l: "Weekly recap", d: "Every Sunday evening", on: false },
-        ].map((n) => (
-          <li key={n.l} className="flex items-center justify-between py-3">
-            <div>
-              <p className="text-sm font-medium">{n.l}</p>
-              <p className="text-xs text-[oklch(0.5_0.02_265)]">{n.d}</p>
-            </div>
-            <Toggle defaultOn={n.on} />
-          </li>
-        ))}
+        <li className="py-3">
+          <p className="text-sm font-medium">Calendar-detected interviews</p>
+          <p className="mt-0.5 text-xs text-[oklch(0.5_0.02_265)]">
+            When a connected Google Calendar event looks like an interview, or a scheduled
+            interview's event is cancelled in Google, it shows up in the bell icon at the top of
+            the dashboard right away.
+          </p>
+        </li>
       </ul>
+      <p className="mt-3 text-xs text-[oklch(0.55_0.02_265)]">
+        There are no email or scheduled notifications yet, so there is nothing else to configure
+        here.
+      </p>
     </DashCard>
   );
 }
@@ -394,20 +401,5 @@ function CreditsTab() {
         </ul>
       </DashCard>
     </div>
-  );
-}
-
-function Toggle({ defaultOn }: { defaultOn: boolean }) {
-  const [on, setOn] = useState(defaultOn);
-  return (
-    <button
-      onClick={() => setOn(!on)}
-      className={`relative h-5 w-9 rounded-full transition-colors ${on ? "bg-gradient-to-r from-[#2563EB] to-[#7C3AED]" : "bg-black/10"}`}
-      aria-pressed={on}
-    >
-      <span
-        className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-all ${on ? "left-[18px]" : "left-0.5"}`}
-      />
-    </button>
   );
 }

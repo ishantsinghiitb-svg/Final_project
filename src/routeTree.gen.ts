@@ -30,6 +30,7 @@ import { Route as DashboardNotesRouteImport } from './routes/dashboard.notes'
 import { Route as DashboardJobsRouteImport } from './routes/dashboard.jobs'
 import { Route as DashboardInterviewsRouteImport } from './routes/dashboard.interviews'
 import { Route as DashboardInboxRouteImport } from './routes/dashboard.inbox'
+import { Route as DashboardHelpRouteImport } from './routes/dashboard.help'
 import { Route as DashboardCoverLettersRouteImport } from './routes/dashboard.cover-letters'
 import { Route as DashboardCollectionsRouteImport } from './routes/dashboard.collections'
 import { Route as DashboardApplicationsRouteImport } from './routes/dashboard.applications'
@@ -156,6 +157,11 @@ const DashboardInterviewsRoute = DashboardInterviewsRouteImport.update({
 const DashboardInboxRoute = DashboardInboxRouteImport.update({
   id: '/inbox',
   path: '/inbox',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardHelpRoute = DashboardHelpRouteImport.update({
+  id: '/help',
+  path: '/help',
   getParentRoute: () => DashboardRoute,
 } as any)
 const DashboardCoverLettersRoute = DashboardCoverLettersRouteImport.update({
@@ -302,6 +308,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/applications': typeof DashboardApplicationsRouteWithChildren
   '/dashboard/collections': typeof DashboardCollectionsRouteWithChildren
   '/dashboard/cover-letters': typeof DashboardCoverLettersRouteWithChildren
+  '/dashboard/help': typeof DashboardHelpRoute
   '/dashboard/inbox': typeof DashboardInboxRoute
   '/dashboard/interviews': typeof DashboardInterviewsRouteWithChildren
   '/dashboard/jobs': typeof DashboardJobsRouteWithChildren
@@ -343,6 +350,7 @@ export interface FileRoutesByTo {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/supabase-status': typeof SupabaseStatusRoute
   '/dashboard/analytics': typeof DashboardAnalyticsRoute
+  '/dashboard/help': typeof DashboardHelpRoute
   '/dashboard/inbox': typeof DashboardInboxRoute
   '/dashboard/notes': typeof DashboardNotesRoute
   '/dashboard/resumes': typeof DashboardResumesRoute
@@ -385,6 +393,7 @@ export interface FileRoutesById {
   '/dashboard/applications': typeof DashboardApplicationsRouteWithChildren
   '/dashboard/collections': typeof DashboardCollectionsRouteWithChildren
   '/dashboard/cover-letters': typeof DashboardCoverLettersRouteWithChildren
+  '/dashboard/help': typeof DashboardHelpRoute
   '/dashboard/inbox': typeof DashboardInboxRoute
   '/dashboard/interviews': typeof DashboardInterviewsRouteWithChildren
   '/dashboard/jobs': typeof DashboardJobsRouteWithChildren
@@ -432,6 +441,7 @@ export interface FileRouteTypes {
     | '/dashboard/applications'
     | '/dashboard/collections'
     | '/dashboard/cover-letters'
+    | '/dashboard/help'
     | '/dashboard/inbox'
     | '/dashboard/interviews'
     | '/dashboard/jobs'
@@ -473,6 +483,7 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/supabase-status'
     | '/dashboard/analytics'
+    | '/dashboard/help'
     | '/dashboard/inbox'
     | '/dashboard/notes'
     | '/dashboard/resumes'
@@ -514,6 +525,7 @@ export interface FileRouteTypes {
     | '/dashboard/applications'
     | '/dashboard/collections'
     | '/dashboard/cover-letters'
+    | '/dashboard/help'
     | '/dashboard/inbox'
     | '/dashboard/interviews'
     | '/dashboard/jobs'
@@ -707,6 +719,13 @@ declare module '@tanstack/react-router' {
       path: '/inbox'
       fullPath: '/dashboard/inbox'
       preLoaderRoute: typeof DashboardInboxRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/dashboard/help': {
+      id: '/dashboard/help'
+      path: '/help'
+      fullPath: '/dashboard/help'
+      preLoaderRoute: typeof DashboardHelpRouteImport
       parentRoute: typeof DashboardRoute
     }
     '/dashboard/cover-letters': {
@@ -983,6 +1002,7 @@ interface DashboardRouteChildren {
   DashboardApplicationsRoute: typeof DashboardApplicationsRouteWithChildren
   DashboardCollectionsRoute: typeof DashboardCollectionsRouteWithChildren
   DashboardCoverLettersRoute: typeof DashboardCoverLettersRouteWithChildren
+  DashboardHelpRoute: typeof DashboardHelpRoute
   DashboardInboxRoute: typeof DashboardInboxRoute
   DashboardInterviewsRoute: typeof DashboardInterviewsRouteWithChildren
   DashboardJobsRoute: typeof DashboardJobsRouteWithChildren
@@ -999,6 +1019,7 @@ const DashboardRouteChildren: DashboardRouteChildren = {
   DashboardApplicationsRoute: DashboardApplicationsRouteWithChildren,
   DashboardCollectionsRoute: DashboardCollectionsRouteWithChildren,
   DashboardCoverLettersRoute: DashboardCoverLettersRouteWithChildren,
+  DashboardHelpRoute: DashboardHelpRoute,
   DashboardInboxRoute: DashboardInboxRoute,
   DashboardInterviewsRoute: DashboardInterviewsRouteWithChildren,
   DashboardJobsRoute: DashboardJobsRouteWithChildren,

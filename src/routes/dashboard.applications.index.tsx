@@ -1,5 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { LayoutGrid, List, Briefcase, Loader2, AlertCircle, Archive, Plus } from "lucide-react";
+import {
+  LayoutGrid,
+  List,
+  Briefcase,
+  Loader2,
+  AlertCircle,
+  Archive,
+  Plus,
+  Download,
+} from "lucide-react";
 import { useState, useCallback, useMemo } from "react";
 import { toast } from "sonner";
 import { PageHeader, EmptyState, StickyPageHeader } from "@/components/dashboard/primitives";
@@ -22,6 +31,8 @@ import { maybePromptScheduleInterview } from "@/features/interviews/sync";
 import type { ApplicationFilters, ApplicationSortOption } from "@/features/applications/types";
 import type { Application, ApplicationStatus } from "@/types";
 import { cn } from "@/lib/utils";
+import { buildCsv } from "@/lib/csv";
+import { safeFileName, triggerBlobDownload } from "@/lib/download";
 
 // ── Route definition ──────────────────────────────────────────────────────────
 export const Route = createFileRoute("/dashboard/applications/")({
@@ -170,6 +181,31 @@ function AppsPage() {
     [archiveApp],
   );
 
+  const handleExport = useCallback(() => {
+    if (filtered.length === 0) {
+      toast.error("No applications to export.");
+      return;
+    }
+    const csv = buildCsv(filtered, [
+      { header: "Company", value: (a) => a.company_name },
+      { header: "Role", value: (a) => a.role },
+      { header: "Status", value: (a) => a.status },
+      { header: "Priority", value: (a) => a.priority ?? "" },
+      { header: "Applied At", value: (a) => a.applied_at ?? "" },
+      { header: "Next Step", value: (a) => a.next_step ?? "" },
+      { header: "Location", value: (a) => a.location ?? "" },
+      { header: "Salary Min", value: (a) => a.salary_min ?? "" },
+      { header: "Salary Max", value: (a) => a.salary_max ?? "" },
+      { header: "Salary Currency", value: (a) => a.salary_currency ?? "" },
+      { header: "Source", value: (a) => a.source ?? "" },
+      { header: "Job URL", value: (a) => a.url ?? "" },
+      { header: "Notes", value: (a) => a.notes ?? "" },
+    ]);
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const date = new Date().toISOString().slice(0, 10);
+    triggerBlobDownload(blob, safeFileName(`applications_${date}.csv`, "applications.csv"));
+  }, [filtered]);
+
   // ── States ────────────────────────────────────────────────────────────────
 
   if (isLoading) {
@@ -208,6 +244,10 @@ function AppsPage() {
                 onClick={() => setArchiveOpen(true)}
               >
                 <Archive className="h-4 w-4" /> Archived
+              </DashButton>
+
+              <DashButton id="export-applications-csv" variant="outline" onClick={handleExport}>
+                <Download className="h-4 w-4" /> Export CSV
               </DashButton>
 
               <div className="inline-flex items-center rounded-lg border border-black/5 bg-white p-0.5 text-xs">
