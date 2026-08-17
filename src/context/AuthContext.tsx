@@ -8,7 +8,6 @@ type AuthContextValue = {
   session: Session | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<AuthResult>;
-  signInWithGoogle: () => Promise<{ error: string | null }>;
   signUp: (email: string, password: string, fullName?: string) => Promise<AuthResult>;
   signOut: () => Promise<{ error: string | null }>;
   resetPassword: (email: string) => Promise<{ error: string | null }>;
@@ -52,7 +51,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       session,
       loading,
       signIn: (email, password) => authService.signIn(email, password),
-      signInWithGoogle: () => authService.signInWithGoogle(),
       signUp: (email, password, fullName) => authService.signUp(email, password, fullName),
       signOut: () => authService.signOut(),
       resetPassword: (email) => authService.resetPassword(email),

@@ -16,10 +16,9 @@ export const Route = createFileRoute("/login")({
 
 function Login() {
   const nav = useNavigate();
-  const { signIn, signInWithGoogle } = useAuth();
+  const { signIn } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [googleLoading, setGoogleLoading] = useState(false);
 
   async function handleLogin(email: string, password: string) {
     setError(null);
@@ -35,16 +34,6 @@ function Login() {
     nav({ to: "/dashboard" });
   }
 
-  async function handleGoogle() {
-    setGoogleLoading(true);
-    const result = await signInWithGoogle();
-    if (result.error) {
-      setGoogleLoading(false);
-      setError(result.error);
-      toast.error(result.error);
-    }
-  }
-
   return (
     <GuestRoute>
       <AuthCard
@@ -52,8 +41,6 @@ function Login() {
         subtitle="Log in to your OfferLyst workspace."
         submitLabel="Log in"
         onSubmit={handleLogin}
-        onGoogle={handleGoogle}
-        googleLoading={googleLoading}
         loading={loading}
         error={error}
         showForgotPassword
@@ -85,8 +72,6 @@ export function AuthCard({
   passwordError = null,
   showSuccess = false,
   successMessage = null,
-  onGoogle,
-  googleLoading = false,
   hideEmail = false,
 }: {
   title: string;
@@ -103,8 +88,6 @@ export function AuthCard({
   passwordError?: string | null;
   showSuccess?: boolean;
   successMessage?: string | null;
-  onGoogle?: () => void;
-  googleLoading?: boolean;
   /** Omits the email field — for a form where the user is already authenticated (e.g. setting a new password from a reset link) and doesn't need to re-enter it. */
   hideEmail?: boolean;
 }) {
@@ -130,31 +113,6 @@ export function AuthCard({
             </div>
           ) : (
             <>
-              {onGoogle && (
-                <>
-                  <div className="mt-6 grid gap-2">
-                    <button
-                      type="button"
-                      onClick={onGoogle}
-                      disabled={googleLoading}
-                      className="flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2.5 text-sm transition-colors hover:border-white/20 hover:bg-white/[0.05] disabled:opacity-50"
-                    >
-                      {googleLoading ? (
-                        <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/20 border-t-white/60" />
-                      ) : (
-                        <GoogleIcon />
-                      )}
-                      Continue with Google
-                    </button>
-                  </div>
-
-                  <div className="my-6 flex items-center gap-3 text-[10px] uppercase tracking-widest text-muted-foreground">
-                    <span className="h-px flex-1 bg-white/10" /> or with password{" "}
-                    <span className="h-px flex-1 bg-white/10" />
-                  </div>
-                </>
-              )}
-
               {error && (
                 <p className="mb-3 rounded-lg border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-400">
                   {error}
@@ -263,16 +221,5 @@ export function AuthCard({
         </p>
       </div>
     </section>
-  );
-}
-
-function GoogleIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-4 w-4">
-      <path
-        fill="#EA4335"
-        d="M12 10.2v3.9h5.5c-.24 1.3-1.62 3.8-5.5 3.8-3.3 0-6-2.7-6-6.1 0-3.3 2.7-6 6-6 1.9 0 3.1.8 3.8 1.4l2.6-2.5C16.9 3.4 14.7 2.4 12 2.4 6.6 2.4 2.3 6.6 2.3 12s4.3 9.6 9.7 9.6c5.6 0 9.3-3.9 9.3-9.4 0-.6-.1-1.1-.2-1.5H12z"
-      />
-    </svg>
   );
 }

@@ -31,14 +31,6 @@ export class AuthService {
     return { error: error?.message ?? null };
   }
 
-  async signInWithGoogle(): Promise<{ error: string | null }> {
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: { redirectTo: `${window.location.origin}/dashboard` },
-    });
-    return { error: error?.message ?? null };
-  }
-
   async resetPassword(email: string): Promise<{ error: string | null }> {
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       // Module 13 · Phase 2 (B3): must land on a page that actually lets the
