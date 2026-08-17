@@ -499,6 +499,34 @@ function JobsPage() {
     </>
   );
 
+  // ── Primary category tabs (All / Internships / Full-time) ────────────────
+  // A curated top-level narrowing that sits above the granular "Employment
+  // type" dropdown (which still offers Part-Time/Contract too) — backed by
+  // the SAME `employmentType` filter/URL param, not a second filtering
+  // system. Reading it back out of the URL means a direct link or the
+  // dropdown itself always keeps this row in sync.
+  const EMPLOYMENT_TABS = [
+    { value: "all", label: "All" },
+    { value: "internship", label: "Internships" },
+    { value: "full-time", label: "Full-time" },
+  ] as const;
+  type EmploymentTab = (typeof EMPLOYMENT_TABS)[number]["value"];
+
+  const employmentTab: EmploymentTab = useMemo(() => {
+    const vals = parseMultiOrEmpty(search.employmentType);
+    if (vals.length === 1 && (vals[0] === "internship" || vals[0] === "full-time")) {
+      return vals[0];
+    }
+    return "all";
+  }, [search.employmentType]);
+
+  const setEmploymentTab = useCallback(
+    (tab: EmploymentTab) => {
+      setMultiFilter("employmentType", tab === "all" ? [] : [tab]);
+    },
+    [setMultiFilter],
+  );
+
   const [filtersOpen, setFiltersOpen] = useState(false);
 
   useEffect(() => {
@@ -549,6 +577,23 @@ function JobsPage() {
             </div>
           }
         />
+
+        <div className="flex flex-wrap gap-1">
+          {EMPLOYMENT_TABS.map((t) => (
+            <button
+              key={t.value}
+              onClick={() => setEmploymentTab(t.value)}
+              aria-pressed={employmentTab === t.value}
+              className={`rounded-lg px-2.5 py-1 text-xs transition-colors ${
+                employmentTab === t.value
+                  ? "bg-[oklch(0.95_0.02_265)] font-medium text-[#2563EB]"
+                  : "text-[oklch(0.45_0.02_265)] hover:bg-black/[0.03]"
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
 
         <DashCard padded={false}>
           {/* ── Filter bar ────────────────────────────────────────────────────

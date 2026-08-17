@@ -114,13 +114,28 @@ export function AIRecommendationsCard({ className }: { className?: string }) {
             </div>
           )}
 
+          {/* "Show all" means ALL recommendations, not just the ones hidden
+              behind the inline top-3 — the dialog re-renders the full `items`
+              list (not `overflow`), so nothing the card already shows inline
+              goes missing when this opens. */}
           <Dialog open={showAll} onOpenChange={setShowAll}>
-            <DialogContent className="max-h-[80vh] max-w-lg overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle>All recommendations</DialogTitle>
+            {/* DialogContent's shadcn default (`bg-background`) is the
+                site-wide DARK theme's near-black — correct for the marketing
+                pages under <html class="dark">, but every dashboard surface
+                (DashCard, etc.) explicitly overrides to a light theme. This
+                is the only place in the dashboard using the raw primitive
+                unmodified, so it rendered dark against an otherwise
+                all-light dashboard. Matching DashCard's own bg-white +
+                border-black/5 convention here instead. */}
+            <DialogContent className="flex max-h-[85vh] max-w-xl flex-col gap-0 rounded-2xl border-black/5 bg-white p-0 text-[oklch(0.2_0.02_265)]">
+              <DialogHeader className="shrink-0 border-b border-black/5 px-5 py-4">
+                <DialogTitle className="text-[oklch(0.2_0.02_265)]">
+                  All recommendations
+                </DialogTitle>
+                <p className="text-xs text-[oklch(0.5_0.02_265)]">Things you can act on next.</p>
               </DialogHeader>
-              <div className="space-y-2">
-                {overflow.map((item) => (
+              <div className="min-h-0 flex-1 space-y-2 overflow-y-auto px-5 py-4">
+                {items.map((item) => (
                   <RecommendationRow key={item.type} item={item} />
                 ))}
               </div>

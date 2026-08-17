@@ -2,14 +2,17 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo } from "react";
 import {
   ArrowUpRight,
+  BarChart3,
   BellRing,
   Bookmark,
+  Briefcase,
   CalendarClock,
   CalendarSearch,
   CircleCheck as CheckCircle2,
   Circle,
   FileText,
   Inbox,
+  ListChecks,
   Sparkles,
   Target,
   TrendingUp,
@@ -304,158 +307,232 @@ function OverviewPage() {
         ))}
       </div>
 
-      <DashCard>
-        <SectionTitle
-          action={
-            <Link
-              to="/dashboard/interviews"
-              className="text-xs font-medium text-[#2563EB] hover:underline"
+      <div className="grid gap-3 lg:grid-cols-[1fr_240px] lg:items-start">
+        {/* ── Main column: Up next + Pipeline ─────────────────────────── */}
+        <div className="space-y-3 min-w-0">
+          <DashCard>
+            <SectionTitle
+              action={
+                <Link
+                  to="/dashboard/interviews"
+                  className="text-xs font-medium text-[#2563EB] hover:underline"
+                >
+                  See all →
+                </Link>
+              }
             >
-              See all →
-            </Link>
-          }
-        >
-          Up next
-        </SectionTitle>
+              Up next
+            </SectionTitle>
 
-        {nextInterview ? (
-          <Link
-            to="/dashboard/interviews/$interviewId"
-            params={{ interviewId: nextInterview.id }}
-            className="mt-3 flex items-center gap-4 rounded-xl border border-[#7C3AED]/15 bg-gradient-to-br from-[#7C3AED]/[0.06] to-[#2563EB]/[0.04] p-4 transition-colors hover:border-[#7C3AED]/30"
-          >
-            <CompanyMark
-              company={nextInterview.company_name}
-              tone={logoToneForCompany(nextInterview.company_name)}
-              size={40}
-              logoUrl={nextInterview.company_logo_url}
-            />
-            <div className="min-w-0 flex-1">
-              <div className="flex flex-wrap items-center gap-2">
-                <p className="font-display font-semibold">{nextInterview.company_name}</p>
-                <Chip tone={roundTone(nextInterview.type)}>{nextInterview.type}</Chip>
-              </div>
-              <p className="truncate text-sm text-[oklch(0.45_0.02_265)]">{nextInterview.role}</p>
-              <p className="mt-1 text-xs text-[oklch(0.5_0.02_265)]">
-                {formatInterviewWhen(nextInterview.scheduled_at)} ·{" "}
-                {format(parseISO(nextInterview.scheduled_at), "h:mm a")}
-                {nextInterview.interviewer ? ` · with ${nextInterview.interviewer}` : ""}
-              </p>
-            </div>
-            <ArrowUpRight className="hidden h-4 w-4 shrink-0 text-[#7C3AED] md:block" />
-          </Link>
-        ) : (
-          <p className="mt-3 rounded-xl border border-black/5 bg-[oklch(0.98_0.005_265)] p-4 text-sm text-[oklch(0.5_0.02_265)]">
-            No interviews scheduled. They appear here once you add one, or accept a suggestion from
-            your inbox.
-          </p>
-        )}
-
-        {nextReminder && (
-          <div className="mt-3 flex items-center gap-3 rounded-xl border border-black/5 bg-[oklch(0.98_0.005_265)] p-3">
-            <div className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[#0891B2]/10 text-[#0891B2]">
-              <BellRing className="h-4 w-4" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium text-[oklch(0.2_0.02_265)]">
-                {nextReminder.title}
-              </p>
-              <p className="text-xs text-[oklch(0.5_0.02_265)]">
-                {formatInterviewWhen(nextReminder.remind_at)} ·{" "}
-                {format(parseISO(nextReminder.remind_at), "h:mm a")}
-              </p>
-            </div>
-          </div>
-        )}
-      </DashCard>
-
-      <DashCard>
-        <SectionTitle
-          action={
-            <Link
-              to="/dashboard/applications"
-              className="text-xs font-medium text-[#2563EB] hover:underline"
-            >
-              Open pipeline →
-            </Link>
-          }
-        >
-          Pipeline at a glance
-        </SectionTitle>
-        {applications.length === 0 ? (
-          <p className="mt-3 rounded-xl border border-black/5 bg-[oklch(0.98_0.005_265)] p-4 text-sm text-[oklch(0.5_0.02_265)]">
-            Nothing tracked yet. Applications you start appear here by stage.
-          </p>
-        ) : (
-          <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            {pipeline.map((col) => (
-              <div
-                key={col.status}
-                className="rounded-xl border border-black/5 bg-[oklch(0.98_0.005_265)] p-3"
-              >
-                <div className="flex items-center justify-between text-xs">
-                  <span className="inline-flex items-center gap-1.5 font-semibold">
-                    <span className={`h-1.5 w-1.5 rounded-full ${col.meta.dot}`} />
-                    {col.meta.label}
-                  </span>
-                  <span className="text-[oklch(0.55_0.02_265)] tabular-nums">
-                    {col.items.length}
-                  </span>
-                </div>
-                <div className="mt-2 space-y-2">
-                  {col.items.slice(0, 2).map((it) => (
-                    <Link
-                      key={it.id}
-                      to="/dashboard/applications/$applicationId"
-                      params={{ applicationId: it.id }}
-                      className="block rounded-lg border border-black/5 bg-white p-2.5 transition-shadow hover:shadow-sm"
-                    >
-                      <div className="flex items-center gap-2">
-                        <CompanyMark
-                          company={it.company_name}
-                          tone={logoToneForCompany(it.company_name)}
-                          size={20}
-                          logoUrl={it.company_logo_url}
-                        />
-                        <p className="truncate text-xs font-semibold">{it.company_name}</p>
-                      </div>
-                      <p className="mt-1 truncate text-[11px] text-[oklch(0.5_0.02_265)]">
-                        {it.role}
-                      </p>
-                    </Link>
-                  ))}
-                  {col.items.length > 2 && (
-                    <p className="px-1 text-[11px] text-[oklch(0.55_0.02_265)]">
-                      +{col.items.length - 2} more
+            {/* Priority: nearest upcoming interview, then the nearest upcoming
+                reminder (a follow-up tied to an application), then an empty
+                state. Never hardcoded — every tier reads from the same
+                queries the rest of the dashboard uses. */}
+            {nextInterview ? (
+              <>
+                <Link
+                  to="/dashboard/interviews/$interviewId"
+                  params={{ interviewId: nextInterview.id }}
+                  className="mt-3 flex items-center gap-4 rounded-xl border border-[#7C3AED]/15 bg-gradient-to-br from-[#7C3AED]/[0.06] to-[#2563EB]/[0.04] p-4 transition-colors hover:border-[#7C3AED]/30"
+                >
+                  <CompanyMark
+                    company={nextInterview.company_name}
+                    tone={logoToneForCompany(nextInterview.company_name)}
+                    size={40}
+                    logoUrl={nextInterview.company_logo_url}
+                  />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="font-display font-semibold">{nextInterview.company_name}</p>
+                      <Chip tone={roundTone(nextInterview.type)}>{nextInterview.type}</Chip>
+                    </div>
+                    <p className="truncate text-sm text-[oklch(0.45_0.02_265)]">
+                      {nextInterview.role}
                     </p>
-                  )}
+                    <p className="mt-1 text-xs text-[oklch(0.5_0.02_265)]">
+                      {formatInterviewWhen(nextInterview.scheduled_at)} ·{" "}
+                      {format(parseISO(nextInterview.scheduled_at), "h:mm a")}
+                      {nextInterview.interviewer ? ` · with ${nextInterview.interviewer}` : ""}
+                    </p>
+                  </div>
+                  <ArrowUpRight className="hidden h-4 w-4 shrink-0 text-[#7C3AED] md:block" />
+                </Link>
+
+                {nextReminder && (
+                  <div className="mt-3 flex items-center gap-3 rounded-xl border border-black/5 bg-[oklch(0.98_0.005_265)] p-3">
+                    <div className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[#0891B2]/10 text-[#0891B2]">
+                      <BellRing className="h-4 w-4" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium text-[oklch(0.2_0.02_265)]">
+                        {nextReminder.title}
+                      </p>
+                      <p className="text-xs text-[oklch(0.5_0.02_265)]">
+                        {formatInterviewWhen(nextReminder.remind_at)} ·{" "}
+                        {format(parseISO(nextReminder.remind_at), "h:mm a")}
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </>
+            ) : nextReminder ? (
+              <ReminderAsUpNext reminder={nextReminder} formatWhen={formatInterviewWhen} />
+            ) : (
+              <p className="mt-3 rounded-xl border border-black/5 bg-[oklch(0.98_0.005_265)] p-4 text-sm text-[oklch(0.5_0.02_265)]">
+                No interviews scheduled. They appear here once you add one, or accept a suggestion
+                from your inbox.
+              </p>
+            )}
+          </DashCard>
+
+          <DashCard>
+            <SectionTitle
+              action={
+                <Link
+                  to="/dashboard/applications"
+                  className="text-xs font-medium text-[#2563EB] hover:underline"
+                >
+                  Open pipeline →
+                </Link>
+              }
+            >
+              Pipeline at a glance
+            </SectionTitle>
+            {applications.length === 0 ? (
+              <p className="mt-3 rounded-xl border border-black/5 bg-[oklch(0.98_0.005_265)] p-4 text-sm text-[oklch(0.5_0.02_265)]">
+                Nothing tracked yet. Applications you start appear here by stage.
+              </p>
+            ) : (
+              // Every stage — including Rejected — gets equal treatment in one
+              // horizontally-scrollable row rather than wrapping the last
+              // column onto an orphaned second row. Desktop widths comfortably
+              // fit all of KANBAN_COLUMNS without scrolling; narrower
+              // viewports scroll horizontally instead.
+              <div className="-mx-1 mt-3 overflow-x-auto px-1 pb-1">
+                <div className="flex gap-3">
+                  {pipeline.map((col) => (
+                    <div
+                      key={col.status}
+                      className="w-[220px] shrink-0 rounded-xl border border-black/5 bg-[oklch(0.98_0.005_265)] p-3"
+                    >
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="inline-flex items-center gap-1.5 font-semibold">
+                          <span className={`h-1.5 w-1.5 rounded-full ${col.meta.dot}`} />
+                          {col.meta.label}
+                        </span>
+                        <span className="text-[oklch(0.55_0.02_265)] tabular-nums">
+                          {col.items.length}
+                        </span>
+                      </div>
+                      <div className="mt-2 space-y-2">
+                        {col.items.slice(0, 2).map((it) => (
+                          <Link
+                            key={it.id}
+                            to="/dashboard/applications/$applicationId"
+                            params={{ applicationId: it.id }}
+                            className="block rounded-lg border border-black/5 bg-white p-2.5 transition-shadow hover:shadow-sm"
+                          >
+                            <div className="flex items-center gap-2">
+                              <CompanyMark
+                                company={it.company_name}
+                                tone={logoToneForCompany(it.company_name)}
+                                size={20}
+                                logoUrl={it.company_logo_url}
+                              />
+                              <p className="truncate text-xs font-semibold">{it.company_name}</p>
+                            </div>
+                            <p className="mt-1 truncate text-[11px] text-[oklch(0.5_0.02_265)]">
+                              {it.role}
+                            </p>
+                          </Link>
+                        ))}
+                        {col.items.length > 2 && (
+                          <p className="px-1 text-[11px] text-[oklch(0.55_0.02_265)]">
+                            +{col.items.length - 2} more
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
-            ))}
-          </div>
-        )}
-      </DashCard>
-
-      <DashCard>
-        <SectionTitle>Quick actions</SectionTitle>
-        <div className="mt-3 grid grid-cols-2 gap-2 lg:grid-cols-4">
-          {[
-            { l: "Resumes", i: FileText, to: "/dashboard/resumes" as const },
-            { l: "Cover letters", i: Sparkles, to: "/dashboard/cover-letters" as const },
-            { l: "Interviews", i: CalendarClock, to: "/dashboard/interviews" as const },
-            { l: "Inbox", i: Inbox, to: "/dashboard/inbox" as const },
-          ].map((q) => (
-            <Link
-              key={q.l}
-              to={q.to}
-              className="flex items-center gap-2 rounded-xl border border-black/5 bg-[oklch(0.98_0.005_265)] px-3 py-2.5 text-[13px] transition-colors hover:bg-black/[0.03]"
-            >
-              <q.i className="h-4 w-4 shrink-0 text-[#2563EB]" />
-              {q.l}
-            </Link>
-          ))}
+            )}
+          </DashCard>
         </div>
-      </DashCard>
+
+        {/* ── Right column: Quick actions ─────────────────────────────── */}
+        <div>
+          <DashCard>
+            <SectionTitle>Quick actions</SectionTitle>
+            <div className="mt-3 flex flex-col gap-2">
+              {[
+                { l: "Browse jobs", i: Briefcase, to: "/dashboard/jobs" as const },
+                { l: "Applications", i: ListChecks, to: "/dashboard/applications" as const },
+                { l: "Resumes", i: FileText, to: "/dashboard/resumes" as const },
+                { l: "Cover letters", i: Sparkles, to: "/dashboard/cover-letters" as const },
+                { l: "Interviews", i: CalendarClock, to: "/dashboard/interviews" as const },
+                { l: "Inbox", i: Inbox, to: "/dashboard/inbox" as const },
+                { l: "Analytics", i: BarChart3, to: "/dashboard/analytics" as const },
+              ].map((q) => (
+                <Link
+                  key={q.l}
+                  to={q.to}
+                  className="flex items-center gap-2 rounded-xl border border-black/5 bg-[oklch(0.98_0.005_265)] px-3 py-2.5 text-[13px] transition-colors hover:bg-black/[0.03]"
+                >
+                  <q.i className="h-4 w-4 shrink-0 text-[#2563EB]" />
+                  {q.l}
+                </Link>
+              ))}
+            </div>
+          </DashCard>
+        </div>
+      </div>
     </>
+  );
+}
+
+/** "Up next" fallback tier when there's no upcoming interview but there is an upcoming reminder — the nearest "application/job action" the user has pending, per the same priority the primary interview card uses. */
+function ReminderAsUpNext({
+  reminder,
+  formatWhen,
+}: {
+  reminder: NonNullable<ReturnType<typeof useNextUpcomingReminder>["data"]>;
+  formatWhen: (iso: string) => string;
+}) {
+  const content = (
+    <>
+      <div className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#0891B2]/10 text-[#0891B2]">
+        <BellRing className="h-4 w-4" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="font-display font-semibold">{reminder.title}</p>
+        <p className="mt-1 text-xs text-[oklch(0.5_0.02_265)]">
+          {formatWhen(reminder.remind_at)} · {format(parseISO(reminder.remind_at), "h:mm a")}
+        </p>
+      </div>
+      <ArrowUpRight className="hidden h-4 w-4 shrink-0 text-[#0891B2] md:block" />
+    </>
+  );
+  const className =
+    "mt-3 flex items-center gap-4 rounded-xl border border-[#0891B2]/15 bg-gradient-to-br from-[#0891B2]/[0.06] to-[#2563EB]/[0.04] p-4 transition-colors hover:border-[#0891B2]/30";
+
+  return reminder.application_id ? (
+    <Link
+      to="/dashboard/applications/$applicationId"
+      params={{ applicationId: reminder.application_id }}
+      className={className}
+    >
+      {content}
+    </Link>
+  ) : reminder.interview_id ? (
+    <Link
+      to="/dashboard/interviews/$interviewId"
+      params={{ interviewId: reminder.interview_id }}
+      className={className}
+    >
+      {content}
+    </Link>
+  ) : (
+    <div className={className}>{content}</div>
   );
 }

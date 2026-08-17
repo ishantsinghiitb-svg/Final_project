@@ -8,6 +8,7 @@ import {
   Briefcase,
   Clock,
   Banknote,
+  BadgeCheck,
 } from "lucide-react";
 import { Chip, CompanyMark } from "@/components/dashboard/primitives";
 import {
@@ -114,6 +115,15 @@ export const JobCard = memo(function JobCard({
             {openingsCount > 0 && (
               <Chip tone="blue" className="shrink-0">
                 {openingsCount} openings
+              </Chip>
+            )}
+            {/* Reuses Module 11A's canonical company identity as the
+                existing quality signal — a job only carries `company_id`
+                once it's been matched to a verified company record, so this
+                is never a new/separate scoring mechanism. */}
+            {job.company_id && (
+              <Chip tone="green" className="shrink-0">
+                <BadgeCheck className="h-3 w-3" /> Verified
               </Chip>
             )}
           </div>

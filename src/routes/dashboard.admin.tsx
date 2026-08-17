@@ -2,6 +2,7 @@ import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-r
 import { LayoutDashboard, Loader2, MessageSquareText, ShieldAlert, Users } from "lucide-react";
 import { EmptyState, PageHeader, StickyPageHeader } from "@/components/dashboard/primitives";
 import { useAdminOverview } from "@/features/admin/hooks";
+import { useAuth } from "@/context/AuthContext";
 
 // ── Admin Platform (Module 13 · Phase 5) ──
 //
@@ -34,6 +35,7 @@ const TABS = [
 function AdminLayout() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const { data, isLoading } = useAdminOverview();
+  const { user } = useAuth();
 
   if (isLoading) {
     return (
@@ -49,7 +51,19 @@ function AdminLayout() {
       <EmptyState
         icon={ShieldAlert}
         title="Admin access required"
-        body="This area is restricted to Offerlyst operators."
+        // Admin-ness is decided purely by ADMIN_EMAILS (see
+        // src/server/jobIntelligence/adminAuth.ts) matching this account's
+        // OWN Supabase login email — not the Chrome extension session, not
+        // any connected Gmail address, and identical regardless of which
+        // hostname reached this page. Showing that email back is a safe,
+        // non-secret diagnostic: it lets an operator confirm character-for-
+        // character whether THIS is the address configured in ADMIN_EMAILS,
+        // without this app ever reading or exposing that allowlist itself.
+        body={
+          user?.email
+            ? `This area is restricted to Offerlyst operators. Signed in as ${user.email} — this exact address must be in the server's ADMIN_EMAILS allowlist.`
+            : "This area is restricted to Offerlyst operators."
+        }
       />
     );
   }

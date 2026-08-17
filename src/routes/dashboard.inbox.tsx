@@ -256,11 +256,11 @@ function InboxPage() {
   return (
     <>
       <StickyPageHeader>
-        <PageHeader
-          eyebrow="Recruiter Inbox"
-          title="Review what Gmail found."
-          subtitle="Every suggestion explains why it's here. Nothing is created or changed until you say so."
-        />
+        {/* No explanatory subtitle — the count card right below already says
+            what's here, and each card's own action buttons say what to do
+            about it. Wordier framing used to sit between the user and both
+            of those. */}
+        <PageHeader eyebrow="Recruiter Inbox" title="Review what Gmail found." />
 
         {summaryParts.length > 0 && (
           <DashCard className="!p-3">

@@ -23,6 +23,7 @@ import {
   Megaphone,
   RotateCcw,
   ExternalLink,
+  BadgeCheck,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { DashCard, Chip, CompanyMark, SectionTitle } from "@/components/dashboard/primitives";
@@ -434,6 +435,14 @@ function JobDetailPage() {
 
               {/* Meta chips */}
               <div className="mt-2 flex flex-wrap items-center gap-2">
+                {/* Reuses Module 11A's canonical company identity as the
+                    existing quality signal — see JobCard.tsx for the same
+                    badge on the list row. */}
+                {job.company_id && (
+                  <Chip tone="green">
+                    <BadgeCheck className="h-3 w-3" /> Verified
+                  </Chip>
+                )}
                 {job.remote && <Chip tone="green">Remote</Chip>}
                 {job.work_mode && (
                   <Chip
@@ -666,7 +675,7 @@ function JobDetailPage() {
         </DashCard>
       )}
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_280px]">
+      <div className="grid gap-6 lg:grid-cols-[1fr_280px] lg:items-start">
         {/* ── Left: Description + Skills ──────────────────────────────── */}
         <div className="space-y-6">
           {/* Job description */}
@@ -721,21 +730,19 @@ function JobDetailPage() {
           <JobMetadataSections job={job} />
         </div>
 
-        {/* ── Right: Resume Health, AI Match, Cover Letter, Apply CTA + Copy URL ────── */}
-        <div className="space-y-4">
-          <ResumeHealthSummaryCard />
-          <ResumeMatchCard
-            jobId={job.id}
-            deepLink={{ resumeId: search.resume, analyze: search.analyze, force: search.force }}
-            onDeepLinkConsumed={clearAnalyzeIntent}
-          />
-          <AtsCompatibilityCard
-            jobId={job.id}
-            deepLink={{ resumeId: search.resume, analyze: search.ats, force: search.force }}
-            onDeepLinkConsumed={clearAnalyzeIntent}
-          />
-          <CoverLetterJobCard job={job} />
-
+        {/* ── Right: sticky action sidebar ──────────────────────────────
+            Order follows the requested priority — Apply/Save first, then the
+            AI cards, then supporting info (Resume Health, Share) last. Sticky
+            on desktop so these stay reachable while reading a long
+            description, without pinning to a height that outgrows a short
+            one; `lg:items-start` on the parent grid (above) is what lets this
+            column stop stretching to match the left column's height, which
+            is what makes `sticky` actually free to scroll with the page once
+            it reaches its own natural bottom instead of being trapped.
+            `top-20` (not `top-0`) clears DashboardShell's own sticky 56px
+            top bar (`h-14 sticky top-0 z-20`) so this never scrolls partly
+            behind it. */}
+        <div className="space-y-4 lg:sticky lg:top-20 lg:self-start">
           <DashCard>
             <p className="font-display text-sm font-semibold">Ready to apply?</p>
             <p className="mt-1 text-xs text-[oklch(0.5_0.02_265)] leading-relaxed">
@@ -772,6 +779,19 @@ function JobDetailPage() {
               </button>
             </div>
           </DashCard>
+
+          <ResumeMatchCard
+            jobId={job.id}
+            deepLink={{ resumeId: search.resume, analyze: search.analyze, force: search.force }}
+            onDeepLinkConsumed={clearAnalyzeIntent}
+          />
+          <AtsCompatibilityCard
+            jobId={job.id}
+            deepLink={{ resumeId: search.resume, analyze: search.ats, force: search.force }}
+            onDeepLinkConsumed={clearAnalyzeIntent}
+          />
+          <CoverLetterJobCard job={job} />
+          <ResumeHealthSummaryCard />
 
           {/* Share card */}
           <DashCard>

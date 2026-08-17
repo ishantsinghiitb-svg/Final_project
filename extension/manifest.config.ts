@@ -5,6 +5,7 @@ import {
   EXTENSION_DESCRIPTION,
   EXTENSION_NAME,
   JOB_BOARD_MATCH_PATTERNS,
+  TRUSTED_APP_ORIGINS,
 } from "./src/shared/constants";
 
 const icons = {
@@ -46,13 +47,9 @@ export default defineManifest({
   // `/api/extension/analyze-match` and `/api/extension/parse-resume` (Module
   // 6C — in-extension AI Job Match) run as a privileged extension request
   // rather than depend solely on the server's CORS response headers.
-  // Localhost/127.0.0.1 only for now — add the production app origin here
-  // once it's deployed (e.g. "https://app.offerlyst.example/*").
-  host_permissions: [
-    ...JOB_BOARD_MATCH_PATTERNS,
-    "http://localhost:*/*",
-    "http://127.0.0.1:*/*",
-  ],
+  // `TRUSTED_APP_ORIGINS` (shared/constants.ts) is the one place to update
+  // when the production domain changes — see its own doc comment.
+  host_permissions: [...JOB_BOARD_MATCH_PATTERNS, ...TRUSTED_APP_ORIGINS],
   content_scripts: [
     {
       matches: [...JOB_BOARD_MATCH_PATTERNS],
@@ -61,9 +58,8 @@ export default defineManifest({
     },
     {
       // Auth bridge only — reads the OfferLyst web app's own Supabase
-      // session from localStorage. Localhost-only for now; add the
-      // production app origin here once it's deployed.
-      matches: ["http://localhost:*/*", "http://127.0.0.1:*/*"],
+      // session from localStorage.
+      matches: [...TRUSTED_APP_ORIGINS],
       js: ["src/content/auth-bridge/session-reader.ts"],
       run_at: "document_idle",
     },

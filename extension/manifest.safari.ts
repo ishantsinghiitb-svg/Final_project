@@ -12,6 +12,7 @@ import {
   EXTENSION_DESCRIPTION,
   EXTENSION_NAME,
   JOB_BOARD_MATCH_PATTERNS,
+  TRUSTED_APP_ORIGINS,
 } from "./src/shared/constants.ts";
 
 const icons = {
@@ -41,8 +42,10 @@ export function buildSafariManifest(version: string) {
       service_worker: "service-worker.js",
     },
     // Identical to manifest.config.ts: no <all_urls>, no `tabs` permission.
+    // TRUSTED_APP_ORIGINS (shared/constants.ts) kept in sync with
+    // manifest.config.ts — one shared list, not two copies to drift apart.
     permissions: ["storage", "scripting"],
-    host_permissions: [...JOB_BOARD_MATCH_PATTERNS, "http://localhost:*/*", "http://127.0.0.1:*/*"],
+    host_permissions: [...JOB_BOARD_MATCH_PATTERNS, ...TRUSTED_APP_ORIGINS],
     content_scripts: [
       {
         matches: [...JOB_BOARD_MATCH_PATTERNS],
@@ -50,7 +53,7 @@ export function buildSafariManifest(version: string) {
         run_at: "document_idle",
       },
       {
-        matches: ["http://localhost:*/*", "http://127.0.0.1:*/*"],
+        matches: [...TRUSTED_APP_ORIGINS],
         js: ["session-reader.js"],
         run_at: "document_idle",
       },
