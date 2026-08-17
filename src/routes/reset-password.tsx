@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { Logo } from "@/components/site/Logo";
 import { useAuth } from "@/context/AuthContext";
 import { AuthCard } from "./login";
+import { pageSeo } from "@/content/site";
 
 // ── Password reset completion (Module 13 · Phase 2 · B3) ──
 //
@@ -22,10 +23,11 @@ import { AuthCard } from "./login";
 
 export const Route = createFileRoute("/reset-password")({
   head: () => ({
-    meta: [
-      { title: "Set a new password — OfferLyst" },
-      { name: "description", content: "Set a new password for your OfferLyst account." },
-    ],
+    ...pageSeo({
+      path: "/reset-password",
+      title: "Set a new password — OfferLyst",
+      description: "Set a new password for your OfferLyst account.",
+    }),
   }),
   component: ResetPassword,
 });

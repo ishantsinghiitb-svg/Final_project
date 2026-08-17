@@ -9,10 +9,14 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as TermsRouteImport } from './routes/terms'
 import { Route as SupabaseStatusRouteImport } from './routes/supabase-status'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as SignupRouteImport } from './routes/signup'
+import { Route as RobotsDottxtRouteImport } from './routes/robots[.]txt'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as PrivacyRouteImport } from './routes/privacy'
+import { Route as PricingRouteImport } from './routes/pricing'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as FeaturesRouteImport } from './routes/features'
@@ -23,6 +27,7 @@ import { Route as ContactRouteImport } from './routes/contact'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as DashboardIndexRouteImport } from './routes/dashboard.index'
+import { Route as BlogIndexRouteImport } from './routes/blog.index'
 import { Route as DashboardSettingsRouteImport } from './routes/dashboard.settings'
 import { Route as DashboardSavedRouteImport } from './routes/dashboard.saved'
 import { Route as DashboardResumesRouteImport } from './routes/dashboard.resumes'
@@ -36,6 +41,7 @@ import { Route as DashboardCollectionsRouteImport } from './routes/dashboard.col
 import { Route as DashboardApplicationsRouteImport } from './routes/dashboard.applications'
 import { Route as DashboardAnalyticsRouteImport } from './routes/dashboard.analytics'
 import { Route as DashboardAdminRouteImport } from './routes/dashboard.admin'
+import { Route as BlogSlugRouteImport } from './routes/blog.$slug'
 import { Route as DashboardJobsIndexRouteImport } from './routes/dashboard.jobs.index'
 import { Route as DashboardInterviewsIndexRouteImport } from './routes/dashboard.interviews.index'
 import { Route as DashboardCoverLettersIndexRouteImport } from './routes/dashboard.cover-letters.index'
@@ -58,6 +64,11 @@ import { Route as DashboardInterviewsInterviewIdMockIndexRouteImport } from './r
 import { Route as DashboardInterviewsInterviewIdMockSessionIdRouteImport } from './routes/dashboard_.interviews.$interviewId.mock.$sessionId'
 import { Route as DashboardInterviewsInterviewIdMockSessionIdReportRouteImport } from './routes/dashboard.interviews.$interviewId.mock.$sessionId.report'
 
+const TermsRoute = TermsRouteImport.update({
+  id: '/terms',
+  path: '/terms',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SupabaseStatusRoute = SupabaseStatusRouteImport.update({
   id: '/supabase-status',
   path: '/supabase-status',
@@ -73,9 +84,24 @@ const SignupRoute = SignupRouteImport.update({
   path: '/signup',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RobotsDottxtRoute = RobotsDottxtRouteImport.update({
+  id: '/robots.txt',
+  path: '/robots.txt',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
   path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PricingRoute = PricingRouteImport.update({
+  id: '/pricing',
+  path: '/pricing',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -127,6 +153,11 @@ const DashboardIndexRoute = DashboardIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => DashboardRoute,
+} as any)
+const BlogIndexRoute = BlogIndexRouteImport.update({
+  id: '/blog/',
+  path: '/blog/',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const DashboardSettingsRoute = DashboardSettingsRouteImport.update({
   id: '/settings',
@@ -192,6 +223,11 @@ const DashboardAdminRoute = DashboardAdminRouteImport.update({
   id: '/admin',
   path: '/admin',
   getParentRoute: () => DashboardRoute,
+} as any)
+const BlogSlugRoute = BlogSlugRouteImport.update({
+  id: '/blog/$slug',
+  path: '/blog/$slug',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const DashboardJobsIndexRoute = DashboardJobsIndexRouteImport.update({
   id: '/',
@@ -324,10 +360,15 @@ export interface FileRoutesByFullPath {
   '/features': typeof FeaturesRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
+  '/pricing': typeof PricingRoute
+  '/privacy': typeof PrivacyRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/robots.txt': typeof RobotsDottxtRoute
   '/signup': typeof SignupRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/supabase-status': typeof SupabaseStatusRoute
+  '/terms': typeof TermsRoute
+  '/blog/$slug': typeof BlogSlugRoute
   '/dashboard/admin': typeof DashboardAdminRouteWithChildren
   '/dashboard/analytics': typeof DashboardAnalyticsRoute
   '/dashboard/applications': typeof DashboardApplicationsRouteWithChildren
@@ -341,6 +382,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/resumes': typeof DashboardResumesRoute
   '/dashboard/saved': typeof DashboardSavedRoute
   '/dashboard/settings': typeof DashboardSettingsRoute
+  '/blog/': typeof BlogIndexRoute
   '/dashboard/': typeof DashboardIndexRoute
   '/auth/google/callback': typeof AuthGoogleCallbackRoute
   '/dashboard/admin/feedback': typeof DashboardAdminFeedbackRoute
@@ -373,10 +415,15 @@ export interface FileRoutesByTo {
   '/features': typeof FeaturesRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
+  '/pricing': typeof PricingRoute
+  '/privacy': typeof PrivacyRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/robots.txt': typeof RobotsDottxtRoute
   '/signup': typeof SignupRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/supabase-status': typeof SupabaseStatusRoute
+  '/terms': typeof TermsRoute
+  '/blog/$slug': typeof BlogSlugRoute
   '/dashboard/analytics': typeof DashboardAnalyticsRoute
   '/dashboard/help': typeof DashboardHelpRoute
   '/dashboard/inbox': typeof DashboardInboxRoute
@@ -384,6 +431,7 @@ export interface FileRoutesByTo {
   '/dashboard/resumes': typeof DashboardResumesRoute
   '/dashboard/saved': typeof DashboardSavedRoute
   '/dashboard/settings': typeof DashboardSettingsRoute
+  '/blog': typeof BlogIndexRoute
   '/dashboard': typeof DashboardIndexRoute
   '/auth/google/callback': typeof AuthGoogleCallbackRoute
   '/dashboard/admin/feedback': typeof DashboardAdminFeedbackRoute
@@ -416,10 +464,15 @@ export interface FileRoutesById {
   '/features': typeof FeaturesRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
+  '/pricing': typeof PricingRoute
+  '/privacy': typeof PrivacyRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/robots.txt': typeof RobotsDottxtRoute
   '/signup': typeof SignupRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/supabase-status': typeof SupabaseStatusRoute
+  '/terms': typeof TermsRoute
+  '/blog/$slug': typeof BlogSlugRoute
   '/dashboard/admin': typeof DashboardAdminRouteWithChildren
   '/dashboard/analytics': typeof DashboardAnalyticsRoute
   '/dashboard/applications': typeof DashboardApplicationsRouteWithChildren
@@ -433,6 +486,7 @@ export interface FileRoutesById {
   '/dashboard/resumes': typeof DashboardResumesRoute
   '/dashboard/saved': typeof DashboardSavedRoute
   '/dashboard/settings': typeof DashboardSettingsRoute
+  '/blog/': typeof BlogIndexRoute
   '/dashboard/': typeof DashboardIndexRoute
   '/auth/google/callback': typeof AuthGoogleCallbackRoute
   '/dashboard/admin/feedback': typeof DashboardAdminFeedbackRoute
@@ -468,10 +522,15 @@ export interface FileRouteTypes {
     | '/features'
     | '/forgot-password'
     | '/login'
+    | '/pricing'
+    | '/privacy'
     | '/reset-password'
+    | '/robots.txt'
     | '/signup'
     | '/sitemap.xml'
     | '/supabase-status'
+    | '/terms'
+    | '/blog/$slug'
     | '/dashboard/admin'
     | '/dashboard/analytics'
     | '/dashboard/applications'
@@ -485,6 +544,7 @@ export interface FileRouteTypes {
     | '/dashboard/resumes'
     | '/dashboard/saved'
     | '/dashboard/settings'
+    | '/blog/'
     | '/dashboard/'
     | '/auth/google/callback'
     | '/dashboard/admin/feedback'
@@ -517,10 +577,15 @@ export interface FileRouteTypes {
     | '/features'
     | '/forgot-password'
     | '/login'
+    | '/pricing'
+    | '/privacy'
     | '/reset-password'
+    | '/robots.txt'
     | '/signup'
     | '/sitemap.xml'
     | '/supabase-status'
+    | '/terms'
+    | '/blog/$slug'
     | '/dashboard/analytics'
     | '/dashboard/help'
     | '/dashboard/inbox'
@@ -528,6 +593,7 @@ export interface FileRouteTypes {
     | '/dashboard/resumes'
     | '/dashboard/saved'
     | '/dashboard/settings'
+    | '/blog'
     | '/dashboard'
     | '/auth/google/callback'
     | '/dashboard/admin/feedback'
@@ -559,10 +625,15 @@ export interface FileRouteTypes {
     | '/features'
     | '/forgot-password'
     | '/login'
+    | '/pricing'
+    | '/privacy'
     | '/reset-password'
+    | '/robots.txt'
     | '/signup'
     | '/sitemap.xml'
     | '/supabase-status'
+    | '/terms'
+    | '/blog/$slug'
     | '/dashboard/admin'
     | '/dashboard/analytics'
     | '/dashboard/applications'
@@ -576,6 +647,7 @@ export interface FileRouteTypes {
     | '/dashboard/resumes'
     | '/dashboard/saved'
     | '/dashboard/settings'
+    | '/blog/'
     | '/dashboard/'
     | '/auth/google/callback'
     | '/dashboard/admin/feedback'
@@ -610,16 +682,29 @@ export interface RootRouteChildren {
   FeaturesRoute: typeof FeaturesRoute
   ForgotPasswordRoute: typeof ForgotPasswordRoute
   LoginRoute: typeof LoginRoute
+  PricingRoute: typeof PricingRoute
+  PrivacyRoute: typeof PrivacyRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
+  RobotsDottxtRoute: typeof RobotsDottxtRoute
   SignupRoute: typeof SignupRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   SupabaseStatusRoute: typeof SupabaseStatusRoute
+  TermsRoute: typeof TermsRoute
+  BlogSlugRoute: typeof BlogSlugRoute
+  BlogIndexRoute: typeof BlogIndexRoute
   AuthGoogleCallbackRoute: typeof AuthGoogleCallbackRoute
   DashboardInterviewsInterviewIdMockSessionIdRoute: typeof DashboardInterviewsInterviewIdMockSessionIdRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/terms': {
+      id: '/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof TermsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/supabase-status': {
       id: '/supabase-status'
       path: '/supabase-status'
@@ -641,11 +726,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SignupRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/robots.txt': {
+      id: '/robots.txt'
+      path: '/robots.txt'
+      fullPath: '/robots.txt'
+      preLoaderRoute: typeof RobotsDottxtRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/reset-password': {
       id: '/reset-password'
       path: '/reset-password'
       fullPath: '/reset-password'
       preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/pricing': {
+      id: '/pricing'
+      path: '/pricing'
+      fullPath: '/pricing'
+      preLoaderRoute: typeof PricingRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -717,6 +823,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/dashboard/'
       preLoaderRoute: typeof DashboardIndexRouteImport
       parentRoute: typeof DashboardRoute
+    }
+    '/blog/': {
+      id: '/blog/'
+      path: '/blog'
+      fullPath: '/blog/'
+      preLoaderRoute: typeof BlogIndexRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/dashboard/settings': {
       id: '/dashboard/settings'
@@ -808,6 +921,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/dashboard/admin'
       preLoaderRoute: typeof DashboardAdminRouteImport
       parentRoute: typeof DashboardRoute
+    }
+    '/blog/$slug': {
+      id: '/blog/$slug'
+      path: '/blog/$slug'
+      fullPath: '/blog/$slug'
+      preLoaderRoute: typeof BlogSlugRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/dashboard/jobs/': {
       id: '/dashboard/jobs/'
@@ -1137,10 +1257,16 @@ const rootRouteChildren: RootRouteChildren = {
   FeaturesRoute: FeaturesRoute,
   ForgotPasswordRoute: ForgotPasswordRoute,
   LoginRoute: LoginRoute,
+  PricingRoute: PricingRoute,
+  PrivacyRoute: PrivacyRoute,
   ResetPasswordRoute: ResetPasswordRoute,
+  RobotsDottxtRoute: RobotsDottxtRoute,
   SignupRoute: SignupRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   SupabaseStatusRoute: SupabaseStatusRoute,
+  TermsRoute: TermsRoute,
+  BlogSlugRoute: BlogSlugRoute,
+  BlogIndexRoute: BlogIndexRoute,
   AuthGoogleCallbackRoute: AuthGoogleCallbackRoute,
   DashboardInterviewsInterviewIdMockSessionIdRoute:
     DashboardInterviewsInterviewIdMockSessionIdRoute,

@@ -3,6 +3,12 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 
 export const Route = createFileRoute("/supabase-status")({
+  head: () => ({
+    meta: [
+      { title: "Status — OfferLyst" },
+      { name: "robots", content: "noindex" },
+    ],
+  }),
   component: SupabaseStatus,
 });
 

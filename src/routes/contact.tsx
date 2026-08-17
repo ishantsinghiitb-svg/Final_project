@@ -3,18 +3,16 @@ import { Chrome, Mail, Sparkles } from "lucide-react";
 import { Section } from "@/components/site/Section";
 import { CONTACT_EMAIL } from "@/content/extension";
 import { contactLinkProps } from "@/content/contact";
+import { pageSeo } from "@/content/site";
 
 export const Route = createFileRoute("/contact")({
   head: () => ({
-    meta: [
-      { title: "Contact — OfferLyst" },
-      { name: "description", content: "Get in touch with the OfferLyst team." },
-      { property: "og:title", content: "Contact — OfferLyst" },
-      {
-        property: "og:description",
-        content: "Questions, extension access, or more AI credits. Write to the OfferLyst team.",
-      },
-    ],
+    ...pageSeo({
+      path: "/contact",
+      title: "Contact OfferLyst",
+      description: "Get in touch with the OfferLyst team.",
+      ogDescription: "Questions, extension access, or more AI credits. Write to the OfferLyst team.",
+    }),
   }),
   component: Contact,
 });
@@ -56,6 +54,9 @@ function Contact() {
       spacing="last"
       className="pt-24 md:pt-32"
     >
+      {/* See faq.tsx's identical comment: Section's title renders as an h2,
+          so this hidden h1 carries the real page title for SEO/a11y. */}
+      <h1 className="sr-only">Contact OfferLyst</h1>
       <div className="mx-auto max-w-4xl">
         <a
           {...contactLinkProps()}

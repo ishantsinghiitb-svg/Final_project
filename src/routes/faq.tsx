@@ -9,20 +9,34 @@ import {
 } from "@/content/extension";
 import { contactLinkProps } from "@/content/contact";
 import { CREDIT_COSTS, FREE_CREDITS } from "@/content/credits";
+import { pageSeo } from "@/content/site";
 
 export const Route = createFileRoute("/faq")({
   head: () => ({
-    meta: [
-      { title: "FAQ — OfferLyst" },
+    ...pageSeo({
+      path: "/faq",
+      title: "FAQ: Job Tracker, Resume AI & Extension Questions — OfferLyst",
+      description:
+        "Answers about the Chrome extension, supported job sites, AI resume matching, application tracking, the Gmail inbox review, privacy, and AI credits.",
+      ogDescription: "Everything worth knowing before you sign up.",
+    }),
+    // FAQPage structured data, built directly from the same `groups` this page
+    // renders — a Google rich-result snippet can only ever show what a visitor
+    // sees on the page, never invented Q&A content.
+    scripts: [
       {
-        name: "description",
-        content:
-          "Answers about the Chrome extension, supported job sites, AI resume matching, application tracking, the Gmail inbox review, privacy, and AI credits.",
-      },
-      { property: "og:title", content: "FAQ — OfferLyst" },
-      {
-        property: "og:description",
-        content: "Everything worth knowing before you sign up.",
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "FAQPage",
+          mainEntity: groups.flatMap((g) =>
+            g.faqs.map((f) => ({
+              "@type": "Question",
+              name: f.q,
+              acceptedAnswer: { "@type": "Answer", text: f.a },
+            })),
+          ),
+        }),
       },
     ],
   }),
@@ -154,6 +168,11 @@ function FAQ() {
       spacing="last"
       className="pt-24 md:pt-32"
     >
+      {/* Section's title renders as an h2 (shared across every marketing page,
+          not worth changing for one page) — this page has no other heading,
+          so a visually-hidden h1 carries the real page title for SEO/a11y
+          without altering the visible design. */}
+      <h1 className="sr-only">Frequently asked questions about OfferLyst</h1>
       <div className="mx-auto max-w-3xl space-y-10 text-left">
         {groups.map((g) => (
           <div key={g.title}>

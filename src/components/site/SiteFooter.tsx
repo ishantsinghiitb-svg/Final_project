@@ -8,6 +8,7 @@ const cols = [
     title: "Product",
     links: [
       { to: "/features", label: "Features" },
+      { to: "/pricing", label: "Pricing" },
       { to: "/extension", label: "Chrome extension" },
       { to: "/dashboard", label: "Dashboard preview" },
     ],
@@ -16,8 +17,16 @@ const cols = [
     title: "Company",
     links: [
       { to: "/about", label: "About" },
+      { to: "/blog", label: "Blog" },
       { to: "/contact", label: "Contact" },
       { to: "/faq", label: "FAQ" },
+    ],
+  },
+  {
+    title: "Legal",
+    links: [
+      { to: "/privacy", label: "Privacy policy" },
+      { to: "/terms", label: "Terms of service" },
     ],
   },
   {
@@ -35,9 +44,10 @@ export function SiteFooter() {
       {/* Mobile stacked every block full width with a 40px gap, which made the
           footer taller than most of the pages above it. The link groups now sit
           in a 2/3-column grid on small screens; `md:contents` dissolves that
-          wrapper at desktop so the original 4-column layout is unchanged. */}
+          wrapper at desktop so the 5-column layout (brand + 4 link groups,
+          Legal added in Module 13 Phase 6) is unchanged. */}
       <div className="site-container py-10 md:py-14">
-        <div className="grid gap-8 md:grid-cols-[1.4fr_1fr_1fr_1fr] md:gap-10">
+        <div className="grid gap-8 md:grid-cols-[1.2fr_0.8fr_0.8fr_0.8fr_0.8fr] md:gap-10">
           <div>
             <Link to="/" className="flex items-center gap-2" aria-label="OfferLyst home">
               <Logo size={32} />

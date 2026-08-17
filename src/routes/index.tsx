@@ -6,21 +6,29 @@ import { LogoRow } from "@/components/site/LogoRow";
 import { Section } from "@/components/site/Section";
 import { ButtonLink } from "@/components/site/PrimaryButton";
 import { Reveal } from "@/components/site/Reveal";
+import { pageSeo, absoluteUrl } from "@/content/site";
 
 export const Route = createFileRoute("/")({
   head: () => ({
-    meta: [
-      { title: "OfferLyst — The workspace for your job search" },
+    ...pageSeo({
+      path: "/",
+      title: "Job Application Tracker & Resume AI — OfferLyst",
+      description:
+        "Save jobs from the sites you already use, tailor your resume with AI, track every application, and land your next offer, all in one calm workspace.",
+      ogDescription:
+        "The calmest way to find your next job. Save, tailor, track, and land offers from one focused workspace.",
+    }),
+    scripts: [
       {
-        name: "description",
-        content:
-          "Save jobs from the sites you already use, tailor your resume with AI, track every application, and land your next offer, all in one calm workspace.",
-      },
-      { property: "og:title", content: "OfferLyst — The workspace for your job search" },
-      {
-        property: "og:description",
-        content:
-          "The calmest way to find your next job. Save, tailor, track, and land offers from one focused workspace.",
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "WebSite",
+          name: "OfferLyst",
+          url: absoluteUrl("/"),
+          description:
+            "OfferLyst is the workspace for your entire job search: save jobs from the sites you already use, tailor your resume with AI, track every application, and prepare for interviews.",
+        }),
       },
     ],
   }),

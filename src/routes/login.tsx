@@ -5,13 +5,11 @@ import { Button } from "@/components/site/PrimaryButton";
 import { Logo } from "@/components/site/Logo";
 import { useAuth } from "@/context/AuthContext";
 import { GuestRoute } from "@/components/auth/RouteGuards";
+import { pageSeo } from "@/content/site";
 
 export const Route = createFileRoute("/login")({
   head: () => ({
-    meta: [
-      { title: "Log in — OfferLyst" },
-      { name: "description", content: "Sign in to OfferLyst." },
-    ],
+    ...pageSeo({ path: "/login", title: "Log in — OfferLyst", description: "Sign in to OfferLyst." }),
   }),
   component: Login,
 });
@@ -253,7 +251,15 @@ export function AuthCard({
           <div className="mt-6 text-center">{alt}</div>
         </div>
         <p className="mt-6 text-center text-xs text-muted-foreground">
-          By continuing you agree to our terms and privacy policy.
+          By continuing you agree to our{" "}
+          <Link to="/terms" className="underline underline-offset-4 hover:text-foreground">
+            terms
+          </Link>{" "}
+          and{" "}
+          <Link to="/privacy" className="underline underline-offset-4 hover:text-foreground">
+            privacy policy
+          </Link>
+          .
         </p>
       </div>
     </section>

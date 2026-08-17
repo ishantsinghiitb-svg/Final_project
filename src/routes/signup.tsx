@@ -4,13 +4,15 @@ import { toast } from "sonner";
 import { AuthCard } from "./login";
 import { useAuth } from "@/context/AuthContext";
 import { GuestRoute } from "@/components/auth/RouteGuards";
+import { pageSeo } from "@/content/site";
 
 export const Route = createFileRoute("/signup")({
   head: () => ({
-    meta: [
-      { title: "Create account — OfferLyst" },
-      { name: "description", content: "Create your OfferLyst account." },
-    ],
+    ...pageSeo({
+      path: "/signup",
+      title: "Create a Free Account — OfferLyst",
+      description: "Create your OfferLyst account.",
+    }),
   }),
   component: Signup,
 });

@@ -5,21 +5,16 @@ import { ButtonLink } from "@/components/site/PrimaryButton";
 import { Reveal } from "@/components/site/Reveal";
 import { CONTACT_EMAIL, isExtensionLive } from "@/content/extension";
 import { contactLinkProps } from "@/content/contact";
+import { pageSeo } from "@/content/site";
 
 export const Route = createFileRoute("/about")({
   head: () => ({
-    meta: [
-      { title: "About — OfferLyst" },
-      {
-        name: "description",
-        content: "What OfferLyst is, the problem it solves, and how it is built.",
-      },
-      { property: "og:title", content: "About — OfferLyst" },
-      {
-        property: "og:description",
-        content: "An early-access workspace for the job search, and the thinking behind it.",
-      },
-    ],
+    ...pageSeo({
+      path: "/about",
+      title: "About OfferLyst — A Calmer Job Application Tracker",
+      description: "What OfferLyst is, the problem it solves, and how it is built.",
+      ogDescription: "An early-access workspace for the job search, and the thinking behind it.",
+    }),
   }),
   component: About,
 });

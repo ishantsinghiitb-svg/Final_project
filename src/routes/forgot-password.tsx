@@ -4,13 +4,15 @@ import { toast } from "sonner";
 import { Button } from "@/components/site/PrimaryButton";
 import { Logo } from "@/components/site/Logo";
 import { useAuth } from "@/context/AuthContext";
+import { pageSeo } from "@/content/site";
 
 export const Route = createFileRoute("/forgot-password")({
   head: () => ({
-    meta: [
-      { title: "Reset password — OfferLyst" },
-      { name: "description", content: "Reset your OfferLyst password." },
-    ],
+    ...pageSeo({
+      path: "/forgot-password",
+      title: "Reset password — OfferLyst",
+      description: "Reset your OfferLyst password.",
+    }),
   }),
   component: ForgotPassword,
 });

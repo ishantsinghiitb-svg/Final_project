@@ -1,0 +1,16 @@
+{
+  "name": "OfferLyst",
+  "short_name": "OfferLyst",
+  "description": "The workspace for your entire job search.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0B1120",
+  "theme_color": "#0B1120",
+  "icons": [
+    {
+      "src": "/icon.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

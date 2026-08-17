@@ -18,22 +18,17 @@ import { ButtonLink } from "@/components/site/PrimaryButton";
 import { CONTACT_EMAIL, SUPPORTED_PLATFORM_NAMES } from "@/content/extension";
 import { contactLinkProps } from "@/content/contact";
 import { FREE_CREDITS } from "@/content/credits";
+import { pageSeo } from "@/content/site";
 
 export const Route = createFileRoute("/features")({
   head: () => ({
-    meta: [
-      { title: "Features — OfferLyst" },
-      {
-        name: "description",
-        content:
-          "Everything OfferLyst does: save jobs from supported sites, tailor your resume with AI, track applications, prepare for interviews, review your inbox, and see what is working.",
-      },
-      { property: "og:title", content: "Features — OfferLyst" },
-      {
-        property: "og:description",
-        content: "One workspace for the whole job search, not another job board.",
-      },
-    ],
+    ...pageSeo({
+      path: "/features",
+      title: "Job Tracker Features: Resume AI, Kanban & Extension — OfferLyst",
+      description:
+        "Everything OfferLyst does: save jobs from supported sites, tailor your resume with AI, track applications, prepare for interviews, review your inbox, and see what is working.",
+      ogDescription: "One workspace for the whole job search, not another job board.",
+    }),
   }),
   component: FeaturesPage,
 });

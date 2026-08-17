@@ -11,22 +11,17 @@ import {
 } from "@/content/extension";
 import { contactLinkProps } from "@/content/contact";
 import { ExtensionShowcase } from "@/components/site/ExtensionShowcase";
+import { pageSeo } from "@/content/site";
 
 export const Route = createFileRoute("/extension")({
   head: () => ({
-    meta: [
-      { title: "Chrome extension — OfferLyst" },
-      {
-        name: "description",
-        content:
-          "How the OfferLyst Chrome extension works: install it, open a supported job page, save the job, and pick it up in your OfferLyst workspace.",
-      },
-      { property: "og:title", content: "Chrome extension — OfferLyst" },
-      {
-        property: "og:description",
-        content: "Save a job from a supported job board in one click and continue in OfferLyst.",
-      },
-    ],
+    ...pageSeo({
+      path: "/extension",
+      title: "Chrome Extension for Job Tracking (LinkedIn, Naukri & More) — OfferLyst",
+      description:
+        "How the OfferLyst Chrome extension works: install it, open a supported job page, save the job, and pick it up in your OfferLyst workspace.",
+      ogDescription: "Save a job from a supported job board in one click and continue in OfferLyst.",
+    }),
   }),
   component: ExtensionPage,
 });
