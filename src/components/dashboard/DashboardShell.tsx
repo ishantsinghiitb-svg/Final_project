@@ -337,7 +337,7 @@ export function DashboardShell({ children }: { children: ReactNode }) {
               </button>
               <button
                 onClick={() => setPaletteOpen(true)}
-                className="flex h-8 w-[260px] max-w-[60vw] items-center gap-2 rounded-lg border border-black/5 bg-white px-2.5 text-[12px] text-[oklch(0.5_0.02_265)] transition-colors hover:border-black/10"
+                className="flex h-8 w-[260px] max-w-[60vw] items-center gap-2.5 overflow-hidden rounded-lg border border-black/5 bg-white px-2.5 text-[12px] text-[oklch(0.5_0.02_265)] transition-colors hover:border-black/10"
               >
                 <Search className="h-[14px] w-[14px] shrink-0" />
                 {/* truncate + nowrap: at 390px the placeholder wrapped onto a
@@ -350,7 +350,15 @@ export function DashboardShell({ children }: { children: ReactNode }) {
                     its full natural width and visually overlapped/clipped
                     against the ⌘K badges next to it. shrink-0 on the badges
                     below is the other half: without it, they had no
-                    guaranteed reserved space of their own either. */}
+                    guaranteed reserved space of their own either.
+                    Non-100% browser zoom (e.g. 90%) renders text at a
+                    fractional effective pixel size, and Chrome's text-metric
+                    rounding at those fractional zoom levels doesn't always
+                    match this flex row's px-perfect layout math exactly —
+                    the extra gap (2 -> 2.5) and overflow-hidden on the
+                    button itself are a deliberate buffer against that class
+                    of sub-pixel drift at ANY zoom level, not a fix pinned to
+                    one specific percentage. */}
                 <span className="min-w-0 flex-1 truncate whitespace-nowrap text-left">
                   Search or jump to…
                 </span>
