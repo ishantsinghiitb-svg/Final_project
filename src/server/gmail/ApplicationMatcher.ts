@@ -133,8 +133,10 @@ function rolesConflict(subject: string, applicationRole: string): boolean {
   return !overlaps && ROLE_WORD_PATTERN.test(subjectLower);
 }
 
-type ApplicationCandidate = { id: string; company_name: string; role: string };
-type ContactRow = { application_id: string; email: string | null };
+/** Exported so a caller that loops matchApplication many times per invocation (GmailSyncService) can fetch this once and pass it in via `prefetched`. */
+export type ApplicationCandidate = { id: string; company_name: string; role: string };
+/** Same reason — see ApplicationCandidate. */
+export type ContactRow = { application_id: string; email: string | null };
 
 function domainOf(email: string): string {
   return email.split("@")[1]?.toLowerCase().trim() ?? "";
@@ -153,6 +155,16 @@ export async function matchApplication(
     /** Module 9B — a calendar event's iCalUID, for signal 5. Null/omitted for Gmail's own calls. */
     icalUid?: string | null;
   },
+  /**
+   * Signals 2/3/4's per-USER rows (not per-message) — optional. When a
+   * caller loops this function many times in one invocation (GmailSyncService,
+   * processing a batch of messages), fetching these fresh on every iteration
+   * is the same two rows every time; pass them in once instead. Omitted
+   * entirely by every other caller (CalendarSyncService, CalendarRescan,
+   * SuggestionRebuilder), which keep their existing per-call fetch — this
+   * parameter changes nothing for them.
+   */
+  prefetched?: { applications: ApplicationCandidate[]; contacts: ContactRow[] },
 ): Promise<MatchResult> {
   const candidates = new Map<string, { confidence: number; reason: string }>();
   const gmailRepo = new GmailRepository(supabase);
@@ -200,13 +212,19 @@ export async function matchApplication(
   const candidateDomains = new Set(candidateAddresses.map(domainOf).filter(Boolean));
 
   if (candidateAddresses.length > 0) {
-    const { data: contacts, error: contactError } = await supabase
-      .from("application_contacts")
-      .select("application_id, email")
-      .eq("user_id", userId);
-    if (contactError) throw contactError;
+    let contacts: ContactRow[];
+    if (prefetched) {
+      contacts = prefetched.contacts;
+    } else {
+      const { data, error: contactError } = await supabase
+        .from("application_contacts")
+        .select("application_id, email")
+        .eq("user_id", userId);
+      if (contactError) throw contactError;
+      contacts = (data ?? []) as ContactRow[];
+    }
 
-    for (const contact of (contacts ?? []) as ContactRow[]) {
+    for (const contact of contacts) {
       if (!contact.email || candidates.has(contact.application_id)) continue;
       const contactEmail = contact.email.toLowerCase().trim();
 
@@ -236,13 +254,19 @@ export async function matchApplication(
   if (input.companyName) {
     const normalizedTarget = normalizeCompanyName(input.companyName);
     if (normalizedTarget) {
-      const { data: applications, error: appError } = await supabase
-        .from("applications")
-        .select("id, company_name, role")
-        .eq("user_id", userId)
-        .eq("archived", false);
-      if (appError) throw appError;
-      for (const app of (applications ?? []) as ApplicationCandidate[]) {
+      let applications: ApplicationCandidate[];
+      if (prefetched) {
+        applications = prefetched.applications;
+      } else {
+        const { data, error: appError } = await supabase
+          .from("applications")
+          .select("id, company_name, role")
+          .eq("user_id", userId)
+          .eq("archived", false);
+        if (appError) throw appError;
+        applications = (data ?? []) as ApplicationCandidate[];
+      }
+      for (const app of applications) {
         if (companiesMatch(app.company_name, input.companyName) && !candidates.has(app.id)) {
           // An exact normalised hit is stronger evidence than a
           // containment/brand-variant hit, and is scored accordingly.

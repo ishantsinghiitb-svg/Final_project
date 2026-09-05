@@ -14,8 +14,16 @@
 // granted (rather than each connect silently narrowing the other product's
 // access). This is why every consent URL now takes an explicit `scopes`
 // array instead of a single hardcoded scope.
+//
+// All three token-endpoint calls below go through fetchWithTimeout (see that
+// file's header) rather than a bare `fetch` — `refreshAccessToken` in
+// particular sits directly in GmailSyncService's/CalendarSyncService's sync
+// call chain, immediately after the sync lock is claimed, and an unbounded
+// hang there was observed to strand that lock in production with zero
+// forward progress.
 
 import { requireEnv, serverEnv } from "@/server/env";
+import { fetchWithTimeout } from "./fetchWithTimeout";
 
 const AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth";
 const TOKEN_URL = "https://oauth2.googleapis.com/token";
@@ -105,7 +113,7 @@ export type TokenExchangeResult = {
 /** Exchanges the `code` from the OAuth callback for an access + refresh token pair. */
 export async function exchangeCodeForTokens(code: string): Promise<TokenExchangeResult> {
   const { clientId, clientSecret, redirectUri } = credentials();
-  const response = await fetch(TOKEN_URL, {
+  const response = await fetchWithTimeout(TOKEN_URL, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
@@ -148,7 +156,7 @@ export type AccessTokenResult = { accessToken: string; expiresIn: number };
 /** Mints a fresh access token from a stored refresh token. Throws `GoogleOAuthError("invalid_grant", ...)` if the refresh token itself has been revoked/expired. */
 export async function refreshAccessToken(refreshToken: string): Promise<AccessTokenResult> {
   const { clientId, clientSecret } = credentials();
-  const response = await fetch(TOKEN_URL, {
+  const response = await fetchWithTimeout(TOKEN_URL, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
@@ -166,7 +174,7 @@ export async function refreshAccessToken(refreshToken: string): Promise<AccessTo
 
 /** Best-effort revoke — callers should proceed with local cleanup even if this throws. */
 export async function revokeToken(token: string): Promise<void> {
-  const response = await fetch(REVOKE_URL, {
+  const response = await fetchWithTimeout(REVOKE_URL, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({ token }).toString(),

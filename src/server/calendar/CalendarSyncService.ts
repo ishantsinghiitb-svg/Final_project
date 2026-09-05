@@ -1,6 +1,9 @@
 import type { AuthedContext } from "@/server/supabase";
 import { serverEnv, requireEnv } from "@/server/env";
-import { GoogleConnectionRepository } from "@/repositories/GoogleConnectionRepository";
+import {
+  GoogleConnectionRepository,
+  isSyncLockStale,
+} from "@/repositories/GoogleConnectionRepository";
 import { CalendarRepository } from "@/repositories/CalendarRepository";
 import { SuggestionRepository } from "@/repositories/SuggestionRepository";
 import { refreshAccessToken, GoogleOAuthError } from "@/server/gmail/GoogleOAuthClient";
@@ -711,11 +714,20 @@ export async function syncCalendarForUser(authed: AuthedContext): Promise<Calend
   }
 }
 
-/** Whether an opportunistic (app-open) Calendar sync should fire right now — "Sync Now" bypasses this entirely. */
+/**
+ * Whether an opportunistic (app-open) Calendar sync should fire right now —
+ * "Sync Now" bypasses this entirely.
+ *
+ * Same stale-lock allowance as Gmail's `isSyncDue`, for the same reason: a
+ * `syncing` status only blocks while its lock is fresh, so a connection
+ * stranded by a hard-terminated run can auto-recover instead of waiting for
+ * the user to press Sync Now. `claimSyncLock` stays the atomic authority.
+ */
 export function isCalendarSyncDue(connection: {
   calendar_auto_sync_enabled: boolean;
   calendar_next_sync_at: string | null;
   calendar_status: string;
+  calendar_sync_lock_acquired_at: string | null;
 }): boolean {
   if (!connection.calendar_auto_sync_enabled) return false;
   if (
@@ -723,7 +735,11 @@ export function isCalendarSyncDue(connection: {
     connection.calendar_status === "needs_reauth"
   )
     return false;
-  if (connection.calendar_status === "syncing") return false;
+  if (
+    connection.calendar_status === "syncing" &&
+    !isSyncLockStale(connection.calendar_sync_lock_acquired_at)
+  )
+    return false;
   if (!connection.calendar_next_sync_at) return true;
   return new Date(connection.calendar_next_sync_at).getTime() <= Date.now();
 }

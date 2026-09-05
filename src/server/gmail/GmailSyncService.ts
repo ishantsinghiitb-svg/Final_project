@@ -1,7 +1,10 @@
 import type { AuthedContext } from "@/server/supabase";
 import { serverEnv, requireEnv } from "@/server/env";
 import { GmailRepository } from "@/repositories/GmailRepository";
-import { GoogleConnectionRepository } from "@/repositories/GoogleConnectionRepository";
+import {
+  GoogleConnectionRepository,
+  isSyncLockStale,
+} from "@/repositories/GoogleConnectionRepository";
 import { SuggestionRepository } from "@/repositories/SuggestionRepository";
 import { refreshAccessToken, GoogleOAuthError } from "./GoogleOAuthClient";
 import { decryptToken } from "./TokenCrypto";
@@ -12,9 +15,24 @@ import { classify, type ClassificationResult } from "./EmailClassifier";
 import { classifyWithAI } from "./EmailClassifierAI";
 import { extractCompanyName } from "./CompanyExtractor";
 import { extractRole, extractRecruiterName } from "./EntityExtractor";
-import { matchApplication, type MatchResult } from "./ApplicationMatcher";
+import {
+  matchApplication,
+  type MatchResult,
+  type ApplicationCandidate,
+  type ContactRow,
+} from "./ApplicationMatcher";
 import { buildSuggestions, INTERVIEW_CATEGORIES } from "./SuggestionBuilder";
 import { parseIcs } from "./IcsParser";
+import {
+  canAffordOneMoreMessage,
+  resolveBackfillCheckpoint,
+  resolveHistoryCheckpoint,
+  accumulateHistoryCandidates,
+  HISTORY_LISTING_SAFETY_CEILING,
+  GMAIL_API_CALL_CHARGE,
+  AI_CLASSIFY_CALL_CHARGE,
+  SUPABASE_CALL_CHARGE,
+} from "./GmailSyncBudget";
 
 // ── Sync orchestrator (Module 9A) ──
 //
@@ -41,8 +59,21 @@ import { parseIcs } from "./IcsParser";
 //   - The backfill/history_id checkpoint only ever advances in
 //     releaseSyncLock, AFTER every message and suggestion in this page has
 //     been durably persisted — never optimistically ahead of committed data.
+//     See GmailSyncBudget.ts's resolveBackfillCheckpoint/
+//     resolveHistoryCheckpoint — the checkpoint stays at its OLD value
+//     whenever the subrequest budget cut this run short, so a partial page
+//     is safely re-attempted next time rather than silently dropped.
+//   - Explicit subrequest budget (see GmailSyncBudget.ts): Cloudflare
+//     Workers Free caps one invocation at 50 subrequests total, counting
+//     every Supabase AND Gmail/OAuth call. BATCH_SIZE=50 combined with a
+//     per-candidate dedup query used to exhaust that budget before a single
+//     new message was ever fetched — observed live as a sync permanently
+//     stuck "syncing" with zero rows written anywhere, invocation after
+//     invocation, on the identical first page. BATCH_SIZE=8 plus batching
+//     the dedup check into one query keeps a typical run comfortably under
+//     budget while a live counter still guards the pathological case.
 
-const BATCH_SIZE = 50;
+const BATCH_SIZE = 8;
 // Fixed internal cadence, not a user-facing control (per the plan's trimmed
 // Settings surface) — just the throttle the app-open trigger checks before
 // firing a sync at all; "Sync Now" always bypasses it.
@@ -92,7 +123,21 @@ export async function syncUser(authed: AuthedContext): Promise<SyncOutcome> {
   const connectionRepo = new GoogleConnectionRepository(authed.supabase);
   const suggestionRepo = new SuggestionRepository(authed.supabase);
 
+  // ── Subrequest budget (see GmailSyncBudget.ts) — every Supabase and
+  // Gmail/OAuth call this invocation makes is tracked here, starting from
+  // the very first one. An earlier version of this counter started only
+  // after the token refresh succeeded, silently leaving
+  // findConnectionForSync/claimSyncLock/refreshAccessToken's 3 real
+  // subrequests OUT of the tracked total — harmless for THIS function's own
+  // ceiling (those 3 always happen, so they were still accounted for
+  // separately in GmailSyncBudget.ts's grand-total arithmetic), but a trap
+  // for anyone reading `used`'s final value expecting it to be the complete
+  // picture. Tracking from the start makes `used`'s value self-sufficient —
+  // no separate list of "don't forget these" calls to keep in sync by hand.
+  let used = 0;
+
   const connection = await connectionRepo.findConnectionForSync(userId);
+  used += SUPABASE_CALL_CHARGE;
   if (!connection || connection.gmail_status === "disconnected") {
     return { status: "skipped", reason: "not_connected" };
   }
@@ -101,6 +146,7 @@ export async function syncUser(authed: AuthedContext): Promise<SyncOutcome> {
   }
 
   const claimed = await connectionRepo.claimSyncLock(userId, "gmail");
+  used += SUPABASE_CALL_CHARGE;
   if (!claimed) return { status: "skipped", reason: "already_syncing" };
 
   try {
@@ -115,6 +161,11 @@ export async function syncUser(authed: AuthedContext): Promise<SyncOutcome> {
         { ciphertext: connection.refresh_token_ciphertext, nonce: connection.refresh_token_nonce },
         encryptionKey,
       );
+      // Charged before the call, like every other retryable call in this
+      // file — refreshAccessToken has no internal retry loop (confirmed:
+      // GoogleOAuthClient.ts wraps it in fetchWithTimeout only, no loop), so
+      // this is a real single-attempt charge, not a worst-case reservation.
+      used += 1;
       accessToken = (await refreshAccessToken(refreshToken)).accessToken;
     } catch (err) {
       if (err instanceof GoogleOAuthError && err.code === "invalid_grant") {
@@ -134,31 +185,77 @@ export async function syncUser(authed: AuthedContext): Promise<SyncOutcome> {
 
     // ── This run's candidate message ids, bounded to BATCH_SIZE ──
     let candidateIds: string[];
-    let backfillComplete = connection.gmail_backfill_complete;
-    let nextBackfillPageToken: string | null = connection.gmail_backfill_page_token;
-    let newHistoryId: string | undefined;
+    let syncPhase: "backfill" | "history" | "restart_backfill";
+    const startingBackfillPageToken = connection.gmail_backfill_page_token;
+    let gmailNextPageToken: string | null = null;
+    let historyExhausted = false;
+    let latestHistoryId: string | undefined;
 
-    if (!backfillComplete) {
+    if (!connection.gmail_backfill_complete) {
+      syncPhase = "backfill";
+      // maxResults IS the batch size now — Gmail's own nextPageToken is the
+      // resume cursor, persisted as-is (see resolveBackfillCheckpoint below)
+      // rather than a client-side slice of a larger fetch.
       const page = await gmailApi.listMessages(accessToken, buildSyncQuery(), {
-        pageToken: connection.gmail_backfill_page_token ?? undefined,
+        pageToken: startingBackfillPageToken ?? undefined,
         maxResults: BATCH_SIZE,
       });
+      used += GMAIL_API_CALL_CHARGE; // goes through gmailFetch's own retry loop
       candidateIds = page.messages.map((m) => m.id);
-      nextBackfillPageToken = page.nextPageToken;
-      backfillComplete = page.nextPageToken === null;
+      gmailNextPageToken = page.nextPageToken;
     } else if (connection.gmail_history_id) {
-      const page = await gmailApi.listHistory(accessToken, connection.gmail_history_id);
-      candidateIds = page.messageIds.slice(0, BATCH_SIZE);
-      newHistoryId = page.historyId;
+      syncPhase = "history";
+      const startHistoryId = connection.gmail_history_id;
+      // Traverses as many history.list pages as needed (bounded by
+      // HISTORY_LISTING_SAFETY_CEILING) to collect EVERY candidate id up to
+      // Gmail's true end of history — uncapped here on purpose (see
+      // accumulateHistoryCandidates's header: an earlier version capped
+      // collection at BATCH_SIZE directly, which could permanently stall on
+      // a page boundary that always truncates the same tail ids on every
+      // retry, since collection always restarts from the same
+      // startHistoryId). The BATCH_SIZE cap is applied below, AFTER
+      // deduplication, so which ids get deferred to next time shifts as
+      // earlier ones get persisted, instead of being stuck on the same ones
+      // forever.
+      const accumulation = await accumulateHistoryCandidates((pageToken) => {
+        used += GMAIL_API_CALL_CHARGE; // each listHistory call also goes through gmailFetch's retry loop
+        return gmailApi.listHistory(accessToken, startHistoryId, pageToken);
+      }, HISTORY_LISTING_SAFETY_CEILING);
+      candidateIds = accumulation.candidateIds;
+      historyExhausted = accumulation.historyExhausted;
+      latestHistoryId = accumulation.latestHistoryId;
     } else {
       // Shouldn't happen (backfill_complete implies history_id was set at
       // connect time) — degrade to restarting backfill rather than throw.
-      backfillComplete = false;
+      syncPhase = "restart_backfill";
       candidateIds = [];
     }
 
     let processed = 0;
     let suggestionsCreated = 0;
+
+    // ── Batched dedup — ONE query for the whole page instead of one
+    // findMessageByGmailId call per candidate. This is the actual fix for
+    // the subrequest exhaustion: with the old BATCH_SIZE=50 and a
+    // per-candidate query, dedup alone could consume the entire Free-plan
+    // 50-subrequest budget before a single new message was ever fetched.
+    const existingIds = await gmailRepo.findExistingGmailIds(userId, candidateIds);
+    used += SUPABASE_CALL_CHARGE;
+    const newCandidateIdsAfterDedup = candidateIds.filter((id) => !existingIds.has(id));
+
+    // The history path can hand back more genuinely-new ids than one
+    // invocation should process (accumulateHistoryCandidates no longer caps
+    // this itself — see its header) — bound actual work to BATCH_SIZE here.
+    // The backfill path never needs this slice in practice (Gmail's own
+    // maxResults already bounds `candidateIds` there), but the same line
+    // covers it too rather than branching on syncPhase for no benefit.
+    const newCandidateIds = newCandidateIdsAfterDedup.slice(0, BATCH_SIZE);
+
+    // False from the start whenever the slice above already deferred
+    // something — the checkpoint must not advance past ids that were never
+    // even attempted, not only ones cut off mid-loop by the subrequest
+    // budget (see the loop below, which can also flip this to false).
+    let allProcessed = newCandidateIdsAfterDedup.length <= BATCH_SIZE;
 
     // ── Duplicate-suggestion guard ──
     //
@@ -176,10 +273,46 @@ export async function syncUser(authed: AuthedContext): Promise<SyncOutcome> {
         suggestionDedupeKey(row.type, row.target_application_id, row.suggested_payload),
       );
     }
+    used += SUPABASE_CALL_CHARGE;
 
-    for (const gmailMessageId of candidateIds) {
-      if (await gmailRepo.findMessageByGmailId(userId, gmailMessageId)) continue;
+    // ── Per-user rows hoisted out of the per-message loop ──
+    //
+    // matchApplication's Signals 2/3/4 (contact email/domain, company name)
+    // read the SAME two tables regardless of which message is being
+    // matched — the old code re-fetched both on every single loop
+    // iteration. Fetching once here and passing the rows into
+    // matchApplication's `prefetched` parameter is the other half of the
+    // subrequest fix, alongside the batched dedup above.
+    const { data: applicationRows, error: applicationsError } = await authed.supabase
+      .from("applications")
+      .select("id, company_name, role")
+      .eq("user_id", userId)
+      .eq("archived", false);
+    if (applicationsError) throw applicationsError;
+    used += SUPABASE_CALL_CHARGE;
+    const { data: contactRows, error: contactsError } = await authed.supabase
+      .from("application_contacts")
+      .select("application_id, email")
+      .eq("user_id", userId);
+    if (contactsError) throw contactsError;
+    used += SUPABASE_CALL_CHARGE;
+    const prefetchedMatchData = {
+      applications: (applicationRows ?? []) as ApplicationCandidate[],
+      contacts: (contactRows ?? []) as ContactRow[],
+    };
 
+    for (const gmailMessageId of newCandidateIds) {
+      // Reserved BEFORE starting this message, not charged after — a
+      // message already in flight always finishes; nothing here is ever
+      // interrupted mid-write. Stopping here is normal partial progress,
+      // not an error: the checkpoint below simply doesn't advance, so this
+      // exact page/history-window is safely retried next invocation.
+      if (!canAffordOneMoreMessage(used)) {
+        allProcessed = false;
+        break;
+      }
+
+      used += GMAIL_API_CALL_CHARGE; // getMessageMetadata — goes through gmailFetch's retry loop
       const metadata = await gmailApi.getMessageMetadata(accessToken, gmailMessageId);
       const from = parseFromHeader(metadata.headers.from ?? "");
       const subject = metadata.headers.subject ?? "";
@@ -193,6 +326,7 @@ export async function syncUser(authed: AuthedContext): Promise<SyncOutcome> {
       // suggestion for an application the user already knows about.
       if (!isRelevant(from, subject, { googleEmail: connection.google_email })) continue;
 
+      used += GMAIL_API_CALL_CHARGE; // getFullMessage — goes through gmailFetch's retry loop
       const full = await gmailApi.getFullMessage(accessToken, gmailMessageId);
       const hasIcsAttachment = full.attachments.some(
         (a) => a.filename.toLowerCase().endsWith(".ics") || a.mimeType === "text/calendar",
@@ -206,6 +340,7 @@ export async function syncUser(authed: AuthedContext): Promise<SyncOutcome> {
       // Stage 2 — AI fallback, ONLY when Stage 1 wasn't confident. Never
       // consumes user AI credits (see EmailClassifierAI's own header).
       if (classification.category === "unknown") {
+        used += AI_CLASSIFY_CALL_CHARGE; // classifyWithAI — has its own internal retry loop
         const aiResult = await classifyWithAI(authed, {
           fromDomain: from.domain,
           fromDisplayName: from.displayName,
@@ -237,6 +372,7 @@ export async function syncUser(authed: AuthedContext): Promise<SyncOutcome> {
           (a) => a.filename.toLowerCase().endsWith(".ics") || a.mimeType === "text/calendar",
         );
         if (icsAttachment) {
+          used += GMAIL_API_CALL_CHARGE; // getAttachment — counted before the try so a failed attempt is still charged (the subrequest was still made either way)
           try {
             const bytes = await gmailApi.getAttachment(
               accessToken,
@@ -263,15 +399,26 @@ export async function syncUser(authed: AuthedContext): Promise<SyncOutcome> {
       let match: MatchResult = { kind: "none" };
       let matchedApplicationId: string | null = null;
       if (classification.category !== "unknown") {
-        match = await matchApplication(authed.supabase, userId, {
-          fromAddress: from.address,
-          companyName,
-          gmailThreadId: metadata.threadId,
-          subject,
-        });
+        // matchApplication's own worst case: thread lookup (always, gmailThreadId
+        // is never empty for a Gmail message) + linked-app lookup (conditional on
+        // a thread hit) — both plain Supabase queries, never retried. Contacts/
+        // applications are prefetched, never queried per-message.
+        used += SUPABASE_CALL_CHARGE * 2;
+        match = await matchApplication(
+          authed.supabase,
+          userId,
+          {
+            fromAddress: from.address,
+            companyName,
+            gmailThreadId: metadata.threadId,
+            subject,
+          },
+          prefetchedMatchData,
+        );
         if (match.kind === "single") matchedApplicationId = match.applicationId;
       }
 
+      used += SUPABASE_CALL_CHARGE; // createMessage
       const messageRow = await gmailRepo.createMessage({
         user_id: userId,
         gmail_message_id: metadata.id,
@@ -298,6 +445,7 @@ export async function syncUser(authed: AuthedContext): Promise<SyncOutcome> {
       // below is later accepted or dismissed; an email that arrived is a
       // real fact (see src/types/index.ts's ApplicationTimelineEventType).
       if (matchedApplicationId) {
+        used += SUPABASE_CALL_CHARGE; // application_activity insert
         const { error: timelineError } = await authed.supabase.from("application_activity").insert({
           application_id: matchedApplicationId,
           user_id: userId,
@@ -330,6 +478,7 @@ export async function syncUser(authed: AuthedContext): Promise<SyncOutcome> {
           const key = suggestionDedupeKey(draft.type, draft.targetApplicationId, draft.payload);
           if (pendingKeys.has(key)) continue;
 
+          used += SUPABASE_CALL_CHARGE; // createSuggestion
           await suggestionRepo.createSuggestion({
             user_id: userId,
             gmail_message_id: messageRow.id,
@@ -345,13 +494,41 @@ export async function syncUser(authed: AuthedContext): Promise<SyncOutcome> {
       }
     }
 
-    // ── Checkpoint — only advances now that everything above is committed ──
+    // ── Checkpoint — only advances now that everything above is committed,
+    // AND only for the phase that actually ran this invocation. A budget-
+    // interrupted run (allProcessed === false) always resolves to "leave
+    // the checkpoint where it was" — see GmailSyncBudget.ts. ──
     const nextSyncAt = new Date(Date.now() + MIN_SYNC_INTERVAL_MINUTES * 60_000).toISOString();
+
+    let finalBackfillComplete = connection.gmail_backfill_complete;
+    let finalPageToken = connection.gmail_backfill_page_token;
+    let finalHistoryId: string | undefined;
+
+    if (syncPhase === "backfill") {
+      const checkpoint = resolveBackfillCheckpoint({
+        allProcessed,
+        startingPageToken: startingBackfillPageToken,
+        gmailNextPageToken,
+      });
+      finalBackfillComplete = checkpoint.backfillComplete;
+      finalPageToken = checkpoint.pageTokenToPersist;
+    } else if (syncPhase === "history") {
+      finalHistoryId = resolveHistoryCheckpoint({
+        allProcessed,
+        historyExhausted,
+        latestHistoryId,
+      });
+    } else {
+      // restart_backfill — see the defensive branch above.
+      finalBackfillComplete = false;
+    }
+
+    used += SUPABASE_CALL_CHARGE; // final releaseGmailSyncLock
     await connectionRepo.releaseGmailSyncLock(userId, {
       status: "connected",
-      backfill_complete: backfillComplete,
-      backfill_page_token: backfillComplete ? null : nextBackfillPageToken,
-      ...(newHistoryId ? { history_id: newHistoryId } : {}),
+      backfill_complete: finalBackfillComplete,
+      backfill_page_token: finalBackfillComplete ? null : finalPageToken,
+      ...(finalHistoryId ? { history_id: finalHistoryId } : {}),
       last_synced_at: new Date().toISOString(),
       last_sync_error: null,
       next_sync_at: nextSyncAt,
@@ -368,16 +545,32 @@ export async function syncUser(authed: AuthedContext): Promise<SyncOutcome> {
   }
 }
 
-/** Whether an opportunistic (app-open) sync should fire right now — "Sync Now" bypasses this entirely. */
+/**
+ * Whether an opportunistic (app-open) sync should fire right now — "Sync Now"
+ * bypasses this entirely.
+ *
+ * A `syncing` status only blocks while the lock backing it is still fresh.
+ * Once that lock is stale the run holding it is presumed dead, and this has to
+ * agree with `claimSyncLock` (which will reclaim it): a bare
+ * `status === "syncing" → false` here would mean a connection stranded by a
+ * hard-terminated run never auto-recovers, and only comes back if the user
+ * happens to press Sync Now. `claimSyncLock` remains the atomic authority —
+ * this only decides whether an attempt is worth making.
+ */
 export function isSyncDue(connection: {
   gmail_auto_sync_enabled: boolean;
   gmail_next_sync_at: string | null;
   gmail_status: string;
+  gmail_sync_lock_acquired_at: string | null;
 }): boolean {
   if (!connection.gmail_auto_sync_enabled) return false;
   if (connection.gmail_status === "disconnected" || connection.gmail_status === "needs_reauth")
     return false;
-  if (connection.gmail_status === "syncing") return false;
+  if (
+    connection.gmail_status === "syncing" &&
+    !isSyncLockStale(connection.gmail_sync_lock_acquired_at)
+  )
+    return false;
   if (!connection.gmail_next_sync_at) return true;
   return new Date(connection.gmail_next_sync_at).getTime() <= Date.now();
 }

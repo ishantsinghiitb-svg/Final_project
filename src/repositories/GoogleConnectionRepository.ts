@@ -39,6 +39,27 @@ const CONNECTION_COLUMNS_FULL =
 
 export type GoogleProduct = "gmail" | "calendar";
 
+/**
+ * How long a held sync lock stays authoritative. Past this, the run that took
+ * it is presumed dead (hard-terminated before it could release) and the lock
+ * is reclaimable — see `claimSyncLock`.
+ *
+ * Exported so the opportunistic due-checks (`isSyncDue`,
+ * `isCalendarSyncDue`) apply the SAME window rather than a second copy of the
+ * number: if the two ever disagreed, a connection could be judged
+ * "not due" while `claimSyncLock` would have happily reclaimed it, which is
+ * the silent half-recovery this constant exists to prevent.
+ */
+export const SYNC_LOCK_STALE_MS = 5 * 60 * 1000;
+
+/** True when a held lock is old enough to be treated as abandoned. A null lock is not "stale" — it is simply not held. */
+export function isSyncLockStale(lockAcquiredAt: string | null, now: number = Date.now()): boolean {
+  if (!lockAcquiredAt) return false;
+  const acquired = new Date(lockAcquiredAt).getTime();
+  if (Number.isNaN(acquired)) return true;
+  return acquired < now - SYNC_LOCK_STALE_MS;
+}
+
 export class GoogleConnectionRepository {
   constructor(private readonly client: SupabaseClient<Database> = ambientSupabase) {}
 
@@ -193,9 +214,27 @@ export class GoogleConnectionRepository {
    * Atomic claim guard against two sync triggers racing (e.g. two open
    * tabs), per product. Only the caller that gets a row back may proceed; a
    * lock older than 5 minutes is treated as an abandoned run and reclaimed.
+   *
+   * `syncing` MUST be in the status filter for that reclaim to be reachable.
+   * A lock can only ever be stranded while the status reads `syncing` — a run
+   * that is hard-terminated (worker eviction, client disconnect) never reaches
+   * its release call, so status and lock both stay put. Filtering the status
+   * down to `connected`/`error` therefore excluded the exact state the
+   * staleness rule exists for, and left the connection permanently stuck:
+   * every later trigger got `already_syncing`, with a manual disconnect +
+   * re-consent as the only escape.
+   *
+   * The concurrency guard is unaffected — it is enforced by the staleness
+   * clause below, not by the status list. A `syncing` row whose lock is still
+   * fresh matches neither `.or()` branch and stays blocked.
+   *
+   * `syncing` with a NULL lock is unreachable by construction: every writer
+   * sets status and lock in one atomic UPDATE (claimSyncLock here,
+   * releaseGmailSyncLock/releaseCalendarSyncLock, disconnectProduct,
+   * upsertConnection), so the two columns can never disagree.
    */
   async claimSyncLock(userId: string, product: GoogleProduct): Promise<boolean> {
-    const staleBefore = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+    const staleBefore = new Date(Date.now() - SYNC_LOCK_STALE_MS).toISOString();
     const nowIso = new Date().toISOString();
     const statusColumn = product === "gmail" ? "gmail_status" : "calendar_status";
     const lockColumn =
@@ -208,7 +247,7 @@ export class GoogleConnectionRepository {
       .from("google_connections")
       .update(patch)
       .eq("user_id", userId)
-      .in(statusColumn, ["connected", "error"])
+      .in(statusColumn, ["connected", "error", "syncing"])
       .or(`${lockColumn}.is.null,${lockColumn}.lt.${staleBefore}`)
       .select("id")
       .maybeSingle();

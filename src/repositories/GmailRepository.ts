@@ -34,6 +34,26 @@ export class GmailRepository {
   }
 
   /**
+   * Batched dedup precheck for a whole page of candidate ids — ONE query
+   * instead of `findMessageByGmailId` called once per candidate. This is
+   * the fix for the Gmail sync subrequest exhaustion: with 50 candidates,
+   * the per-id version alone consumed the entire Workers Free 50-subrequest-
+   * per-invocation budget before a single new message was ever fetched.
+   * Returns just the ids so GmailSyncService can filter its candidate list
+   * in memory — the full row content isn't needed for a dedup check.
+   */
+  async findExistingGmailIds(userId: string, gmailMessageIds: string[]): Promise<Set<string>> {
+    if (gmailMessageIds.length === 0) return new Set();
+    const { data, error } = await this.client
+      .from("gmail_messages")
+      .select("gmail_message_id")
+      .eq("user_id", userId)
+      .in("gmail_message_id", gmailMessageIds);
+    if (error) throw error;
+    return new Set((data ?? []).map((row) => row.gmail_message_id as string));
+  }
+
+  /**
    * Prior messages in the same Gmail thread that are already matched to an
    * application — the thread-continuity signal for ApplicationMatcher.
    * Newest first, since only the most recent link matters when a thread was

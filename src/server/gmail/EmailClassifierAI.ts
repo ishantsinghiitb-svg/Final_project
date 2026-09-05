@@ -67,6 +67,13 @@ async function logRun(
 
 export type AIClassificationResult = { category: GmailMessageCategory; confidence: number };
 
+/**
+ * Exported so GmailSyncBudget.ts's subrequest accounting can derive its
+ * worst-case charge for this call from the actual retry ceiling below,
+ * rather than a second constant that could drift out of sync with it.
+ */
+export const CLASSIFY_MAX_ATTEMPTS = 2;
+
 export async function classifyWithAI(
   authed: AuthedContext,
   facts: GmailClassifyFacts,
@@ -93,7 +100,7 @@ export async function classifyWithAI(
         }
         return { data: parsed.data, usage: res.usage };
       },
-      { attempts: 2 },
+      { attempts: CLASSIFY_MAX_ATTEMPTS },
     );
 
     await logRun(sb, user.id, "success", Date.now() - startedAt, {

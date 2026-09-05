@@ -56,9 +56,18 @@ export type CombinedSyncToast = { tone: "success" | "error"; message: string };
 /**
  * useSyncGoogleNow always runs whichever product(s) are connected together —
  * this turns the pair of results into ONE toast, the same way every sync
- * button in the app should read: errors win (surfaced first, whichever
- * product hit one), then a revoked-access case, then a combined success
- * message summing both products' new-suggestion counts.
+ * button in the app should read. Precedence, worst outcome first:
+ *
+ *   1. any hard error          → error, that product's own message
+ *   2. any needs_reauth        → error, reconnect prompt
+ *   3. any other skip          → error, why it didn't run
+ *   4. new suggestions         → success, combined count across both
+ *   5. everything ran, nothing new → success, richer of the two explanations
+ *
+ * THE INVARIANT: if either connected product did not actually sync, the
+ * result is never `tone: "success"`. Steps 1-3 all have to precede the
+ * success paths for that to hold — one product's clean run must never be
+ * able to speak for the other's failure.
  */
 export function combinedSyncOutcomeMessage(
   gmailResult: SyncResultLike | null,
@@ -79,6 +88,23 @@ export function combinedSyncOutcomeMessage(
     };
   }
 
+  // A product that did not run is NOT a success, even when the other one
+  // synced cleanly. This branch has to sit ahead of the success paths below:
+  // without it, a healthy Calendar's counters were enough to produce a green
+  // "Synced — …" toast while Gmail had been skipped, which is exactly how a
+  // sync stuck on `already_syncing` stayed invisible. `needs_reauth` is
+  // deliberately handled above and never reaches here.
+  const skipped = results.find((r) => r.status === "skipped");
+  if (skipped && skipped.status === "skipped") {
+    return {
+      tone: "error",
+      message:
+        skipped.reason === "already_syncing"
+          ? "A sync was already running, so this one was skipped. Try again in a few minutes."
+          : "One of your Google connections didn't sync. Please try again.",
+    };
+  }
+
   const newCount = results.reduce(
     (sum, r) => sum + (r.status === "synced" ? r.suggestionsCreated : 0),
     0,
@@ -93,6 +119,11 @@ export function combinedSyncOutcomeMessage(
   // Neither produced a new suggestion — fall back to whichever synced
   // result has the richer explanation (Calendar's 3-counter shape is more
   // informative than Gmail's when both ran and both came up empty).
+  //
+  // "Nothing ran at all" keeps an error tone: a success-styled toast reading
+  // "Sync didn't run." told the user two opposite things at once.
   const synced = results.find((r) => r.status === "synced");
-  return { tone: "success", message: synced ? syncOutcomeMessage(synced) : "Sync didn't run." };
+  return synced
+    ? { tone: "success", message: syncOutcomeMessage(synced) }
+    : { tone: "error", message: "Sync didn't run." };
 }

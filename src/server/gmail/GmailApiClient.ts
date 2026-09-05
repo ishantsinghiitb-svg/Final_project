@@ -6,8 +6,16 @@
 // src/server/ai/retry.ts's shape) and honors Gmail's `Retry-After` header
 // when present rather than guessing — that module isn't reused directly
 // since it's coupled to AIError, a different domain's error hierarchy.
+//
+// Bounded via fetchWithTimeout (see that file's header) — a hung request now
+// throws within GOOGLE_API_TIMEOUT_MS instead of stalling the sync lock
+// indefinitely. No try/catch around the fetch inside the retry loop below on
+// purpose: a timeout should propagate immediately to the caller (one bounded
+// wait, not a multiplied one across retry attempts), not be treated as a
+// retryable condition the way a 429/5xx response is.
 
 import { base64UrlDecode } from "./base64";
+import { fetchWithTimeout } from "./fetchWithTimeout";
 
 const GMAIL_API_BASE = "https://gmail.googleapis.com/gmail/v1/users/me";
 
@@ -22,7 +30,18 @@ export class GmailApiError extends Error {
 }
 
 type RetryOptions = { attempts?: number; baseDelayMs?: number; maxDelayMs?: number };
-const RETRY_DEFAULTS: Required<RetryOptions> = { attempts: 3, baseDelayMs: 500, maxDelayMs: 5000 };
+/**
+ * Exported so GmailSyncBudget.ts's subrequest accounting can derive its
+ * per-call worst-case charge from this number directly, instead of a second,
+ * independently-maintained constant that could silently drift out of sync
+ * with the real retry ceiling every gmailFetch call is actually subject to.
+ */
+export const GMAIL_FETCH_MAX_ATTEMPTS = 3;
+const RETRY_DEFAULTS: Required<RetryOptions> = {
+  attempts: GMAIL_FETCH_MAX_ATTEMPTS,
+  baseDelayMs: 500,
+  maxDelayMs: 5000,
+};
 
 function isRetryableStatus(status: number): boolean {
   return status === 429 || status >= 500;
@@ -49,7 +68,9 @@ async function gmailFetch(
 
   let lastResponse: Response | undefined;
   for (let attempt = 0; attempt < opts.attempts; attempt++) {
-    const response = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
+    const response = await fetchWithTimeout(url, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
     if (response.ok || !isRetryableStatus(response.status)) return response;
     lastResponse = response;
     if (attempt === opts.attempts - 1) break;
