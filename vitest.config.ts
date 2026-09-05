@@ -25,7 +25,12 @@ export default defineConfig({
   },
   test: {
     environment: "node",
-    include: ["src/**/*.test.ts"],
+    // `extension/src` is included so the extension's auth path (the bridged
+    // Supabase session → `/api/extension/*` request) is covered by the same
+    // `npm test` run as the server side of that same request. The extension
+    // has no test runner of its own; vitest resolves from the repo root
+    // node_modules for both trees.
+    include: ["src/**/*.test.ts", "extension/src/**/*.test.ts"],
     // The AI engine is the only tested area today; a `coverage` threshold
     // across the whole repo would report a misleading number.
     coverage: {

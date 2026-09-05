@@ -62,7 +62,20 @@ export const JOB_BOARD_MATCH_PATTERNS = [
  * `TRUSTED_APP_ORIGINS` for a transition period so an already-open tab on
  * the old URL keeps bridging its session.
  */
-export const PRODUCTION_APP_ORIGIN =
+export const PRODUCTION_APP_ORIGIN = "https://getofferlyst.com";
+
+/**
+ * The raw Cloudflare Worker origin the app is also served from. Users never
+ * see it: `src/server/canonicalHost.ts` 301s user-facing page requests that
+ * land here to PRODUCTION_APP_ORIGIN. It stays in `TRUSTED_APP_ORIGINS` only
+ * so an extension build that is still pointed at the Worker origin (an older
+ * install, or a `VITE_APP_URL` override) keeps working, and so a tab that is
+ * somehow still on this host can bridge its session.
+ *
+ * Not the value of `PRODUCTION_APP_ORIGIN` any more — that moved to the
+ * custom domain in the same release that added the canonical-host redirect.
+ */
+export const WORKER_APP_ORIGIN =
   "https://ishantsinghiitb-svg-final-project.ishantsingh-iitb.workers.dev";
 
 /** Local dev server origin — the port `npm run dev` serves the web app on. */
@@ -90,6 +103,7 @@ export const TRUSTED_APP_ORIGINS = [
   "http://localhost:*/*",
   "http://127.0.0.1:*/*",
   `${PRODUCTION_APP_ORIGIN}/*`,
+  `${WORKER_APP_ORIGIN}/*`,
 ] as const;
 
 /** chrome.storage.local key the auth-bridge session is persisted under. */

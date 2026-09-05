@@ -2,8 +2,13 @@ import { sendMessage } from "../../shared/messaging/bus";
 import { MessageType } from "../../shared/messaging/types";
 
 /**
- * Runs only on the OfferLyst web app's own origin (see the second
- * content_scripts entry in manifest.config.ts, currently localhost-only).
+ * Runs only on the OfferLyst web app's own origins — `TRUSTED_APP_ORIGINS`
+ * (shared/constants.ts), which is the second content_scripts entry in
+ * manifest.config.ts: the production domain, the raw Worker origin, and
+ * localhost for development. That list MUST include whatever origin users
+ * actually sign in on; if it doesn't, no session is ever bridged and every
+ * server call from the extension fails as unauthenticated.
+ *
  * Reads the Supabase session the web app already persisted to localStorage
  * and relays it to the background worker — this is the entire auth bridge;
  * there is no separate extension login.

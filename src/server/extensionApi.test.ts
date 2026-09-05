@@ -211,3 +211,128 @@ describe("POST /api/extension/parse-resume", () => {
     expect(parseResumeForUser).not.toHaveBeenCalled();
   });
 });
+
+// ── /api/extension/analyze-match handler ──
+//
+// The route behind the extension panel's "Analyze Match" button. Its 401
+// body — {"ok":false,"message":"Not authenticated."} — is what the panel
+// renders verbatim, so these pin down exactly when it is (and isn't) produced,
+// and that identity always comes from the server-verified token.
+
+function postAnalyzeMatch(body: Record<string, unknown>, origin = "chrome-extension://abc123") {
+  return new Request("https://getofferlyst.com/api/extension/analyze-match", {
+    method: "POST",
+    headers: { origin, "content-type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
+const MATCH_OK = {
+  ok: true as const,
+  analysis: { overallScore: 82, matchLabel: "Strong match" },
+  cacheHit: false,
+  credits: { creditsRemaining: 4 },
+};
+
+describe("POST /api/extension/analyze-match", () => {
+  beforeEach(() => {
+    analyzeResumeMatch.mockResolvedValue(MATCH_OK);
+  });
+
+  it("an authenticated request runs the analysis and returns score, label and credits", async () => {
+    const res = await handleExtensionApiRequest(
+      postAnalyzeMatch({ accessToken: "tok", resumeId: "resume-1", jobId: "job-1" }),
+    );
+    expect(res?.status).toBe(200);
+    expect(await res?.json()).toEqual({
+      ok: true,
+      score: 82,
+      label: "Strong match",
+      creditsRemaining: 4,
+    });
+  });
+
+  it("an expired or invalid access token is rejected with 401 before any analysis runs", async () => {
+    requireUser.mockRejectedValue(new Error("Not authenticated: invalid session"));
+    const res = await handleExtensionApiRequest(
+      postAnalyzeMatch({ accessToken: "expired", resumeId: "resume-1", jobId: "job-1" }),
+    );
+    expect(res?.status).toBe(401);
+    expect(await res?.json()).toEqual({ ok: false, message: "Not authenticated." });
+    expect(analyzeResumeMatch).not.toHaveBeenCalled();
+  });
+
+  it("a missing access token is rejected without calling the AI engine", async () => {
+    const res = await handleExtensionApiRequest(
+      postAnalyzeMatch({ resumeId: "resume-1", jobId: "job-1" }),
+    );
+    expect(res?.status).toBe(400);
+    expect(requireUser).not.toHaveBeenCalled();
+    expect(analyzeResumeMatch).not.toHaveBeenCalled();
+  });
+
+  it("identity comes from the verified token — a client-supplied userId is ignored", async () => {
+    await handleExtensionApiRequest(
+      postAnalyzeMatch({
+        accessToken: "tok",
+        resumeId: "resume-1",
+        jobId: "job-1",
+        userId: "someone-else",
+      }),
+    );
+    // The service receives the server-built authed context (its RLS-scoped
+    // supabase client + verified user), never anything from the body.
+    expect(requireUser).toHaveBeenCalledWith("tok");
+    expect(analyzeResumeMatch).toHaveBeenCalledWith(AUTHED, "resume-1", "job-1", {
+      forceRefresh: false,
+    });
+  });
+
+  it("another user's resume id resolves to resume_not_found, never their analysis", async () => {
+    // `analyzeResumeMatch` looks the resume up through the caller's own
+    // RLS-scoped client (resumes_select_own), so a resume the caller does not
+    // own simply isn't visible.
+    analyzeResumeMatch.mockResolvedValue({
+      ok: false,
+      code: "resume_not_found",
+      message: "Resume not found.",
+    });
+    const res = await handleExtensionApiRequest(
+      postAnalyzeMatch({ accessToken: "tok", resumeId: "someone-elses-resume", jobId: "job-1" }),
+    );
+    const body = await res?.json();
+    expect(body).toMatchObject({ ok: false, code: "resume_not_found" });
+    expect(body.score).toBeUndefined();
+    expect(analyzeResumeMatch).toHaveBeenCalledWith(AUTHED, "someone-elses-resume", "job-1", {
+      forceRefresh: false,
+    });
+  });
+
+  it("an out-of-credits failure is a structured 200, not an auth error", async () => {
+    analyzeResumeMatch.mockResolvedValue({
+      ok: false,
+      code: "insufficient_credits",
+      message: "You're out of AI credits.",
+    });
+    const res = await handleExtensionApiRequest(
+      postAnalyzeMatch({ accessToken: "tok", resumeId: "resume-1", jobId: "job-1" }),
+    );
+    expect(res?.status).toBe(200);
+    expect(await res?.json()).toMatchObject({ ok: false, code: "insufficient_credits" });
+  });
+
+  it("reflects the extension's own origin back and no other", async () => {
+    const allowed = await handleExtensionApiRequest(
+      postAnalyzeMatch({ accessToken: "tok", resumeId: "resume-1", jobId: "job-1" }),
+    );
+    expect(allowed?.headers.get("access-control-allow-origin")).toBe("chrome-extension://abc123");
+
+    const foreign = await handleExtensionApiRequest(
+      postAnalyzeMatch(
+        { accessToken: "tok", resumeId: "resume-1", jobId: "job-1" },
+        "https://evil.example.com",
+      ),
+    );
+    expect(foreign?.headers.get("access-control-allow-origin")).toBeNull();
+  });
+});
