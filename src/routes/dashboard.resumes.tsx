@@ -123,7 +123,7 @@ function ResumesPage() {
       </StickyPageHeader>
 
       {isLoading ? (
-        <div className="grid place-items-center py-20 text-[oklch(0.5_0.02_265)]">
+        <div className="grid place-items-center py-16 text-[oklch(0.5_0.02_265)]">
           <Loader2 className="h-6 w-6 animate-spin" />
         </div>
       ) : resumes.length === 0 ? (
@@ -143,7 +143,7 @@ function ResumesPage() {
               four full-width cards before the user reaches a single resume,
               which is the opposite of what they came here for. The same
               numbers stay one tap away inside each resume's detail view. */}
-          <div className="hidden gap-4 md:grid md:grid-cols-4">
+          <div className="hidden gap-3 md:grid md:grid-cols-4">
             <StatTile icon={FileText} label="Total resumes" value={String(resumes.length)} />
             <StatTile
               icon={Star}
@@ -173,7 +173,7 @@ function ResumesPage() {
               container. On a real uploaded resume that overflowed the
               viewport by up to 27px on phones — the resume card ignored its
               container width entirely below `lg`. */}
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1.4fr_1fr]">
+          <div className="grid grid-cols-1 gap-3 lg:grid-cols-[1.4fr_1fr]">
             <div className="space-y-3">
               {resumes.map((r) => (
                 <ResumeLibraryEntry
@@ -191,7 +191,7 @@ function ResumesPage() {
             </div>
 
             {/* Desktop: detail sits beside the list, as before. */}
-            <div className="hidden space-y-4 lg:block">
+            <div className="hidden space-y-3 lg:block">
               {selected && (
                 <ResumeDetail
                   resumeId={selected.id}
@@ -233,7 +233,7 @@ function ResumesPage() {
                     <X className="h-4 w-4" />
                   </button>
                 </div>
-                <div className="space-y-4 p-4">
+                <div className="space-y-3 p-4">
                   <ResumeDetail
                     resumeId={selected.id}
                     parseStatus={selected.parse_status}
@@ -292,7 +292,7 @@ function StatTile({
       </div>
       <div className="min-w-0">
         <p className="truncate text-xs text-[oklch(0.5_0.02_265)]">{label}</p>
-        <p className="truncate font-display text-lg font-semibold text-[oklch(0.2_0.02_265)]">
+        <p className="truncate font-display text-base font-semibold text-[oklch(0.2_0.02_265)]">
           {value}
         </p>
       </div>
@@ -428,7 +428,7 @@ function ResumeDetail({
         <DashCard className="border-[#7C3AED]/15 bg-gradient-to-br from-[#2563EB]/[0.04] to-[#7C3AED]/[0.06]">
           <div className="flex items-start gap-3">
             <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-white/70 text-[#7C3AED]">
-              <Wand2 className="h-4.5 w-4.5" />
+              <Wand2 className="h-4 w-4" />
             </div>
             <div className="min-w-0 flex-1">
               <p className="font-display text-sm font-semibold text-[oklch(0.22_0.02_265)]">
@@ -438,17 +438,17 @@ function ResumeDetail({
                 Review AI suggestions and save an improved version. You keep control of every
                 change.
               </p>
-              <button
+              <DashButton
                 onClick={() =>
                   void navigate({
                     to: "/dashboard/resumes/$resumeId/optimize",
                     params: { resumeId },
                   })
                 }
-                className="mt-3 inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-br from-[#2563EB] to-[#7C3AED] px-3.5 py-2 text-sm font-semibold text-white shadow-[0_4px_14px_-4px_rgba(37,99,235,0.6)] transition-all hover:-translate-y-px"
+                className="mt-3"
               >
                 <Sparkles className="h-4 w-4" /> Optimize resume
-              </button>
+              </DashButton>
             </div>
           </div>
         </DashCard>
@@ -486,7 +486,7 @@ function ResumeDetail({
           </div>
 
           {parsed?.structured && parsed.structured.skills.length > 0 && (
-            <div className="mt-4">
+            <div className="mt-3">
               <p className="text-[11px] uppercase tracking-[0.14em] text-[oklch(0.5_0.02_265)]">
                 Skills
               </p>
@@ -504,7 +504,7 @@ function ResumeDetail({
           )}
 
           {parsed?.structured && parsed.structured.detectedSections.length > 0 && (
-            <div className="mt-4">
+            <div className="mt-3">
               <p className="text-[11px] uppercase tracking-[0.14em] text-[oklch(0.5_0.02_265)]">
                 Detected sections
               </p>

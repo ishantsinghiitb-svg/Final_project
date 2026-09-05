@@ -88,7 +88,7 @@ export function ResumeHealthPanel({
   const issues = health.checks.filter((c) => c.status !== "pass");
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       <div className="flex items-center gap-2">
         <div className="grid h-9 w-9 place-items-center rounded-lg bg-gradient-to-br from-[#2563EB]/10 to-[#7C3AED]/15 text-[#2563EB]">
           <HeartPulse className="h-4 w-4" />

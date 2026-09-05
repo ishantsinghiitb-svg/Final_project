@@ -102,7 +102,7 @@ export function ResumeListItem({
     <div
       onClick={isRenaming ? undefined : onSelect}
       className={cn(
-        "group relative rounded-2xl border bg-white p-4 shadow-[0_1px_2px_rgba(0,0,0,0.03)] transition-all",
+        "group relative rounded-2xl border bg-white p-3.5 shadow-[0_1px_2px_rgba(0,0,0,0.03)] transition-all",
         isRenaming ? "cursor-default" : "cursor-pointer",
         selected
           ? "border-[#2563EB]/30 shadow-[0_2px_10px_-2px_rgba(37,99,235,0.18)] ring-1 ring-[#2563EB]/15"
@@ -130,7 +130,7 @@ export function ResumeListItem({
             />
           ) : (
             <div className="flex items-center gap-2">
-              <p className="truncate font-display font-semibold text-[oklch(0.2_0.02_265)]">
+              <p className="truncate font-display text-[14px] font-semibold text-[oklch(0.2_0.02_265)]">
                 {resume.name}
               </p>
               {resume.is_default && (
@@ -141,7 +141,7 @@ export function ResumeListItem({
             </div>
           )}
 
-          <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-[oklch(0.5_0.02_265)]">
+          <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-[oklch(0.5_0.02_265)]">
             <Chip tone={statusTone(resume.parse_status)}>
               {RESUME_PARSE_STATUS_LABELS[resume.parse_status ?? "pending"] ?? "Pending"}
             </Chip>
