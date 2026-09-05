@@ -226,7 +226,7 @@ function OverviewPage() {
 
         {pendingCalendarCount > 0 && (
           <Link to="/dashboard/inbox" className="block">
-            <DashCard className="!p-3 border-[#2563EB]/15 bg-[#2563EB]/[0.03] transition-colors hover:bg-[#2563EB]/[0.06]">
+            <DashCard className="!p-2.5 border-[#2563EB]/15 bg-[#2563EB]/[0.03] transition-colors hover:bg-[#2563EB]/[0.06]">
               <p className="flex items-center gap-2 text-sm">
                 <CalendarSearch className="h-4 w-4 shrink-0 text-[#2563EB]" />
                 <span className="font-medium text-[oklch(0.2_0.02_265)]">
@@ -248,29 +248,29 @@ function OverviewPage() {
               {stepsDone} of {setupSteps.length} done
             </span>
           </div>
-          <div className="mt-3 grid gap-2 sm:grid-cols-2">
+          <div className="mt-2 grid gap-1 sm:grid-cols-2">
             {setupSteps.map((step) => (
               <div
                 key={step.id}
-                className={`flex items-start gap-3 rounded-xl border p-3 ${
+                className={`flex items-start gap-2 rounded-xl border p-2 ${
                   step.done ? "border-[#22C55E]/20 bg-[#22C55E]/[0.04]" : "border-black/5 bg-white"
                 }`}
               >
                 {step.done ? (
-                  <CheckCircle2 className="mt-0.5 h-4.5 w-4.5 shrink-0 text-[#22C55E]" />
+                  <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-[#22C55E]" />
                 ) : (
-                  <Circle className="mt-0.5 h-4.5 w-4.5 shrink-0 text-[oklch(0.72_0.02_265)]" />
+                  <Circle className="mt-0.5 h-4 w-4 shrink-0 text-[oklch(0.72_0.02_265)]" />
                 )}
                 <div className="min-w-0 flex-1">
                   <p
-                    className={`text-[13px] font-medium ${
+                    className={`text-[12px] font-medium ${
                       step.done ? "text-[oklch(0.5_0.02_265)]" : ""
                     }`}
                   >
                     {step.label}
                   </p>
                   {!step.done && (
-                    <p className="mt-0.5 text-xs leading-snug text-[oklch(0.5_0.02_265)]">
+                    <p className="mt-0.5 hidden text-xs leading-snug text-[oklch(0.5_0.02_265)] sm:block">
                       {step.detail}
                     </p>
                   )}
@@ -279,7 +279,7 @@ function OverviewPage() {
                   <Link
                     to={step.to}
                     aria-label={`${step.label}: go`}
-                    className="inline-flex min-h-[32px] shrink-0 items-center rounded px-2 text-xs font-medium text-[#2563EB] hover:bg-[#2563EB]/[0.06] hover:underline"
+                    className="inline-flex min-h-[26px] shrink-0 items-center rounded px-2 text-xs font-medium text-[#2563EB] hover:bg-[#2563EB]/[0.06] hover:underline"
                   >
                     Go →
                   </Link>
@@ -290,26 +290,26 @@ function OverviewPage() {
         </DashCard>
       )}
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-1.5 sm:grid-cols-2 lg:grid-cols-4">
         {kpis.map((s) => (
           <Link key={s.l} to={s.to} className="block">
             <DashCard className="h-full transition-shadow hover:shadow-md">
               <div className="flex items-start justify-between">
                 <div>
                   <p className="text-xs text-[oklch(0.5_0.02_265)]">{s.l}</p>
-                  <p className="mt-1 font-display text-2xl font-semibold tabular-nums">{s.v}</p>
+                  <p className="mt-0.5 font-display text-base font-semibold tabular-nums">{s.v}</p>
                 </div>
-                <s.icon className={`h-4 w-4 shrink-0 ${s.tone}`} />
+                <s.icon className={`h-3.5 w-3.5 shrink-0 ${s.tone}`} />
               </div>
-              <p className="mt-1.5 text-[11px] text-[oklch(0.55_0.02_265)]">{s.q}</p>
+              <p className="mt-1 text-[11px] text-[oklch(0.55_0.02_265)]">{s.q}</p>
             </DashCard>
           </Link>
         ))}
       </div>
 
-      <div className="grid gap-3 lg:grid-cols-[1fr_240px] lg:items-start">
+      <div className="grid gap-2 lg:grid-cols-[1fr_240px] lg:items-start">
         {/* ── Main column: Up next + Pipeline ─────────────────────────── */}
-        <div className="space-y-3 min-w-0">
+        <div className="space-y-2 min-w-0">
           <DashCard>
             <SectionTitle
               action={
@@ -333,12 +333,12 @@ function OverviewPage() {
                 <Link
                   to="/dashboard/interviews/$interviewId"
                   params={{ interviewId: nextInterview.id }}
-                  className="mt-3 flex items-center gap-4 rounded-xl border border-[#7C3AED]/15 bg-gradient-to-br from-[#7C3AED]/[0.06] to-[#2563EB]/[0.04] p-4 transition-colors hover:border-[#7C3AED]/30"
+                  className="mt-2 flex items-center gap-2 rounded-xl border border-[#7C3AED]/15 bg-gradient-to-br from-[#7C3AED]/[0.06] to-[#2563EB]/[0.04] p-2 transition-colors hover:border-[#7C3AED]/30"
                 >
                   <CompanyMark
                     company={nextInterview.company_name}
                     tone={logoToneForCompany(nextInterview.company_name)}
-                    size={40}
+                    size={36}
                     logoUrl={nextInterview.company_logo_url}
                   />
                   <div className="min-w-0 flex-1">
@@ -355,13 +355,13 @@ function OverviewPage() {
                       {nextInterview.interviewer ? ` · with ${nextInterview.interviewer}` : ""}
                     </p>
                   </div>
-                  <ArrowUpRight className="hidden h-4 w-4 shrink-0 text-[#7C3AED] md:block" />
+                  <ArrowUpRight className="hidden h-3.5 w-3.5 shrink-0 text-[#7C3AED] md:block" />
                 </Link>
 
                 {nextReminder && (
-                  <div className="mt-3 flex items-center gap-3 rounded-xl border border-black/5 bg-[oklch(0.98_0.005_265)] p-3">
-                    <div className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[#0891B2]/10 text-[#0891B2]">
-                      <BellRing className="h-4 w-4" />
+                  <div className="mt-2 flex items-center gap-2 rounded-xl border border-black/5 bg-[oklch(0.98_0.005_265)] p-2">
+                    <div className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-[#0891B2]/10 text-[#0891B2]">
+                      <BellRing className="h-3.5 w-3.5" />
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-medium text-[oklch(0.2_0.02_265)]">
@@ -378,7 +378,7 @@ function OverviewPage() {
             ) : nextReminder ? (
               <ReminderAsUpNext reminder={nextReminder} formatWhen={formatInterviewWhen} />
             ) : (
-              <p className="mt-3 rounded-xl border border-black/5 bg-[oklch(0.98_0.005_265)] p-4 text-sm text-[oklch(0.5_0.02_265)]">
+              <p className="mt-2 rounded-xl border border-black/5 bg-[oklch(0.98_0.005_265)] p-2.5 text-sm text-[oklch(0.5_0.02_265)]">
                 No interviews scheduled. They appear here once you add one, or accept a suggestion
                 from your inbox.
               </p>
@@ -399,7 +399,7 @@ function OverviewPage() {
               Pipeline at a glance
             </SectionTitle>
             {applications.length === 0 ? (
-              <p className="mt-3 rounded-xl border border-black/5 bg-[oklch(0.98_0.005_265)] p-4 text-sm text-[oklch(0.5_0.02_265)]">
+              <p className="mt-2 rounded-xl border border-black/5 bg-[oklch(0.98_0.005_265)] p-2.5 text-sm text-[oklch(0.5_0.02_265)]">
                 Nothing tracked yet. Applications you start appear here by stage.
               </p>
             ) : (
@@ -408,12 +408,12 @@ function OverviewPage() {
               // column onto an orphaned second row. Desktop widths comfortably
               // fit all of KANBAN_COLUMNS without scrolling; narrower
               // viewports scroll horizontally instead.
-              <div className="-mx-1 mt-3 overflow-x-auto px-1 pb-1">
-                <div className="flex gap-3">
+              <div className="-mx-1 mt-2 overflow-x-auto px-1 pb-1">
+                <div className="flex gap-2">
                   {pipeline.map((col) => (
                     <div
                       key={col.status}
-                      className="w-[220px] shrink-0 rounded-xl border border-black/5 bg-[oklch(0.98_0.005_265)] p-3"
+                      className="w-[200px] shrink-0 rounded-xl border border-black/5 bg-[oklch(0.98_0.005_265)] p-2"
                     >
                       <div className="flex items-center justify-between text-xs">
                         <span className="inline-flex items-center gap-1.5 font-semibold">
@@ -424,19 +424,19 @@ function OverviewPage() {
                           {col.items.length}
                         </span>
                       </div>
-                      <div className="mt-2 space-y-2">
+                      <div className="mt-1 space-y-1">
                         {col.items.slice(0, 2).map((it) => (
                           <Link
                             key={it.id}
                             to="/dashboard/applications/$applicationId"
                             params={{ applicationId: it.id }}
-                            className="block rounded-lg border border-black/5 bg-white p-2.5 transition-shadow hover:shadow-sm"
+                            className="block rounded-lg border border-black/5 bg-white p-1.5 transition-shadow hover:shadow-sm"
                           >
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-1.5">
                               <CompanyMark
                                 company={it.company_name}
                                 tone={logoToneForCompany(it.company_name)}
-                                size={20}
+                                size={18}
                                 logoUrl={it.company_logo_url}
                               />
                               <p className="truncate text-xs font-semibold">{it.company_name}</p>
@@ -464,7 +464,7 @@ function OverviewPage() {
         <div>
           <DashCard>
             <SectionTitle>Quick actions</SectionTitle>
-            <div className="mt-3 flex flex-col gap-2">
+            <div className="mt-2 flex flex-col gap-1">
               {[
                 { l: "Browse jobs", i: Briefcase, to: "/dashboard/jobs" as const },
                 { l: "Applications", i: ListChecks, to: "/dashboard/applications" as const },
@@ -477,9 +477,9 @@ function OverviewPage() {
                 <Link
                   key={q.l}
                   to={q.to}
-                  className="flex items-center gap-2 rounded-xl border border-black/5 bg-[oklch(0.98_0.005_265)] px-3 py-2.5 text-[13px] transition-colors hover:bg-black/[0.03]"
+                  className="flex items-center gap-2 rounded-xl border border-black/5 bg-[oklch(0.98_0.005_265)] px-2 py-1.5 text-[12px] transition-colors hover:bg-black/[0.03]"
                 >
-                  <q.i className="h-4 w-4 shrink-0 text-[#2563EB]" />
+                  <q.i className="h-3.5 w-3.5 shrink-0 text-[#2563EB]" />
                   {q.l}
                 </Link>
               ))}
@@ -501,8 +501,8 @@ function ReminderAsUpNext({
 }) {
   const content = (
     <>
-      <div className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#0891B2]/10 text-[#0891B2]">
-        <BellRing className="h-4 w-4" />
+      <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[#0891B2]/10 text-[#0891B2]">
+        <BellRing className="h-3.5 w-3.5" />
       </div>
       <div className="min-w-0 flex-1">
         <p className="font-display font-semibold">{reminder.title}</p>
@@ -510,11 +510,11 @@ function ReminderAsUpNext({
           {formatWhen(reminder.remind_at)} · {format(parseISO(reminder.remind_at), "h:mm a")}
         </p>
       </div>
-      <ArrowUpRight className="hidden h-4 w-4 shrink-0 text-[#0891B2] md:block" />
+      <ArrowUpRight className="hidden h-3.5 w-3.5 shrink-0 text-[#0891B2] md:block" />
     </>
   );
   const className =
-    "mt-3 flex items-center gap-4 rounded-xl border border-[#0891B2]/15 bg-gradient-to-br from-[#0891B2]/[0.06] to-[#2563EB]/[0.04] p-4 transition-colors hover:border-[#0891B2]/30";
+    "mt-2 flex items-center gap-2.5 rounded-xl border border-[#0891B2]/15 bg-gradient-to-br from-[#0891B2]/[0.06] to-[#2563EB]/[0.04] p-2.5 transition-colors hover:border-[#0891B2]/30";
 
   return reminder.application_id ? (
     <Link

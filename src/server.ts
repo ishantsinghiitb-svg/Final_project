@@ -2,6 +2,8 @@ import "./lib/error-capture";
 
 import { consumeLastCapturedError } from "./lib/error-capture";
 import { renderErrorPage } from "./lib/error-page";
+import { handleCanonicalHostRedirect } from "./server/canonicalHost";
+import { handleClientErrorRequest } from "./server/clientErrors";
 import { handleExtensionApiRequest } from "./server/extensionApi";
 import { handleHealthRequest } from "./server/health";
 
@@ -49,6 +51,13 @@ function isH3SwallowedErrorBody(body: string): boolean {
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
     try {
+      // Canonical host: send user-facing page requests that arrived on the
+      // raw *.workers.dev origin to https://getofferlyst.com (same path).
+      // No-ops for /api/*, /auth/*, /_*, non-GET, and requests already on
+      // the canonical host — see src/server/canonicalHost.ts.
+      const canonicalRedirect = handleCanonicalHostRedirect(request);
+      if (canonicalRedirect) return canonicalRedirect;
+
       // Liveness check (/api/health), same interception style as the
       // extension API below — see src/server/health.ts for why it stays
       // dependency-free.
@@ -61,6 +70,11 @@ export default {
       // other path, which falls through to normal SSR unchanged.
       const extensionResponse = await handleExtensionApiRequest(request);
       if (extensionResponse) return extensionResponse;
+
+      // Client-side crash reports (/api/client-error), same interception
+      // style as the two above — see src/server/clientErrors.ts.
+      const clientErrorResponse = await handleClientErrorRequest(request);
+      if (clientErrorResponse) return clientErrorResponse;
 
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);

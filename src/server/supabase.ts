@@ -26,7 +26,7 @@ export function createServerSupabase(accessToken: string): ServerSupabase {
 /** Service-role client — bypasses RLS. Reserved for narrow privileged paths. */
 export function createServiceSupabase(): ServerSupabase {
   const url = requireEnv("SUPABASE_URL", serverEnv.supabaseUrl);
-  const serviceKey = requireEnv("SUPABASE_SERVICE_ROLE_KEY", serverEnv.supabaseServiceRoleKey);
+  const serviceKey = requireEnv("SUPABASE_SECRET_KEY", serverEnv.supabaseServiceRoleKey);
 
   return createClient<Database>(url, serviceKey, {
     auth: { persistSession: false, autoRefreshToken: false },

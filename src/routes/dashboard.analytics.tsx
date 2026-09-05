@@ -192,7 +192,7 @@ function AnalyticsContent({
           const tone = KPI_TONE[s.label];
           const Icon = tone.icon;
           return (
-            <DashCard key={s.label} className="p-4">
+            <DashCard key={s.label}>
               <div className="flex items-center gap-2">
                 <span
                   className={cn("grid h-7 w-7 shrink-0 place-items-center rounded-lg", tone.iconBg)}
@@ -201,7 +201,7 @@ function AnalyticsContent({
                 </span>
                 <span className="text-xs font-medium text-[oklch(0.5_0.02_265)]">{s.label}</span>
               </div>
-              <p className="mt-2 font-display text-3xl font-bold tracking-tight text-[oklch(0.15_0.02_265)]">
+              <p className="mt-1.5 font-display text-2xl font-bold tracking-tight text-[oklch(0.15_0.02_265)]">
                 {s.value}
               </p>
             </DashCard>

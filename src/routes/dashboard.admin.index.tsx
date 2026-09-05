@@ -22,12 +22,36 @@ export const Route = createFileRoute("/dashboard/admin/")({
 type Tone = { icon: typeof Users; iconBg: string; iconColor: string };
 
 const TILES: { key: string; label: string; tone: Tone }[] = [
-  { key: "totalUsers", label: "Total Users", tone: { icon: Users, iconBg: "bg-[#2563EB]/10", iconColor: "text-[#2563EB]" } },
-  { key: "activeUsersLast7d", label: "Active (7d)", tone: { icon: Activity, iconBg: "bg-[#22C55E]/15", iconColor: "text-[#16A34A]" } },
-  { key: "totalApplications", label: "Applications", tone: { icon: Briefcase, iconBg: "bg-[#7C3AED]/10", iconColor: "text-[#7C3AED]" } },
-  { key: "totalGlobalJobs", label: "Jobs Indexed", tone: { icon: Briefcase, iconBg: "bg-[#F59E0B]/15", iconColor: "text-[#D97706]" } },
-  { key: "usersWithAiUsage", label: "Users Using AI", tone: { icon: Sparkles, iconBg: "bg-[#2563EB]/10", iconColor: "text-[#2563EB]" } },
-  { key: "feedbackCount", label: "Feedback Received", tone: { icon: MessageSquareText, iconBg: "bg-[#F43F5E]/10", iconColor: "text-[#E11D48]" } },
+  {
+    key: "totalUsers",
+    label: "Total Users",
+    tone: { icon: Users, iconBg: "bg-[#2563EB]/10", iconColor: "text-[#2563EB]" },
+  },
+  {
+    key: "activeUsersLast7d",
+    label: "Active (7d)",
+    tone: { icon: Activity, iconBg: "bg-[#22C55E]/15", iconColor: "text-[#16A34A]" },
+  },
+  {
+    key: "totalApplications",
+    label: "Applications",
+    tone: { icon: Briefcase, iconBg: "bg-[#7C3AED]/10", iconColor: "text-[#7C3AED]" },
+  },
+  {
+    key: "totalGlobalJobs",
+    label: "Jobs Indexed",
+    tone: { icon: Briefcase, iconBg: "bg-[#F59E0B]/15", iconColor: "text-[#D97706]" },
+  },
+  {
+    key: "usersWithAiUsage",
+    label: "Users Using AI",
+    tone: { icon: Sparkles, iconBg: "bg-[#2563EB]/10", iconColor: "text-[#2563EB]" },
+  },
+  {
+    key: "feedbackCount",
+    label: "Feedback Received",
+    tone: { icon: MessageSquareText, iconBg: "bg-[#F43F5E]/10", iconColor: "text-[#E11D48]" },
+  },
 ];
 
 function AdminOverviewPage() {
@@ -69,7 +93,7 @@ function AdminOverviewPage() {
         {TILES.map((tile) => {
           const Icon = tile.tone.icon;
           return (
-            <DashCard key={tile.key} className="p-4">
+            <DashCard key={tile.key}>
               <div className="flex items-center gap-2">
                 <span
                   className={cn(
@@ -81,7 +105,7 @@ function AdminOverviewPage() {
                 </span>
                 <span className="text-xs font-medium text-[oklch(0.5_0.02_265)]">{tile.label}</span>
               </div>
-              <p className="mt-2 font-display text-3xl font-bold tracking-tight text-[oklch(0.15_0.02_265)]">
+              <p className="mt-1.5 font-display text-2xl font-bold tracking-tight text-[oklch(0.15_0.02_265)]">
                 {values[tile.key]}
               </p>
             </DashCard>

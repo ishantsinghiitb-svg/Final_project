@@ -69,7 +69,7 @@ export function SuggestionReviewList({
     <div className="space-y-4">
       {(auditSummary || summary) && <AuditCard auditSummary={auditSummary || summary} />}
 
-      <div className="sticky top-15 z-10 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-black/5 bg-white/95 px-4 py-3 shadow-[0_1px_2px_rgba(0,0,0,0.03)] backdrop-blur">
+      <div className="sticky top-11 z-10 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-black/5 bg-white/95 px-4 py-3 shadow-[0_1px_2px_rgba(0,0,0,0.03)] backdrop-blur">
         <div className="flex items-center gap-2 text-sm text-[oklch(0.45_0.02_265)]">
           <ClipboardList className="h-4 w-4 text-[#7C3AED]" />
           <span>

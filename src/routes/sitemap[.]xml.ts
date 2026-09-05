@@ -1,21 +1,22 @@
 import { createFileRoute } from "@tanstack/react-router";
 import type {} from "@tanstack/react-start";
+import { SITE_URL } from "@/content/site";
 
 // ── sitemap.xml (Module 13 · Phase 6) ──
 //
 // Bug fix: BASE_URL used to be a hardcoded empty string, which made every
 // <loc> a relative path ("/features" instead of "https://.../features") —
 // a sitemap-protocol violation that risks crawlers rejecting the file
-// outright. Deriving the origin from the incoming request (same pattern
-// already used by src/routes/auth.google.callback.ts's GET handler) fixes
-// this without guessing at a production domain this repo has no record of —
-// it is correct in dev, any preview deployment, and prod alike.
+// outright. Prefer the configured canonical origin (VITE_SITE_URL) so every
+// <loc> is the public getofferlyst.com URL even when this file is fetched on
+// the raw workers.dev origin; fall back to the request origin (correct in
+// dev and any preview deployment) when it is unset.
 
 export const Route = createFileRoute("/sitemap.xml")({
   server: {
     handlers: {
       GET: async ({ request }) => {
-        const origin = new URL(request.url).origin;
+        const origin = SITE_URL || new URL(request.url).origin;
         const entries = [
           { path: "/", priority: "1.0", changefreq: "weekly" },
           { path: "/features", priority: "0.9", changefreq: "monthly" },
@@ -26,7 +27,11 @@ export const Route = createFileRoute("/sitemap.xml")({
           { path: "/blog", priority: "0.6", changefreq: "weekly" },
           { path: "/blog/track-job-applications", priority: "0.5", changefreq: "monthly" },
           { path: "/blog/free-resume-tools-india", priority: "0.5", changefreq: "monthly" },
-          { path: "/blog/naukri-internshala-linkedin-tracking", priority: "0.5", changefreq: "monthly" },
+          {
+            path: "/blog/naukri-internshala-linkedin-tracking",
+            priority: "0.5",
+            changefreq: "monthly",
+          },
           { path: "/contact", priority: "0.6", changefreq: "monthly" },
           { path: "/privacy", priority: "0.3", changefreq: "yearly" },
           { path: "/terms", priority: "0.3", changefreq: "yearly" },

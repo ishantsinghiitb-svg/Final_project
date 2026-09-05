@@ -76,9 +76,9 @@ export function NotificationBell() {
       <button
         onClick={() => setOpen((o) => !o)}
         aria-label="Notifications"
-        className="grid h-9 w-9 place-items-center rounded-lg border border-black/5 bg-white text-[oklch(0.4_0.02_265)] hover:bg-black/[0.03]"
+        className="grid h-8 w-8 place-items-center rounded-lg border border-black/5 bg-white text-[oklch(0.4_0.02_265)] hover:bg-black/[0.03]"
       >
-        <Bell className="h-4 w-4" />
+        <Bell className="h-3.5 w-3.5" />
         {items.length > 0 && (
           <span className="absolute right-1.5 top-1.5 grid h-4 min-w-4 place-items-center rounded-full bg-[#F43F5E] px-1 text-[9px] font-semibold text-white">
             {items.length}
@@ -86,7 +86,7 @@ export function NotificationBell() {
         )}
       </button>
       {open && (
-        <div className="absolute right-0 top-11 w-[340px] overflow-hidden rounded-xl border border-black/10 bg-white shadow-[0_20px_60px_-20px_rgba(0,0,0,0.25)]">
+        <div className="absolute right-0 top-10 w-[340px] overflow-hidden rounded-xl border border-black/10 bg-white shadow-[0_20px_60px_-20px_rgba(0,0,0,0.25)]">
           <div className="border-b border-black/5 px-4 py-3">
             <p className="font-display text-sm font-semibold">Notifications</p>
           </div>

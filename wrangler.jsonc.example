@@ -1,0 +1,31 @@
+// ── Runtime (non-secret) Cloudflare Worker Variables — TEMPLATE ──────────
+//
+// Copy this file to `wrangler.jsonc` (gitignored) and fill in real values.
+// Merged into the nitro-generated .output/server/wrangler.json on every
+// `npm run build` (see node_modules/nitro/dist/_presets.mjs:
+// readWranglerConfig() finds it via findNearestFile, writeWranglerConfig()
+// merges it via defu(overrides, ctxConfig, userConfig, defaults) — "vars"
+// is not one of nitro's own override keys, so it survives untouched into
+// the deployed config).
+//
+// WHY THIS FILE EXISTS: these three were previously added by hand via the
+// Cloudflare Dashboard as plain Variables. Because the generated wrangler
+// config declared no "vars" block, `wrangler deploy` treated its own
+// (var-less) config as authoritative and silently WIPED every dashboard-
+// added plain Variable on each deploy — this took down Google OAuth and
+// Admin access in production twice. Declaring them here instead makes them
+// part of the deployed config itself, so they survive every future deploy
+// automatically.
+//
+// Secrets (GOOGLE_CLIENT_SECRET, GOOGLE_OAUTH_STATE_SECRET,
+// GOOGLE_TOKEN_ENCRYPTION_KEY, GMAIL_OAUTH_STATE_SECRET,
+// GMAIL_TOKEN_ENCRYPTION_KEY, SUPABASE_SECRET_KEY, OPENAI_API_KEY,
+// VITE_SUPABASE_ANON_KEY) must NEVER go here — they stay as
+// `wrangler secret put`-managed Secrets, which are unaffected by this bug.
+{
+  "vars": {
+    "GOOGLE_CLIENT_ID": "your-google-oauth-client-id.apps.googleusercontent.com",
+    "GOOGLE_OAUTH_REDIRECT_URI": "https://your-worker-subdomain.workers.dev/auth/google/callback",
+    "ADMIN_EMAILS": "you@example.com"
+  }
+}

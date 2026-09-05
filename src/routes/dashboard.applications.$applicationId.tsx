@@ -278,7 +278,7 @@ function ApplicationDetailPage() {
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <div className="space-y-6 max-w-6xl mx-auto">
+    <div className="space-y-4 max-w-6xl mx-auto">
       {/* Back button */}
       <Link
         to="/dashboard/applications"
@@ -367,9 +367,9 @@ function ApplicationDetailPage() {
         </div>
       </DashCard>
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_280px]">
+      <div className="grid gap-4 lg:grid-cols-[1fr_280px]">
         {/* ── Left: Application Summary + Timeline ────────────────────── */}
-        <div className="space-y-6">
+        <div className="space-y-4">
           {/* Application summary */}
           <DashCard>
             <SectionTitle>Application Summary</SectionTitle>

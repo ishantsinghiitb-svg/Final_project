@@ -242,7 +242,7 @@ function InterviewDetailPage() {
   const completedSessions = mockSessions.filter((session) => session.status === "concluded");
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6">
+    <div className="mx-auto max-w-6xl space-y-4">
       <Link
         to="/dashboard/interviews"
         className="inline-flex items-center gap-1.5 text-sm text-[oklch(0.5_0.02_265)] transition-colors hover:text-[oklch(0.2_0.02_265)]"
@@ -410,8 +410,8 @@ function InterviewDetailPage() {
         />
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_280px]">
-        <div className="space-y-6">
+      <div className="grid gap-4 lg:grid-cols-[1fr_280px]">
+        <div className="space-y-4">
           <DashCard>
             <SectionTitle>Interview Details</SectionTitle>
             <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-3">

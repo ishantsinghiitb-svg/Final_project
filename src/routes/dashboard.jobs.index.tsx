@@ -413,7 +413,7 @@ function JobsPage() {
         value={sortKey}
         onChange={(e) => setFilter("sort", e.target.value)}
         aria-label="Sort jobs"
-        className="h-9 rounded-lg border border-black/5 bg-white px-3 text-sm"
+        className="h-8 rounded-lg border border-black/5 bg-white px-2 text-[13px]"
       >
         {(Object.keys(SORT_OPTIONS) as JobSortOption[]).map((key) => (
           <option key={key} value={key}>
@@ -464,7 +464,7 @@ function JobsPage() {
         value={search.postedAfter ?? ""}
         onChange={(e) => setFilter("postedAfter", e.target.value)}
         aria-label="Posted date"
-        className="h-9 rounded-lg border border-black/5 bg-white px-3 text-sm"
+        className="h-8 rounded-lg border border-black/5 bg-white px-2 text-[13px]"
       >
         {POSTED_AFTER_OPTIONS.map((o) => (
           <option key={o.label} value={o.value}>
@@ -473,7 +473,7 @@ function JobsPage() {
         ))}
       </select>
 
-      <label className="inline-flex h-9 cursor-pointer select-none items-center gap-2 rounded-lg border border-black/5 bg-white px-3 text-sm">
+      <label className="inline-flex h-8 cursor-pointer select-none items-center gap-1.5 rounded-lg border border-black/5 bg-white px-2 text-[13px]">
         <input
           type="checkbox"
           checked={Boolean(search.remote)}
@@ -485,7 +485,7 @@ function JobsPage() {
       {(isFiltered || activeFilterCount > 0) && (
         <button
           onClick={resetFilters}
-          className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-black/5 bg-white px-3 text-xs font-medium text-[oklch(0.4_0.02_265)] transition-colors hover:bg-black/[0.03]"
+          className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-black/5 bg-white px-2 text-xs font-medium text-[oklch(0.4_0.02_265)] transition-colors hover:bg-black/[0.03]"
         >
           <X className="h-3.5 w-3.5" />
           Reset
@@ -558,8 +558,8 @@ function JobsPage() {
                 onClick={() => setView("all")}
                 className={
                   view === "all"
-                    ? "rounded-md bg-[oklch(0.95_0.02_265)] px-3 py-1.5 text-[#2563EB]"
-                    : "rounded-md px-3 py-1.5 text-[oklch(0.45_0.02_265)] hover:bg-black/[0.03]"
+                    ? "rounded-md bg-[oklch(0.95_0.02_265)] px-2.5 py-1 text-[#2563EB]"
+                    : "rounded-md px-2.5 py-1 text-[oklch(0.45_0.02_265)] hover:bg-black/[0.03]"
                 }
               >
                 All Jobs{allJobsCount > 0 ? ` (${allJobsCount})` : ""}
@@ -568,8 +568,8 @@ function JobsPage() {
                 onClick={() => setView("recent")}
                 className={
                   view === "recent"
-                    ? "rounded-md bg-[oklch(0.95_0.02_265)] px-3 py-1.5 text-[#2563EB]"
-                    : "rounded-md px-3 py-1.5 text-[oklch(0.45_0.02_265)] hover:bg-black/[0.03]"
+                    ? "rounded-md bg-[oklch(0.95_0.02_265)] px-2.5 py-1 text-[#2563EB]"
+                    : "rounded-md px-2.5 py-1 text-[oklch(0.45_0.02_265)] hover:bg-black/[0.03]"
                 }
               >
                 Recently Viewed{recentlyViewed.length > 0 ? ` (${recentlyViewed.length})` : ""}
@@ -584,7 +584,7 @@ function JobsPage() {
               key={t.value}
               onClick={() => setEmploymentTab(t.value)}
               aria-pressed={employmentTab === t.value}
-              className={`rounded-lg px-2.5 py-1 text-xs transition-colors ${
+              className={`rounded-lg px-2.5 py-0.5 text-xs transition-colors ${
                 employmentTab === t.value
                   ? "bg-[oklch(0.95_0.02_265)] font-medium text-[#2563EB]"
                   : "text-[oklch(0.45_0.02_265)] hover:bg-black/[0.03]"
@@ -603,10 +603,10 @@ function JobsPage() {
               eight controls into the header meant either a wall of wrapped
               rows or unusably small targets. Both mount points render the SAME
               `FilterControls` element, so there is one implementation. */}
-          <div className="flex flex-wrap items-center gap-2 p-3">
+          <div className="flex flex-wrap items-center gap-1.5 p-2.5">
             {/* Keyword search */}
-            <div className="flex h-9 min-w-[180px] flex-1 items-center gap-2 rounded-lg border border-black/5 bg-white px-3 text-sm">
-              <Search className="h-4 w-4 shrink-0 text-[oklch(0.5_0.02_265)]" />
+            <div className="flex h-9 min-w-[180px] flex-1 items-center gap-2 rounded-lg border border-black/5 bg-white px-2 text-sm">
+              <Search className="h-3.5 w-3.5 shrink-0 text-[oklch(0.5_0.02_265)]" />
               <input
                 ref={searchInputRef}
                 defaultValue={q}
@@ -623,7 +623,7 @@ function JobsPage() {
             <button
               onClick={() => setFiltersOpen(true)}
               aria-haspopup="dialog"
-              className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg border border-black/5 bg-white px-3 text-sm font-medium text-[oklch(0.35_0.02_265)] transition-colors hover:bg-black/[0.03] md:hidden"
+              className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg border border-black/5 bg-white px-2.5 text-[13px] font-medium text-[oklch(0.35_0.02_265)] transition-colors hover:bg-black/[0.03] md:hidden"
             >
               <SlidersHorizontal className="h-4 w-4" />
               Filters
@@ -634,7 +634,7 @@ function JobsPage() {
               )}
             </button>
 
-            <div className="hidden flex-wrap items-center gap-2 md:flex">{filterControls}</div>
+            <div className="hidden flex-wrap items-center gap-1.5 md:flex">{filterControls}</div>
           </div>
         </DashCard>
       </StickyPageHeader>

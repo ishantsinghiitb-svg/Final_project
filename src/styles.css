@@ -56,25 +56,25 @@
 :root {
   /* OfferLyst dark-first identity. Marketing site is always dark. */
   --radius: 0.75rem;
-  --background: oklch(0.13 0.02 265);       /* #030712-ish */
+  --background: oklch(0.13 0.02 265); /* #030712-ish */
   --foreground: oklch(0.97 0.005 250);
-  --surface: oklch(0.19 0.03 265);          /* #0F172A */
-  --card: oklch(0.22 0.028 265);            /* #111827 */
+  --surface: oklch(0.19 0.03 265); /* #0F172A */
+  --card: oklch(0.22 0.028 265); /* #111827 */
   --card-foreground: oklch(0.97 0.005 250);
   --popover: oklch(0.19 0.03 265);
   --popover-foreground: oklch(0.97 0.005 250);
-  --primary: oklch(0.58 0.21 260);          /* #2563EB */
+  --primary: oklch(0.58 0.21 260); /* #2563EB */
   --primary-foreground: oklch(0.99 0 0);
-  --secondary: oklch(0.55 0.24 295);        /* #7C3AED */
+  --secondary: oklch(0.55 0.24 295); /* #7C3AED */
   --secondary-foreground: oklch(0.99 0 0);
   --muted: oklch(0.28 0.02 265);
   --muted-foreground: oklch(0.72 0.02 260);
   --accent: oklch(0.28 0.03 265);
   --accent-foreground: oklch(0.97 0.005 250);
-  --destructive: oklch(0.63 0.24 27);       /* #EF4444 */
+  --destructive: oklch(0.63 0.24 27); /* #EF4444 */
   --destructive-foreground: oklch(0.99 0 0);
-  --success: oklch(0.72 0.18 145);          /* #22C55E */
-  --warning: oklch(0.78 0.16 75);           /* #F59E0B */
+  --success: oklch(0.72 0.18 145); /* #22C55E */
+  --warning: oklch(0.78 0.16 75); /* #F59E0B */
   --info: oklch(0.7 0.14 230);
   --border: oklch(1 0 0 / 8%);
   --input: oklch(1 0 0 / 10%);
@@ -94,18 +94,48 @@
   --sidebar-ring: oklch(0.58 0.21 260 / 60%);
 }
 
+/* ── Authenticated workspace compact type scale ───────────────────────────
+   Two rounds of trimming padding/spacing weren't enough, because most of the
+   perceived "large" feel comes from Tailwind's default text-sm/text-xs body
+   copy (14px/12px) used pervasively across dashboard components — not from
+   the shell chrome those rounds touched. Tailwind v4 utilities read their
+   size from a CSS variable at render time (`.text-sm{font-size:var(--text-sm)}`,
+   confirmed against the compiled output), so redefining that variable on a
+   scoped class shrinks every `text-sm`/`text-xs` element beneath it — the
+   textbook "fix the shared token" version of a density pass — without
+   touching a single component file.
+
+   Applied ONLY on `.dash-scope`, which DashboardShell puts on its own root
+   AND (via a mount effect, since Radix portals — dialogs, popovers, selects —
+   render into document.body, not this subtree) on <body> only while a
+   dashboard route is mounted. Marketing pages render with SiteNav/SiteFooter
+   instead of DashboardShell and never carry this class, so their typography
+   (and this file's `text-fluid-*` marketing scale above) is untouched. This
+   is NOT the global html/root font-size — that stays the browser default
+   everywhere, including inside the dashboard. */
+.dash-scope {
+  --text-xs: 0.6875rem; /* 12px -> 11px */
+  --text-xs--line-height: 1.3;
+  --text-sm: 0.8125rem; /* 14px -> 13px */
+  --text-sm--line-height: 1.3;
+}
+
 @layer base {
   * {
     border-color: var(--color-border);
   }
-  html, body {
+  html,
+  body {
     background-color: var(--color-background);
     color: var(--color-foreground);
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
   }
-  h1, h2, h3, h4 {
+  h1,
+  h2,
+  h3,
+  h4 {
     font-family: var(--font-display);
     letter-spacing: -0.02em;
   }
@@ -209,25 +239,49 @@
 }
 
 @keyframes float-slow {
-  0%, 100% { transform: translateY(0) }
-  50% { transform: translateY(-10px) }
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
 }
 @keyframes float-slower {
-  0%, 100% { transform: translateY(0) }
-  50% { transform: translateY(-14px) }
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-14px);
+  }
 }
 @keyframes shimmer {
-  0% { background-position: -400px 0; }
-  100% { background-position: 400px 0; }
+  0% {
+    background-position: -400px 0;
+  }
+  100% {
+    background-position: 400px 0;
+  }
 }
 
 @keyframes reveal-up {
-  from { opacity: 0; transform: translateY(16px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 @keyframes fade-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 @utility animate-float {
@@ -243,17 +297,36 @@
    the eye away from the page. All of it collapses to static under
    prefers-reduced-motion (see the media query below). */
 @keyframes ai-sweep {
-  0%   { transform: translateX(-60%) scaleX(0.55); }
-  50%  { transform: translateX(20%)  scaleX(1); }
-  100% { transform: translateX(160%) scaleX(0.55); }
+  0% {
+    transform: translateX(-60%) scaleX(0.55);
+  }
+  50% {
+    transform: translateX(20%) scaleX(1);
+  }
+  100% {
+    transform: translateX(160%) scaleX(0.55);
+  }
 }
 @keyframes ai-breathe {
-  0%, 100% { opacity: 0.55; transform: scale(0.92); }
-  50%      { opacity: 1;    transform: scale(1.06); }
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: scale(0.92);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.06);
+  }
 }
 @keyframes ai-phase-in {
-  from { opacity: 0; transform: translateY(5px); }
-  to   { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @utility animate-ai-sweep {
@@ -275,16 +348,29 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .reveal { opacity: 1; animation: none !important; }
-  .animate-float, .animate-float-slow { animation: none !important; }
+  .reveal {
+    opacity: 1;
+    animation: none !important;
+  }
+  .animate-float,
+  .animate-float-slow {
+    animation: none !important;
+  }
   /* AI loading stays fully legible without motion — the phase text still
      advances, it just appears instead of sliding, and the sweep holds still. */
   .animate-ai-sweep,
   .animate-ai-breathe,
-  .animate-ai-phase-in { animation: none !important; opacity: 1; transform: none; }
+  .animate-ai-phase-in {
+    animation: none !important;
+    opacity: 1;
+    transform: none;
+  }
 }
 
-::selection { background: oklch(0.58 0.21 260 / 0.35); color: white; }
+::selection {
+  background: oklch(0.58 0.21 260 / 0.35);
+  color: white;
+}
 
 /* ── Unstyled (custom) toasts ─────────────────────────────────────────────
    sonner applies the shared toast classNames to every toast, including
@@ -303,7 +389,10 @@
 
 /* Premium card hover elevation */
 .card-hover {
-  transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1), border-color 0.25s ease, box-shadow 0.25s ease;
+  transition:
+    transform 0.25s cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 0.25s ease,
+    box-shadow 0.25s ease;
 }
 .card-hover:hover {
   transform: translateY(-3px);
@@ -332,6 +421,10 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .card-hover:hover { transform: none; }
-  .link-underline::after { transition: none; }
+  .card-hover:hover {
+    transform: none;
+  }
+  .link-underline::after {
+    transition: none;
+  }
 }

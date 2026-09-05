@@ -19,7 +19,14 @@ export const serverEnv = {
     fromProcess("SUPABASE_ANON_KEY"),
 
   // Server-only secrets.
-  supabaseServiceRoleKey: fromProcess("SUPABASE_SERVICE_ROLE_KEY"),
+  // Migrating from Supabase's legacy JWT-based service_role key to the newer
+  // sb_secret_... API key format — SUPABASE_SECRET_KEY is canonical,
+  // SUPABASE_SERVICE_ROLE_KEY is read as a fallback so this deploys safely
+  // regardless of which order the code change and the Cloudflare secret
+  // land in. Remove the fallback once SUPABASE_SECRET_KEY is confirmed
+  // live everywhere and the old plaintext Variable is deleted.
+  supabaseServiceRoleKey:
+    fromProcess("SUPABASE_SECRET_KEY") || fromProcess("SUPABASE_SERVICE_ROLE_KEY"),
   openaiApiKey: fromProcess("OPENAI_API_KEY"),
   anthropicApiKey: fromProcess("ANTHROPIC_API_KEY"),
   geminiApiKey: fromProcess("GEMINI_API_KEY"),

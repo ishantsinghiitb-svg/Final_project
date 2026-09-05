@@ -20,6 +20,12 @@ dist-ssr
 # Wrangler / Cloudflare
 .wrangler/
 .dev.vars
+# Local-only runtime vars (real ADMIN_EMAILS/GOOGLE_CLIENT_ID/redirect URI —
+# see wrangler.jsonc.example for the committed template). Merged into the
+# generated wrangler config at build time; must never be committed.
+wrangler.json
+wrangler.jsonc
+wrangler.toml
 
 # Editor directories and files
 .vscode/*

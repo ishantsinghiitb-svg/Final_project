@@ -15,7 +15,7 @@ export function DashCard({
     <div
       className={cn(
         "rounded-2xl border border-black/5 bg-white shadow-[0_1px_2px_rgba(0,0,0,0.03)]",
-        padded && "p-5",
+        padded && "p-3.5",
         className,
       )}
     >
@@ -46,9 +46,9 @@ export function StickyPageHeader({
         // page's filter/search bar, and pinning that ate a large share of a
         // 360-430px viewport for the entire scroll. Below md it scrolls away
         // with the page; desktop behaviour is unchanged.
-        // `top-14` matches DashboardShell's h-14 header exactly — at the
-        // previous top-15 a 4px strip of content showed through the gap.
-        "z-10 space-y-3 bg-[oklch(0.98_0.005_250)]/95 pb-3 backdrop-blur-sm md:sticky md:top-14",
+        // `top-11` matches DashboardShell's h-11 header exactly — any
+        // mismatch leaves a strip of content showing through the gap.
+        "z-10 space-y-2 bg-[oklch(0.98_0.005_250)]/95 pb-2 backdrop-blur-sm md:sticky md:top-11",
         className,
       )}
     >
@@ -79,17 +79,24 @@ export function PageHeader({
   leftActions?: ReactNode;
 }) {
   return (
-    <div className="flex flex-wrap items-end justify-between gap-4">
+    <div className="flex flex-wrap items-end justify-between gap-3">
       <div>
         {eyebrow && (
           <p className="text-[11px] uppercase tracking-[0.18em] text-[oklch(0.5_0.02_265)]">
             {eyebrow}
           </p>
         )}
-        <h1 className="mt-1 font-display text-[26px] font-semibold tracking-tight text-[oklch(0.2_0.02_265)]">
+        <h1 className="mt-0.5 font-display text-[18px] font-semibold tracking-tight text-[oklch(0.2_0.02_265)]">
           {title}
         </h1>
-        {subtitle && <p className="mt-1 text-sm text-[oklch(0.45_0.02_265)]">{subtitle}</p>}
+        {/* Hidden below sm — a page's descriptive subtitle is helper text,
+            not information the mobile hierarchy needs (see the mobile
+            information-hierarchy pass): every page's subtitle disappears on
+            phones so the title and the actions below it get the space
+            instead. Unaffected on tablet/desktop. */}
+        {subtitle && (
+          <p className="mt-1 hidden text-sm text-[oklch(0.45_0.02_265)] sm:block">{subtitle}</p>
+        )}
       </div>
       {/* Without leftActions: ml-auto + justify-end keeps the buttons hard
           against the right edge even when the header wraps to two rows —
@@ -122,13 +129,13 @@ export function EmptyState({
   cta?: ReactNode;
 }) {
   return (
-    <div className="grid place-items-center rounded-2xl border border-dashed border-black/10 bg-white/50 p-12 text-center">
-      <div className="grid h-11 w-11 place-items-center rounded-xl bg-gradient-to-br from-[#2563EB]/10 to-[#7C3AED]/15 text-[#2563EB]">
-        <Icon className="h-5 w-5" />
+    <div className="grid place-items-center rounded-2xl border border-dashed border-black/10 bg-white/50 p-6 text-center">
+      <div className="grid h-8 w-8 place-items-center rounded-xl bg-gradient-to-br from-[#2563EB]/10 to-[#7C3AED]/15 text-[#2563EB]">
+        <Icon className="h-4 w-4" />
       </div>
-      <p className="mt-3 font-display text-base font-semibold">{title}</p>
+      <p className="mt-2.5 font-display text-sm font-semibold">{title}</p>
       <p className="mt-1 max-w-sm text-sm text-[oklch(0.45_0.02_265)]">{body}</p>
-      {cta && <div className="mt-4">{cta}</div>}
+      {cta && <div className="mt-3">{cta}</div>}
     </div>
   );
 }
@@ -161,7 +168,7 @@ export function Chip({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium",
+        "inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[11px] font-medium",
         map[tone],
         className,
       )}
@@ -237,7 +244,7 @@ export function IconButton({
       aria-label={label}
       onClick={onClick}
       className={cn(
-        "grid h-9 w-9 place-items-center rounded-lg border border-black/5 bg-white text-[oklch(0.4_0.02_265)] transition-colors hover:bg-black/[0.03] hover:text-[oklch(0.2_0.02_265)]",
+        "grid h-8 w-8 place-items-center rounded-lg border border-black/5 bg-white text-[oklch(0.4_0.02_265)] transition-colors hover:bg-black/[0.03] hover:text-[oklch(0.2_0.02_265)]",
         className,
       )}
     >
@@ -358,7 +365,7 @@ export function MultiSelectDropdown({
         type="button"
         onClick={() => setOpen((o) => !o)}
         className={cn(
-          "flex h-9 items-center gap-1.5 rounded-lg border bg-white px-3 text-sm transition-colors",
+          "flex h-8 items-center gap-1.5 rounded-lg border bg-white px-2 text-[13px] transition-colors",
           selected.length > 0
             ? "border-[#2563EB]/30 text-[#2563EB]"
             : "border-black/5 text-[oklch(0.4_0.02_265)] hover:border-black/10",
@@ -369,7 +376,7 @@ export function MultiSelectDropdown({
       </button>
 
       {open && (
-        <div className="absolute left-0 top-10 z-20 w-52 overflow-hidden rounded-xl border border-black/5 bg-white shadow-[0_12px_40px_-8px_rgba(0,0,0,0.18)]">
+        <div className="absolute left-0 top-9 z-20 w-52 overflow-hidden rounded-xl border border-black/5 bg-white shadow-[0_12px_40px_-8px_rgba(0,0,0,0.18)]">
           <div className="flex items-center gap-1.5 border-b border-black/5 px-3 py-2">
             <Search className="h-3.5 w-3.5 shrink-0 text-[oklch(0.55_0.02_265)]" />
             <input
@@ -392,7 +399,7 @@ export function MultiSelectDropdown({
                 return (
                   <label
                     key={o.value}
-                    className="flex cursor-pointer items-center gap-2.5 px-3 py-2 text-sm text-[oklch(0.35_0.02_265)] transition-colors hover:bg-black/[0.03]"
+                    className="flex cursor-pointer items-center gap-2.5 px-3 py-1.5 text-sm text-[oklch(0.35_0.02_265)] transition-colors hover:bg-black/[0.03]"
                   >
                     <input
                       type="checkbox"
@@ -425,7 +432,9 @@ export function MultiSelectDropdown({
 export function SectionTitle({ children, action }: { children: ReactNode; action?: ReactNode }) {
   return (
     <div className="flex items-center justify-between">
-      <p className="font-display text-sm font-semibold text-[oklch(0.25_0.02_265)]">{children}</p>
+      <p className="font-display text-[12px] font-semibold text-[oklch(0.25_0.02_265)]">
+        {children}
+      </p>
       {action}
     </div>
   );

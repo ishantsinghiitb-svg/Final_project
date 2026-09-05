@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowRight, CirclePlay as PlayCircle, Trophy } from "lucide-react";
+import { ArrowRight, CalendarClock, CirclePlay as PlayCircle, Inbox, Trophy } from "lucide-react";
 import { SUPPORTED_PLATFORM_NAMES } from "@/content/extension";
 import { HeroComposition } from "@/components/site/HeroComposition";
 import { LogoRow } from "@/components/site/LogoRow";
@@ -12,7 +12,7 @@ export const Route = createFileRoute("/")({
   head: () => ({
     ...pageSeo({
       path: "/",
-      title: "Job Application Tracker & Resume AI — OfferLyst",
+      title: "OfferLyst",
       description:
         "Save jobs from the sites you already use, tailor your resume with AI, track every application, and land your next offer, all in one calm workspace.",
       ogDescription:
@@ -40,6 +40,7 @@ function Index() {
     <>
       <Hero />
       <LogoRow />
+      <AboutSection />
       <StorySteps />
       <PipelinePreview />
       <BuiltForSection />
@@ -89,6 +90,43 @@ function Hero() {
         <HeroComposition />
       </div>
     </section>
+  );
+}
+
+/* -------------------------------------------------------- About / Google */
+
+function AboutSection() {
+  return (
+    <Section
+      align="center"
+      title="What is OfferLyst?"
+      description="OfferLyst is an AI-powered job search and application management platform. It helps you save and organize job opportunities, tailor your resume, track applications, prepare for interviews, and stay on top of your job search in one workspace."
+    >
+      <div className="mx-auto max-w-2xl">
+        <div className="card-hover rounded-2xl border border-white/8 bg-white/[0.02] p-6 md:p-8">
+          <div className="flex items-center gap-3">
+            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg border border-white/10 bg-gradient-to-br from-white/5 to-transparent text-[#93C5FD]">
+              <Inbox className="h-5 w-5" />
+            </span>
+            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg border border-white/10 bg-gradient-to-br from-white/5 to-transparent text-[#93C5FD]">
+              <CalendarClock className="h-5 w-5" />
+            </span>
+          </div>
+          <h3 className="mt-4 font-display text-fluid-h3 font-semibold tracking-tight">
+            Stay on top of recruiting updates
+          </h3>
+          <p className="mt-3 text-sm leading-relaxed text-muted-foreground md:text-base">
+            OfferLyst can connect to your Google account to read relevant Gmail messages and Google
+            Calendar events. This helps identify interview invitations and application updates so
+            you can review them in OfferLyst.
+          </p>
+          <p className="mt-3 text-sm leading-relaxed text-muted-foreground md:text-base">
+            Google data is accessed in read-only mode. OfferLyst does not send, delete, or modify
+            your emails or calendar events.
+          </p>
+        </div>
+      </div>
+    </Section>
   );
 }
 

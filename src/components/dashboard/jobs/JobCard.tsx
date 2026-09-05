@@ -67,7 +67,7 @@ export const JobCard = memo(function JobCard({
   const openingsCount = duplicateCount > 0 ? duplicateCount + 1 : 0;
 
   return (
-    <li className="group flex items-center gap-4 px-4 py-4 hover:bg-[oklch(0.98_0.005_265)] transition-colors">
+    <li className="group flex items-center gap-3 px-3 py-3 hover:bg-[oklch(0.98_0.005_265)] transition-colors">
       {/*
        * The entire left region is a <Link> so clicking anywhere on the card
        * navigates to the detail page. The Save and Apply buttons outside the
@@ -76,18 +76,22 @@ export const JobCard = memo(function JobCard({
       <Link
         to="/dashboard/jobs/$jobId"
         params={{ jobId: job.id }}
-        className="flex flex-1 min-w-0 items-center gap-4"
+        className="flex flex-1 min-w-0 items-center gap-3"
       >
         <CompanyMark
           company={job.company_name}
           tone={tone}
-          size={46}
+          size={40}
           logoUrl={job.company_logo_url}
         />
 
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2 flex-wrap">
-            <p className="truncate font-display text-[15px] font-semibold">{job.role}</p>
+          <div className="flex items-center gap-1 flex-wrap">
+            <p className="truncate font-display text-[14px] font-semibold">{job.role}</p>
+            {/* Remote/work-mode is the one status badge kept on mobile — the
+                rest of this row is secondary metadata, hidden below sm to
+                keep the mobile card to title + company + primary status +
+                primary action (see the mobile information-hierarchy pass). */}
             {job.remote && (
               <Chip tone="green" className="shrink-0">
                 Remote
@@ -108,12 +112,12 @@ export const JobCard = memo(function JobCard({
               </Chip>
             )}
             {job.experience_level && (
-              <Chip tone="default" className="shrink-0">
+              <Chip tone="default" className="hidden shrink-0 sm:inline-flex">
                 {job.experience_level}
               </Chip>
             )}
             {openingsCount > 0 && (
-              <Chip tone="blue" className="shrink-0">
+              <Chip tone="blue" className="hidden shrink-0 sm:inline-flex">
                 {openingsCount} openings
               </Chip>
             )}
@@ -122,34 +126,35 @@ export const JobCard = memo(function JobCard({
                 once it's been matched to a verified company record, so this
                 is never a new/separate scoring mechanism. */}
             {job.company_id && (
-              <Chip tone="green" className="shrink-0">
+              <Chip tone="green" className="hidden shrink-0 sm:inline-flex">
                 <BadgeCheck className="h-3 w-3" /> Verified
               </Chip>
             )}
           </div>
 
-          <div className="mt-1 flex items-center gap-2 flex-wrap">
-            <p className="text-[13px] text-[oklch(0.5_0.02_265)]">
+          <div className="mt-0.5 flex items-center gap-1.5 flex-wrap">
+            <p className="text-[12px] text-[oklch(0.5_0.02_265)]">
               {job.company_name}
               {location && (
-                <>
+                <span className="hidden sm:inline">
                   {" · "}
                   <MapPin className="inline h-3 w-3" /> {location}
-                </>
+                </span>
               )}
             </p>
             {job.employment_type && (
-              <span className="flex items-center gap-0.5 text-[13px] text-[oklch(0.5_0.02_265)]">
+              <span className="hidden items-center gap-0.5 text-[11px] text-[oklch(0.5_0.02_265)] sm:flex">
                 <Briefcase className="h-3 w-3" /> {job.employment_type}
               </span>
             )}
             {/*
              * Salary already contains the currency symbol (e.g. "₹18L–₹30L"
              * or "$120K–$150K"). Use Banknote icon — never a DollarSign icon
-             * which would produce "$ ₹18L" double-currency.
+             * which would produce "$ ₹18L" double-currency. Hidden on mobile —
+             * secondary metadata, not essential to the compact mobile card.
              */}
             {salary && (
-              <span className="flex items-center gap-0.5 text-[13px] text-[oklch(0.5_0.02_265)]">
+              <span className="hidden items-center gap-0.5 text-[11px] text-[oklch(0.5_0.02_265)] sm:flex">
                 <Banknote className="h-3 w-3" /> {salary}
               </span>
             )}
@@ -192,7 +197,7 @@ export const JobCard = memo(function JobCard({
         {job.url && (
           <button
             onClick={() => onApply(job)}
-            className="hidden md:inline-flex items-center gap-1 rounded-lg border border-black/5 bg-white px-2.5 py-1.5 text-xs font-medium text-[oklch(0.25_0.02_265)] hover:bg-black/[0.03] transition-colors"
+            className="hidden md:inline-flex h-8 items-center gap-1 rounded-lg border border-black/5 bg-white px-2.5 text-[12px] font-medium text-[oklch(0.25_0.02_265)] hover:bg-black/[0.03] transition-colors"
           >
             Apply
             <ArrowUpRight className="h-3 w-3" />

@@ -12,6 +12,7 @@ import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
+import { absoluteUrl } from "@/content/site";
 import { AuthProvider } from "@/context/AuthContext";
 import { ProfileProvider } from "@/context/ProfileContext";
 import { Toaster } from "@/components/ui/sonner";
@@ -97,10 +98,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
           "Save jobs from anywhere, tailor your resume with AI, track every application, and land your next offer — all in one calm workspace.",
       },
       { property: "og:type", content: "website" },
-      { property: "og:image", content: "/image.png" },
+      // Absolute when VITE_SITE_URL is set (social scrapers don't resolve
+      // relative image URLs); degrades to the relative path otherwise.
+      { property: "og:image", content: absoluteUrl("/image.png") },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:title", content: "OfferLyst — The workspace for your job search" },
-      { name: "twitter:image", content: "/image.png" },
+      { name: "twitter:image", content: absoluteUrl("/image.png") },
     ],
     links: [
       {

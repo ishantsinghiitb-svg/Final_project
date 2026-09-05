@@ -284,8 +284,8 @@ function NotificationsTab() {
           <p className="text-sm font-medium">Calendar-detected interviews</p>
           <p className="mt-0.5 text-xs text-[oklch(0.5_0.02_265)]">
             When a connected Google Calendar event looks like an interview, or a scheduled
-            interview's event is cancelled in Google, it shows up in the bell icon at the top of
-            the dashboard right away.
+            interview's event is cancelled in Google, it shows up in the bell icon at the top of the
+            dashboard right away.
           </p>
         </li>
       </ul>
@@ -351,9 +351,9 @@ function CreditsTab() {
           <p className="mt-4 text-sm text-[oklch(0.5_0.02_265)]">Loading your balance…</p>
         ) : (
           <>
-            <div className="mt-4 rounded-xl border border-black/5 bg-gradient-to-br from-[#2563EB]/[0.05] to-[#7C3AED]/[0.08] p-4">
+            <div className="mt-3 rounded-xl border border-black/5 bg-gradient-to-br from-[#2563EB]/[0.05] to-[#7C3AED]/[0.08] p-3.5">
               <div className="flex flex-wrap items-baseline justify-between gap-2">
-                <p className="font-display text-2xl font-semibold tabular-nums">
+                <p className="font-display text-xl font-semibold tabular-nums">
                   {remaining}
                   <span className="ml-1 text-sm font-normal text-[oklch(0.5_0.02_265)]">
                     of {total} left
@@ -361,7 +361,7 @@ function CreditsTab() {
                 </p>
                 {remaining <= 0 && <Chip tone="amber">All used</Chip>}
               </div>
-              <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-black/[0.06]">
+              <div className="mt-2.5 h-1.5 overflow-hidden rounded-full bg-black/[0.06]">
                 <div
                   className="h-full rounded-full bg-gradient-to-r from-[#2563EB] to-[#7C3AED] transition-[width]"
                   style={{ width: `${pct}%` }}

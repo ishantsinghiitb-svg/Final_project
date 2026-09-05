@@ -152,8 +152,8 @@ function SavedPage() {
                     onClick={() => switchView("active")}
                     className={
                       view === "active"
-                        ? "rounded-md bg-[oklch(0.95_0.02_265)] px-3 py-1.5 text-[#2563EB]"
-                        : "rounded-md px-3 py-1.5 text-[oklch(0.45_0.02_265)] hover:bg-black/[0.03]"
+                        ? "rounded-md bg-[oklch(0.95_0.02_265)] px-2.5 py-1 text-[#2563EB]"
+                        : "rounded-md px-2.5 py-1 text-[oklch(0.45_0.02_265)] hover:bg-black/[0.03]"
                     }
                   >
                     Active{activeTotal > 0 ? ` (${activeTotal})` : ""}
@@ -162,8 +162,8 @@ function SavedPage() {
                     onClick={() => switchView("archived")}
                     className={
                       view === "archived"
-                        ? "rounded-md bg-[oklch(0.95_0.02_265)] px-3 py-1.5 text-[#2563EB]"
-                        : "rounded-md px-3 py-1.5 text-[oklch(0.45_0.02_265)] hover:bg-black/[0.03]"
+                        ? "rounded-md bg-[oklch(0.95_0.02_265)] px-2.5 py-1 text-[#2563EB]"
+                        : "rounded-md px-2.5 py-1 text-[oklch(0.45_0.02_265)] hover:bg-black/[0.03]"
                     }
                   >
                     Archived{archivedTotal > 0 ? ` (${archivedTotal})` : ""}
@@ -204,9 +204,20 @@ function SavedPage() {
           />
         )
       ) : (
-        <div className="space-y-6">
-          {/* Saved jobs grid */}
-          <div className="grid auto-rows-fr gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="space-y-3">
+          {/* Saved jobs grid. Deliberately narrower cards via more columns
+              (not fewer, wider ones) — a 1fr card stretched across a
+              2-3-column grid on a wide desktop reads as oversized regardless
+              of its own padding/font-size.
+              auto-rows-fr equalizes every card's height to its row's
+              tallest sibling, so Apply/View Job always land at the same
+              vertical position across a row — a card-grid with visibly
+              uneven heights and misaligned buttons reads as broken, more
+              than a little unused space at the bottom of a short card reads
+              as generous. The variance this actually has to absorb is small:
+              the title is capped at line-clamp-2, so the tallest a card gets
+              is "2-line title" vs "1-line title", not an unbounded amount. */}
+          <div className="grid auto-rows-fr gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {jobs.map((job) => {
               const isSaved = savedIds.includes(job.id);
               const salary = formatSalary(job);
@@ -216,18 +227,19 @@ function SavedPage() {
               return (
                 <DashCard
                   key={job.id}
-                  /* flex column + h-full so every card in a row is the same
-                     height and the CTA row can be pinned to the bottom with
-                     mt-auto. Without this the buttons floated up to sit right
-                     under the content, so a one-line title and a three-line
-                     title produced visibly misaligned cards. */
+                  // h-full + flex-col so this card fills the row height
+                  // auto-rows-fr gives it (see the grid comment above), and
+                  // mt-auto on the CTA wrapper below pins Apply/View Job to
+                  // the bottom of THAT filled height — the two only work
+                  // together; dropping either one reintroduces the
+                  // misaligned-buttons problem this exists to fix.
                   className="flex h-full flex-col hover:shadow-md hover:-translate-y-0.5 transition-[box-shadow,transform] duration-200"
                 >
                   <div className="flex items-start justify-between gap-2">
                     <CompanyMark
                       company={job.company_name}
                       tone={tone}
-                      size={38}
+                      size={36}
                       logoUrl={job.company_logo_url}
                     />
                     <div className="flex items-center gap-1.5">
@@ -245,7 +257,13 @@ function SavedPage() {
                             {job.work_mode}
                           </Chip>
                         )}
-                        {job.experience_level && <Chip tone="purple">{job.experience_level}</Chip>}
+                        {/* Secondary badge, hidden on mobile — work_mode above
+                            is the one status kept in the compact mobile card. */}
+                        {job.experience_level && (
+                          <Chip tone="purple" className="hidden sm:inline-flex">
+                            {job.experience_level}
+                          </Chip>
+                        )}
                       </div>
                       {/* Add to Collection — a job doesn't need to be saved first,
                           but the Saved page is a natural place to organize what's
@@ -308,12 +326,12 @@ function SavedPage() {
                   <Link
                     to="/dashboard/jobs/$jobId"
                     params={{ jobId: job.id }}
-                    className="group mt-3 block"
+                    className="group mt-2 block"
                   >
-                    <p className="line-clamp-2 font-display font-semibold leading-snug transition-colors group-hover:text-[#2563EB]">
+                    <p className="line-clamp-2 font-display text-[14px] font-semibold leading-snug transition-colors group-hover:text-[#2563EB]">
                       {job.role}
                     </p>
-                    <p className="mt-0.5 truncate text-xs text-[oklch(0.5_0.02_265)]">
+                    <p className="mt-1 truncate text-[12px] text-[oklch(0.5_0.02_265)]">
                       {job.company_name}
                     </p>
                   </Link>
@@ -329,8 +347,11 @@ function SavedPage() {
                     </div>
                   )}
 
+                  {/* Location/salary/employment type: secondary metadata,
+                      hidden below sm so the mobile card stays to title,
+                      company, primary status and primary action. */}
                   {(location || salary) && (
-                    <p className="mt-2 flex items-center gap-1 text-xs text-[oklch(0.5_0.02_265)]">
+                    <p className="mt-1.5 hidden items-center gap-1 text-xs text-[oklch(0.5_0.02_265)] sm:flex">
                       {location && (
                         <>
                           <MapPin className="h-3 w-3" /> {location}
@@ -342,20 +363,22 @@ function SavedPage() {
                   )}
 
                   {job.employment_type && (
-                    <p className="mt-2 text-xs capitalize text-[oklch(0.5_0.02_265)]">
+                    <p className="mt-1 hidden text-xs capitalize text-[oklch(0.5_0.02_265)] sm:block">
                       {job.employment_type}
                     </p>
                   )}
 
-                  {/* CTA row — mt-auto pins it to the bottom of the card so
-                      Apply/View Job line up across the row whatever the title
-                      length. */}
-                  <div className="mt-auto pt-4">
-                    <div className="flex items-center gap-2 border-t border-black/5 pt-3">
+                  {/* CTA row — mt-auto pins it to the bottom of the card
+                      (see the h-full comment above), so Apply/View Job sit
+                      at the same vertical position across every card in a
+                      row regardless of how much title/metadata content
+                      precedes it. */}
+                  <div className="mt-auto pt-2.5">
+                    <div className="flex items-center gap-2 border-t border-black/5 pt-2">
                       {job.url && (
                         <button
                           onClick={() => setSelectedJob(job)}
-                          className="inline-flex h-8 flex-1 items-center justify-center gap-1 rounded-lg bg-gradient-to-br from-[#2563EB] to-[#7C3AED] px-3 text-xs font-medium text-white shadow-[0_2px_8px_-2px_rgba(37,99,235,0.5)] transition-transform hover:-translate-y-px"
+                          className="inline-flex h-8 flex-1 items-center justify-center gap-1 rounded-lg bg-gradient-to-br from-[#2563EB] to-[#7C3AED] px-2.5 text-[12px] font-medium text-white shadow-[0_2px_8px_-2px_rgba(37,99,235,0.5)] transition-transform hover:-translate-y-px"
                         >
                           Apply <ArrowUpRight className="h-3 w-3" />
                         </button>
@@ -363,7 +386,7 @@ function SavedPage() {
                       <Link
                         to="/dashboard/jobs/$jobId"
                         params={{ jobId: job.id }}
-                        className="inline-flex h-8 flex-1 items-center justify-center gap-1 rounded-lg border border-black/5 bg-white px-3 text-xs font-medium text-[oklch(0.35_0.02_265)] transition-colors hover:bg-black/[0.03]"
+                        className="inline-flex h-8 flex-1 items-center justify-center gap-1 rounded-lg border border-black/5 bg-white px-2.5 text-[12px] font-medium text-[oklch(0.35_0.02_265)] transition-colors hover:bg-black/[0.03]"
                       >
                         View Job
                       </Link>

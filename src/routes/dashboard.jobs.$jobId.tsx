@@ -383,7 +383,7 @@ function JobDetailPage() {
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <div className="space-y-6 max-w-6xl mx-auto">
+    <div className="space-y-4 max-w-6xl mx-auto">
       {/* Back button */}
       <button
         onClick={() => navigate({ to: "/dashboard/jobs" })}
@@ -675,9 +675,9 @@ function JobDetailPage() {
         </DashCard>
       )}
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_280px] lg:items-start">
+      <div className="grid gap-4 lg:grid-cols-[1fr_280px] lg:items-start">
         {/* ── Left: Description + Skills ──────────────────────────────── */}
-        <div className="space-y-6">
+        <div className="space-y-4">
           {/* Job description */}
           {(job.description_html || job.description) && (
             <DashCard>
@@ -739,10 +739,10 @@ function JobDetailPage() {
             column stop stretching to match the left column's height, which
             is what makes `sticky` actually free to scroll with the page once
             it reaches its own natural bottom instead of being trapped.
-            `top-20` (not `top-0`) clears DashboardShell's own sticky 56px
-            top bar (`h-14 sticky top-0 z-20`) so this never scrolls partly
+            `top-14` (not `top-0`) clears DashboardShell's own sticky 44px
+            top bar (`h-11 sticky top-0 z-20`) so this never scrolls partly
             behind it. */}
-        <div className="space-y-4 lg:sticky lg:top-20 lg:self-start">
+        <div className="space-y-4 lg:sticky lg:top-14 lg:self-start">
           <DashCard>
             <p className="font-display text-sm font-semibold">Ready to apply?</p>
             <p className="mt-1 text-xs text-[oklch(0.5_0.02_265)] leading-relaxed">
