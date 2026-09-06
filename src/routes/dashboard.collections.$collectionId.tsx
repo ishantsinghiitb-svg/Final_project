@@ -272,7 +272,7 @@ function CollectionDetailPage() {
   }
 
   return (
-    <div className="space-y-4 max-w-6xl mx-auto">
+    <div className="space-y-3 max-w-6xl mx-auto">
       <Link
         to="/dashboard/collections"
         className="inline-flex items-center gap-1.5 text-sm text-[oklch(0.5_0.02_265)] transition-colors hover:text-[oklch(0.2_0.02_265)]"
@@ -282,9 +282,9 @@ function CollectionDetailPage() {
 
       {/* ── Header ─────────────────────────────────────────────────────── */}
       <DashCard>
-        <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h1 className="font-display text-xl font-semibold tracking-tight text-[oklch(0.2_0.02_265)]">
+            <h1 className="font-display text-[18px] font-semibold tracking-tight text-[oklch(0.2_0.02_265)]">
               {collection.name}
             </h1>
             {collection.description && (
@@ -299,19 +299,17 @@ function CollectionDetailPage() {
           </div>
 
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => setEditOpen(true)}
-              className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-black/5 bg-white px-3 text-sm font-medium text-[oklch(0.4_0.02_265)] transition-colors hover:bg-black/[0.03]"
-            >
+            <DashButton variant="outline" onClick={() => setEditOpen(true)}>
               <Pencil className="h-4 w-4" /> Edit
-            </button>
-            <button
+            </DashButton>
+            <DashButton
+              variant="outline"
               onClick={handleDelete}
               disabled={deleteCollection.isPending}
-              className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-black/5 bg-white px-3 text-sm font-medium text-rose-600 transition-colors hover:bg-rose-50 disabled:opacity-60"
+              className="text-rose-600 hover:bg-rose-50"
             >
               <Trash2 className="h-4 w-4" /> Delete
-            </button>
+            </DashButton>
           </div>
         </div>
       </DashCard>
@@ -323,20 +321,20 @@ function CollectionDetailPage() {
       <StickyPageHeader>
         <DashCard padded={false}>
           <div className="flex flex-wrap items-center gap-2 p-3">
-            <div className="flex h-9 flex-1 min-w-[200px] items-center gap-2 rounded-lg border border-black/5 bg-white px-3 text-sm">
-              <Search className="h-4 w-4 shrink-0 text-[oklch(0.5_0.02_265)]" />
+            <div className="flex h-8 flex-1 min-w-[200px] items-center gap-2 rounded-lg border border-black/5 bg-white px-2 text-[13px]">
+              <Search className="h-3.5 w-3.5 shrink-0 text-[oklch(0.5_0.02_265)]" />
               <input
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
                 placeholder="Search this collection…"
-                className="flex-1 bg-transparent text-sm outline-none placeholder:text-[oklch(0.55_0.02_265)]"
+                className="flex-1 bg-transparent text-[13px] outline-none placeholder:text-[oklch(0.55_0.02_265)]"
               />
             </div>
 
             <select
               value={sortOption}
               onChange={(e) => setSortOption(e.target.value as JobSortOption)}
-              className="h-9 rounded-lg border border-black/5 bg-white px-3 text-sm"
+              className="h-8 rounded-lg border border-black/5 bg-white px-2 text-[13px]"
             >
               {(Object.keys(SORT_OPTIONS) as JobSortOption[]).map((key) => (
                 <option key={key} value={key}>
@@ -373,7 +371,7 @@ function CollectionDetailPage() {
             {isFiltered && (
               <button
                 onClick={resetFilters}
-                className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-black/5 bg-white px-3 text-xs font-medium text-[oklch(0.4_0.02_265)] transition-colors hover:bg-black/[0.03]"
+                className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-black/5 bg-white px-2 text-xs font-medium text-[oklch(0.4_0.02_265)] transition-colors hover:bg-black/[0.03]"
               >
                 <X className="h-3.5 w-3.5" />
                 Reset
@@ -406,7 +404,7 @@ function CollectionDetailPage() {
             </p>
           </div>
         ) : jobs.length === 0 ? (
-          <div className="p-5">
+          <div className="p-4">
             <EmptyState
               icon={FolderKanban}
               title="This collection is empty"
@@ -414,7 +412,7 @@ function CollectionDetailPage() {
             />
           </div>
         ) : visibleJobs.length === 0 ? (
-          <div className="p-5">
+          <div className="p-4">
             <EmptyState
               icon={Filter}
               title="No jobs match your filters"

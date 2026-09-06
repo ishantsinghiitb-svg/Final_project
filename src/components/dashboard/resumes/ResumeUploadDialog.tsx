@@ -88,28 +88,28 @@ export function ResumeUploadDialog({
         {/* Gradient strip */}
         <div className="h-1.5 w-full bg-gradient-to-r from-[#2563EB] to-[#7C3AED]" />
 
-        <div className="p-6">
+        <div className="p-5">
           <button
             onClick={close}
             disabled={upload.isPending}
             aria-label="Close"
-            className="absolute right-4 top-5 grid h-7 w-7 place-items-center rounded-lg text-[oklch(0.55_0.02_265)] transition-colors hover:bg-black/[0.05] disabled:opacity-50"
+            className="absolute right-3.5 top-4 grid h-7 w-7 place-items-center rounded-lg text-[oklch(0.55_0.02_265)] transition-colors hover:bg-black/[0.05] disabled:opacity-50"
           >
             <X className="h-4 w-4" />
           </button>
 
           <h2
             id="resume-upload-title"
-            className="font-display text-base font-semibold text-[oklch(0.2_0.02_265)]"
+            className="font-display text-sm font-semibold text-[oklch(0.2_0.02_265)]"
           >
             Upload resume
           </h2>
-          <p className="mt-1 text-sm text-[oklch(0.5_0.02_265)]">
+          <p className="mt-1 text-xs text-[oklch(0.5_0.02_265)]">
             PDF only. We extract the text and generate a deterministic health report — no AI credits
             used.
           </p>
 
-          <div className="mt-5 space-y-3">
+          <div className="mt-4 space-y-3">
             <label className="flex cursor-pointer flex-col items-center gap-2 rounded-xl border border-dashed border-black/15 bg-black/[0.02] px-4 py-8 text-center transition-colors hover:bg-black/[0.03]">
               <input
                 type="file"
@@ -147,7 +147,7 @@ export function ResumeUploadDialog({
             />
           </div>
 
-          <div className="mt-5 flex justify-end gap-2">
+          <div className="mt-4 flex justify-end gap-2">
             <DashButton variant="outline" onClick={close} disabled={upload.isPending}>
               Cancel
             </DashButton>

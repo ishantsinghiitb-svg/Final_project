@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { ArrowLeft, ArrowRight, FileText, Sparkles, Upload, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { DashButton } from "@/components/dashboard/DashButton";
 import { RESUME_PARSE_STATUS_LABELS } from "@/constants";
 import type { Resume } from "@/types";
 
@@ -62,23 +63,23 @@ export function OptimizeEntryDialog({
       <div className="relative z-10 w-full max-w-md overflow-hidden rounded-2xl border border-black/5 bg-white shadow-[0_24px_80px_-12px_rgba(0,0,0,0.25)] animate-in slide-in-from-bottom-4 duration-300">
         <div className="h-1.5 w-full bg-gradient-to-r from-[#2563EB] to-[#7C3AED]" />
 
-        <div className="p-6">
+        <div className="p-5">
           <button
             onClick={close}
             aria-label="Close"
-            className="absolute right-4 top-5 grid h-7 w-7 place-items-center rounded-lg text-[oklch(0.55_0.02_265)] transition-colors hover:bg-black/[0.05]"
+            className="absolute right-3.5 top-4 grid h-7 w-7 place-items-center rounded-lg text-[oklch(0.55_0.02_265)] transition-colors hover:bg-black/[0.05]"
           >
             <X className="h-4 w-4" />
           </button>
 
           {step === "choose" ? (
             <>
-              <div className="grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br from-[#2563EB]/10 to-[#7C3AED]/15 text-[#7C3AED]">
-                <Sparkles className="h-5 w-5" />
+              <div className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-[#2563EB]/10 to-[#7C3AED]/15 text-[#7C3AED]">
+                <Sparkles className="h-4 w-4" />
               </div>
               <h2
                 id="optimize-entry-title"
-                className="mt-4 font-display text-base font-semibold text-[oklch(0.2_0.02_265)]"
+                className="mt-3 font-display text-sm font-semibold text-[oklch(0.2_0.02_265)]"
               >
                 Optimize a resume
               </h2>
@@ -135,7 +136,7 @@ export function OptimizeEntryDialog({
               >
                 <ArrowLeft className="h-3.5 w-3.5" /> Back
               </button>
-              <h2 className="font-display text-base font-semibold text-[oklch(0.2_0.02_265)]">
+              <h2 className="font-display text-sm font-semibold text-[oklch(0.2_0.02_265)]">
                 Choose a resume
               </h2>
 
@@ -185,13 +186,9 @@ export function OptimizeEntryDialog({
                 </div>
               )}
 
-              <button
-                onClick={confirmExisting}
-                disabled={!selectedId}
-                className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-br from-[#2563EB] to-[#7C3AED] py-2.5 text-sm font-semibold text-white shadow-[0_4px_14px_-4px_rgba(37,99,235,0.6)] transition-all hover:-translate-y-px disabled:cursor-not-allowed disabled:opacity-60 disabled:translate-y-0"
-              >
+              <DashButton onClick={confirmExisting} disabled={!selectedId} className="mt-4 w-full">
                 Continue <ArrowRight className="h-4 w-4" />
-              </button>
+              </DashButton>
             </>
           )}
         </div>

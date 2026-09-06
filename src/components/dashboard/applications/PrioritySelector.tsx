@@ -21,7 +21,7 @@ export function PrioritySelector({ value, onChange, isPending }: Props) {
         onClick={() => setOpen((o) => !o)}
         disabled={isPending}
         className={cn(
-          "inline-flex items-center gap-2 rounded-xl border border-black/5 bg-white px-3 py-2 text-sm font-medium transition-colors hover:border-black/10",
+          "inline-flex items-center gap-2 rounded-lg border border-black/5 bg-white px-3 py-1.5 text-[13px] font-medium transition-colors hover:border-black/10",
           isPending && "opacity-60 cursor-not-allowed",
         )}
       >
@@ -56,7 +56,7 @@ export function PrioritySelector({ value, onChange, isPending }: Props) {
                   setOpen(false);
                 }}
                 className={cn(
-                  "flex w-full items-center gap-2.5 px-3 py-2.5 text-sm transition-colors",
+                  "flex w-full items-center gap-2.5 px-3 py-1.5 text-sm transition-colors",
                   p === value
                     ? "bg-[oklch(0.95_0.02_265)] font-medium text-[#2563EB]"
                     : "text-[oklch(0.35_0.02_265)] hover:bg-black/[0.03]",
@@ -73,7 +73,7 @@ export function PrioritySelector({ value, onChange, isPending }: Props) {
                 onChange(null);
                 setOpen(false);
               }}
-              className="flex w-full items-center gap-2.5 border-t border-black/5 px-3 py-2.5 text-sm text-[oklch(0.5_0.02_265)] hover:bg-black/[0.03] transition-colors"
+              className="flex w-full items-center gap-2.5 border-t border-black/5 px-3 py-1.5 text-sm text-[oklch(0.5_0.02_265)] hover:bg-black/[0.03] transition-colors"
             >
               <X className="h-3.5 w-3.5" />
               Clear priority

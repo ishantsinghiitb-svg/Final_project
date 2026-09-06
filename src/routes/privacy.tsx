@@ -14,7 +14,7 @@ export const Route = createFileRoute("/privacy")({
   component: PrivacyPage,
 });
 
-const LAST_UPDATED = "August 20, 2026";
+const LAST_UPDATED = "September 06, 2026";
 
 function PrivacyPage() {
   return (

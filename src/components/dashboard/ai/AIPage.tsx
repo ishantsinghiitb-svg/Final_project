@@ -108,10 +108,10 @@ export function AIPageHeader({
       <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-2.5">
           <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-[#2563EB]/10 to-[#7C3AED]/15 text-[#7C3AED]">
-            <Icon className="h-4.5 w-4.5" />
+            <Icon className="h-4 w-4" />
           </div>
           <div className="min-w-0">
-            <h1 className="truncate font-display text-[22px] font-semibold tracking-tight text-[oklch(0.2_0.02_265)]">
+            <h1 className="truncate font-display text-[18px] font-semibold tracking-tight text-[oklch(0.2_0.02_265)]">
               {title}
             </h1>
             {subtitle && (

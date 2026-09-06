@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { Loader2, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { DashButton } from "@/components/dashboard/DashButton";
 
 // ── Shared Studio modal chrome (Module 6E) ──
 //
@@ -73,31 +74,31 @@ export function StudioDialog({
       >
         <div className="h-1.5 w-full shrink-0 bg-gradient-to-r from-[#2563EB] to-[#7C3AED]" />
 
-        <div className="min-h-0 flex-1 overflow-y-auto p-6">
+        <div className="min-h-0 flex-1 overflow-y-auto p-5">
           <button
             onClick={onClose}
             disabled={busy}
             aria-label="Close"
-            className="absolute right-4 top-5 grid h-7 w-7 place-items-center rounded-lg text-[oklch(0.55_0.02_265)] transition-colors hover:bg-black/[0.05] disabled:opacity-50"
+            className="absolute right-3.5 top-4 grid h-7 w-7 place-items-center rounded-lg text-[oklch(0.55_0.02_265)] transition-colors hover:bg-black/[0.05] disabled:opacity-50"
           >
             <X className="h-4 w-4" />
           </button>
 
-          <div className="grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br from-[#2563EB]/10 to-[#7C3AED]/15 text-[#2563EB]">
-            <Icon className="h-5 w-5" />
+          <div className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-[#2563EB]/10 to-[#7C3AED]/15 text-[#2563EB]">
+            <Icon className="h-4 w-4" />
           </div>
 
-          <h2 className="mt-4 pr-8 font-display text-base font-semibold text-[oklch(0.2_0.02_265)]">
+          <h2 className="mt-3 pr-8 font-display text-sm font-semibold text-[oklch(0.2_0.02_265)]">
             {title}
           </h2>
           {description && (
-            <div className="mt-2 text-sm text-[oklch(0.45_0.02_265)]">{description}</div>
+            <div className="mt-1 text-xs text-[oklch(0.45_0.02_265)]">{description}</div>
           )}
 
           {children}
         </div>
 
-        {footer && <div className="shrink-0 border-t border-black/5 p-4">{footer}</div>}
+        {footer && <div className="shrink-0 border-t border-black/5 p-3.5">{footer}</div>}
       </div>
     </div>
   );
@@ -119,11 +120,7 @@ export function DialogPrimaryButton({
   children: ReactNode;
 }) {
   return (
-    <button
-      onClick={onClick}
-      disabled={disabled || busy}
-      className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-br from-[#2563EB] to-[#7C3AED] py-2.5 text-sm font-semibold text-white shadow-[0_4px_14px_-4px_rgba(37,99,235,0.6)] transition-all hover:-translate-y-px disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60"
-    >
+    <DashButton onClick={onClick} disabled={disabled || busy} className="w-full">
       {busy ? (
         <>
           <Loader2 className="h-4 w-4 animate-spin" /> {busyLabel ?? "Working…"}
@@ -131,7 +128,7 @@ export function DialogPrimaryButton({
       ) : (
         children
       )}
-    </button>
+    </DashButton>
   );
 }
 
@@ -145,13 +142,9 @@ export function DialogSecondaryButton({
   children: ReactNode;
 }) {
   return (
-    <button
-      onClick={onClick}
-      disabled={disabled}
-      className="inline-flex w-full items-center justify-center rounded-xl border border-black/5 bg-white py-2.5 text-sm font-medium text-[oklch(0.4_0.02_265)] transition-colors hover:bg-black/[0.03] disabled:opacity-50"
-    >
+    <DashButton variant="outline" onClick={onClick} disabled={disabled} className="w-full">
       {children}
-    </button>
+    </DashButton>
   );
 }
 
@@ -167,10 +160,11 @@ export function DialogDangerButton({
   children: ReactNode;
 }) {
   return (
-    <button
+    <DashButton
+      variant="outline"
       onClick={onClick}
       disabled={disabled || busy}
-      className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#E11D48] py-2.5 text-sm font-semibold text-white shadow-[0_4px_14px_-4px_rgba(225,29,72,0.6)] transition-all hover:-translate-y-px disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60"
+      className="w-full border-transparent bg-[#E11D48] text-white shadow-[0_4px_14px_-4px_rgba(225,29,72,0.6)] hover:border-transparent hover:bg-[#E11D48]/90"
     >
       {busy ? (
         <>
@@ -179,7 +173,7 @@ export function DialogDangerButton({
       ) : (
         children
       )}
-    </button>
+    </DashButton>
   );
 }
 

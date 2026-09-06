@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { DashCard, Chip, CompanyMark, SectionTitle } from "@/components/dashboard/primitives";
+import { DashButton } from "@/components/dashboard/DashButton";
 import {
   useJob,
   useJobSkills,
@@ -128,11 +129,7 @@ function ShareButton({ jobId, role, company }: { jobId: string; role: string; co
   }, [jobId, role, company]);
 
   return (
-    <button
-      onClick={() => void handleShare()}
-      aria-label="Share job"
-      className="inline-flex items-center gap-1.5 rounded-lg border border-black/5 bg-white px-3 py-2 text-sm font-medium text-[oklch(0.4_0.02_265)] hover:bg-black/[0.03] transition-colors"
-    >
+    <DashButton variant="outline" onClick={() => void handleShare()} aria-label="Share job">
       {copied ? (
         <>
           <Check className="h-4 w-4 text-green-600" /> Copied!
@@ -142,7 +139,7 @@ function ShareButton({ jobId, role, company }: { jobId: string; role: string; co
           <Share2 className="h-4 w-4" /> Share
         </>
       )}
-    </button>
+    </DashButton>
   );
 }
 
@@ -383,7 +380,7 @@ function JobDetailPage() {
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <div className="space-y-4 max-w-6xl mx-auto">
+    <div className="space-y-3 max-w-6xl mx-auto">
       {/* Back button */}
       <button
         onClick={() => navigate({ to: "/dashboard/jobs" })}
@@ -418,17 +415,17 @@ function JobDetailPage() {
       )}
       {/* ── Header card ────────────────────────────────────────────────── */}
       <DashCard>
-        <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="flex flex-wrap items-start justify-between gap-3">
           {/* Company mark + title */}
-          <div className="flex items-start gap-4">
+          <div className="flex items-start gap-3">
             <CompanyMark
               company={job.company_name}
               tone={tone}
-              size={56}
+              size={52}
               logoUrl={job.company_logo_url}
             />
             <div>
-              <h1 className="font-display text-xl font-semibold tracking-tight text-[oklch(0.2_0.02_265)]">
+              <h1 className="font-display text-[18px] font-semibold tracking-tight text-[oklch(0.2_0.02_265)]">
                 {job.role}
               </h1>
               <p className="mt-0.5 text-sm text-[oklch(0.5_0.02_265)]">{job.company_name}</p>
@@ -495,10 +492,10 @@ function JobDetailPage() {
           <div className="flex flex-wrap items-center gap-2">
             <ShareButton jobId={job.id} role={job.role} company={job.company_name} />
 
-            <button
+            <DashButton
+              variant="outline"
               onClick={handleToggleSave}
               aria-label={isSaved ? "Unsave job" : "Save job"}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-black/5 bg-white px-3 py-2 text-sm font-medium text-[oklch(0.4_0.02_265)] hover:bg-black/[0.03] transition-colors"
             >
               {isSaved ? (
                 <>
@@ -511,23 +508,20 @@ function JobDetailPage() {
                   Save
                 </>
               )}
-            </button>
+            </DashButton>
 
             <AddToCollectionMenu job={job} label="Collections" />
 
             {job.url && (
-              <button
-                onClick={handleApplyClick}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-br from-[#2563EB] to-[#7C3AED] px-4 py-2 text-sm font-medium text-white shadow-[0_4px_14px_-4px_rgba(37,99,235,0.6)] hover:-translate-y-px hover:shadow-[0_6px_20px_-4px_rgba(37,99,235,0.7)] transition-all"
-              >
+              <DashButton onClick={handleApplyClick}>
                 Apply Now <ArrowUpRight className="h-4 w-4" />
-              </button>
+              </DashButton>
             )}
           </div>
         </div>
 
         {/* ── Detail grid ────────────────────────────────────────────── */}
-        <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+        <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
           {location && (
             <div className="flex items-start gap-2.5 rounded-xl bg-[oklch(0.97_0.01_265)] p-3">
               <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-[#2563EB]" />
@@ -688,11 +682,11 @@ function JobDetailPage() {
                 // write path is the SECURITY DEFINER upsert RPC, never raw
                 // user input, so this is safe to render directly.
                 <div
-                  className="mt-4 max-w-none text-sm leading-relaxed text-[oklch(0.3_0.02_265)] [&_h1]:mt-4 [&_h1]:mb-2 [&_h1]:text-base [&_h1]:font-semibold [&_h2]:mt-4 [&_h2]:mb-2 [&_h2]:text-base [&_h2]:font-semibold [&_h3]:mt-3 [&_h3]:mb-1.5 [&_h3]:text-sm [&_h3]:font-semibold [&_h4]:mt-3 [&_h4]:mb-1 [&_h4]:text-sm [&_h4]:font-semibold [&_p]:mb-3 [&_p:last-child]:mb-0 [&_strong]:font-semibold [&_ul]:my-2 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:my-2 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:mb-1"
+                  className="mt-3 max-w-none text-sm leading-relaxed text-[oklch(0.3_0.02_265)] [&_h1]:mt-4 [&_h1]:mb-2 [&_h1]:text-base [&_h1]:font-semibold [&_h2]:mt-4 [&_h2]:mb-2 [&_h2]:text-base [&_h2]:font-semibold [&_h3]:mt-3 [&_h3]:mb-1.5 [&_h3]:text-sm [&_h3]:font-semibold [&_h4]:mt-3 [&_h4]:mb-1 [&_h4]:text-sm [&_h4]:font-semibold [&_p]:mb-3 [&_p:last-child]:mb-0 [&_strong]:font-semibold [&_ul]:my-2 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:my-2 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:mb-1"
                   dangerouslySetInnerHTML={{ __html: job.description_html }}
                 />
               ) : (
-                <div className="mt-4 max-w-none text-[oklch(0.3_0.02_265)]">
+                <div className="mt-3 max-w-none text-[oklch(0.3_0.02_265)]">
                   {/* Manual-source jobs with no captured HTML — render as pre-formatted lines */}
                   {job.description!.split("\n").map((line, i) => (
                     <p
@@ -711,11 +705,11 @@ function JobDetailPage() {
           {skills.length > 0 && (
             <DashCard>
               <SectionTitle>Required Skills</SectionTitle>
-              <div className="mt-4 flex flex-wrap gap-2">
+              <div className="mt-3 flex flex-wrap gap-1.5">
                 {skills.map((skill) => (
                   <span
                     key={skill.id}
-                    className="inline-flex items-center gap-1.5 rounded-full border border-black/5 bg-[oklch(0.97_0.01_265)] px-3 py-1.5 text-xs font-medium text-[oklch(0.35_0.02_265)]"
+                    className="inline-flex items-center gap-1.5 rounded-full border border-black/5 bg-[oklch(0.97_0.01_265)] px-2.5 py-1 text-xs font-medium text-[oklch(0.35_0.02_265)]"
                   >
                     <Tag className="h-3 w-3" />
                     {skill.name}
@@ -748,25 +742,19 @@ function JobDetailPage() {
             <p className="mt-1 text-xs text-[oklch(0.5_0.02_265)] leading-relaxed">
               Apply directly on the company's website or save this job to track it later.
             </p>
-            <div className="mt-4 flex flex-col gap-2">
+            <div className="mt-3 flex flex-col gap-2">
               {job.url ? (
-                <button
-                  onClick={handleApplyClick}
-                  className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-gradient-to-br from-[#2563EB] to-[#7C3AED] py-2.5 text-sm font-medium text-white shadow-[0_4px_14px_-4px_rgba(37,99,235,0.5)] hover:-translate-y-px hover:shadow-[0_6px_20px_-4px_rgba(37,99,235,0.7)] transition-all"
-                >
+                <DashButton onClick={handleApplyClick} className="w-full">
                   Apply Now
                   <ArrowUpRight className="h-4 w-4" />
-                </button>
+                </DashButton>
               ) : (
                 <p className="text-xs text-[oklch(0.5_0.02_265)] italic">
                   No direct link available.
                 </p>
               )}
 
-              <button
-                onClick={handleToggleSave}
-                className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-black/10 bg-white py-2.5 text-sm font-medium text-[oklch(0.25_0.02_265)] hover:bg-black/[0.03] transition-colors"
-              >
+              <DashButton variant="outline" onClick={handleToggleSave} className="w-full">
                 {isSaved ? (
                   <>
                     <BookmarkCheck className="h-4 w-4 text-[#2563EB]" /> Saved
@@ -776,7 +764,7 @@ function JobDetailPage() {
                     <Bookmark className="h-4 w-4" /> Save Job
                   </>
                 )}
-              </button>
+              </DashButton>
             </div>
           </DashCard>
 
@@ -886,7 +874,7 @@ function CopyUrlButton({ jobId }: { jobId: string }) {
   return (
     <button
       onClick={() => void handleCopy()}
-      className="flex w-full items-center gap-2 rounded-lg border border-black/5 bg-[oklch(0.97_0.01_265)] px-3 py-2 text-left text-xs text-[oklch(0.5_0.02_265)] hover:bg-black/[0.04] transition-colors"
+      className="flex w-full items-center gap-2 rounded-lg border border-black/5 bg-[oklch(0.97_0.01_265)] px-2.5 py-1.5 text-left text-xs text-[oklch(0.5_0.02_265)] hover:bg-black/[0.04] transition-colors"
     >
       {copied ? (
         <Check className="h-3.5 w-3.5 shrink-0 text-green-600" />

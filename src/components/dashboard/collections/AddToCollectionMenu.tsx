@@ -155,7 +155,7 @@ export function AddToCollectionMenu({ job, className, label }: Props) {
           <button
             type="button"
             className={cn(
-              "inline-flex items-center gap-1.5 rounded-lg border border-black/5 bg-white px-3 py-2 text-sm font-medium text-[oklch(0.4_0.02_265)] transition-colors hover:bg-black/[0.03]",
+              "inline-flex items-center gap-1.5 rounded-lg border border-black/5 bg-white px-3 py-1.5 text-[13px] font-medium text-[oklch(0.4_0.02_265)] transition-colors hover:bg-black/[0.03]",
               className,
             )}
           >

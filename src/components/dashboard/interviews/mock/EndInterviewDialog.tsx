@@ -36,32 +36,32 @@ export function EndInterviewDialog({
         className="absolute inset-0 bg-black/60 backdrop-blur-sm"
         onClick={isPending ? undefined : onCancel}
       />
-      <div className="relative z-10 w-full max-w-sm rounded-2xl border border-white/10 bg-[oklch(0.16_0.02_265)] p-6 shadow-[0_24px_80px_-12px_rgba(0,0,0,0.5)]">
+      <div className="relative z-10 w-full max-w-sm rounded-2xl border border-white/10 bg-[oklch(0.16_0.02_265)] p-5 shadow-[0_24px_80px_-12px_rgba(0,0,0,0.5)]">
         <button
           onClick={onCancel}
           disabled={isPending}
           aria-label="Close"
-          className="absolute right-4 top-4 grid h-7 w-7 place-items-center rounded-lg text-white/50 hover:bg-white/10 transition-colors disabled:opacity-50"
+          className="absolute right-3.5 top-3.5 grid h-7 w-7 place-items-center rounded-lg text-white/50 hover:bg-white/10 transition-colors disabled:opacity-50"
         >
           <X className="h-4 w-4" />
         </button>
-        <h2 className="font-display text-base font-semibold text-white">End this interview?</h2>
-        <p className="mt-2 text-sm text-white/60">
+        <h2 className="font-display text-sm font-semibold text-white">End this interview?</h2>
+        <p className="mt-2 text-xs text-white/60">
           You'll get your full evaluation report right after — this doesn't cost anything, and you
           can always start a brand-new mock interview later.
         </p>
-        <div className="mt-5 flex flex-col gap-2">
+        <div className="mt-4 flex flex-col gap-2">
           <button
             onClick={onConfirm}
             disabled={isPending}
-            className="inline-flex w-full items-center justify-center rounded-xl bg-[#F43F5E] py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-60"
+            className="inline-flex w-full items-center justify-center rounded-lg bg-[#F43F5E] py-1.5 text-[13px] font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-60"
           >
             {isPending ? "Ending…" : "End interview"}
           </button>
           <button
             onClick={onCancel}
             disabled={isPending}
-            className="inline-flex w-full items-center justify-center rounded-xl border border-white/10 bg-white/5 py-2.5 text-sm font-medium text-white/70 transition-colors hover:bg-white/10"
+            className="inline-flex w-full items-center justify-center rounded-lg border border-white/10 bg-white/5 py-1.5 text-[13px] font-medium text-white/70 transition-colors hover:bg-white/10"
           >
             Keep going
           </button>

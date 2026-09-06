@@ -67,31 +67,31 @@ export function InterviewPickerDialog({ interviews, onClose }: Props) {
       <div className="relative z-10 w-full max-w-md overflow-hidden rounded-2xl border border-black/5 bg-white shadow-[0_24px_80px_-12px_rgba(0,0,0,0.25)] animate-in slide-in-from-bottom-4 duration-300">
         <div className="h-1.5 w-full bg-gradient-to-r from-[#2563EB] to-[#7C3AED]" />
 
-        <div className="p-6">
+        <div className="p-5">
           <button
             onClick={onClose}
             aria-label="Close"
-            className="absolute right-4 top-5 grid h-7 w-7 place-items-center rounded-lg text-[oklch(0.55_0.02_265)] hover:bg-black/[0.05] transition-colors"
+            className="absolute right-3.5 top-4 grid h-7 w-7 place-items-center rounded-lg text-[oklch(0.55_0.02_265)] hover:bg-black/[0.05] transition-colors"
           >
             <X className="h-4 w-4" />
           </button>
 
-          <div className="grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br from-[#2563EB]/10 to-[#7C3AED]/15 text-[#7C3AED]">
-            <Sparkles className="h-5 w-5" />
+          <div className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-[#2563EB]/10 to-[#7C3AED]/15 text-[#7C3AED]">
+            <Sparkles className="h-4 w-4" />
           </div>
 
           <h2
             id="interview-picker-title"
-            className="mt-4 font-display text-base font-semibold text-[oklch(0.2_0.02_265)]"
+            className="mt-3 font-display text-sm font-semibold text-[oklch(0.2_0.02_265)]"
           >
             Start Preparation
           </h2>
-          <p className="mt-1 text-sm text-muted-foreground">
+          <p className="mt-1 text-xs text-muted-foreground">
             Which interview are you preparing for?
           </p>
 
           {interviews.length === 0 ? (
-            <div className="mt-5 flex flex-col items-center gap-2 rounded-xl border border-dashed border-black/10 py-8 text-center">
+            <div className="mt-4 flex flex-col items-center gap-2 rounded-xl border border-dashed border-black/10 py-8 text-center">
               <CalendarClock className="h-6 w-6 text-[oklch(0.6_0.02_265)]" />
               <p className="text-sm font-medium text-[oklch(0.35_0.02_265)]">No interviews yet</p>
               <p className="max-w-[240px] text-xs text-[oklch(0.55_0.02_265)]">

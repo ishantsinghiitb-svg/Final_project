@@ -4,6 +4,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { CheckCircle2, ArrowUpRight, X, Loader2, ExternalLink, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { CompanyMark } from "@/components/dashboard/primitives";
+import { DashButton } from "@/components/dashboard/DashButton";
 import { StatusBadge } from "@/components/dashboard/applications/ApplicationCard";
 import { logoToneForCompany } from "@/features/jobs/utils";
 import { cn } from "@/lib/utils";
@@ -66,13 +67,13 @@ export function TrackApplicationModal({
         {/* Gradient strip */}
         <div className="h-1.5 w-full bg-gradient-to-r from-[#2563EB] to-[#7C3AED]" />
 
-        <div className="p-6">
+        <div className="p-5">
           {/* Close button */}
           <button
             onClick={onCancel}
             disabled={isPending}
             aria-label="Close"
-            className="absolute right-4 top-5 grid h-7 w-7 place-items-center rounded-lg text-[oklch(0.55_0.02_265)] hover:bg-black/[0.05] transition-colors disabled:opacity-50"
+            className="absolute right-3.5 top-4 grid h-7 w-7 place-items-center rounded-lg text-[oklch(0.55_0.02_265)] hover:bg-black/[0.05] transition-colors disabled:opacity-50"
           >
             <X className="h-4 w-4" />
           </button>
@@ -94,38 +95,33 @@ export function TrackApplicationModal({
           </div>
 
           {/* Title + body */}
-          <div className="mt-5">
+          <div className="mt-4">
             <h2
               id="track-modal-title"
-              className="font-display text-base font-semibold text-[oklch(0.2_0.02_265)]"
+              className="font-display text-sm font-semibold text-[oklch(0.2_0.02_265)]"
             >
               Ready to apply?
             </h2>
-            <p className="mt-2 text-sm text-muted-foreground">
+            <p className="mt-2 text-xs text-muted-foreground">
               Track this application in OfferLyst so you can:
             </p>
 
-            <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
+            <ul className="mt-2 space-y-1.5 text-xs text-muted-foreground">
               <li>• Track interview progress</li>
               <li>• Keep notes and resumes together</li>
               <li>• Never lose this application</li>
               <li>• View it on your Kanban board</li>
             </ul>
 
-            <p className="mt-4 text-sm font-medium">
+            <p className="mt-3 text-xs font-medium">
               You'll still apply on the company's official website.
             </p>
           </div>
 
           {/* Actions */}
-          <div className="mt-5 flex flex-col gap-2">
+          <div className="mt-4 flex flex-col gap-2">
             {/* Primary: Apply & Track */}
-            <button
-              id="track-modal-track"
-              onClick={onTrackAndContinue}
-              disabled={isPending}
-              className="relative inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-br from-[#2563EB] to-[#7C3AED] py-2.5 text-sm font-semibold text-white shadow-[0_4px_14px_-4px_rgba(37,99,235,0.6)] transition-all hover:-translate-y-px hover:shadow-[0_6px_20px_-4px_rgba(37,99,235,0.7)] disabled:opacity-70 disabled:cursor-not-allowed disabled:translate-y-0"
-            >
+            <DashButton id="track-modal-track" onClick={onTrackAndContinue} disabled={isPending}>
               {isPending ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -138,18 +134,18 @@ export function TrackApplicationModal({
                   <ExternalLink className="ml-0.5 h-3.5 w-3.5 opacity-70" />
                 </>
               )}
-            </button>
+            </DashButton>
 
             {/* Secondary: Apply without tracking */}
-            <button
+            <DashButton
               id="track-modal-skip"
+              variant="outline"
               onClick={onContinueWithoutTracking}
               disabled={isPending}
-              className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-black/5 bg-white py-2.5 text-sm font-medium text-[oklch(0.4_0.02_265)] transition-colors hover:bg-black/[0.03] disabled:opacity-50"
             >
               <ArrowUpRight className="h-4 w-4" />
               Apply Without Tracking
-            </button>
+            </DashButton>
           </div>
         </div>
       </div>
@@ -211,13 +207,13 @@ export function AlreadyTrackingModal({
         {/* Gradient strip */}
         <div className="h-1.5 w-full bg-gradient-to-r from-[#2563EB] to-[#7C3AED]" />
 
-        <div className="p-6">
+        <div className="p-5">
           {/* Close button */}
           <button
             onClick={onClose}
             disabled={isPending}
             aria-label="Close"
-            className="absolute right-4 top-5 grid h-7 w-7 place-items-center rounded-lg text-[oklch(0.55_0.02_265)] hover:bg-black/[0.05] transition-colors disabled:opacity-50"
+            className="absolute right-3.5 top-4 grid h-7 w-7 place-items-center rounded-lg text-[oklch(0.55_0.02_265)] hover:bg-black/[0.05] transition-colors disabled:opacity-50"
           >
             <X className="h-4 w-4" />
           </button>
@@ -241,18 +237,18 @@ export function AlreadyTrackingModal({
           </div>
 
           {/* Title + body */}
-          <div className="mt-5">
+          <div className="mt-4">
             <h2
               id="already-tracking-modal-title"
-              className="font-display text-base font-semibold text-[oklch(0.2_0.02_265)]"
+              className="font-display text-sm font-semibold text-[oklch(0.2_0.02_265)]"
             >
               Already Tracking This Job
             </h2>
-            <p className="mt-2 text-sm text-muted-foreground">
+            <p className="mt-2 text-xs text-muted-foreground">
               You're already tracking this application:
             </p>
 
-            <div className="mt-3 space-y-1.5 rounded-xl border border-black/5 bg-[oklch(0.97_0.01_265)] p-3">
+            <div className="mt-2 space-y-1.5 rounded-xl border border-black/5 bg-[oklch(0.97_0.01_265)] p-3">
               <p className="text-sm font-medium text-[oklch(0.2_0.02_265)]">{application.role}</p>
               <p className="text-xs text-[oklch(0.5_0.02_265)]">{application.company_name}</p>
               <div className="pt-1">
@@ -262,32 +258,32 @@ export function AlreadyTrackingModal({
           </div>
 
           {/* Actions */}
-          <div className="mt-5 flex flex-col gap-2">
-            <button
+          <div className="mt-4 flex flex-col gap-2">
+            <DashButton
               id="already-tracking-view-application"
               onClick={onViewApplication}
               disabled={isPending}
-              className="relative inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-br from-[#2563EB] to-[#7C3AED] py-2.5 text-sm font-semibold text-white shadow-[0_4px_14px_-4px_rgba(37,99,235,0.6)] transition-all hover:-translate-y-px hover:shadow-[0_6px_20px_-4px_rgba(37,99,235,0.7)] disabled:opacity-70 disabled:cursor-not-allowed disabled:translate-y-0"
             >
               <ExternalLink className="h-4 w-4" />
               View Application
-            </button>
+            </DashButton>
 
-            <button
+            <DashButton
               id="already-tracking-open-job-page"
+              variant="outline"
               onClick={onOpenJobPage}
               disabled={isPending}
-              className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-black/5 bg-white py-2.5 text-sm font-medium text-[oklch(0.4_0.02_265)] transition-colors hover:bg-black/[0.03] disabled:opacity-50"
             >
               <ArrowUpRight className="h-4 w-4" />
               Open Job Page
-            </button>
+            </DashButton>
 
-            <button
+            <DashButton
               id="already-tracking-remove"
+              variant="outline"
               onClick={onRemoveTracking}
               disabled={isPending}
-              className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-black/5 bg-white py-2.5 text-sm font-medium text-rose-600 transition-colors hover:bg-rose-50 disabled:opacity-50"
+              className="text-rose-600 hover:bg-rose-50"
             >
               {isPending ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -295,7 +291,7 @@ export function AlreadyTrackingModal({
                 <Trash2 className="h-4 w-4" />
               )}
               Remove Tracking
-            </button>
+            </DashButton>
           </div>
         </div>
       </div>

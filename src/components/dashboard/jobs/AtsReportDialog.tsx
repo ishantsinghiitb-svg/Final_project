@@ -63,14 +63,14 @@ export function AtsReportDialog({ open, analysis, onClose }: Props) {
       <div className="relative z-10 flex max-h-[85vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-black/5 bg-white shadow-[0_24px_80px_-12px_rgba(0,0,0,0.25)] animate-in slide-in-from-bottom-4 duration-300">
         <div className="h-1.5 w-full shrink-0 bg-gradient-to-r from-[#2563EB] to-[#7C3AED]" />
 
-        <div className="flex items-start gap-3 border-b border-black/5 px-6 py-4">
-          <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-[#2563EB]/10 to-[#7C3AED]/15 text-[#7C3AED]">
-            <ShieldCheck className="h-5 w-5" />
+        <div className="flex items-start gap-3 border-b border-black/5 px-4 py-3.5">
+          <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-[#2563EB]/10 to-[#7C3AED]/15 text-[#7C3AED]">
+            <ShieldCheck className="h-4 w-4" />
           </div>
           <div className="min-w-0 flex-1">
             <h2
               id="ats-report-title"
-              className="font-display text-base font-semibold text-[oklch(0.2_0.02_265)]"
+              className="font-display text-sm font-semibold text-[oklch(0.2_0.02_265)]"
             >
               ATS Compatibility Report
             </h2>
@@ -96,7 +96,7 @@ export function AtsReportDialog({ open, analysis, onClose }: Props) {
           </div>
         </div>
 
-        <div className="space-y-6 overflow-y-auto px-6 py-5">
+        <div className="space-y-4 overflow-y-auto px-4 py-4">
           {/* Improvement plan — the AI's "how to reach 95%+ ATS compatibility", most impactful first */}
           <ActionPlanList items={planItems} title="How to reach 95%+ ATS compatibility" />
 

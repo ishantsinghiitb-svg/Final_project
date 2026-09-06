@@ -3,6 +3,7 @@ import { X, Loader2, Download } from "lucide-react";
 import { toast } from "sonner";
 import { useImportJob } from "@/features/jobs/hooks";
 import { detectJobSource } from "@/features/jobs/source-detection";
+import { DashButton } from "@/components/dashboard/DashButton";
 
 type Props = {
   open: boolean;
@@ -82,28 +83,28 @@ export function ImportJobDialog({ open, onClose }: Props) {
       <div className="relative z-10 w-full max-w-md overflow-hidden rounded-2xl border border-black/5 bg-white shadow-[0_24px_80px_-12px_rgba(0,0,0,0.25)] animate-in slide-in-from-bottom-4 duration-300">
         <div className="h-1.5 w-full bg-gradient-to-r from-[#2563EB] to-[#7C3AED]" />
 
-        <div className="max-h-[85vh] overflow-y-auto p-6">
+        <div className="max-h-[85vh] overflow-y-auto p-5">
           <button
             onClick={handleClose}
             disabled={importJob.isPending}
             aria-label="Close"
-            className="absolute right-4 top-5 grid h-7 w-7 place-items-center rounded-lg text-[oklch(0.55_0.02_265)] hover:bg-black/[0.05] transition-colors disabled:opacity-50"
+            className="absolute right-3.5 top-4 grid h-7 w-7 place-items-center rounded-lg text-[oklch(0.55_0.02_265)] hover:bg-black/[0.05] transition-colors disabled:opacity-50"
           >
             <X className="h-4 w-4" />
           </button>
 
           <h2
             id="import-job-title"
-            className="font-display text-base font-semibold text-[oklch(0.2_0.02_265)]"
+            className="font-display text-sm font-semibold text-[oklch(0.2_0.02_265)]"
           >
             Import a job by URL
           </h2>
-          <p className="mt-1 text-sm text-muted-foreground">
+          <p className="mt-1 text-xs text-muted-foreground">
             Paste a job link and a few details. We&apos;ll add it to your global board and
             de-duplicate it automatically.
           </p>
 
-          <form onSubmit={handleSubmit} className="mt-5 space-y-3.5">
+          <form onSubmit={handleSubmit} className="mt-4 space-y-3.5">
             <div>
               <label className={labelClass} htmlFor="import-url">
                 Job URL
@@ -184,10 +185,10 @@ export function ImportJobDialog({ open, onClose }: Props) {
               />
             </div>
 
-            <button
+            <DashButton
               type="submit"
               disabled={!isValid || importJob.isPending}
-              className="relative inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-br from-[#2563EB] to-[#7C3AED] py-3 text-sm font-semibold text-white shadow-[inset_0_1px_0_0_rgba(255,255,255,0.25),0_6px_20px_-8px_rgba(37,99,235,0.7)] transition-all hover:-translate-y-px disabled:opacity-70 disabled:cursor-not-allowed disabled:translate-y-0"
+              className="w-full"
             >
               {importJob.isPending ? (
                 <>
@@ -200,7 +201,7 @@ export function ImportJobDialog({ open, onClose }: Props) {
                   Import job
                 </>
               )}
-            </button>
+            </DashButton>
           </form>
         </div>
       </div>

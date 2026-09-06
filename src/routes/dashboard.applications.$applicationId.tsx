@@ -22,6 +22,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { DashCard, SectionTitle, Chip } from "@/components/dashboard/primitives";
 import { CompanyMark } from "@/components/dashboard/primitives";
+import { DashButton } from "@/components/dashboard/DashButton";
 import { ApplicationTimeline } from "@/components/dashboard/applications/ApplicationTimeline";
 import { ApplicationNotes } from "@/components/dashboard/applications/ApplicationNotes";
 import { ApplicationContacts } from "@/components/dashboard/applications/ApplicationContacts";
@@ -78,7 +79,7 @@ function StatusSelector({
         onClick={() => setOpen((o) => !o)}
         disabled={isPending}
         className={cn(
-          "inline-flex items-center gap-2 rounded-xl border border-black/5 bg-white px-3 py-2 text-sm font-medium transition-colors hover:border-black/10",
+          "inline-flex items-center gap-2 rounded-lg border border-black/5 bg-white px-3 py-1.5 text-[13px] font-medium transition-colors hover:border-black/10",
           isPending && "opacity-60 cursor-not-allowed",
         )}
       >
@@ -104,7 +105,7 @@ function StatusSelector({
                   setOpen(false);
                 }}
                 className={cn(
-                  "flex w-full items-center gap-2.5 px-3 py-2.5 text-sm transition-colors",
+                  "flex w-full items-center gap-2.5 px-3 py-1.5 text-sm transition-colors",
                   s === current
                     ? "bg-[oklch(0.95_0.02_265)] font-medium text-[#2563EB]"
                     : "text-[oklch(0.35_0.02_265)] hover:bg-black/[0.03]",
@@ -278,7 +279,7 @@ function ApplicationDetailPage() {
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <div className="space-y-4 max-w-6xl mx-auto">
+    <div className="space-y-3 max-w-6xl mx-auto">
       {/* Back button */}
       <Link
         to="/dashboard/applications"
@@ -290,9 +291,9 @@ function ApplicationDetailPage() {
 
       {/* ── Header card ─────────────────────────────────────────────────── */}
       <DashCard>
-        <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="flex flex-wrap items-start justify-between gap-3">
           {/* Company + role */}
-          <div className="flex items-start gap-4">
+          <div className="flex items-start gap-3">
             <CompanyMark
               company={app.company_name}
               tone={tone}
@@ -300,7 +301,7 @@ function ApplicationDetailPage() {
               logoUrl={job?.company_logo_url}
             />
             <div>
-              <h1 className="font-display text-xl font-semibold tracking-tight text-[oklch(0.2_0.02_265)]">
+              <h1 className="font-display text-[18px] font-semibold tracking-tight text-[oklch(0.2_0.02_265)]">
                 {app.role}
               </h1>
               <p className="mt-0.5 text-sm text-[oklch(0.5_0.02_265)]">{app.company_name}</p>
@@ -340,40 +341,38 @@ function ApplicationDetailPage() {
                 collections reference global_jobs, not applications. */}
             {job && <AddToCollectionMenu job={job} label="Collections" />}
             {app.archived ? (
-              <button
+              <DashButton
+                variant="outline"
                 onClick={handleRestore}
                 disabled={restoreApp.isPending}
-                className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-black/5 bg-white px-3 text-sm font-medium text-[#2563EB] transition-colors hover:bg-[#2563EB]/5 disabled:opacity-60"
+                className="text-[#2563EB] hover:bg-[#2563EB]/5"
               >
                 <ArchiveRestore className="h-4 w-4" /> Restore
-              </button>
+              </DashButton>
             ) : (
-              <button
-                onClick={handleArchive}
-                disabled={archiveApp.isPending}
-                className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-black/5 bg-white px-3 text-sm font-medium text-[oklch(0.4_0.02_265)] transition-colors hover:bg-black/[0.03] disabled:opacity-60"
-              >
+              <DashButton variant="outline" onClick={handleArchive} disabled={archiveApp.isPending}>
                 <Archive className="h-4 w-4" /> Archive
-              </button>
+              </DashButton>
             )}
-            <button
+            <DashButton
+              variant="outline"
               onClick={handleDelete}
               disabled={deleteApp.isPending}
-              className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-black/5 bg-white px-3 text-sm font-medium text-rose-600 transition-colors hover:bg-rose-50 disabled:opacity-60"
+              className="text-rose-600 hover:bg-rose-50"
             >
               Delete
-            </button>
+            </DashButton>
           </div>
         </div>
       </DashCard>
 
-      <div className="grid gap-4 lg:grid-cols-[1fr_280px]">
+      <div className="grid gap-3 lg:grid-cols-[1fr_280px]">
         {/* ── Left: Application Summary + Timeline ────────────────────── */}
-        <div className="space-y-4">
+        <div className="space-y-3">
           {/* Application summary */}
           <DashCard>
             <SectionTitle>Application Summary</SectionTitle>
-            <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
+            <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
               {app.applied_at && (
                 <DetailTile
                   icon={Calendar}
@@ -429,7 +428,7 @@ function ApplicationDetailPage() {
           {/* Notes */}
           <DashCard>
             <SectionTitle>Notes</SectionTitle>
-            <div className="mt-4">
+            <div className="mt-3">
               <ApplicationNotes application={app} />
             </div>
           </DashCard>
@@ -472,17 +471,17 @@ function ApplicationDetailPage() {
         </div>
 
         {/* ── Right: Links + Resume + Cover Letter + Attachments ────────── */}
-        <div className="space-y-4">
+        <div className="space-y-3">
           {(app.url || app.job_id) && (
             <DashCard>
               <SectionTitle>Links</SectionTitle>
-              <div className="mt-4 flex flex-col gap-2">
+              <div className="mt-3 flex flex-col gap-2">
                 {app.url && (
                   <a
                     href={app.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 rounded-lg border border-black/5 bg-white px-3 py-2 text-sm font-medium text-[oklch(0.4_0.02_265)] hover:bg-black/[0.03] transition-colors"
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-black/5 bg-white px-3 py-1.5 text-[13px] font-medium text-[oklch(0.4_0.02_265)] hover:bg-black/[0.03] transition-colors"
                   >
                     <ExternalLink className="h-4 w-4 text-[#2563EB]" />
                     Job Listing
@@ -492,7 +491,7 @@ function ApplicationDetailPage() {
                   <Link
                     to="/dashboard/jobs/$jobId"
                     params={{ jobId: app.job_id }}
-                    className="inline-flex items-center gap-1.5 rounded-lg border border-black/5 bg-white px-3 py-2 text-sm font-medium text-[oklch(0.4_0.02_265)] hover:bg-black/[0.03] transition-colors"
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-black/5 bg-white px-3 py-1.5 text-[13px] font-medium text-[oklch(0.4_0.02_265)] hover:bg-black/[0.03] transition-colors"
                   >
                     <Building2 className="h-4 w-4 text-[#7C3AED]" />
                     View Job
@@ -529,7 +528,7 @@ function ApplicationDetailPage() {
       </div>
 
       {/* ── Dates metadata ─────────────────────────────────────────────── */}
-      <div className="flex flex-wrap gap-4 text-[11px] text-[oklch(0.55_0.02_265)]">
+      <div className="flex flex-wrap gap-3 text-[11px] text-[oklch(0.55_0.02_265)]">
         <span>Created {format(parseISO(app.created_at), "MMM d, yyyy 'at' h:mm a")}</span>
         <span>Last updated {format(parseISO(app.updated_at), "MMM d, yyyy 'at' h:mm a")}</span>
       </div>
