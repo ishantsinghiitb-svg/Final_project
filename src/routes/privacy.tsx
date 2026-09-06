@@ -106,6 +106,21 @@ function PrivacyPage() {
         </p>
       </LegalSection>
 
+      <LegalSection title="Data Security and Protection">
+        <p>
+          OfferLyst uses reasonable technical and organizational safeguards designed to protect
+          personal information and Google user data against unauthorized access, alteration,
+          disclosure, or destruction. Data transmitted between your device, OfferLyst, and our
+          service providers is protected using HTTPS/TLS encryption in transit. Access to Google
+          user data is restricted to the functionality for which you have granted permission. OAuth
+          credentials and access tokens are handled using security controls designed to prevent
+          unauthorized access. OfferLyst does not sell Google user data. Google user data is handled
+          in accordance with the Google API Services User Data Policy and applicable Limited Use
+          requirements. We maintain access controls and other reasonable security measures
+          appropriate to the nature of the information we process.
+        </p>
+      </LegalSection>
+
       <LegalSection title="Cookies and analytics">
         <p>
           OfferLyst does not use any third-party analytics or advertising trackers, and does not set
