@@ -89,7 +89,7 @@ export function SuggestionGroupCard({
 
   return (
     <DashCard padded={false}>
-      <div className="flex items-start gap-3 border-b border-black/5 px-4 py-3">
+      <div className="flex items-start gap-3 border-b border-black/5 px-3.5 py-2.5">
         {pendingIds.length > 0 && (
           <input
             type="checkbox"

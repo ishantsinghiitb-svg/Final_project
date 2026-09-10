@@ -310,10 +310,10 @@ function HealthCard({ health, pipeline }: { health: SearchHealth; pipeline: Pipe
         <div className="min-w-0">
           <div className="flex items-center gap-2.5">
             <span className={cn("grid h-9 w-9 shrink-0 place-items-center rounded-xl", badge.bg)}>
-              <BadgeIcon className={cn("h-4.5 w-4.5", badge.text)} />
+              <BadgeIcon className={cn("h-4 w-4", badge.text)} />
             </span>
             <div className="min-w-0">
-              <p className="font-display text-lg font-bold tracking-tight">{health.label}</p>
+              <p className="font-display text-base font-bold tracking-tight">{health.label}</p>
               <p className="text-xs text-[oklch(0.45_0.02_265)]">{health.summary}</p>
             </div>
           </div>

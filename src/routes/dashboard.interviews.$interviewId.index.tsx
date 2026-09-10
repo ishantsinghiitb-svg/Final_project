@@ -103,7 +103,7 @@ function StatusSelector({
         disabled={isPending}
         aria-haspopup="listbox"
         aria-expanded={open}
-        className="inline-flex h-9 items-center gap-2 rounded-xl border border-black/5 bg-white px-3 text-sm font-medium text-[oklch(0.3_0.02_265)] transition-colors hover:border-black/10 disabled:opacity-60"
+        className="inline-flex items-center gap-2 rounded-lg border border-black/5 bg-white px-3 py-1.5 text-[13px] font-medium text-[oklch(0.3_0.02_265)] transition-colors hover:border-black/10 disabled:opacity-60"
       >
         <Chip tone={meta.tone}>{meta.label}</Chip>
         <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", open && "rotate-180")} />
@@ -123,7 +123,7 @@ function StatusSelector({
                 setOpen(false);
               }}
               className={cn(
-                "flex w-full items-center gap-2 px-3 py-2.5 text-sm transition-colors",
+                "flex w-full items-center gap-2 px-3 py-1.5 text-sm transition-colors",
                 s === status
                   ? "bg-[oklch(0.95_0.02_265)] font-medium text-[#2563EB]"
                   : "text-[oklch(0.35_0.02_265)] hover:bg-black/[0.03]",
@@ -242,7 +242,7 @@ function InterviewDetailPage() {
   const completedSessions = mockSessions.filter((session) => session.status === "concluded");
 
   return (
-    <div className="mx-auto max-w-6xl space-y-4">
+    <div className="mx-auto max-w-6xl space-y-3">
       <Link
         to="/dashboard/interviews"
         className="inline-flex items-center gap-1.5 text-sm text-[oklch(0.5_0.02_265)] transition-colors hover:text-[oklch(0.2_0.02_265)]"
@@ -251,8 +251,8 @@ function InterviewDetailPage() {
       </Link>
 
       <DashCard>
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="flex items-start gap-4">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="flex items-start gap-3">
             <CompanyMark
               company={interview.company_name}
               tone={tone}
@@ -260,7 +260,7 @@ function InterviewDetailPage() {
               logoUrl={interview.company_logo_url}
             />
             <div>
-              <h1 className="font-display text-xl font-semibold tracking-tight text-[oklch(0.2_0.02_265)]">
+              <h1 className="font-display text-[18px] font-semibold tracking-tight text-[oklch(0.2_0.02_265)]">
                 {interview.role}
               </h1>
               <p className="mt-0.5 text-sm text-[oklch(0.5_0.02_265)]">{interview.company_name}</p>
@@ -309,22 +309,17 @@ function InterviewDetailPage() {
                 )
               }
             />
-            <button
-              onClick={() => setEditing(true)}
-              className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-black/5 bg-white px-3 text-sm font-medium text-[oklch(0.4_0.02_265)] transition-colors hover:bg-black/[0.03]"
-            >
+            <DashButton variant="outline" onClick={() => setEditing(true)}>
               <Pencil className="h-4 w-4" /> Edit
-            </button>
+            </DashButton>
             {canExportToCalendar(interview) && (
-              <button
-                onClick={() => downloadInterviewIcs(interview)}
-                className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-black/5 bg-white px-3 text-sm font-medium text-[oklch(0.4_0.02_265)] transition-colors hover:bg-black/[0.03]"
-              >
+              <DashButton variant="outline" onClick={() => downloadInterviewIcs(interview)}>
                 <CalendarPlus className="h-4 w-4" /> Add to Calendar
-              </button>
+              </DashButton>
             )}
             {interview.calendar_fields_locked && interview.calendar_event_id && (
-              <button
+              <DashButton
+                variant="outline"
                 onClick={() =>
                   resyncFromCalendar.mutate(interview.id, {
                     onSuccess: () => toast.success("Updated from your calendar."),
@@ -334,7 +329,6 @@ function InterviewDetailPage() {
                 }
                 disabled={resyncFromCalendar.isPending}
                 title="Your edits to this interview's date, time or location are protected from calendar syncs. Use this to pull the calendar's current details instead."
-                className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-black/5 bg-white px-3 text-sm font-medium text-[oklch(0.4_0.02_265)] transition-colors hover:bg-black/[0.03] disabled:opacity-60"
               >
                 {resyncFromCalendar.isPending ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -342,14 +336,15 @@ function InterviewDetailPage() {
                   <RefreshCw className="h-4 w-4" />
                 )}
                 Resync from Calendar
-              </button>
+              </DashButton>
             )}
-            <button
+            <DashButton
+              variant="outline"
               onClick={() => setDeleting(true)}
-              className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-black/5 bg-white px-3 text-sm font-medium text-rose-600 transition-colors hover:bg-rose-50"
+              className="text-rose-600 hover:bg-rose-50"
             >
               <Trash2 className="h-4 w-4" /> Delete
-            </button>
+            </DashButton>
           </div>
         </div>
       </DashCard>
@@ -535,7 +530,7 @@ function InterviewDetailPage() {
         <div className="space-y-4">
           <DashCard className="border-[#2563EB]/15 bg-gradient-to-br from-[#2563EB]/[0.03] to-[#7C3AED]/[0.04]">
             <div className="flex items-center gap-2">
-              <div className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-gradient-to-br from-[#2563EB]/15 to-[#7C3AED]/20 text-[#7C3AED]">
+              <div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-gradient-to-br from-[#2563EB]/15 to-[#7C3AED]/20 text-[#7C3AED]">
                 <Sparkles className="h-4 w-4" />
               </div>
               <p className="font-display text-sm font-semibold text-[oklch(0.2_0.02_265)]">
@@ -562,7 +557,7 @@ function InterviewDetailPage() {
 
           <DashCard className="border-[#2563EB]/15 bg-gradient-to-br from-[#2563EB]/[0.03] to-[#7C3AED]/[0.04]">
             <div className="flex items-center gap-2">
-              <div className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-gradient-to-br from-[#2563EB]/15 to-[#7C3AED]/20 text-[#7C3AED]">
+              <div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-gradient-to-br from-[#2563EB]/15 to-[#7C3AED]/20 text-[#7C3AED]">
                 <Mic className="h-4 w-4" />
               </div>
               <p className="font-display text-sm font-semibold text-[oklch(0.2_0.02_265)]">
@@ -755,32 +750,29 @@ function ConfirmDeleteDialog({
         className="absolute inset-0 bg-black/40 backdrop-blur-sm"
         onClick={busy ? undefined : onCancel}
       />
-      <div className="relative z-10 w-full max-w-sm rounded-2xl border border-black/5 bg-white p-6 shadow-[0_24px_80px_-12px_rgba(0,0,0,0.25)]">
-        <h2 className="font-display text-base font-semibold text-[oklch(0.2_0.02_265)]">
+      <div className="relative z-10 w-full max-w-sm rounded-2xl border border-black/5 bg-white p-5 shadow-[0_24px_80px_-12px_rgba(0,0,0,0.25)]">
+        <h2 className="font-display text-sm font-semibold text-[oklch(0.2_0.02_265)]">
           Delete this interview?
         </h2>
-        <p className="mt-2 text-sm text-muted-foreground">
+        <p className="mt-2 text-xs text-muted-foreground">
           The interview with{" "}
           <span className="font-medium text-[oklch(0.3_0.02_265)]">{companyName}</span> and any AI
           preparation, mock interviews and reports for it will be permanently removed. This can't be
           undone.
         </p>
-        <div className="mt-5 flex flex-col gap-2">
-          <button
+        <div className="mt-4 flex flex-col gap-2">
+          <DashButton
+            variant="outline"
             onClick={onConfirm}
             disabled={busy}
-            className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-rose-600 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-rose-700 disabled:opacity-60"
+            className="border-transparent bg-rose-600 text-white hover:border-transparent hover:bg-rose-700"
           >
             {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
             Delete permanently
-          </button>
-          <button
-            onClick={onCancel}
-            disabled={busy}
-            className="inline-flex w-full items-center justify-center rounded-xl border border-black/5 bg-white py-2.5 text-sm font-medium text-[oklch(0.4_0.02_265)] transition-colors hover:bg-black/[0.03] disabled:opacity-60"
-          >
+          </DashButton>
+          <DashButton variant="outline" onClick={onCancel} disabled={busy}>
             Cancel
-          </button>
+          </DashButton>
         </div>
       </div>
     </div>

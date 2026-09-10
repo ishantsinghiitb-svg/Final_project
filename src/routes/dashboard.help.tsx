@@ -201,7 +201,7 @@ function HelpPage() {
           </DashButton>
           <a
             {...contactLinkProps({ subject: "Question from the Help Center" })}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-black/5 bg-white px-3 py-1.5 text-sm font-medium text-[oklch(0.4_0.02_265)] hover:bg-black/[0.03]"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-black/5 bg-white px-3 py-1.5 text-xs font-medium text-[oklch(0.4_0.02_265)] hover:bg-black/[0.03]"
           >
             Email us <ExternalLink className="h-3.5 w-3.5" />
           </a>

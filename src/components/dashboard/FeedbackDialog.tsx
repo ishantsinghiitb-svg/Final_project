@@ -4,6 +4,7 @@ import { X, Loader2, Send, Bug, Lightbulb, MessageSquare } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useSubmitFeedback } from "@/features/feedback/hooks";
+import { DashButton } from "@/components/dashboard/DashButton";
 import type { FeedbackCategory } from "@/types";
 
 // ── FeedbackDialog (Module 13 · Phase 3) ──
@@ -79,24 +80,24 @@ export function FeedbackDialog({ open, onClose }: Props) {
       <div className="relative z-10 w-full max-w-md overflow-hidden rounded-2xl border border-black/5 bg-white shadow-[0_24px_80px_-12px_rgba(0,0,0,0.25)] animate-in slide-in-from-bottom-4 duration-300">
         <div className="h-1.5 w-full bg-gradient-to-r from-[#2563EB] to-[#7C3AED]" />
 
-        <form onSubmit={handleSubmit} className="max-h-[85vh] overflow-y-auto p-6">
+        <form onSubmit={handleSubmit} className="max-h-[85vh] overflow-y-auto p-5">
           <button
             type="button"
             onClick={handleClose}
             disabled={submitFeedback.isPending}
             aria-label="Close"
-            className="absolute right-4 top-5 grid h-7 w-7 place-items-center rounded-lg text-[oklch(0.55_0.02_265)] hover:bg-black/[0.05] transition-colors disabled:opacity-50"
+            className="absolute right-3.5 top-4 grid h-7 w-7 place-items-center rounded-lg text-[oklch(0.55_0.02_265)] hover:bg-black/[0.05] transition-colors disabled:opacity-50"
           >
             <X className="h-4 w-4" />
           </button>
 
           <h2
             id="feedback-dialog-title"
-            className="font-display text-base font-semibold text-[oklch(0.2_0.02_265)]"
+            className="font-display text-sm font-semibold text-[oklch(0.2_0.02_265)]"
           >
             Send feedback
           </h2>
-          <p className="mt-1 text-sm text-muted-foreground">
+          <p className="mt-1 text-xs text-muted-foreground">
             Tell us what's broken or what you'd like to see. We read every one.
           </p>
 
@@ -140,10 +141,10 @@ export function FeedbackDialog({ open, onClose }: Props) {
             </p>
           </div>
 
-          <button
+          <DashButton
             type="submit"
             disabled={!isValid || submitFeedback.isPending}
-            className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-br from-[#2563EB] to-[#7C3AED] py-2.5 text-sm font-semibold text-white shadow-[0_4px_14px_-4px_rgba(37,99,235,0.6)] transition-all hover:-translate-y-px hover:shadow-[0_6px_20px_-4px_rgba(37,99,235,0.7)] disabled:opacity-70 disabled:cursor-not-allowed disabled:translate-y-0"
+            className="mt-2 w-full"
           >
             {submitFeedback.isPending ? (
               <>
@@ -156,7 +157,7 @@ export function FeedbackDialog({ open, onClose }: Props) {
                 Send feedback
               </>
             )}
-          </button>
+          </DashButton>
         </form>
       </div>
     </div>

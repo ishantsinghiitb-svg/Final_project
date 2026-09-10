@@ -7,6 +7,7 @@ import { ALL_STATUSES, STATUS_META } from "@/features/applications/constants";
 import { INTERVIEW_ROUND_PRESETS } from "@/features/interviews/constants";
 import { InterviewMergeCompare } from "./InterviewMergeCompare";
 import { cn } from "@/lib/utils";
+import { DashButton } from "@/components/dashboard/DashButton";
 import type { SuggestionListItem } from "@/repositories/SuggestionRepository";
 import type { Json } from "@/types/database";
 import type { ApplicationStatus, ApplicationReminderType } from "@/types";
@@ -269,25 +270,25 @@ export function ReviewSuggestionDialog({ suggestion, onClose }: Props) {
       />
       <div className="relative z-10 w-full max-w-md overflow-hidden rounded-2xl border border-black/5 bg-white shadow-[0_24px_80px_-12px_rgba(0,0,0,0.25)] animate-in slide-in-from-bottom-4 duration-300">
         <div className="h-1.5 w-full bg-gradient-to-r from-[#2563EB] to-[#7C3AED]" />
-        <div className="max-h-[85vh] overflow-y-auto p-6">
+        <div className="max-h-[85vh] overflow-y-auto p-5">
           <button
             onClick={handleClose}
             disabled={resolve.isPending}
             aria-label="Close"
-            className="absolute right-4 top-5 grid h-7 w-7 place-items-center rounded-lg text-[oklch(0.55_0.02_265)] hover:bg-black/[0.05] transition-colors disabled:opacity-50"
+            className="absolute right-3.5 top-4 grid h-7 w-7 place-items-center rounded-lg text-[oklch(0.55_0.02_265)] hover:bg-black/[0.05] transition-colors disabled:opacity-50"
           >
             <X className="h-4 w-4" />
           </button>
 
           <h2
             id="review-suggestion-title"
-            className="font-display text-base font-semibold text-[oklch(0.2_0.02_265)]"
+            className="font-display text-sm font-semibold text-[oklch(0.2_0.02_265)]"
           >
             Review suggestion
           </h2>
-          <p className="mt-1 text-sm text-[oklch(0.45_0.02_265)]">{suggestion.explanation}</p>
+          <p className="mt-1 text-xs text-[oklch(0.45_0.02_265)]">{suggestion.explanation}</p>
 
-          <div className="mt-5 space-y-3.5">
+          <div className="mt-4 space-y-3.5">
             {suggestion.type === "create_application" && (
               <>
                 <div>
@@ -562,18 +563,19 @@ export function ReviewSuggestionDialog({ suggestion, onClose }: Props) {
             )}
           </div>
 
-          <div className="mt-5 flex gap-2">
-            <button
+          <div className="mt-4 flex gap-2">
+            <DashButton
+              variant="outline"
               onClick={handleClose}
               disabled={resolve.isPending}
-              className="flex-1 rounded-xl border border-black/5 bg-white py-2.5 text-sm font-medium text-[oklch(0.4_0.02_265)] hover:bg-black/[0.03] disabled:opacity-50"
+              className="flex-1"
             >
               Cancel
-            </button>
-            <button
+            </DashButton>
+            <DashButton
               onClick={handleAccept}
               disabled={!isValid() || resolve.isPending}
-              className="relative flex flex-1 items-center justify-center gap-2 rounded-xl bg-gradient-to-br from-[#2563EB] to-[#7C3AED] py-2.5 text-sm font-semibold text-white shadow-[inset_0_1px_0_0_rgba(255,255,255,0.25),0_6px_20px_-8px_rgba(37,99,235,0.7)] disabled:opacity-70"
+              className="flex-1"
             >
               {resolve.isPending ? (
                 <>
@@ -583,7 +585,7 @@ export function ReviewSuggestionDialog({ suggestion, onClose }: Props) {
                 // Wording only — same accept path underneath.
                 "Add Application"
               )}
-            </button>
+            </DashButton>
           </div>
         </div>
       </div>

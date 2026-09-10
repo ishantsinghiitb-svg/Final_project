@@ -404,7 +404,7 @@ function InboxPage() {
           }
         />
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-3">
           {visibleGroups.map((group) => (
             <SuggestionGroupCard
               key={group.key}

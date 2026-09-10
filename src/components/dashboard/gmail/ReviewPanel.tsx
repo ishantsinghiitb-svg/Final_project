@@ -15,6 +15,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { Chip } from "@/components/dashboard/primitives";
+import { DashButton } from "@/components/dashboard/DashButton";
 import { useDialogA11y } from "@/hooks/useDialogA11y";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
@@ -179,7 +180,7 @@ export function ReviewPanel({
         <div className="flex items-start justify-between gap-3 border-b border-black/5 px-5 py-4">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
-              <h2 className="font-display text-base font-semibold text-[oklch(0.2_0.02_265)]">
+              <h2 className="font-display text-sm font-semibold text-[oklch(0.2_0.02_265)]">
                 {summary?.headline ?? "Review suggestion"}
               </h2>
               <Chip tone={tier.tone}>{tier.display}</Chip>
@@ -450,26 +451,14 @@ export function ReviewPanel({
         </div>
 
         {/* Actions */}
-        <div className="flex gap-2 border-t border-black/5 px-5 py-4">
-          <button
-            onClick={onDismiss}
-            disabled={busy}
-            className="rounded-xl border border-black/5 bg-white px-3.5 py-2.5 text-sm font-medium text-[oklch(0.45_0.02_265)] hover:bg-black/[0.03] disabled:opacity-50"
-          >
+        <div className="flex gap-2 border-t border-black/5 px-5 py-3.5">
+          <DashButton variant="outline" onClick={onDismiss} disabled={busy}>
             Dismiss
-          </button>
-          <button
-            onClick={onEdit}
-            disabled={busy}
-            className="rounded-xl border border-black/5 bg-white px-3.5 py-2.5 text-sm font-medium text-[oklch(0.3_0.02_265)] hover:bg-black/[0.03] disabled:opacity-50"
-          >
+          </DashButton>
+          <DashButton variant="outline" onClick={onEdit} disabled={busy}>
             Edit…
-          </button>
-          <button
-            onClick={onAccept}
-            disabled={busy}
-            className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-gradient-to-br from-[#2563EB] to-[#7C3AED] py-2.5 text-sm font-semibold text-white shadow-[inset_0_1px_0_0_rgba(255,255,255,0.25),0_6px_20px_-8px_rgba(37,99,235,0.7)] disabled:opacity-70"
-          >
+          </DashButton>
+          <DashButton onClick={onAccept} disabled={busy} className="flex-1">
             {busy ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" /> Adding…
@@ -481,7 +470,7 @@ export function ReviewPanel({
               // people guessing what they were accepting.
               "Add Application"
             )}
-          </button>
+          </DashButton>
         </div>
       </div>
     </div>

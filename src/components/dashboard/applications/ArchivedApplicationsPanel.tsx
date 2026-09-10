@@ -52,11 +52,11 @@ export function ArchivedApplicationsPanel({ open, onClose }: Props) {
           <div>
             <h2
               id="archived-apps-title"
-              className="font-display text-base font-semibold text-[oklch(0.2_0.02_265)]"
+              className="font-display text-sm font-semibold text-[oklch(0.2_0.02_265)]"
             >
               Archived Applications
             </h2>
-            <p className="mt-1 text-sm text-muted-foreground">
+            <p className="mt-1 text-xs text-muted-foreground">
               Hidden from your active board. Restore any of them at any time.
             </p>
           </div>

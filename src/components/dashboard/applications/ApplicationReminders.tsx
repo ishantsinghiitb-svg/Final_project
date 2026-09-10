@@ -17,6 +17,7 @@ import {
 import { attachmentService } from "@/services/AttachmentService";
 import type { ApplicationReminderType } from "@/types";
 import { cn } from "@/lib/utils";
+import { DashButton } from "@/components/dashboard/DashButton";
 
 const REMINDER_TYPE_LABELS: Record<ApplicationReminderType, string> = {
   follow_up: "Follow-up",
@@ -81,21 +82,21 @@ function AddReminderDialog({
 
       <div className="relative z-10 w-full max-w-md overflow-hidden rounded-2xl border border-black/5 bg-white shadow-[0_24px_80px_-12px_rgba(0,0,0,0.25)] animate-in slide-in-from-bottom-4 duration-300">
         <div className="h-1.5 w-full bg-gradient-to-r from-[#2563EB] to-[#7C3AED]" />
-        <div className="p-6">
+        <div className="p-5">
           <button
             onClick={onClose}
             disabled={createReminder.isPending}
             aria-label="Close"
-            className="absolute right-4 top-5 grid h-7 w-7 place-items-center rounded-lg text-[oklch(0.55_0.02_265)] hover:bg-black/[0.05] transition-colors disabled:opacity-50"
+            className="absolute right-3.5 top-4 grid h-7 w-7 place-items-center rounded-lg text-[oklch(0.55_0.02_265)] hover:bg-black/[0.05] transition-colors disabled:opacity-50"
           >
             <X className="h-4 w-4" />
           </button>
 
-          <h2 className="font-display text-base font-semibold text-[oklch(0.2_0.02_265)]">
+          <h2 className="font-display text-sm font-semibold text-[oklch(0.2_0.02_265)]">
             Add Reminder
           </h2>
 
-          <form onSubmit={handleSubmit} className="mt-5 space-y-3.5">
+          <form onSubmit={handleSubmit} className="mt-4 space-y-3.5">
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className={labelClass} htmlFor="reminder-type">
@@ -157,17 +158,17 @@ function AddReminderDialog({
               />
             </div>
 
-            <button
+            <DashButton
               type="submit"
               disabled={!isValid || createReminder.isPending}
-              className="relative inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-br from-[#2563EB] to-[#7C3AED] py-2.5 text-sm font-semibold text-white shadow-[inset_0_1px_0_0_rgba(255,255,255,0.25),0_6px_20px_-8px_rgba(37,99,235,0.7)] transition-all hover:-translate-y-px disabled:opacity-70 disabled:cursor-not-allowed disabled:translate-y-0"
+              className="w-full"
             >
               {createReminder.isPending ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
                 "Add Reminder"
               )}
-            </button>
+            </DashButton>
           </form>
         </div>
       </div>

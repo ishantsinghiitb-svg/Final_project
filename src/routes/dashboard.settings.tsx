@@ -243,14 +243,14 @@ function ProfileTab() {
       <div className="mt-5 flex flex-col-reverse gap-2 border-t border-black/5 pt-4 sm:flex-row sm:justify-end">
         {/* Previously a no-op button. It now discards edits by restoring the
             values currently stored on the profile. */}
-        <button
+        <DashButton
           type="button"
+          variant="outline"
           onClick={resetForm}
           disabled={saving || !isDirty}
-          className="rounded-lg border border-black/5 bg-white px-3 py-2 text-xs font-medium transition-colors hover:bg-black/[0.03] disabled:opacity-40"
         >
           Cancel
-        </button>
+        </DashButton>
         <DashButton onClick={handleSave} disabled={saving || !isDirty}>
           {saving ? (
             <span className="flex items-center gap-2">
@@ -310,7 +310,7 @@ function IntegrationsTab() {
       <DashCard>
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <p className="font-display font-semibold">Chrome extension</p>
+            <p className="font-display text-sm font-semibold">Chrome extension</p>
             <p className="mt-1 text-xs text-[oklch(0.5_0.02_265)]">
               Save jobs from supported sites in one click. It signs in with the session already in
               this browser, so there is nothing to connect here.
@@ -353,7 +353,7 @@ function CreditsTab() {
           <>
             <div className="mt-3 rounded-xl border border-black/5 bg-gradient-to-br from-[#2563EB]/[0.05] to-[#7C3AED]/[0.08] p-3.5">
               <div className="flex flex-wrap items-baseline justify-between gap-2">
-                <p className="font-display text-xl font-semibold tabular-nums">
+                <p className="font-display text-2xl font-semibold tabular-nums">
                   {remaining}
                   <span className="ml-1 text-sm font-normal text-[oklch(0.5_0.02_265)]">
                     of {total} left

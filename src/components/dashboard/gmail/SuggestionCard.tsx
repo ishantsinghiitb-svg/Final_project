@@ -100,7 +100,7 @@ export function SuggestionCard({
       : null;
 
   return (
-    <div className="flex items-start gap-3 border-b border-black/5 px-4 py-3 last:border-0">
+    <div className="flex items-start gap-3 border-b border-black/5 px-3.5 py-2.5 last:border-0">
       {isPending && selectable && (
         <input
           type="checkbox"
@@ -137,7 +137,7 @@ export function SuggestionCard({
 
         {/* Company · Role — the strongest identity line, weighted heaviest. */}
         {(company || role) && (
-          <p className="mt-0.5 truncate text-[13px] text-[oklch(0.32_0.02_265)]">
+          <p className="mt-0.5 truncate text-xs text-[oklch(0.32_0.02_265)]">
             {company && <span className="font-semibold">{company}</span>}
             {company && role && <span className="text-[oklch(0.65_0.02_265)]"> · </span>}
             {role && <span>{role}</span>}
@@ -145,7 +145,7 @@ export function SuggestionCard({
         )}
 
         {/* AI summary, capped at two lines for a predictable row height. */}
-        <p className="mt-1 line-clamp-2 text-[13px] leading-snug text-[oklch(0.45_0.02_265)]">
+        <p className="mt-0.5 line-clamp-2 text-xs leading-snug text-[oklch(0.45_0.02_265)]">
           {reason}
         </p>
 
@@ -155,7 +155,7 @@ export function SuggestionCard({
             the list read as a wall of repeated labels; the amber marker now
             carries that meaning and the sentence carries the instruction. */}
         {action && (
-          <p className="mt-1.5 flex items-start gap-1.5 text-[13px] leading-snug text-[#B45309]">
+          <p className="mt-1 flex items-start gap-1.5 text-xs leading-snug text-[#B45309]">
             <CircleAlert className="mt-[1px] h-3.5 w-3.5 shrink-0" aria-hidden />
             <span>{action}</span>
           </p>

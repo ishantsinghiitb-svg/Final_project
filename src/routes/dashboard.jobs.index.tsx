@@ -812,12 +812,9 @@ function JobsPage() {
               )}
             </div>
             <div className="flex flex-col gap-2 [&>*]:w-full">{filterControls}</div>
-            <button
-              onClick={() => setFiltersOpen(false)}
-              className="mt-4 w-full rounded-xl bg-gradient-to-br from-[#2563EB] to-[#7C3AED] py-2.5 text-sm font-medium text-white"
-            >
+            <DashButton onClick={() => setFiltersOpen(false)} className="mt-4 w-full">
               Done
-            </button>
+            </DashButton>
           </div>
         </div>
       )}
