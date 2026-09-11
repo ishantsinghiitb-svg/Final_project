@@ -358,6 +358,37 @@ export class SuggestionRepository {
   }
 
   /**
+   * Gmail disconnect (production audit B5), run BEFORE
+   * GmailRepository.deleteAllMessagesForUser. The mirror-image problem to
+   * deleteCalendarOnlySuggestions below, but for the opposite FK:
+   * `suggestions.gmail_message_id` references gmail_messages ON DELETE
+   * CASCADE (unlike calendar_event_id, which is ON DELETE SET NULL) — so
+   * deleting a user's gmail_messages rows outright would cascade-delete
+   * EVERY suggestion referencing one, including a corroborated suggestion
+   * that also carries a still-valid calendar_event_id (see
+   * attachCorroboration). That would silently destroy Calendar-derived
+   * suggestion data on a Gmail-only disconnect, even with Calendar still
+   * connected.
+   *
+   * Nulling `gmail_message_id` first on any row that ALSO has
+   * `calendar_event_id` set turns it into a calendar-only suggestion before
+   * the cascade can reach it — a detached row no longer references the
+   * about-to-be-deleted gmail_messages row at all, so CASCADE never touches
+   * it. A gmail-ONLY suggestion (no calendar_event_id) is deliberately left
+   * alone here; it correctly disappears via CASCADE once the message it was
+   * built from goes away with the rest of this user's Gmail data.
+   */
+  async detachGmailFromCorroboratedSuggestions(userId: string): Promise<void> {
+    const { error } = await this.client
+      .from("suggestions")
+      .update({ gmail_message_id: null })
+      .eq("user_id", userId)
+      .not("gmail_message_id", "is", null)
+      .not("calendar_event_id", "is", null);
+    if (error) throw error;
+  }
+
+  /**
    * Calendar disconnect (Module 9B plan §6), run BEFORE
    * CalendarRepository.deleteAllEventsForUser. Deletes every CALENDAR-ONLY
    * suggestion (no gmail_message_id), regardless of status — not just

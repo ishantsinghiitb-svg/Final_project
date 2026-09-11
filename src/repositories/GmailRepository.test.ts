@@ -145,3 +145,79 @@ describe("findExistingGmailIds", () => {
     expect(callLog.calls).toBe(1);
   });
 });
+
+// ── Gmail disconnect cleanup tests (production audit B5) ──
+//
+// deleteAllMessagesForUser is the fix for Gmail disconnect never removing
+// gmail_messages rows (unlike Calendar, which has always cleared
+// calendar_events on disconnect — see CalendarRepository.deleteAllEventsForUser
+// and SuggestionRepository.deleteCalendarOnlySuggestions). These tests assert
+// the delete is scoped to the calling user's own rows and is a safe no-op to
+// repeat, since disconnectGoogleProduct's cleanup must tolerate a retry after
+// a partial failure without erroring or touching another user's data.
+
+type MessageRow = { id: string; user_id: string; gmail_message_id: string };
+
+function fakeSupabaseForDelete(
+  rows: MessageRow[],
+  callLog: { calls: number; lastEq: { column: string; value: unknown }[] },
+): SupabaseClient<Database> {
+  return {
+    from(table: string) {
+      if (table !== "gmail_messages") throw new Error(`unexpected table ${table}`);
+      return {
+        delete() {
+          const eqCalls: { column: string; value: unknown }[] = [];
+          const chain = {
+            eq(column: string, value: unknown) {
+              eqCalls.push({ column, value });
+              return chain;
+            },
+            then(
+              resolve: (v: { data: null; error: null }) => unknown,
+              reject?: (e: unknown) => unknown,
+            ) {
+              callLog.calls += 1;
+              callLog.lastEq = eqCalls;
+              const remaining = rows.filter(
+                (r) => !eqCalls.every((c) => (r as Record<string, unknown>)[c.column] === c.value),
+              );
+              rows.length = 0;
+              rows.push(...remaining);
+              return Promise.resolve({ data: null, error: null }).then(resolve, reject);
+            },
+          };
+          return chain;
+        },
+      };
+    },
+  } as unknown as SupabaseClient<Database>;
+}
+
+describe("deleteAllMessagesForUser", () => {
+  it("deletes only the calling user's own messages", async () => {
+    const rows: MessageRow[] = [
+      { id: "m1", user_id: userId, gmail_message_id: "a" },
+      { id: "m2", user_id: userId, gmail_message_id: "b" },
+      { id: "m3", user_id: "someone-else", gmail_message_id: "c" },
+    ];
+    const callLog = { calls: 0, lastEq: [] as { column: string; value: unknown }[] };
+    const repo = new GmailRepository(fakeSupabaseForDelete(rows, callLog));
+
+    await repo.deleteAllMessagesForUser(userId);
+
+    expect(rows).toEqual([{ id: "m3", user_id: "someone-else", gmail_message_id: "c" }]);
+    expect(callLog.lastEq).toEqual([{ column: "user_id", value: userId }]);
+  });
+
+  it("is a safe no-op when the user has no messages left (retry-safety)", async () => {
+    const rows: MessageRow[] = [];
+    const callLog = { calls: 0, lastEq: [] as { column: string; value: unknown }[] };
+    const repo = new GmailRepository(fakeSupabaseForDelete(rows, callLog));
+
+    await expect(repo.deleteAllMessagesForUser(userId)).resolves.toBeUndefined();
+    // Calling it again (simulating a retried disconnect) must not throw.
+    await expect(repo.deleteAllMessagesForUser(userId)).resolves.toBeUndefined();
+    expect(callLog.calls).toBe(2);
+  });
+});

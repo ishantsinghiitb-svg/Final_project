@@ -121,22 +121,32 @@ export const disconnectGoogleProduct = createServerFn({ method: "POST" })
       }
     }
 
-    // Calendar disconnect additionally removes the candidate ledger (Q12,
-    // Module 9B plan §6) — Gmail's own disconnect never deletes gmail_messages,
-    // this is deliberately different because Calendar's local data is purely
-    // a sync artifact with no independent value once disconnected. Order
-    // matters: calendar-only suggestions first (deleting calendar_events out
-    // from under a surviving calendar-only suggestion — pending, accepted,
-    // or dismissed — would null its only source FK and violate
-    // suggestions_has_source_check; see deleteCalendarOnlySuggestions), then
-    // the events themselves, then the sync checkpoint so a reconnect
-    // re-backfills cleanly instead of resuming a now-meaningless incremental
-    // token.
+    // Both products now clean up their own sync-artifact data on disconnect
+    // (Q12/Module 9B plan §6 for Calendar; production audit B5 for Gmail) —
+    // neither gmail_messages nor calendar_events has any independent value
+    // once its product is disconnected. Order matters in both branches:
+    // detach/delete whatever would otherwise be destroyed by a cascade
+    // through the OTHER, still-connected product's data FIRST, then the
+    // table itself, then the sync checkpoint so a reconnect re-backfills
+    // cleanly instead of resuming a now-meaningless cursor.
     if (data.product === "calendar") {
+      // Deleting calendar_events out from under a surviving calendar-only
+      // suggestion — pending, accepted, or dismissed — would null its only
+      // source FK and violate suggestions_has_source_check; see
+      // deleteCalendarOnlySuggestions.
       await new SuggestionRepository(supabase).deleteCalendarOnlySuggestions(user.id);
       const calendarRepo = new CalendarRepository(supabase);
       await calendarRepo.deleteAllEventsForUser(user.id);
       await calendarRepo.deleteSyncState(user.id);
+    } else {
+      // suggestions.gmail_message_id is ON DELETE CASCADE (unlike
+      // calendar_event_id's ON DELETE SET NULL) — detach any suggestion this
+      // user's Calendar side is still corroborating BEFORE deleting
+      // gmail_messages, or the cascade would destroy that Calendar-derived
+      // suggestion too even though Calendar remains connected; see
+      // detachGmailFromCorroboratedSuggestions.
+      await new SuggestionRepository(supabase).detachGmailFromCorroboratedSuggestions(user.id);
+      await new GmailRepository(supabase).deleteAllMessagesForUser(user.id);
     }
 
     await repo.disconnectProduct(user.id, data.product);

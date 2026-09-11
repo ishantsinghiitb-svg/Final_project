@@ -105,4 +105,19 @@ export class GmailRepository {
     if (error) throw error;
     return data as GmailMessage | null;
   }
+
+  /**
+   * Gmail disconnect (production audit B5) — removes every synced-email row
+   * for this user. Run AFTER
+   * SuggestionRepository.detachGmailFromCorroboratedSuggestions, which
+   * already pulled any corroborated (Gmail+Calendar) suggestion out of this
+   * delete's blast radius; ON DELETE CASCADE on suggestions.gmail_message_id
+   * then correctly removes whatever gmail-only suggestions are left.
+   * Idempotent — deleting an already-empty set for this user is a normal
+   * no-op, not an error, so retrying a failed/partial disconnect is safe.
+   */
+  async deleteAllMessagesForUser(userId: string): Promise<void> {
+    const { error } = await this.client.from("gmail_messages").delete().eq("user_id", userId);
+    if (error) throw error;
+  }
 }
