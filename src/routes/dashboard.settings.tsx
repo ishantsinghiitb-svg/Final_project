@@ -10,6 +10,7 @@ import {
 } from "@/components/dashboard/primitives";
 import { DashButton } from "@/components/dashboard/DashButton";
 import { GoogleConnectionCard } from "@/components/dashboard/settings/GoogleConnectionCard";
+import { DeleteAccountCard } from "@/components/dashboard/settings/DeleteAccountCard";
 import { JobCrawlersCard } from "@/components/dashboard/settings/JobCrawlersCard";
 import { useCrawlAdminOverview } from "@/features/jobCrawlers/hooks";
 import { useAuth } from "@/context/AuthContext";
@@ -167,102 +168,105 @@ function ProfileTab() {
   }
 
   return (
-    <DashCard>
-      <SectionTitle>Profile</SectionTitle>
+    <div className="flex flex-col gap-4">
+      <DashCard>
+        <SectionTitle>Profile</SectionTitle>
 
-      <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-center">
-        <button
-          onClick={() => fileRef.current?.click()}
-          disabled={uploading}
-          className="relative grid h-16 w-16 shrink-0 place-items-center overflow-hidden rounded-full transition-opacity hover:opacity-80 disabled:opacity-50"
-          aria-label="Change profile photo"
-        >
-          {/* Same resolver the sidebar uses, so an avatar supplied by Google
+        <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-center">
+          <button
+            onClick={() => fileRef.current?.click()}
+            disabled={uploading}
+            className="relative grid h-16 w-16 shrink-0 place-items-center overflow-hidden rounded-full transition-opacity hover:opacity-80 disabled:opacity-50"
+            aria-label="Change profile photo"
+          >
+            {/* Same resolver the sidebar uses, so an avatar supplied by Google
               shows here too even when the profile row has none stored. */}
-          <UserAvatar avatarUrl={avatarUrl} initials={initials} size={64} />
-          {uploading && (
-            <span className="absolute inset-0 grid place-items-center rounded-full bg-black/40">
-              <span className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-            </span>
-          )}
-        </button>
-        <div className="min-w-0">
-          <p className="text-sm font-medium">Profile photo</p>
-          <p className="text-xs text-[oklch(0.5_0.02_265)]">
-            {avatarUrl && !profile?.avatar_url
-              ? "Using the photo from your Google account. Upload one to override it."
-              : "Click the photo to upload. PNG or JPG, up to 5 MB."}
-          </p>
+            <UserAvatar avatarUrl={avatarUrl} initials={initials} size={64} />
+            {uploading && (
+              <span className="absolute inset-0 grid place-items-center rounded-full bg-black/40">
+                <span className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+              </span>
+            )}
+          </button>
+          <div className="min-w-0">
+            <p className="text-sm font-medium">Profile photo</p>
+            <p className="text-xs text-[oklch(0.5_0.02_265)]">
+              {avatarUrl && !profile?.avatar_url
+                ? "Using the photo from your Google account. Upload one to override it."
+                : "Click the photo to upload. PNG or JPG, up to 5 MB."}
+            </p>
+          </div>
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/png,image/jpeg"
+            onChange={handleAvatarChange}
+            className="hidden"
+          />
         </div>
-        <input
-          ref={fileRef}
-          type="file"
-          accept="image/png,image/jpeg"
-          onChange={handleAvatarChange}
-          className="hidden"
-        />
-      </div>
 
-      <div className="mt-4 grid gap-4 md:grid-cols-2">
-        <label className="block text-sm">
-          <span className="text-xs font-medium text-[oklch(0.45_0.02_265)]">Full name</span>
-          <input
-            value={fullName}
-            onChange={(e) => setFullName(e.target.value)}
-            className="mt-1 w-full rounded-lg border border-black/5 bg-white px-3 py-2 outline-none focus:border-[#2563EB]/30 focus:ring-2 focus:ring-[#2563EB]/10"
-          />
-        </label>
-        <label className="block text-sm">
-          <span className="text-xs font-medium text-[oklch(0.45_0.02_265)]">Email</span>
-          <input
-            value={email}
-            readOnly
-            aria-label="Account email"
-            className="mt-1 w-full cursor-not-allowed rounded-lg border border-black/5 bg-black/[0.02] px-3 py-2 text-sm text-[oklch(0.5_0.02_265)] outline-none"
-          />
-        </label>
-        <label className="block text-sm">
-          <span className="text-xs font-medium text-[oklch(0.45_0.02_265)]">Location</span>
-          <input
-            value={location}
-            onChange={(e) => setLocation(e.target.value)}
-            className="mt-1 w-full rounded-lg border border-black/5 bg-white px-3 py-2 outline-none focus:border-[#2563EB]/30 focus:ring-2 focus:ring-[#2563EB]/10"
-            placeholder="San Francisco, CA"
-          />
-        </label>
-        <label className="block text-sm">
-          <span className="text-xs font-medium text-[oklch(0.45_0.02_265)]">Target role</span>
-          <input
-            value={targetRole}
-            onChange={(e) => setTargetRole(e.target.value)}
-            className="mt-1 w-full rounded-lg border border-black/5 bg-white px-3 py-2 outline-none focus:border-[#2563EB]/30 focus:ring-2 focus:ring-[#2563EB]/10"
-            placeholder="Senior Product Designer"
-          />
-        </label>
-      </div>
-      <div className="mt-5 flex flex-col-reverse gap-2 border-t border-black/5 pt-4 sm:flex-row sm:justify-end">
-        {/* Previously a no-op button. It now discards edits by restoring the
+        <div className="mt-4 grid gap-4 md:grid-cols-2">
+          <label className="block text-sm">
+            <span className="text-xs font-medium text-[oklch(0.45_0.02_265)]">Full name</span>
+            <input
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+              className="mt-1 w-full rounded-lg border border-black/5 bg-white px-3 py-2 outline-none focus:border-[#2563EB]/30 focus:ring-2 focus:ring-[#2563EB]/10"
+            />
+          </label>
+          <label className="block text-sm">
+            <span className="text-xs font-medium text-[oklch(0.45_0.02_265)]">Email</span>
+            <input
+              value={email}
+              readOnly
+              aria-label="Account email"
+              className="mt-1 w-full cursor-not-allowed rounded-lg border border-black/5 bg-black/[0.02] px-3 py-2 text-sm text-[oklch(0.5_0.02_265)] outline-none"
+            />
+          </label>
+          <label className="block text-sm">
+            <span className="text-xs font-medium text-[oklch(0.45_0.02_265)]">Location</span>
+            <input
+              value={location}
+              onChange={(e) => setLocation(e.target.value)}
+              className="mt-1 w-full rounded-lg border border-black/5 bg-white px-3 py-2 outline-none focus:border-[#2563EB]/30 focus:ring-2 focus:ring-[#2563EB]/10"
+              placeholder="San Francisco, CA"
+            />
+          </label>
+          <label className="block text-sm">
+            <span className="text-xs font-medium text-[oklch(0.45_0.02_265)]">Target role</span>
+            <input
+              value={targetRole}
+              onChange={(e) => setTargetRole(e.target.value)}
+              className="mt-1 w-full rounded-lg border border-black/5 bg-white px-3 py-2 outline-none focus:border-[#2563EB]/30 focus:ring-2 focus:ring-[#2563EB]/10"
+              placeholder="Senior Product Designer"
+            />
+          </label>
+        </div>
+        <div className="mt-5 flex flex-col-reverse gap-2 border-t border-black/5 pt-4 sm:flex-row sm:justify-end">
+          {/* Previously a no-op button. It now discards edits by restoring the
             values currently stored on the profile. */}
-        <DashButton
-          type="button"
-          variant="outline"
-          onClick={resetForm}
-          disabled={saving || !isDirty}
-        >
-          Cancel
-        </DashButton>
-        <DashButton onClick={handleSave} disabled={saving || !isDirty}>
-          {saving ? (
-            <span className="flex items-center gap-2">
-              <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-              Saving…
-            </span>
-          ) : (
-            "Save changes"
-          )}
-        </DashButton>
-      </div>
-    </DashCard>
+          <DashButton
+            type="button"
+            variant="outline"
+            onClick={resetForm}
+            disabled={saving || !isDirty}
+          >
+            Cancel
+          </DashButton>
+          <DashButton onClick={handleSave} disabled={saving || !isDirty}>
+            {saving ? (
+              <span className="flex items-center gap-2">
+                <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                Saving…
+              </span>
+            ) : (
+              "Save changes"
+            )}
+          </DashButton>
+        </div>
+      </DashCard>
+      <DeleteAccountCard />
+    </div>
   );
 }
 

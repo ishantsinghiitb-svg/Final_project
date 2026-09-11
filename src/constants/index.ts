@@ -110,6 +110,13 @@ export const STORAGE_BUCKETS = {
   AVATARS: "avatars",
   RESUMES: "resumes",
   DOCUMENTS: "documents",
+  // Provisioned (RLS + owner policies) in the earliest schema migration
+  // alongside the other three, but no upload path has ever used it — no
+  // current feature writes exports to Storage. Kept here (not deleted) so
+  // account-deletion cleanup (AccountDeletionService) has one authoritative
+  // list of every user-scoped bucket to sweep, matching the bucket the DB
+  // itself actually provisions rather than a hand-maintained duplicate.
+  EXPORTS: "exports",
 } as const;
 
 // ── Routes ──
