@@ -6,6 +6,7 @@ import { handleCanonicalHostRedirect } from "./server/canonicalHost";
 import { handleClientErrorRequest } from "./server/clientErrors";
 import { handleExtensionApiRequest } from "./server/extensionApi";
 import { handleHealthRequest } from "./server/health";
+import { applySecurityHeaders } from "./server/securityHeaders";
 
 type ServerEntry = {
   fetch: (request: Request, env: unknown, ctx: unknown) => Promise<Response> | Response;
@@ -56,35 +57,37 @@ export default {
       // No-ops for /api/*, /auth/*, /_*, non-GET, and requests already on
       // the canonical host — see src/server/canonicalHost.ts.
       const canonicalRedirect = handleCanonicalHostRedirect(request);
-      if (canonicalRedirect) return canonicalRedirect;
+      if (canonicalRedirect) return applySecurityHeaders(canonicalRedirect);
 
       // Liveness check (/api/health), same interception style as the
       // extension API below — see src/server/health.ts for why it stays
       // dependency-free.
       const healthResponse = handleHealthRequest(request);
-      if (healthResponse) return healthResponse;
+      if (healthResponse) return applySecurityHeaders(healthResponse);
 
       // Extension API routes (/api/extension/*) are plain fetch handlers, not
       // part of the TanStack Start router — intercepted here, before SSR, so
       // they never touch the router/RSC pipeline. Returns null for every
       // other path, which falls through to normal SSR unchanged.
       const extensionResponse = await handleExtensionApiRequest(request);
-      if (extensionResponse) return extensionResponse;
+      if (extensionResponse) return applySecurityHeaders(extensionResponse);
 
       // Client-side crash reports (/api/client-error), same interception
       // style as the two above — see src/server/clientErrors.ts.
       const clientErrorResponse = await handleClientErrorRequest(request);
-      if (clientErrorResponse) return clientErrorResponse;
+      if (clientErrorResponse) return applySecurityHeaders(clientErrorResponse);
 
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);
-      return await normalizeCatastrophicSsrResponse(response);
+      return applySecurityHeaders(await normalizeCatastrophicSsrResponse(response));
     } catch (error) {
       console.error(error);
-      return new Response(renderErrorPage(), {
-        status: 500,
-        headers: { "content-type": "text/html; charset=utf-8" },
-      });
+      return applySecurityHeaders(
+        new Response(renderErrorPage(), {
+          status: 500,
+          headers: { "content-type": "text/html; charset=utf-8" },
+        }),
+      );
     }
   },
 };
