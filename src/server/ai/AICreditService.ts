@@ -1,4 +1,3 @@
-import { aiCreditsConfig } from "@/config";
 import type { AICapability } from "@/features/ai/constants";
 import type { AICreditStatus } from "@/features/ai/types";
 import type { ServerSupabase } from "@/server/supabase";
@@ -6,9 +5,17 @@ import type { ServerSupabase } from "@/server/supabase";
 // ── AI Credit Service (Module 6A · MVP, no subscriptions) ──
 //
 // Wraps the SECURITY DEFINER RPCs. `getStatus` idempotently ensures the user's
-// usage row exists (seeded with the config free allowance). `consume` atomically
+// usage row exists (seeded with the free allowance). `consume` atomically
 // charges credits and NEVER throws on exhaustion — it returns { ok: false } so
 // the AI Service can produce a structured "feature locked" envelope.
+//
+// B1 fix (see migration 20260831000001_module13_secure_ai_free_credit_allowance.sql):
+// the free allowance is no longer sent as an RPC argument. `ensure_ai_usage`
+// and `consume_ai_credit` are SECURITY DEFINER and granted to `authenticated`,
+// so any client could previously call them directly (bypassing this service
+// entirely) with an inflated `p_credits_total` and self-grant unlimited AI
+// credits — see the migration header for the exploit. Both RPCs now hardcode
+// the allowance server-side; there is no allowance parameter left to send.
 
 function toStatus(row: {
   plan: string;
@@ -31,9 +38,7 @@ export class AICreditService {
   constructor(private readonly sb: ServerSupabase) {}
 
   async getStatus(): Promise<AICreditStatus> {
-    const { data, error } = await this.sb.rpc("ensure_ai_usage", {
-      p_credits_total: aiCreditsConfig.freeCredits,
-    });
+    const { data, error } = await this.sb.rpc("ensure_ai_usage");
     if (error) throw error;
     return toStatus(data);
   }
@@ -45,7 +50,6 @@ export class AICreditService {
     const { data, error } = await this.sb.rpc("consume_ai_credit", {
       p_capability: capability,
       p_cost: cost,
-      p_credits_total: aiCreditsConfig.freeCredits,
     });
     if (error) throw error;
 

@@ -2092,13 +2092,14 @@ export type Database = {
         Args: { payload: Json };
         Returns: GlobalJobRow;
       };
-      // ── Module 6A ──
+      // ── Module 6A (B1 fix: allowance is server-hardcoded, no longer an arg —
+      //    see migration 20260831000001_module13_secure_ai_free_credit_allowance.sql) ──
       ensure_ai_usage: {
-        Args: { p_credits_total: number };
+        Args: Record<string, never>;
         Returns: UserAiUsageRow;
       };
       consume_ai_credit: {
-        Args: { p_capability: string; p_cost: number; p_credits_total: number };
+        Args: { p_capability: string; p_cost: number };
         Returns: Json;
       };
       set_default_resume: {
