@@ -14,7 +14,7 @@ export const Route = createFileRoute("/privacy")({
   component: PrivacyPage,
 });
 
-const LAST_UPDATED = "September 06, 2026";
+const LAST_UPDATED = "September 12, 2026";
 
 function PrivacyPage() {
   return (
@@ -101,8 +101,11 @@ function PrivacyPage() {
           is created or changed automatically.
         </p>
         <p>
-          Your Google refresh token is encrypted before it's stored. You can disconnect Google at
-          any time from Settings, which stops all further access immediately.
+          Your Google refresh token is encrypted before it's stored. You can disconnect Gmail or
+          Calendar independently at any time from Settings — disconnecting one stops that
+          product's access immediately and has no effect on the other. Disconnecting Gmail also
+          deletes the Gmail message data OfferLyst has synced and stored for your account; it
+          does not delete Calendar data if Calendar remains connected.
         </p>
       </LegalSection>
 
@@ -141,27 +144,34 @@ function PrivacyPage() {
         </p>
       </LegalSection>
 
-      <LegalSection title="Data retention and deletion" needsReview>
+      <LegalSection title="Data retention and deletion">
         <p>
           You can delete individual resumes, saved jobs, and applications from the dashboard at any
-          time, and disconnecting Google immediately stops further Gmail/Calendar access.
+          time. See "Google Gmail and Calendar integration" above for what disconnecting Gmail or
+          Calendar removes.
         </p>
         <p>
-          There is currently no self-service "delete my account" feature — full account deletion is
-          handled manually by writing to {CONTACT_EMAIL}. This is an honest limitation, not a policy
-          choice: a formal data-deletion request process (including any regulatory turnaround-time
-          requirements, e.g. under India's DPDP Act or GDPR if applicable to you) should be defined
-          with legal input before this product is positioned as fully compliant with a specific
-          data-protection regime.
+          You can also permanently delete your entire OfferLyst account from Settings. This removes
+          your account and every piece of associated data from our database — including your
+          profile, applications, resumes, saved jobs, collections, interviews, AI usage history,
+          Google connection/token data, and any synced Gmail messages and Calendar events — and
+          deletes your uploaded files (resumes, avatars, and other documents) from storage. This only
+          removes data OfferLyst itself stored; it does not delete anything on Google's own side.
+          Account deletion is permanent and cannot be undone. If you're unable to sign in and need
+          your account deleted, contact {CONTACT_EMAIL}.
+        </p>
+        <p>
+          Having a deletion mechanism does not by itself mean OfferLyst is certified compliant with
+          any specific data-protection law, such as India's DPDP Act or the EU's GDPR — we do not
+          make that claim.
         </p>
       </LegalSection>
 
-      <LegalSection title="Eligibility" needsReview>
+      <LegalSection title="Eligibility">
         <p>
-          OfferLyst is intended for people old enough to enter into a binding agreement in their
-          jurisdiction and is not directed at children. The exact minimum age and any
-          jurisdiction-specific parental-consent requirements should be confirmed with a lawyer
-          before launch.
+          You must be at least 18 years old to create an OfferLyst account or use the service.
+          OfferLyst is not directed at, and does not knowingly collect information from, anyone
+          under 18.
         </p>
       </LegalSection>
 

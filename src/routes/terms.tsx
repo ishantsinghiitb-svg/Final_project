@@ -14,7 +14,7 @@ export const Route = createFileRoute("/terms")({
   component: TermsPage,
 });
 
-const LAST_UPDATED = "August 20, 2026";
+const LAST_UPDATED = "September 12, 2026";
 
 function TermsPage() {
   return (
@@ -38,11 +38,10 @@ function TermsPage() {
         </p>
       </LegalSection>
 
-      <LegalSection title="Eligibility" needsReview>
+      <LegalSection title="Eligibility">
         <p>
-          You must be able to enter into a binding agreement to use OfferLyst. The specific
-          minimum age and any jurisdiction-specific requirements should be confirmed with a lawyer
-          before launch.
+          You must be at least 18 years old to use OfferLyst. By using the service, you confirm you
+          meet this requirement and are able to enter into a binding agreement.
         </p>
       </LegalSection>
 
@@ -96,10 +95,10 @@ function TermsPage() {
 
       <LegalSection title="Termination">
         <p>
-          You may stop using OfferLyst at any time. We may suspend or terminate access for
-          accounts that violate these terms. There is currently no automated self-service account
-          deletion — see the Privacy Policy's Data retention section for how to request full
-          account deletion today.
+          You may stop using OfferLyst at any time. You can permanently delete your account and
+          its associated data at any time from Settings — see the Privacy Policy's Data retention
+          section for what that removes. We may also suspend or terminate access for accounts that
+          violate these terms.
         </p>
       </LegalSection>
 
@@ -116,9 +115,10 @@ function TermsPage() {
 
       <LegalSection title="Governing law" needsReview>
         <p>
-          A specific governing law and dispute-resolution jurisdiction have not been chosen yet.
-          This should be decided with legal input based on where the business is incorporated and
-          where its users are located, then stated explicitly here.
+          These terms are governed by the laws of India. Any dispute arising out of or relating to
+          these terms or your use of OfferLyst is subject to the exclusive jurisdiction of the
+          courts located in Maharashtra, India. This states our choice of governing law and venue;
+          it has not been separately reviewed by a lawyer for enforceability.
         </p>
       </LegalSection>
 
