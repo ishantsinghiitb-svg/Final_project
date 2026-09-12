@@ -20,6 +20,7 @@ import {
   htmlToInlineText,
   findElements,
 } from "../../../parsers/html";
+import { structuredHtmlToText, toStructuredJobHtml } from "../../../parsers/jobHtml";
 import type { ParseOutcome, RawJobPayload } from "../../../parsers/types";
 import type { ParsedJobPosting } from "../../../types";
 import {
@@ -52,6 +53,8 @@ type LeverPosting = {
   country?: string;
   workplaceType?: string;
   description?: string;
+  /** Lever's own plain-text rendering of `description` — preferred over deriving one. */
+  descriptionPlain?: string;
   descriptionBody?: string;
   additional?: string;
   lists?: LeverList[];
@@ -94,6 +97,13 @@ const REQUIREMENT_HEADINGS =
 const RESPONSIBILITY_HEADINGS =
   /(responsibilit|what you.?ll do|you will|the role|day to day|impact)/i;
 const BENEFIT_HEADINGS = /(benefit|perk|we offer|compensation|why join)/i;
+/** Tested before the requirement pattern — "Preferred Qualifications" matches both. */
+const PREFERRED_HEADINGS = /(preferred|nice to have|bonus|good to have|desirable)/i;
+
+/** Headings are injected into HTML, so their text must be escaped. */
+function escapeHeading(value: string): string {
+  return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
 
 /** Splits a `<li>`-markup blob into clean text items. */
 function listItems(content: string | undefined): string[] {
@@ -221,32 +231,49 @@ export const leverProvider: AtsProvider = {
 
     const categories = posting.categories ?? {};
 
-    // Reassemble the full body: blurb → sections → closing.
-    const sections: string[] = [];
-    const opening = htmlToPlainText(posting.description ?? posting.descriptionBody ?? "");
-    if (opening) sections.push(opening);
+    // ── Reassemble the full body: blurb → sections → closing ──
+    //
+    // Lever splits a posting across four HTML fields and none is the whole
+    // thing. Previously only the PLAIN TEXT was reassembled, so every Lever
+    // posting reached the product as an unstructured wall — the headings and
+    // bullet lists the employer wrote were thrown away at parse time. Both
+    // forms are now built from the same pieces: `descriptionHtml` keeps the
+    // structure the detail page renders, `description` stays the clean text
+    // the search vector and résumé matching read.
+    const htmlParts: string[] = [];
+    const opening = toStructuredJobHtml(posting.description ?? posting.descriptionBody ?? "");
+    if (opening) htmlParts.push(opening);
 
     const requirements: string[] = [];
     const responsibilities: string[] = [];
     const benefits: string[] = [];
+    const preferred: string[] = [];
 
     for (const list of posting.lists ?? []) {
       const heading = collapseWhitespace(list?.text ?? "");
       const items = listItems(list?.content);
       if (items.length === 0) continue;
 
-      if (heading) sections.push(`${heading}\n${items.map((item) => `- ${item}`).join("\n")}`);
-      else sections.push(items.map((item) => `- ${item}`).join("\n"));
+      // `content` is bare `<li>` markup — Lever omits the wrapping list tag.
+      const listHtml = toStructuredJobHtml(`<ul>${list?.content ?? ""}</ul>`);
+      if (listHtml) {
+        htmlParts.push(heading ? `<h3>${escapeHeading(heading)}</h3>${listHtml}` : listHtml);
+      }
 
       if (BENEFIT_HEADINGS.test(heading)) benefits.push(...items);
+      else if (PREFERRED_HEADINGS.test(heading)) preferred.push(...items);
       else if (RESPONSIBILITY_HEADINGS.test(heading)) responsibilities.push(...items);
       else if (REQUIREMENT_HEADINGS.test(heading)) requirements.push(...items);
     }
 
-    const closing = htmlToPlainText(posting.additional ?? "");
-    if (closing) sections.push(closing);
+    const closing = toStructuredJobHtml(posting.additional ?? "");
+    if (closing) htmlParts.push(closing);
 
-    const description = sections.join("\n\n").trim() || null;
+    const descriptionHtml = htmlParts.length > 0 ? htmlParts.join("") : null;
+    const description =
+      structuredHtmlToText(descriptionHtml) ||
+      htmlToPlainText(posting.descriptionPlain ?? posting.description ?? "") ||
+      null;
     const locationText =
       collapseWhitespace(categories.location ?? "") ||
       collapseWhitespace(categories.allLocations?.[0] ?? "") ||
@@ -284,11 +311,14 @@ export const leverProvider: AtsProvider = {
       salaryPeriod: mapSalaryInterval(posting.salaryRange?.interval),
 
       description,
+      descriptionHtml,
       requirements: requirements.length > 0 ? requirements : null,
       responsibilities: responsibilities.length > 0 ? responsibilities : null,
+      preferredQualifications: preferred.length > 0 ? preferred : null,
       benefits: benefits.length > 0 ? benefits : null,
 
       companyCareerUrl: payload.board.careersUrl,
+      companyLogoUrl: payload.board.companyLogoUrl ?? null,
       postedAt: toIsoDate(posting.createdAt),
 
       parserVersion: LEVER_PARSER_VERSION,

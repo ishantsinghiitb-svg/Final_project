@@ -23,8 +23,12 @@ function goodJob(id: number, title = `Engineer ${id}`) {
     title,
     absolute_url: `https://acme.test/jobs/${id}`,
     company_name: "Acme",
-    first_published: "2026-08-01T00:00:00Z",
-    location: { name: "Berlin, Germany" },
+    // India + recent: the catalog-eligibility gate (India-only, posted within
+    // 30 days) runs on every adapter, so a fixture meant to exercise pipeline
+    // MECHANICS has to be a job the catalog would actually accept. The date is
+    // relative so these tests never start failing with the passage of time.
+    first_published: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
+    location: { name: "Bengaluru, Karnataka, India" },
     content: "&lt;p&gt;Do the work.&lt;/p&gt;",
   };
 }
@@ -202,11 +206,13 @@ describe("CrawlOrchestrator — dry run", () => {
 
 describe("CrawlOrchestrator — failures are contained", () => {
   it("reports a blocked board without aborting the run", async () => {
+    // The second entry used to be a We Work Remotely feed; WWR is disabled
+    // now, so a second Greenhouse board plays the "still works" role. What is
+    // under test is unchanged: one board answering 403 must not stop the next.
+    const secondBoard = "https://boards-api.greenhouse.io/v1/boards/beta/jobs?content=true";
     const fetcher = new FakeFetcher({
       [GREENHOUSE_URL]: BLOCKED,
-      [WWR_FEED]: {
-        body: `<rss><channel><item><title>Beta Ltd: Designer</title><link>https://weworkremotely.com/remote-jobs/beta-designer</link><type>Full-Time</type></item></channel></rss>`,
-      },
+      [secondBoard]: { body: greenhousePayload([goodJob(9, "Designer")]) },
     });
     const { orchestrator } = build({
       fetcher,
@@ -214,9 +220,8 @@ describe("CrawlOrchestrator — failures are contained", () => {
         registryEntry(),
         registryEntry({
           id: "entry-2",
-          platform: "weworkremotely",
-          careersUrl: WWR_FEED,
-          companyName: "WWR",
+          careersUrl: "https://boards.greenhouse.io/beta",
+          companyName: "Beta Ltd",
         }),
       ],
     });
@@ -483,56 +488,39 @@ describe("CrawlOrchestrator — India-first region relevance (Module 10B.3 Phase
     });
   }
 
-  it("H. an excluded posting never reaches the store", async () => {
+  // ── We Work Remotely is disabled (2026-09-12) ──
+  //
+  // These cases used to drive the region-relevance gate THROUGH the WWR
+  // adapter, which was the only adapter that ever set `regionRelevance`. WWR
+  // is now a declared limitation, so the gate's own behaviour is covered by
+  // its unit tests (relevance/RelevanceFilteringJobParser.test.ts and
+  // relevance/regionRelevance.test.ts, both unchanged and passing) and what
+  // the orchestrator must now guarantee is that WWR imports nothing at all.
+
+  it("H/I. a We Work Remotely entry is blocked, imports nothing, and says why", async () => {
     const fetcher = new FakeFetcher({ [WWR_FEED]: { body: wwrFeed() } });
     const { orchestrator, store } = buildWithWwr(fetcher);
 
-    await orchestrator.run({ mode: "live", scope: "all" });
-
+    const report = await orchestrator.run({ mode: "live", scope: "all" });
     const jobStore = store as InMemoryJobStore;
-    expect(jobStore.writes).toHaveLength(1);
-    expect(jobStore.writes[0].role).toBe("Backend Engineer");
-    expect(jobStore.writes.some((w) => w.role === "Frontend Engineer")).toBe(false);
+
+    expect(jobStore.writes).toHaveLength(0);
+    expect(report.totals.imported).toBe(0);
+    expect(report.companies[0].status).toBe("blocked");
+    expect(report.companies[0].message).toMatch(/India-only|not crawlable/i);
   });
 
-  it("I. an excluded posting is counted and reported separately from a validation rejection", async () => {
-    const fetcher = new FakeFetcher({ [WWR_FEED]: { body: wwrFeed() } });
+  it("a blocked platform is refused before any network request is made", async () => {
+    // The feed is deliberately NOT scripted into the fetcher: if the
+    // orchestrator tried to fetch it, the run would surface a fetch failure
+    // instead of a clean blocked verdict.
+    const fetcher = new FakeFetcher({});
     const { orchestrator } = buildWithWwr(fetcher);
 
     const report = await orchestrator.run({ mode: "live", scope: "all" });
-    const company = report.companies[0];
 
-    expect(report.totals.discovered).toBe(2);
-    expect(report.totals.parsed).toBe(2);
-    expect(report.totals.imported).toBe(1);
-    expect(report.totals.excluded).toBe(1);
-    expect(report.totals.rejected).toBe(0);
+    expect(report.companies[0].status).toBe("blocked");
     expect(report.totals.failed).toBe(0);
-    expect(company.issues).toContainEqual(
-      expect.objectContaining({
-        kind: "region_excluded",
-        sourceUrl: "https://weworkremotely.com/remote-jobs/acme-frontend",
-        reason: expect.stringMatching(/Explicitly restricted to United States of America/),
-      }),
-    );
-    // A distinct 20-posting India-first exclusion is not lumped into a
-    // validator-shaped issue kind.
-    expect(company.issues.some((issue) => issue.kind === "validation_skipped")).toBe(false);
-  });
-
-  it("a fully-excluded company still reports success — exclusion is policy working, not a problem", async () => {
-    const onlyRestricted =
-      `<rss><channel><item><title>Acme US: Ops</title>` +
-      `<link>https://weworkremotely.com/remote-jobs/acme-ops</link>` +
-      `<region>Texas</region><country>🇺🇸 United States of America</country></item>` +
-      `</channel></rss>`;
-    const fetcher = new FakeFetcher({ [WWR_FEED]: { body: onlyRestricted } });
-    const { orchestrator } = buildWithWwr(fetcher);
-
-    const report = await orchestrator.run({ mode: "live", scope: "all" });
-
-    expect(report.companies[0].status).toBe("success");
-    expect(report.totals.excluded).toBe(1);
   });
 
   it("J. an unrelated career-pages crawl is completely unaffected", async () => {
@@ -548,15 +536,13 @@ describe("CrawlOrchestrator — India-first region relevance (Module 10B.3 Phase
     expect((store as InMemoryJobStore).writes).toHaveLength(2);
   });
 
-  it("K. dry run still runs the excluded posting through fetch->parse->policy, with zero writes", async () => {
+  it("K. a dry run over a blocked platform also writes nothing", async () => {
     const fetcher = new FakeFetcher({ [WWR_FEED]: { body: wwrFeed() } });
     const { orchestrator, store } = buildWithWwr(fetcher);
 
     const report = await orchestrator.run({ mode: "dry_run", scope: "all" });
 
-    expect(report.totals.discovered).toBe(2);
-    expect(report.totals.excluded).toBe(1);
-    expect(report.totals.imported).toBe(1); // what WOULD be imported, per dry-run semantics
+    expect(report.totals.imported).toBe(0);
     const jobStore = store as InMemoryJobStore;
     expect(jobStore.writes).toHaveLength(0);
     expect(jobStore.rows).toHaveLength(0);
@@ -570,6 +556,7 @@ describe("allReportedLimitations", () => {
       "foundit",
       "iimjobs",
       "wellfound",
+      "weworkremotely",
     ]);
     for (const limitation of limitations) {
       expect(limitation.reason.length).toBeGreaterThan(20);

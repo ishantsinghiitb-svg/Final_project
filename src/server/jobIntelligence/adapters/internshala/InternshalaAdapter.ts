@@ -34,6 +34,7 @@ import {
 import type { JobParser, ParseOutcome, RawJobPayload } from "../../parsers/types";
 import type { EmploymentTypeValue, ParsedJobPosting, WorkModeValue } from "../../types";
 import { parseSalaryText } from "../../parsers/utils";
+import { parseRelativePostedDate } from "../../eligibility/freshness";
 import { crawlErrorMessage, CrawlTargetError } from "../../crawl/errors";
 import {
   newObservations,
@@ -447,6 +448,12 @@ export class InternshalaParser implements JobParser {
         companyLogoUrl: readLogo(html, pageUrl),
 
         postedAgo: readPostedAgo(html),
+        // Internshala publishes no absolute posting date anywhere — only the
+        // relative chip ("Posted 3 days ago"). The catalog's freshness rule
+        // needs an instant, and without this every Internshala posting would be
+        // rejected as "no reliable posted date". Resolved through the shared
+        // parser so the interpretation is identical everywhere.
+        postedAt: parseRelativePostedDate(readPostedAgo(html)),
         expiryDate: parseInternshalaDate(items[DETAIL_HEADINGS.applyBy]),
 
         tags: buildTags(items),

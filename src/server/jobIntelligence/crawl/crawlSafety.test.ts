@@ -156,11 +156,17 @@ describe("a failing crawl never removes previously known jobs", () => {
     expect(store.writes[0].sourceJobId).toBe("1");
   });
 
-  it("writes a job today even when its posted_at is months old (Module 10B.2 fix)", async () => {
-    // Being observed IS the freshness signal. A job the source first posted
-    // long ago still reaches the store on today's crawl — which is what lets
-    // the (frozen, already-verified) RPC stamp `last_seen_at = now()` on the
-    // write. posted_at age must never gate whether a write happens at all.
+  it("does NOT write a job whose posted_at is months old (2026-09-12 reversal)", async () => {
+    // ⚠️ This inverts the Module 10B.2 rule this file used to assert.
+    //
+    // The old rule — "being observed IS the freshness signal, posted_at age
+    // must never gate a write" — was right for a catalog that wanted every
+    // open req. The launch decision made true posting age an eligibility rule
+    // (eligibility/freshness.ts), so a months-old posting is now refused.
+    //
+    // What has NOT changed: a failing crawl still never deletes known jobs,
+    // which is what the rest of this file covers. Refusing to WRITE a stale
+    // posting and DELETING an existing row are different things.
     const staleDate = new Date(Date.now() - 300 * 24 * 3600 * 1000).toISOString();
     const fetcher = new FakeFetcher({
       [GH_URL]: json({
@@ -172,9 +178,8 @@ describe("a failing crawl never removes previously known jobs", () => {
 
     const report = await orchestrator.run({ mode: "live", scope: "all" });
 
-    expect(report.companies[0].status).toBe("success");
-    expect(store.writes).toHaveLength(1);
-    expect(store.writes[0].postedAt).toBe(staleDate);
+    expect(store.writes).toHaveLength(0);
+    expect(report.totals.ineligibleStale).toBe(1);
   });
 });
 

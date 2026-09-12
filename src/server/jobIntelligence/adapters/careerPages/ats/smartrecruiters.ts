@@ -15,6 +15,14 @@
 //      in the crawl report instead of looking like a parse bug.
 
 import { collapseWhitespace } from "../../../parsers/html";
+import {
+  classifyHtmlSections,
+  extractHtmlSections,
+  sectionHtml,
+  structuredHtmlToText,
+  toStructuredJobHtml,
+} from "../../../parsers/jobHtml";
+import { checkJobEligibility } from "../../../eligibility/jobEligibility";
 import type { ParseOutcome, RawJobPayload } from "../../../parsers/types";
 import type { ExperienceLevelValue, ParsedJobPosting } from "../../../types";
 import { inferExperienceLevelFromTitle, mapEmploymentType, pickString, toIsoDate } from "./shared";
@@ -53,6 +61,10 @@ type SmartRecruitersPosting = {
   function?: { label?: string };
   typeOfEmployment?: { label?: string };
   experienceLevel?: { id?: string; label?: string };
+  /** Attached by `enrichWithDetails` from the per-posting detail endpoint. */
+  __sections?: Record<string, { title?: string; text?: string }>;
+  __postingUrl?: string | null;
+  __applyUrl?: string | null;
 };
 
 const EXPERIENCE_LEVEL_MAP: Record<string, ExperienceLevelValue> = {
@@ -183,7 +195,22 @@ export const smartRecruitersProvider: AtsProvider = {
         `Collected ${raws.length} of ${expectedTotal} posting(s) reported by the board — pagination did not complete.`,
       );
     }
-    return { raws, warnings };
+
+    // ── Detail enrichment: the ONLY source of a SmartRecruiters description ──
+    //
+    // The list endpoint carries no body at all, which is why every
+    // SmartRecruiters job in the catalog used to have a null description. The
+    // body lives on the per-posting detail endpoint, one request each — so
+    // postings are filtered FIRST on the list data (which already carries
+    // `location` and `releasedDate`, the two fields the catalog-eligibility
+    // rules read) and only the survivors are fetched. A board of 200 postings
+    // where 12 are current India roles costs 12 requests, not 200.
+    //
+    // The same shared rules run again, authoritatively, in the parser chain —
+    // this pre-filter is an optimization, never the decision.
+    const enriched = await enrichWithDetails(raws, board, fetcher, warnings);
+
+    return { raws: enriched, warnings };
   },
 
   parsePosting(payload: AtsPostingPayload, raw: RawJobPayload): ParseOutcome {
@@ -206,6 +233,20 @@ export const smartRecruitersProvider: AtsProvider = {
     const experienceId = collapseWhitespace(posting.experienceLevel?.id ?? "").toLowerCase();
     const experienceLevel =
       EXPERIENCE_LEVEL_MAP[experienceId] ?? inferExperienceLevelFromTitle(role);
+
+    // The detail endpoint's four named sections, rebuilt in the order
+    // SmartRecruiters itself renders them, each under its own heading so
+    // "Company Description" / "Job Description" / "Qualifications" survive into
+    // the product instead of being merged into one block.
+    const sectionHtmlParts: string[] = [];
+    for (const key of SECTION_ORDER) {
+      const section = posting.__sections?.[key];
+      const body = toStructuredJobHtml(section?.text ?? null);
+      if (body) sectionHtmlParts.push(sectionHtml(section?.title ?? null, body));
+    }
+    const descriptionHtml = sectionHtmlParts.length > 0 ? sectionHtmlParts.join("") : null;
+    const description = structuredHtmlToText(descriptionHtml);
+    const sections = classifyHtmlSections(extractHtmlSections(descriptionHtml));
 
     const parsed: ParsedJobPosting = {
       source: ATS_SOURCE_TAG.smartrecruiters,
@@ -233,22 +274,123 @@ export const smartRecruitersProvider: AtsProvider = {
       jobFunction: collapseWhitespace(posting.function?.label ?? "") || null,
       industry: collapseWhitespace(posting.industry?.label ?? "") || null,
 
-      // Deliberately null: the list endpoint carries no body. See the header.
-      description: null,
+      description,
+      descriptionHtml,
+      responsibilities: sections.responsibilities,
+      requirements: sections.requirements,
+      preferredQualifications: sections.preferredQualifications,
+      benefits: sections.benefits,
 
       companyCareerUrl: payload.board.careersUrl,
+      companyLogoUrl: payload.board.companyLogoUrl ?? null,
       postedAt: toIsoDate(posting.releasedDate),
 
       parserVersion: SMARTRECRUITERS_PARSER_VERSION,
-      parserConfidence: 0.7,
-      extractionWarnings: [
-        "SmartRecruiters list API carries no job description; structured fields only.",
-      ],
+      parserConfidence: descriptionHtml ? 0.95 : 0.7,
+      extractionWarnings: descriptionHtml
+        ? []
+        : ["SmartRecruiters detail endpoint returned no job-ad sections; structured fields only."],
     };
 
     return { ok: true, job: parsed };
   },
 };
+
+/** Hard ceiling on detail requests for one board, so a huge India-heavy board cannot stall a run. */
+const MAX_DETAIL_FETCHES = 400;
+
+/** The section order SmartRecruiters itself renders on a posting page. */
+const SECTION_ORDER = [
+  "companyDescription",
+  "jobDescription",
+  "qualifications",
+  "additionalInformation",
+] as const;
+
+type JobAdSection = { title?: string; text?: string };
+
+/**
+ * Fetches the posting body for every raw that could plausibly be stored, and
+ * attaches it to the payload for the pure parser to read.
+ *
+ * Eligibility is evaluated against the LIST record before spending a request —
+ * see the call site for why. A detail fetch that fails leaves the posting
+ * exactly as it was (structured fields, no body), which is the old behaviour,
+ * so enrichment can never turn a working board into a failing one.
+ */
+async function enrichWithDetails(
+  raws: RawJobPayload[],
+  board: AtsBoard,
+  fetcher: CrawlFetcher,
+  warnings: string[],
+): Promise<RawJobPayload[]> {
+  let fetched = 0;
+  let skippedByGate = 0;
+
+  for (const raw of raws) {
+    const payload = raw.json as AtsPostingPayload;
+    const posting = payload.posting as SmartRecruitersPosting;
+
+    const eligibility = checkJobEligibility({
+      location:
+        collapseWhitespace(posting.location?.fullLocation ?? "") ||
+        [posting.location?.city, posting.location?.region, posting.location?.country]
+          .filter(Boolean)
+          .join(", ") ||
+        null,
+      city: posting.location?.city ?? null,
+      state: posting.location?.region ?? null,
+      country: posting.location?.country ?? null,
+      postedAt: posting.releasedDate ?? null,
+      role: posting.name ?? "",
+      tags: null,
+    });
+    if (!eligibility.eligible) {
+      skippedByGate++;
+      continue;
+    }
+
+    if (fetched >= MAX_DETAIL_FETCHES) {
+      warnings.push(
+        `Detail enrichment capped at ${MAX_DETAIL_FETCHES} posting(s) for board "${board.token}" — ` +
+          `some eligible jobs will be stored without a description.`,
+      );
+      break;
+    }
+
+    const id = posting.id ?? posting.uuid;
+    if (!id) continue;
+
+    const response = await fetcher.fetchText(
+      `https://api.smartrecruiters.com/v1/companies/${encodeURIComponent(board.token)}/postings/${encodeURIComponent(String(id))}`,
+      { accept: "application/json", retries: 1 },
+    );
+    fetched++;
+    if (!response.ok) continue;
+
+    try {
+      const detail = JSON.parse(response.body) as {
+        jobAd?: { sections?: Record<string, JobAdSection> };
+        postingUrl?: string;
+        applyUrl?: string;
+      };
+      if (detail.jobAd?.sections) {
+        posting.__sections = detail.jobAd.sections;
+        posting.__postingUrl = detail.postingUrl ?? null;
+        posting.__applyUrl = detail.applyUrl ?? null;
+      }
+    } catch {
+      // A malformed detail response is not worth failing the posting over.
+    }
+  }
+
+  if (skippedByGate > 0) {
+    warnings.push(
+      `Skipped ${skippedByGate} posting(s) before detail enrichment — outside India or the freshness window.`,
+    );
+  }
+  return raws;
+}
 
 /**
  * The PUBLIC posting URL. Deliberately not the API's own `ref` field — that

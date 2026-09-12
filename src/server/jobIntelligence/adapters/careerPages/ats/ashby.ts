@@ -16,6 +16,12 @@
 //     `compensationTierSummary` string, kept verbatim as `salary_text`.
 
 import { collapseWhitespace, htmlToPlainText } from "../../../parsers/html";
+import {
+  classifyHtmlSections,
+  extractHtmlSections,
+  structuredHtmlToText,
+  toStructuredJobHtml,
+} from "../../../parsers/jobHtml";
 import type { ParseOutcome, RawJobPayload } from "../../../parsers/types";
 import type { ParsedJobPosting } from "../../../types";
 import {
@@ -144,10 +150,18 @@ export const ashbyProvider: AtsProvider = {
     const companyName = payload.board.companyName;
     if (!companyName) return { ok: false, reason: "Ashby posting has no company name." };
 
+    // Ashby gives both forms. The HTML is restructured (its bodies use
+    // `<h2><strong>` headings and `<p style=…>` blocks) so the A1 sanitizer
+    // preserves the sections instead of flattening them, and the plain text
+    // prefers Ashby's own `descriptionPlain` — it is the employer's text,
+    // not a derivation of ours.
+    const descriptionHtml = toStructuredJobHtml(posting.descriptionHtml ?? null);
     const description =
       collapseWhitespace(posting.descriptionPlain ?? "") ||
+      structuredHtmlToText(descriptionHtml) ||
       htmlToPlainText(posting.descriptionHtml ?? "") ||
       null;
+    const sections = classifyHtmlSections(extractHtmlSections(descriptionHtml));
 
     const address = posting.address?.postalAddress;
     const locationText = collapseWhitespace(posting.location ?? "") || null;
@@ -189,7 +203,11 @@ export const ashbyProvider: AtsProvider = {
         null,
 
       description,
-      descriptionHtml: posting.descriptionHtml ?? null,
+      descriptionHtml,
+      responsibilities: sections.responsibilities,
+      requirements: sections.requirements,
+      preferredQualifications: sections.preferredQualifications,
+      benefits: sections.benefits,
 
       // Secondary locations are genuinely useful signal (a role open in
       // several offices) and have nowhere structured to go — tags is the
@@ -197,6 +215,7 @@ export const ashbyProvider: AtsProvider = {
       tags: buildLocationTags(posting),
 
       companyCareerUrl: payload.board.careersUrl,
+      companyLogoUrl: payload.board.companyLogoUrl ?? null,
       postedAt: toIsoDate(posting.publishedAt),
 
       parserVersion: ASHBY_PARSER_VERSION,

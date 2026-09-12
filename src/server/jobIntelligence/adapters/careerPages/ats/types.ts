@@ -31,6 +31,16 @@ export type AtsBoard = {
   careersUrl: string;
   /** Registry-supplied company name; a provider may override it with the board's own. */
   companyName: string;
+
+  // ── Board-level company identity (resolved once per board) ──
+  // Filled in by `CareerPagesCrawler.fetchRawPostings` AFTER the postings are
+  // fetched, via ./boardLogo.ts. Every `AtsPostingPayload` references this same
+  // board object, so the pure `parsePosting` stage reads the logo without ever
+  // touching the network. Absent/null simply means no company-specific image
+  // was found — the product renders an initials avatar in that case.
+  companyLogoUrl?: string | null;
+  /** The employer's own website, where the platform exposes it (Workable). */
+  companyUrl?: string | null;
 };
 
 /** What lands in `RawJobPayload.json` for every career-pages posting. */

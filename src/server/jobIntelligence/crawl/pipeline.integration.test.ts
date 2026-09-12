@@ -212,14 +212,20 @@ describe("integration: crawler → parser → validator → normalizer → dedup
     expect(store.rows).toHaveLength(0);
   });
 
-  it("imports a posting with an old posted_at all the way to the store (Module 10B.2 fix)", async () => {
-    // Regression for the 2026-08-09 Dry Run audit: a validator-level
-    // `postedAt`-age reject was removed because it discarded 69% of real,
-    // valid postings from large-company ATS boards where reqs legitimately
-    // stay open for months. A stale-but-otherwise-valid posting must now
-    // reach the store, carrying its ORIGINAL posted_at untouched — freshness
-    // is `last_seen_at`'s job (stamped by admin_upsert_global_job at write
-    // time), not a reason to refuse the write in the first place.
+  it("REJECTS a posting older than the 30-day freshness window", async () => {
+    // ⚠️ This test asserts the DELIBERATE REVERSAL of the Module 10B.2 fix.
+    //
+    // History: a validator-level `postedAt`-age reject was removed after the
+    // 2026-08-09 dry-run audit found it discarded 69% of real postings, since
+    // large-company ATS reqs stay open for months while `posted_at` never
+    // moves. That reasoning was sound for a catalog that wanted every open
+    // req.
+    //
+    // The 2026-09-12 launch decision changed what the catalog is for:
+    // OfferLyst promises FRESH jobs, so true posting age is now an
+    // eligibility rule (eligibility/freshness.ts), applied in its own gate
+    // before validation. The 69% cost is known and accepted. `last_seen_at`
+    // still does its separate lifecycle job, untouched.
     const stale = new Date(Date.now() - 200 * 24 * 3600 * 1000).toISOString();
     const fetcher = new FakeFetcher({
       [GH_URL]: json({
@@ -250,11 +256,15 @@ describe("integration: crawler → parser → validator → normalizer → dedup
     const report = await orchestrator.run({ mode: "live", scope: "all" });
 
     expect(report.totals.discovered).toBe(2);
-    expect(report.totals.imported).toBe(2);
+    // The fresh posting still lands; the 200-day-old one is refused by the
+    // freshness gate and counted under its own reason, not as a failure or a
+    // data-quality rejection.
+    expect(report.totals.imported).toBe(1);
+    expect(report.totals.ineligibleStale).toBe(1);
     expect(report.totals.rejected).toBe(0);
     expect(report.totals.failed).toBe(0);
-    expect(store.writes).toHaveLength(2);
-    expect(store.writes.find((w) => w.sourceJobId === "7")?.postedAt).toBe(stale);
+    expect(store.writes).toHaveLength(1);
+    expect(store.writes.some((w) => w.sourceJobId === "7")).toBe(false);
   });
 
   it("still rejects a posting with a genuine defect, independent of date", async () => {
@@ -280,7 +290,16 @@ describe("integration: crawler → parser → validator → normalizer → dedup
     expect(store.writes).toHaveLength(1);
   });
 
-  it("runs a non-ATS platform through the identical pipeline", async () => {
+  it("refuses a We Work Remotely entry outright and writes nothing", async () => {
+    // WWR was a supported platform and this test used to carry one of its
+    // postings through the whole pipeline. It is now a declared limitation
+    // (crawl/limitations.ts) because the catalog is India-only and WWR is a
+    // worldwide-remote board, so an entry pointing at it must resolve to the
+    // blocked adapter — refused BEFORE any fetch, not filtered afterwards.
+    //
+    // Non-ATS parsing itself is still covered end to end by the Internshala
+    // adapter's own tests; what matters here is that the removal actually
+    // takes effect at the orchestrator level.
     const feed = `<?xml version="1.0"?><rss><channel><item>
       <title>Beta Ltd: Remote Platform Engineer</title>
       <type>Full-Time</type>
@@ -304,13 +323,10 @@ describe("integration: crawler → parser → validator → normalizer → dedup
 
     const report = await orchestrator.run({ mode: "live", scope: "all" });
 
-    expect(report.totals.imported).toBe(1);
-    const written = store.writes[0];
-    expect(written.source).toBe("weworkremotely");
-    expect(written.companyName).toBe("Beta Ltd");
-    expect(written.role).toBe("Remote Platform Engineer");
-    expect(written.remote).toBe(true);
-    expect(written.fingerprint).toBeTruthy();
+    expect(report.totals.imported).toBe(0);
+    expect(store.writes).toHaveLength(0);
+    expect(report.companies[0].status).toBe("blocked");
+    expect(report.companies[0].message).toMatch(/not crawlable|India-only/i);
   });
 
   it("contains one platform's failure without losing another's jobs", async () => {

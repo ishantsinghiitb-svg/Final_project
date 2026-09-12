@@ -26,10 +26,6 @@ import {
   DEFAULT_INTERNSHALA_LIMITS,
   INTERNSHALA_PLATFORM,
 } from "../adapters/internshala/InternshalaAdapter";
-import {
-  createWeWorkRemotelyAdapter,
-  WWR_PLATFORM,
-} from "../adapters/weWorkRemotely/WeWorkRemotelyAdapter";
 import type { PlatformAdapter } from "../adapters/types";
 import type { CrawlFetcher } from "./HttpFetcher";
 import type { CrawlObservations } from "./CrawlObservations";
@@ -78,14 +74,12 @@ const SUPPORTED: PlatformDescriptor[] = [
       parser: new CareerPagesParser(),
     }),
   },
-  {
-    platform: WWR_PLATFORM,
-    displayName: "We Work Remotely",
-    supported: true,
-    method: "Official RSS feeds (robots.txt: Allow: /).",
-    createAdapter: (fetcher, _entry, observations) =>
-      createWeWorkRemotelyAdapter(fetcher, observations),
-  },
+  // We Work Remotely is NOT listed here any more — it is declared in
+  // ./limitations.ts and therefore resolves to BlockedPlatformAdapter, so a
+  // registry entry pointing at it reports a reasoned "not crawlable" instead of
+  // importing worldwide-remote jobs into an India-only catalog. The adapter
+  // itself (../adapters/weWorkRemotely/) is deliberately left in place and
+  // still tested, so re-enabling is a one-line change here.
   {
     platform: INTERNSHALA_PLATFORM,
     displayName: "Internshala",

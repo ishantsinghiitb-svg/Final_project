@@ -12,6 +12,13 @@
 // splitting is needed.
 
 import { collapseWhitespace, htmlToPlainText } from "../../../parsers/html";
+import {
+  classifyHtmlSections,
+  extractHtmlSections,
+  sectionHtml,
+  structuredHtmlToText,
+  toStructuredJobHtml,
+} from "../../../parsers/jobHtml";
 import type { ParseOutcome, RawJobPayload } from "../../../parsers/types";
 import type { ParsedJobPosting } from "../../../types";
 import {
@@ -43,6 +50,15 @@ type WorkableJob = {
   country?: string;
   country_code?: string;
   location?: { city?: string; region?: string; country?: string; telecommuting?: boolean };
+  /** Structured, and the only place a country CODE appears. */
+  locations?: Array<{
+    country?: string;
+    countryCode?: string;
+    city?: string;
+    region?: string;
+  }>;
+  industry?: string;
+  function?: string;
   description?: string;
   requirements?: string;
   benefits?: string;
@@ -105,17 +121,34 @@ export const workableProvider: AtsProvider = {
     const companyName = collapseWhitespace(job.__accountName ?? "") || payload.board.companyName;
     if (!companyName) return { ok: false, reason: "Workable posting has no company name." };
 
-    const city = collapseWhitespace(job.city ?? job.location?.city ?? "") || null;
-    const state = collapseWhitespace(job.state ?? job.location?.region ?? "") || null;
-    const country = collapseWhitespace(job.country ?? job.location?.country ?? "") || null;
+    // `locations[0]` is the structured form and the only one carrying an ISO
+    // country code; the flat fields are the legacy shape. Both are read so a
+    // posting is judged on whichever the account actually populates.
+    const primaryLocation = job.locations?.[0];
+    const city =
+      collapseWhitespace(job.city ?? job.location?.city ?? primaryLocation?.city ?? "") || null;
+    const state =
+      collapseWhitespace(job.state ?? job.location?.region ?? primaryLocation?.region ?? "") ||
+      null;
+    const country =
+      collapseWhitespace(job.country ?? job.location?.country ?? primaryLocation?.country ?? "") ||
+      null;
     const remote = job.telecommuting === true || job.location?.telecommuting === true;
 
-    const descriptionParts = [
-      htmlToPlainText(job.description ?? ""),
-      job.requirements ? `Requirements\n${htmlToPlainText(job.requirements)}` : "",
-      job.benefits ? `Benefits\n${htmlToPlainText(job.benefits)}` : "",
+    // Workable's `description` is already rich HTML (`<h3>`, `<strong>`,
+    // `<ul>`); it was previously flattened to plain text at parse time, which
+    // discarded every heading and bullet. `requirements`/`benefits` are
+    // separate HTML fields that some accounts populate and others fold into
+    // `description` — both are appended under their own headings when present.
+    const htmlParts = [
+      toStructuredJobHtml(job.description ?? null),
+      job.requirements ? sectionHtml("Requirements", toStructuredJobHtml(job.requirements)) : "",
+      job.benefits ? sectionHtml("Benefits", toStructuredJobHtml(job.benefits)) : "",
     ].filter(Boolean);
-    const description = descriptionParts.join("\n\n").trim() || null;
+    const descriptionHtml = htmlParts.length > 0 ? htmlParts.join("") : null;
+    const description =
+      structuredHtmlToText(descriptionHtml) || htmlToPlainText(job.description ?? "") || null;
+    const sections = classifyHtmlSections(extractHtmlSections(descriptionHtml));
 
     const parsed: ParsedJobPosting = {
       source: ATS_SOURCE_TAG.workable,
@@ -137,12 +170,24 @@ export const workableProvider: AtsProvider = {
       employmentType: mapEmploymentType(job.employment_type),
       experienceLevel: inferExperienceLevelFromTitle(role),
       department: collapseWhitespace(job.department ?? "") || null,
+      jobFunction: collapseWhitespace(job.function ?? "") || null,
+      industry: collapseWhitespace(job.industry ?? "") || null,
 
       description,
-      requirements: toLines(job.requirements),
-      benefits: toLines(job.benefits),
+      descriptionHtml,
+      // Explicit `requirements`/`benefits` fields win; otherwise fall back to
+      // the sections parsed out of the body, which is where accounts that do
+      // not use those fields put the same content.
+      requirements: toLines(job.requirements) ?? sections.requirements,
+      benefits: toLines(job.benefits) ?? sections.benefits,
+      responsibilities: sections.responsibilities,
+      preferredQualifications: sections.preferredQualifications,
 
       companyCareerUrl: payload.board.careersUrl,
+      companyLogoUrl: payload.board.companyLogoUrl ?? null,
+      // Workable's account endpoint is the one ATS source that hands back the
+      // employer's own website (see ./boardLogo.ts).
+      companyUrl: payload.board.companyUrl ?? null,
       postedAt: toIsoDate(job.published_on) ?? toIsoDate(job.created_at),
 
       parserVersion: WORKABLE_PARSER_VERSION,

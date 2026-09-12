@@ -16,6 +16,7 @@ import type { CrawlFetcher } from "../../crawl/HttpFetcher";
 import type { JobParser, ParseOutcome, RawJobPayload } from "../../parsers/types";
 import type { CrawlTarget, PlatformAdapter, PlatformCrawler } from "../types";
 import { detectAtsBoard } from "./ats/detect";
+import { resolveBoardIdentity } from "./ats/boardLogo";
 import { getAtsProvider } from "./ats/index";
 import {
   DEFAULT_ATS_LIMITS,
@@ -93,6 +94,24 @@ export class CareerPagesCrawler implements PlatformCrawler {
     // Pessimistic: a provider that did not explicitly prove completeness is
     // treated as incomplete, so the lifecycle rule never acts on a guess.
     if (result.complete !== true) this.observations.complete = false;
+
+    // ── Company identity, once per board ──
+    // Mutating `board` here reaches every posting: each payload holds a
+    // reference to this same object, so the pure parser stage can read the
+    // logo without a per-posting fetch. Deliberately AFTER the crawl —
+    // SmartRecruiters' logo lives on a posting page, so it needs a sample URL,
+    // and a board that failed to yield postings is not worth a logo request.
+    if (result.raws.length > 0) {
+      const identity = await resolveBoardIdentity(board, this.fetcher, result.raws[0].sourceUrl);
+      board.companyLogoUrl = identity.companyLogoUrl;
+      board.companyUrl = identity.companyUrl;
+      if (!identity.companyLogoUrl) {
+        this.observations.warnings.push(
+          `No company-specific logo found for ${board.provider} board "${board.token}".`,
+        );
+      }
+    }
+
     return result.raws;
   }
 }

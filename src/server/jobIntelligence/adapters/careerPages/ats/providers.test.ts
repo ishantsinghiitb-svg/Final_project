@@ -408,13 +408,17 @@ describe("smartRecruitersProvider", () => {
   });
 
   it("records the missing-description limitation as an extraction warning", async () => {
+    // This fixture's posting is not detail-enriched (the fake fetcher serves
+    // only the list endpoint), so the parser still has no body to store — the
+    // warning now names the detail endpoint, which is where a description
+    // comes from since the enrichment stage was added.
     const { jobs } = await crawlAndParse(
       smartRecruitersProvider,
       SR_BOARD,
       jsonFetcher(srUrl(0), { content: [posting(1)] }),
     );
     expect(jobs[0].description).toBeNull();
-    expect(jobs[0].extractionWarnings?.join(" ")).toMatch(/no job description/i);
+    expect(jobs[0].extractionWarnings?.join(" ")).toMatch(/no job-ad sections/i);
   });
 
   it("paginates until a short page", async () => {

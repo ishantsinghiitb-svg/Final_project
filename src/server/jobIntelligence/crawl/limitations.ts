@@ -28,6 +28,24 @@ export type PlatformLimitation = {
 };
 
 export const PLATFORM_LIMITATIONS: Record<string, PlatformLimitation> = {
+  // ⚠️ This one is a PRODUCT decision, not a technical block — the only entry
+  // here that could be crawled and deliberately is not. It lives in this table
+  // because the effect the product wants is identical to a blocked platform's
+  // (registered, visible, reasoned, imports nothing) and because putting it
+  // anywhere else would mean a second mechanism that does the same job.
+  weworkremotely: {
+    platform: "weworkremotely",
+    displayName: "We Work Remotely",
+    reason:
+      "Disabled by product decision (2026-09-12). OfferLyst's catalog is India-only, and We Work " +
+      "Remotely is a worldwide-remote board whose postings are overwhelmingly not India-eligible.",
+    evidence:
+      "The adapter, its RSS parsing and its region-relevance signal all still work and are left " +
+      "intact — this is a scope decision about what belongs in the catalog, not a crawling failure.",
+    unblockedBy:
+      "A product decision to carry worldwide-remote roles. Re-enabling is a one-line move back " +
+      "into PlatformCatalog's SUPPORTED list plus re-enabling the registry entries.",
+  },
   wellfound: {
     platform: "wellfound",
     displayName: "Wellfound",

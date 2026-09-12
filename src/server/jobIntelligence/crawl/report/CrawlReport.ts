@@ -54,6 +54,14 @@ export type CrawlCounters = {
    * policy is working, not that anything is wrong with the source.
    */
   excluded: number;
+  /**
+   * Postings refused by the catalog-eligibility rules — not an India location,
+   * or outside the 30-day freshness window (see eligibility/jobEligibility.ts).
+   * Split out from `excluded` so an operator can tell "this board is mostly
+   * US roles" from "this board is mostly stale reqs" without reading issues.
+   */
+  ineligibleLocation: number;
+  ineligibleStale: number;
   /** Postings lost to an error (parse crash, store failure). */
   failed: number;
 };
@@ -70,6 +78,8 @@ export function emptyCounters(): CrawlCounters {
     rejected: 0,
     skipped: 0,
     excluded: 0,
+    ineligibleLocation: 0,
+    ineligibleStale: 0,
     failed: 0,
   };
 }
@@ -130,13 +140,21 @@ export function addCounters(a: CrawlCounters, b: CrawlCounters): CrawlCounters {
     rejected: a.rejected + b.rejected,
     skipped: a.skipped + b.skipped,
     excluded: a.excluded + b.excluded,
+    ineligibleLocation: a.ineligibleLocation + b.ineligibleLocation,
+    ineligibleStale: a.ineligibleStale + b.ineligibleStale,
     failed: a.failed + b.failed,
   };
 }
 
 /** One rejected/failed posting, kept so an operator can see WHY, not just how many. */
 export type CrawlIssue = {
-  kind: "parse_failed" | "validation_skipped" | "region_excluded" | "store_failed";
+  kind:
+    | "parse_failed"
+    | "validation_skipped"
+    | "region_excluded"
+    | "not_india"
+    | "stale_posting"
+    | "store_failed";
   sourceUrl: string;
   reason: string;
 };
@@ -215,7 +233,8 @@ export function summarizeReport(report: CrawlReport): string {
   return (
     `${prefix}: ${report.companiesScanned} target(s), ${totals.discovered} discovered, ` +
     `${totals.imported} imported, ${totals.duplicates} duplicate(s), ` +
-    `${totals.rejected} rejected, ${totals.excluded} excluded, ${totals.skipped} skipped, ` +
+    `${totals.rejected} rejected, ${totals.ineligibleLocation} non-India, ` +
+    `${totals.ineligibleStale} stale, ${totals.excluded} excluded, ${totals.skipped} skipped, ` +
     `${totals.failed} failed in ${(report.durationMs / 1000).toFixed(1)}s`
   );
 }

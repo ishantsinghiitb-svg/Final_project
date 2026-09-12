@@ -16,6 +16,12 @@
 //   - `first_published` is the posting date; `updated_at` is not.
 
 import { decodeHtmlEntities, htmlToPlainText, collapseWhitespace } from "../../../parsers/html";
+import {
+  classifyHtmlSections,
+  extractHtmlSections,
+  structuredHtmlToText,
+  toStructuredJobHtml,
+} from "../../../parsers/jobHtml";
 import type { ParseOutcome, RawJobPayload } from "../../../parsers/types";
 import type { ParsedJobPosting } from "../../../types";
 import {
@@ -88,9 +94,16 @@ export const greenhouseProvider: AtsProvider = {
     const companyName = collapseWhitespace(job.company_name ?? "") || payload.board.companyName;
     if (!companyName) return { ok: false, reason: "Greenhouse posting has no company name." };
 
-    // Escaped-HTML-in-JSON: decode entities first, then strip tags.
-    const descriptionHtml = job.content ? decodeHtmlEntities(job.content) : null;
-    const description = descriptionHtml ? htmlToPlainText(descriptionHtml) : null;
+    // Escaped-HTML-in-JSON: decode entities first, then restructure.
+    //
+    // `toStructuredJobHtml` is what keeps the posting readable: Greenhouse
+    // bodies are `<p>`/`<ul>` with `<p><strong>…</strong></p>` used as section
+    // headings (verified on a live Groww posting), and the plain text is
+    // derived from the same HTML so the two views can never disagree.
+    const decoded = job.content ? decodeHtmlEntities(job.content) : null;
+    const descriptionHtml = toStructuredJobHtml(decoded);
+    const description = structuredHtmlToText(descriptionHtml) ?? htmlToPlainText(decoded ?? "");
+    const sections = classifyHtmlSections(extractHtmlSections(descriptionHtml));
 
     const locationText =
       collapseWhitespace(job.location?.name ?? "") ||
@@ -121,13 +134,18 @@ export const greenhouseProvider: AtsProvider = {
       experienceLevel: inferExperienceLevelFromTitle(role),
       department,
 
-      description,
+      description: description || null,
       // `descriptionHtml` is retained because `global_jobs` has the column and
       // the AI features read it; the SEARCHABLE, resume-matched field is
       // `description`, which is always clean text.
       descriptionHtml,
+      responsibilities: sections.responsibilities,
+      requirements: sections.requirements,
+      preferredQualifications: sections.preferredQualifications,
+      benefits: sections.benefits,
 
       companyCareerUrl: payload.board.careersUrl,
+      companyLogoUrl: payload.board.companyLogoUrl ?? null,
 
       // `first_published` is the real posting date; `updated_at` is a fallback
       // only, because an edit is not a re-post.

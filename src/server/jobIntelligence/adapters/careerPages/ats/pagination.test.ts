@@ -210,7 +210,11 @@ describe("smartrecruiters phantom boards", () => {
       DEFAULT_ATS_LIMITS,
     );
     expect(result.raws).toHaveLength(157);
-    expect(result.warnings).toHaveLength(0);
+    // Pagination itself is clean. The one warning is the detail-enrichment
+    // stage reporting that these fixture postings carry no India location or
+    // posted date, so none of them earned a description fetch — pagination and
+    // eligibility are separate concerns and both are reported.
+    expect(result.warnings.filter((w) => !/detail enrichment/i.test(w))).toHaveLength(0);
   });
 
   it("warns when pagination ends short of the board's own total", async () => {

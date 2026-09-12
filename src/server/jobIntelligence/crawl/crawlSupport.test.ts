@@ -47,8 +47,16 @@ describe("crawl errors", () => {
 // ── limitations ──
 
 describe("platform limitations", () => {
-  it("declares all three blocked platforms with evidence", () => {
-    expect(Object.keys(PLATFORM_LIMITATIONS).sort()).toEqual(["foundit", "iimjobs", "wellfound"]);
+  it("declares every non-crawlable platform with evidence", () => {
+    // `weworkremotely` joined this table on 2026-09-12 — a product decision
+    // (India-only catalog) rather than a technical block, but it is declared
+    // the same way so the admin UI explains it identically.
+    expect(Object.keys(PLATFORM_LIMITATIONS).sort()).toEqual([
+      "foundit",
+      "iimjobs",
+      "wellfound",
+      "weworkremotely",
+    ]);
     for (const limitation of Object.values(PLATFORM_LIMITATIONS)) {
       expect(limitation.evidence).toBeTruthy();
       expect(limitation.reason).toBeTruthy();
@@ -103,8 +111,10 @@ describe("BlockedPlatformAdapter", () => {
 // ── PlatformCatalog ──
 
 describe("PlatformCatalog", () => {
-  it("lists the three supported platforms for this phase", () => {
-    expect(supportedPlatforms().sort()).toEqual(["career-pages", "internshala", "weworkremotely"]);
+  it("lists the supported platforms for this phase", () => {
+    // We Work Remotely was removed from this list on 2026-09-12; its adapter
+    // still exists and is still unit-tested, it simply is not offered.
+    expect(supportedPlatforms().sort()).toEqual(["career-pages", "internshala"]);
   });
 
   it("includes blocked platforms, flagged unsupported", () => {
@@ -213,6 +223,8 @@ describe("crawl report counters", () => {
       rejected: 0,
       skipped: 0,
       excluded: 0,
+      ineligibleLocation: 0,
+      ineligibleStale: 0,
       failed: 0,
     });
   });
@@ -256,7 +268,7 @@ describe("crawl report counters", () => {
 
   it("summarizes in one line", () => {
     expect(summarizeReport(report())).toBe(
-      "Crawl: 3 target(s), 40 discovered, 30 imported, 8 duplicate(s), 0 rejected, 0 excluded, 0 skipped, 2 failed in 12.0s",
+      "Crawl: 3 target(s), 40 discovered, 30 imported, 8 duplicate(s), 0 rejected, 0 non-India, 0 stale, 0 excluded, 0 skipped, 2 failed in 12.0s",
     );
   });
 

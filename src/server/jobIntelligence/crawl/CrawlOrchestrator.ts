@@ -50,6 +50,10 @@ import {
   RelevanceFilteringJobParser,
   RelevanceCollector,
 } from "./relevance/RelevanceFilteringJobParser";
+import {
+  EligibilityCollector,
+  EligibilityFilteringJobParser,
+} from "./eligibility/EligibilityFilteringJobParser";
 import { CareerPagesCrawler } from "../adapters/careerPages/CareerPagesAdapter";
 
 export type CrawlRequest = {
@@ -185,6 +189,7 @@ export class CrawlOrchestrator {
 
     const collector = new ValidationCollector();
     const relevanceCollector = new RelevanceCollector();
+    const eligibilityCollector = new EligibilityCollector();
     /** Filled by the crawler while it runs; read after the pipeline finishes. */
     const observations = newObservations();
     let adapter: PlatformAdapter;
@@ -201,8 +206,21 @@ export class CrawlOrchestrator {
       adapter = {
         platform: built.platform,
         crawler: built.crawler,
+        // Three gates, innermost first:
+        //   relevance    — the source's own applicant-eligibility signal
+        //   eligibility  — this catalog's India-only + 30-day rules
+        //   validation   — data quality
+        // Eligibility sits between them so an out-of-scope posting never
+        // spends validator effort, while relevance stays innermost and keeps
+        // owning the report's `parsed` count.
         parser: new ValidatingJobParser(
-          new RelevanceFilteringJobParser(built.parser, relevanceCollector),
+          new EligibilityFilteringJobParser(
+            new RelevanceFilteringJobParser(built.parser, relevanceCollector),
+            eligibilityCollector,
+            // The orchestrator's injectable clock reaches the freshness rule
+            // too, so a test that controls time controls eligibility with it.
+            { now: new Date(this.now()) },
+          ),
           collector,
         ),
       };
@@ -227,11 +245,17 @@ export class CrawlOrchestrator {
         result.outcomes,
         collector,
         relevanceCollector,
+        eligibilityCollector,
         result.total,
       );
       // Postings the crawler excluded before parsing (drafts, unpublished).
       counters.skipped += observations.skipped;
-      const issues = this.collectIssues(result.outcomes, collector, relevanceCollector);
+      const issues = this.collectIssues(
+        result.outcomes,
+        collector,
+        relevanceCollector,
+        eligibilityCollector,
+      );
       const warnings = this.collectWarnings(collector, observations.warnings);
 
       // Module 10B.2: HTTP 200 is not success. A run that discovered no
@@ -294,6 +318,7 @@ export class CrawlOrchestrator {
     outcomes: CrawlRunOutcome[],
     collector: ValidationCollector,
     relevanceCollector: RelevanceCollector,
+    eligibilityCollector: EligibilityCollector,
     discovered: number,
   ): CrawlCounters {
     const counters = emptyCounters();
@@ -320,15 +345,20 @@ export class CrawlOrchestrator {
           counters.failed++;
           counters.validated++;
           break;
-        case "parse_failed":
+        case "parse_failed": {
+          const ineligible = eligibilityCollector.get(outcome.sourceUrl);
           if (relevanceCollector.get(outcome.sourceUrl)?.kind === "excluded") {
             counters.excluded++;
+          } else if (ineligible?.kind === "ineligible") {
+            if (ineligible.rule === "location") counters.ineligibleLocation++;
+            else counters.ineligibleStale++;
           } else if (collector.get(outcome.sourceUrl)?.kind === "skipped") {
             counters.rejected++;
           } else {
             counters.failed++;
           }
           break;
+        }
       }
     }
 
@@ -339,6 +369,7 @@ export class CrawlOrchestrator {
     outcomes: CrawlRunOutcome[],
     collector: ValidationCollector,
     relevanceCollector: RelevanceCollector,
+    eligibilityCollector: EligibilityCollector,
   ): CrawlIssue[] {
     const issues: CrawlIssue[] = [];
     for (const outcome of outcomes) {
@@ -351,9 +382,20 @@ export class CrawlOrchestrator {
         });
       } else if (outcome.status === "parse_failed") {
         const excluded = relevanceCollector.get(outcome.sourceUrl)?.kind === "excluded";
-        const skipped = !excluded && collector.get(outcome.sourceUrl)?.kind === "skipped";
+        const ineligible = eligibilityCollector.get(outcome.sourceUrl);
+        const skipped =
+          !excluded &&
+          ineligible?.kind !== "ineligible" &&
+          collector.get(outcome.sourceUrl)?.kind === "skipped";
+
+        let kind: CrawlIssue["kind"] = "parse_failed";
+        if (excluded) kind = "region_excluded";
+        else if (ineligible?.kind === "ineligible") {
+          kind = ineligible.rule === "location" ? "not_india" : "stale_posting";
+        } else if (skipped) kind = "validation_skipped";
+
         issues.push({
-          kind: excluded ? "region_excluded" : skipped ? "validation_skipped" : "parse_failed",
+          kind,
           sourceUrl: outcome.sourceUrl,
           reason: outcome.reason ?? "Parse failed.",
         });

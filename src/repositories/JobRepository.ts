@@ -4,6 +4,8 @@ import type { Json } from "@/types/database";
 import type { JobFilters, JobSort, RoleCategory } from "@/features/jobs/types";
 import { roleMatchesAnyCategory, extractRoleKeywords } from "@/features/jobs/utils";
 import { activeWindowCutoffIso } from "@/features/jobs/activeWindow";
+import { freshnessCutoffIso } from "@/features/jobs/postedWindow";
+import { indiaDiscoveryFilter } from "@/features/jobs/indiaPlaces";
 import { isSameDuplicateGroup } from "@/features/jobs/duplicatePostings";
 
 // Select all columns that map to the GlobalJob domain type.
@@ -29,6 +31,7 @@ const SAVED_JOB_COLUMNS = "id, user_id, job_id, notes, created_at";
 type DiscoveryFilterable = {
   eq(column: string, value: boolean): DiscoveryFilterable;
   or(filters: string): DiscoveryFilterable;
+  gte(column: string, value: string): DiscoveryFilterable;
 };
 
 export class JobRepository {
@@ -192,7 +195,27 @@ export class JobRepository {
         // the untouched extension path) visible rather than silently emptying
         // the feed — the same "unknown is not stale" rule the ingestion gate
         // uses. See features/jobs/activeWindow.ts.
-        .or(`last_seen_at.is.null,last_seen_at.gte.${activeWindowCutoffIso()}`) as unknown as T
+        .or(`last_seen_at.is.null,last_seen_at.gte.${activeWindowCutoffIso()}`)
+        // ── Launch requirement (2026-09-12): India-only, posted within 30 days ──
+        //
+        // ⚠️ This ADDS a `posted_at` ceiling, which the long comment above
+        // records as previously shipped-and-reverted. That reversal is
+        // deliberate and is a product decision, not an oversight: OfferLyst
+        // launches as an India-only board of genuinely fresh jobs, so a
+        // months-old open req no longer belongs in the feed even though it is
+        // still open. The crawler now enforces the same two rules at ingestion
+        // (server/jobIntelligence/eligibility/), and this is the independent
+        // second line — legacy rows, and rows written by the extension path
+        // which has no ingestion gate, still cannot reach the public feed.
+        //
+        // Both clauses are STRICT about unknowns, unlike `last_seen_at` above:
+        // a row with a NULL `posted_at` cannot be shown to be fresh, and a row
+        // naming no India location cannot be shown to be in scope. The
+        // ingestion gate refuses both for the same reason, so the two layers
+        // agree. The India predicate is built from the shared gazetteer in
+        // features/jobs/indiaPlaces.ts.
+        .gte("posted_at", freshnessCutoffIso())
+        .or(indiaDiscoveryFilter()) as unknown as T
     );
   }
 
