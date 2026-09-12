@@ -25,8 +25,13 @@ import {
   ExternalLink,
   BadgeCheck,
 } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
+import DOMPurify from "dompurify";
 import { DashCard, Chip, CompanyMark, SectionTitle } from "@/components/dashboard/primitives";
+import {
+  sanitizeJobDescriptionHtml,
+  ALLOWED_JOB_HTML_TAGS,
+} from "@/lib/sanitizeJobDescriptionHtml";
 import { DashButton } from "@/components/dashboard/DashButton";
 import {
   useJob,
@@ -256,6 +261,28 @@ function JobDetailPage() {
   }, [navigate, jobId]);
 
   const { data: job, isLoading, isError, error } = useJob(jobId);
+
+  // A1 stored-XSS fix: `global_jobs.description_html` is attacker-writable
+  // shared data (any authenticated user can call `upsert_global_job`
+  // directly; crawlers feed raw ATS HTML). It is NEVER handed to
+  // `dangerouslySetInnerHTML` raw. Layer 1 is the isomorphic structural-tag
+  // sanitizer (src/lib/sanitizeJobDescriptionHtml.ts); layer 2 is an
+  // independent DOMPurify pass in the browser. `null` means "nothing safe to
+  // render" and the plain-text `description` is shown instead.
+  const safeDescriptionHtml = useMemo(() => {
+    const structural = sanitizeJobDescriptionHtml(job?.description_html ?? null);
+    if (structural == null) return null;
+    if (typeof window === "undefined") return structural;
+    const cleaned = DOMPurify.sanitize(structural, {
+      ALLOWED_TAGS: [...ALLOWED_JOB_HTML_TAGS],
+      ALLOWED_ATTR: [],
+      ALLOW_DATA_ATTR: false,
+      FORBID_TAGS: ["style", "script"],
+      FORBID_ATTR: ["style"],
+    }).trim();
+    return cleaned.length > 0 ? cleaned : null;
+  }, [job?.description_html]);
+
   const { data: skills = [] } = useJobSkills(jobId);
   const { data: similarJobs = [] } = useSimilarJobs(jobId, job);
   // Module 11C-2: presentation-only. Other postings the Jobs list collapsed
@@ -673,17 +700,17 @@ function JobDetailPage() {
         {/* ── Left: Description + Skills ──────────────────────────────── */}
         <div className="space-y-4">
           {/* Job description */}
-          {(job.description_html || job.description) && (
+          {(safeDescriptionHtml || job.description) && (
             <DashCard>
               <SectionTitle>Job Description</SectionTitle>
-              {job.description_html ? (
-                // Sanitized to a structural-tag allowlist at parse time (see
-                // extension/src/core/parsers/linkedin/sanitize.ts) — the only
-                // write path is the SECURITY DEFINER upsert RPC, never raw
-                // user input, so this is safe to render directly.
+              {safeDescriptionHtml ? (
+                // `safeDescriptionHtml` has passed the isomorphic structural
+                // sanitizer AND a browser DOMPurify pass (see the useMemo in
+                // JobDetailPage). It contains only attribute-free structural
+                // tags — no script, media, links, styles or event handlers.
                 <div
                   className="mt-3 max-w-none text-sm leading-relaxed text-[oklch(0.3_0.02_265)] [&_h1]:mt-4 [&_h1]:mb-2 [&_h1]:text-base [&_h1]:font-semibold [&_h2]:mt-4 [&_h2]:mb-2 [&_h2]:text-base [&_h2]:font-semibold [&_h3]:mt-3 [&_h3]:mb-1.5 [&_h3]:text-sm [&_h3]:font-semibold [&_h4]:mt-3 [&_h4]:mb-1 [&_h4]:text-sm [&_h4]:font-semibold [&_p]:mb-3 [&_p:last-child]:mb-0 [&_strong]:font-semibold [&_ul]:my-2 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:my-2 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:mb-1"
-                  dangerouslySetInnerHTML={{ __html: job.description_html }}
+                  dangerouslySetInnerHTML={{ __html: safeDescriptionHtml }}
                 />
               ) : (
                 <div className="mt-3 max-w-none text-[oklch(0.3_0.02_265)]">

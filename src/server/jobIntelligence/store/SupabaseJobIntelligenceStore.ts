@@ -1,5 +1,6 @@
 import { createServiceSupabase, type ServerSupabase } from "@/server/supabase";
 import { resolveCanonicalCompany } from "@/server/company/identity";
+import { sanitizeJobDescriptionHtml } from "@/lib/sanitizeJobDescriptionHtml";
 import type { Json } from "@/types/database";
 import type { DedupCandidate } from "../dedup/DeduplicationEngine";
 import type { NormalizedJobPosting } from "../types";
@@ -195,7 +196,14 @@ export function toAdminUpsertPayload(job: NormalizedJobPosting): Record<string, 
     salary_period: job.salaryPeriod ?? null,
     salary_text: job.salaryText ?? null,
     description: job.description ?? null,
-    description_html: job.descriptionHtml ?? null,
+    // A1 stored-XSS fix: crawler-sourced HTML (Greenhouse/Ashby/… feed
+    // `content`) is arbitrary third-party markup. Reduce it to the strict
+    // structural-tag allowlist BEFORE it is ever sent to Supabase. The
+    // BEFORE-INSERT/UPDATE trigger on `global_jobs` (migration
+    // 20260829000001) re-sanitises server-side as the enforced backstop;
+    // doing it here too keeps the stored value identical to what render
+    // produces and gives the crawl a single, testable choke point.
+    description_html: sanitizeJobDescriptionHtml(job.descriptionHtml),
     responsibilities: job.responsibilities ?? null,
     requirements: job.requirements ?? null,
     preferred_qualifications: job.preferredQualifications ?? null,
