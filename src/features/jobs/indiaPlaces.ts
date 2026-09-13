@@ -310,15 +310,41 @@ export const INDIA_PLACE_NAMES: readonly string[] = [
 ];
 
 /**
- * How `global_jobs.country` is actually spelled across the sources that write
- * it — LinkedIn writes "India", Lever/SmartRecruiters write ISO codes, Ashby
- * writes whatever `addressCountry` held. All of them have to match.
+ * Country tokens the filter matches against `global_jobs.country` — LinkedIn
+ * writes "India", Lever/SmartRecruiters write ISO codes, Ashby writes whatever
+ * `addressCountry` held. Matched case-insensitively (see `indiaDiscoveryFilter`),
+ * so this needs exactly one entry per distinct WORD, not one per casing.
  */
-const COUNTRY_VALUES = ["IN", "in", "In", "India", "india", "INDIA", "Bharat"];
+const COUNTRY_TOKENS = ["india", "in", "bharat"];
 
-/** PostgREST `or=` values must be quoted when they contain spaces or commas. */
+/** PostgREST `or=` values must be quoted when they contain spaces, commas, or parentheses. */
 function quote(value: string): string {
   return `"${value.replace(/"/g, '\\"')}"`;
+}
+
+/** Escapes a literal string for safe use inside a POSIX regex alternation. */
+function escapeRegex(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/**
+ * An anchored, case-insensitive-by-caller regex alternation matching any one
+ * of `values` exactly (not a substring) — e.g. `^(bengaluru|mumbai)$`.
+ * Exported so tests can exercise the exact pattern the live filter uses,
+ * without needing a database.
+ */
+export function exactMatchAlternation(values: readonly string[]): string {
+  return `^(${values.map(escapeRegex).join("|")})$`;
+}
+
+/** The regex `indiaDiscoveryFilter` matches `city` against — see its docs. */
+export function indiaCityPattern(): string {
+  return exactMatchAlternation(INDIA_CITIES);
+}
+
+/** The regex `indiaDiscoveryFilter` matches `state` against — see its docs. */
+export function indiaStatePattern(): string {
+  return exactMatchAlternation(INDIA_STATES);
 }
 
 /**
@@ -333,17 +359,27 @@ function quote(value: string): string {
  * Deliberately generous in WHAT it matches (country code, country name, the
  * word "India" anywhere in the free-text location, or a known Indian city or
  * state) and strict in its default: a row matching none of these is hidden.
- * `city`/`state` are matched with `in.()` rather than `ilike` because those
- * columns hold a single place name, so exact matching is both correct and
- * indexable.
+ *
+ * ⚠️ `city`/`state` are matched with `imatch` (Postgres `~*`, a case-INsensitive
+ * anchored regex) rather than `in.()`. `in.()` performs an exact, CASE-SENSITIVE
+ * string comparison — real rows overwhelmingly store Title Case ("Bengaluru",
+ * "Uttar Pradesh") while this module's gazetteer is lowercase, so `in.()`
+ * silently matched almost nothing (found live in production 2026-09-13: 19 of
+ * 318 valid India jobs were invisible on the Jobs page for exactly this
+ * reason). `imatch` performs the same EXACT-match semantics (anchored with
+ * `^...$`, so "Bengaluru" matches but "Bengaluru Rural District" does not)
+ * while being case-insensitive by construction — no casing enumeration, no
+ * gazetteer changes, and per-request measurement shows the resulting query
+ * string is a few hundred characters SHORTER than the `in.()` version it
+ * replaces (one regex per column vs. one quoted literal per gazetteer entry).
  */
 export function indiaDiscoveryFilter(): string {
   const clauses: string[] = [
-    `country.in.(${COUNTRY_VALUES.map(quote).join(",")})`,
+    `country.imatch.${quote(exactMatchAlternation(COUNTRY_TOKENS))}`,
     "location.ilike.*india*",
     "city.ilike.*india*",
-    `city.in.(${INDIA_CITIES.map(quote).join(",")})`,
-    `state.in.(${INDIA_STATES.map(quote).join(",")})`,
+    `city.imatch.${quote(indiaCityPattern())}`,
+    `state.imatch.${quote(indiaStatePattern())}`,
   ];
   return clauses.join(",");
 }

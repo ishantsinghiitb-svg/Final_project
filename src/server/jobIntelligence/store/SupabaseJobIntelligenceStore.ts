@@ -1,6 +1,7 @@
 import { createServiceSupabase, type ServerSupabase } from "@/server/supabase";
 import { resolveCanonicalCompany } from "@/server/company/identity";
 import { sanitizeJobDescriptionHtml } from "@/lib/sanitizeJobDescriptionHtml";
+import { isGenericPlatformImage } from "../logo/companyLogo";
 import type { Json } from "@/types/database";
 import type { DedupCandidate } from "../dedup/DeduplicationEngine";
 import type { NormalizedJobPosting } from "../types";
@@ -133,8 +134,109 @@ export class SupabaseJobIntelligenceStore implements JobIntelligenceStore {
     });
     if (error) throw error;
     const row = data as unknown as { id: string; created: boolean };
+
+    // ── 2026-09-13 fix: never let a stale domain-favicon logo survive ──
+    //
+    // admin_upsert_global_job's companies-upsert is first-known-wins on
+    // `logo_url` (20260821000001: `COALESCE(companies.logo_url, EXCLUDED.logo_url)`),
+    // and that company-level value then unconditionally wins over a fresh
+    // per-job scrape (`COALESCE(v_company_logo_url, payload->>'company_logo_url', …)`).
+    // That is the RIGHT behavior between two REAL scraped logos — one bad
+    // scrape must never regress an already-good company logo. It is WRONG for
+    // the domain-favicon fallback (server/company/logo.ts, run by the
+    // separate scripts/resolveCompanyLogos.ts): a favicon is a known-inferior
+    // last resort, yet once set it permanently outranks every future genuine
+    // resolution for that company, forever — confirmed live in production
+    // 2026-09-13 on 59 jobs across 8 companies (6sense, HighRadius, Meesho,
+    // Observe.AI, Netradyne, InMobi, Sarvam AI, and two Internshala postings).
+    //
+    // Fixed here rather than in the migrated RPC (no schema/security-definer
+    // change): read the row back, and if its NOW-STORED logo is
+    // favicon/generic-shaped, overwrite it with whatever THIS crawl resolved
+    // (a genuine URL, upgrading it — or null, per the product rule that no
+    // reliable logo means no logo, never a favicon). The `companies` row is
+    // fixed the same way so the correction is durable: without it, the very
+    // next crawl's `v_company_logo_url` would re-read the untouched favicon
+    // and immediately re-taint the job. Best-effort by design — the same
+    // philosophy the favicon module itself documents — so a failure here
+    // never fails the posting's write.
+    try {
+      await this.clearStaleFaviconLogo(row.id, job.companyLogoUrl ?? null);
+    } catch {
+      // Logo cleanup is an enhancement, never a reason to fail an otherwise
+      // successful upsert.
+    }
+
     return { jobId: row.id, created: row.created };
   }
+
+  private async clearStaleFaviconLogo(jobId: string, freshLogoUrl: string | null): Promise<void> {
+    const { data: current, error } = await this.supabase
+      .from("global_jobs")
+      .select("company_id, company_logo_url")
+      .eq("id", jobId)
+      .maybeSingle();
+    if (error || !current) return;
+
+    const plan = planFaviconCleanup(freshLogoUrl, current.company_logo_url);
+    if (!plan.shouldOverwriteJob) return;
+
+    const { error: jobUpdateError } = await this.supabase
+      .from("global_jobs")
+      .update({ company_logo_url: plan.replacementLogoUrl })
+      .eq("id", jobId);
+    if (jobUpdateError) throw jobUpdateError;
+
+    if (current.company_id) {
+      // Guarded on the company's OWN `logo_source` (not just the URL shape)
+      // before touching the SHARED company record — a stricter bar than the
+      // per-job check above, since this value fans out to every other
+      // posting under the same company (companies_propagate_logo_trigger).
+      await this.supabase
+        .from("companies")
+        .update({
+          logo_url: plan.replacementLogoUrl,
+          logo_source: plan.replacementLogoUrl ? "job_scraped" : null,
+        })
+        .eq("id", current.company_id)
+        .eq("logo_source", "domain_favicon");
+    }
+  }
+}
+
+export type FaviconCleanupPlan = {
+  /** True when the stored job-row logo is favicon/generic-tainted and must be overwritten. */
+  shouldOverwriteJob: boolean;
+  /** The value to write when `shouldOverwriteJob` is true; ignored otherwise. */
+  replacementLogoUrl: string | null;
+};
+
+/**
+ * Pure decision, exported for testing (see SupabaseJobIntelligenceStore.test.ts) —
+ * no I/O. Given what THIS crawl resolved and what is currently stored on the
+ * job row (read back after the RPC upsert), decides whether the stored value
+ * must be replaced.
+ *
+ * Never fires for a genuine existing logo — `isGenericPlatformImage` returning
+ * false for the stored value means it is preserved untouched, exactly matching
+ * `admin_upsert_global_job`'s own first-known-wins intent for a real logo. Only
+ * fires when the stored value is ITSELF flagged generic/favicon-shaped, which
+ * in practice only ever happens via the domain-favicon fallback — nothing else
+ * in this codebase writes a value matching that denylist. The replacement is
+ * independently re-checked against the same denylist so a favicon (or any
+ * other generic image) can never be selected as the new value either, even
+ * defensively if `freshLogoUrl` were ever malformed upstream.
+ */
+export function planFaviconCleanup(
+  freshLogoUrl: string | null,
+  storedJobLogoUrl: string | null,
+): FaviconCleanupPlan {
+  if (!storedJobLogoUrl || !isGenericPlatformImage(storedJobLogoUrl)) {
+    return { shouldOverwriteJob: false, replacementLogoUrl: storedJobLogoUrl };
+  }
+  const safeReplacement =
+    freshLogoUrl && !isGenericPlatformImage(freshLogoUrl) ? freshLogoUrl : null;
+  return { shouldOverwriteJob: true, replacementLogoUrl: safeReplacement };
 }
 
 /** Exported for testing (see SupabaseJobIntelligenceStore.test.ts) — pure, no I/O. */
