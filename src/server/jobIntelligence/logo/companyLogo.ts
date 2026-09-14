@@ -140,8 +140,7 @@ function attr(tag: string, name: string): string | null {
 /**
  * Loosely normalizes a company name for substring identity matching: strips
  * everything but letters/digits and lowercases. "Meesho" and "meesho-logo"
- * both normalize to a form where one contains the other; "Acme Corp Pvt Ltd"
- * still matches an alt of "Acme Corp" on the shared prefix. Deliberately
+ * both normalize to a form where one contains the other. Deliberately
  * permissive — this is used to PREFER a candidate among several, never to
  * reject a candidate outright, so a loose match costs nothing on its own.
  */
@@ -149,11 +148,26 @@ function normalizeForIdentityMatch(value: string): string {
   return value.toLowerCase().replace(/[^a-z0-9]/g, "");
 }
 
-/** True when `haystack` (an alt/class attribute) plausibly names `companyName`. */
+/**
+ * True when `haystack` (an alt/class attribute) plausibly names `companyName`.
+ *
+ * ⚠️ 2026-09-14 fix: checked in BOTH directions, not just "does the alt/class
+ * text contain the company name". A logo's alt/class text is often SHORTER
+ * than the company's full registered name (a brand wordmark says "Sarvam",
+ * not "Sarvam AI"; a suffix like "Pvt Ltd"/"Inc"/"Technologies" is routine).
+ * The one-directional version missed this: found live in the targeted Lever/
+ * Ashby recovery crawl (2026-09-14) — Sarvam AI's own visible nav wordmark
+ * (`alt="Sarvam"`) never matched `companyName="Sarvam AI"`, because "Sarvam"
+ * does not CONTAIN "SarvamAI" as a substring, even though it obviously names
+ * the same company. Checked in both directions, with a minimum length floor
+ * on BOTH sides (not just the company name) so a short/generic alt or class
+ * fragment can't trivially match everything.
+ */
 function looksLikeEmployerIdentity(haystack: string, companyName: string): boolean {
-  const needle = normalizeForIdentityMatch(companyName);
-  if (needle.length < 2) return false;
-  return normalizeForIdentityMatch(haystack).includes(needle);
+  const a = normalizeForIdentityMatch(haystack);
+  const b = normalizeForIdentityMatch(companyName);
+  if (a.length < 3 || b.length < 3) return false;
+  return a.includes(b) || b.includes(a);
 }
 
 /**
@@ -220,7 +234,7 @@ export function collectLogoCandidatesFromHtml(html: string, companyName?: string
   }
   candidates.push(...identityMatches, ...genericLogoMatches);
 
-  // 5. Social preview images — last, because this is where the generics live.
+  // 5. Social preview images.
   for (const property of ["og:image", "twitter:image"]) {
     const meta = html.match(
       new RegExp(`<meta[^>]*(?:property|name)\\s*=\\s*["']${property}["'][^>]*>`, "i"),
@@ -228,6 +242,22 @@ export function collectLogoCandidatesFromHtml(html: string, companyName?: string
     if (!meta) continue;
     const value = attr(meta[0], "content");
     if (value) candidates.push(value);
+  }
+
+  // 6. Embedded JSON/app-state logo fields — last resort, for boards that
+  // render the visible logo entirely client-side. Ashby's board page is a
+  // client-rendered SPA: the raw HTTP response has NO <img> tag anywhere
+  // (confirmed live, 2026-09-14 — this class of page is why tiers 1-5 above
+  // can legitimately all come back empty), but the bootstrap JSON embedded
+  // in the page's own <script> tag carries the real logo URL under
+  // `logoWordmarkImageUrl` regardless — that is where the genuine Sarvam
+  // logo was actually found. Matched textually, the same way JSON-LD "logo"
+  // is matched in tier 2, rather than parsing the whole state blob (which is
+  // large and not JSON-LD shaped).
+  for (const match of html.matchAll(
+    /"(?:logoWordmarkImageUrl|logoSquareImageUrl|companyLogoUrl|organizationLogoUrl)"\s*:\s*"([^"]+)"/gi,
+  )) {
+    if (match[1]) candidates.push(match[1]);
   }
 
   return candidates;
