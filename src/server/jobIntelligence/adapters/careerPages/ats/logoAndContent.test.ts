@@ -175,6 +175,65 @@ describe("Lever", () => {
   });
 });
 
+// ── Lever — 2026-09-13 regression fixture: Meesho application page ──
+//
+// Meta lifted verbatim from a real Lever job APPLICATION page
+// (jobs.lever.co/meesho/…/apply): og:image AND twitter:image both point to
+// the SAME genuine per-client S3 asset, and the visible "Meesho logo" image
+// shares its UUID prefix with them — all three confirm the same genuine
+// logo, none of them Lever's own house mark.
+
+describe("Lever — Meesho application-page fixture, board page has no logo", () => {
+  const API = "https://api.lever.co/v0/postings/meesho?mode=json&limit=100&skip=0";
+  const BOARD_PAGE = "https://jobs.lever.co/meesho";
+  // `samplePostingUrl` (passed to resolveBoardIdentity) is the raw payload's
+  // `sourceUrl`, which the Lever provider sets from `hostedUrl` — NOT
+  // `applyUrl` — so the fallback fetch targets this URL, matching production.
+  const POSTING_PAGE = "https://jobs.lever.co/meesho/db110756";
+  const LOGO =
+    "https://lever-client-logos.s3.us-west-2.amazonaws.com/4b7a9e56-d99e-4af6-acfc-4be8bde495d5-1687351973980.png";
+
+  function fetcher(): FakeFetcher {
+    return new FakeFetcher({
+      [API]: {
+        body: JSON.stringify([
+          {
+            id: "db110756-b496-49a2-bde5-49ab46e963b8",
+            text: "Product Manager",
+            hostedUrl: POSTING_PAGE,
+            applyUrl: `${POSTING_PAGE}/apply`,
+            createdAt: Date.parse(RECENT),
+            country: "IN",
+            workplaceType: "onsite",
+            categories: { location: "Bengaluru", commitment: "Full Time", team: "Product" },
+            description: "<div>Meesho democratizes internet commerce for everyone.</div>",
+            lists: [],
+          },
+        ]),
+      },
+      // The board index page itself carries no company-specific image at all.
+      [BOARD_PAGE]: { body: "<html><head></head><body></body></html>" },
+      // The individual application page — where a user, and a follow-up
+      // detail fetch, would actually see the logo.
+      [POSTING_PAGE]: {
+        body: `<html><head>
+                 <meta property="og:image" content="${LOGO}">
+                 <meta name="twitter:image" content="${LOGO}">
+               </head><body>
+                 <img alt="Meesho logo" src="${LOGO}">
+                 <img alt="Lever logo" src="https://jobs.lever.co/img/lever-logo-refresh.svg" class="footer-logo">
+               </body></html>`,
+      },
+    });
+  }
+
+  it("falls back to the sample application page and recovers the genuine Meesho logo", async () => {
+    const [job] = await crawlBoard("https://jobs.lever.co/meesho", "Meesho", fetcher());
+    expect(job.companyLogoUrl).toBe(LOGO);
+    expect(job.companyLogoUrl).not.toMatch(/lever-logo-refresh/);
+  });
+});
+
 // ── SmartRecruiters ──
 
 describe("SmartRecruiters", () => {
@@ -345,6 +404,75 @@ describe("Ashby", () => {
     // "Tamil Nādu" must not prevent the posting from being recognised as India.
     expect(job.city).toBe("Chennai");
     expect(job.country).toBe("India");
+  });
+});
+
+// ── Ashby — 2026-09-13 regression: board page with no reliable og:image ──
+//
+// A real Ashby board (Sarvam) carries NO og:image, NO twitter:image, and NO
+// itemprop="logo" anywhere on the board index page — only the individual
+// posting page renders the employer's own nav wordmark image, whose alt/class
+// never say "logo" literally. `resolveBoardIdentity` must fall back to that
+// sample posting page and recover the logo via employer-identity matching
+// (see companyLogo.test.ts for the fixture-level coverage of the matching
+// logic itself; this proves the full crawl pipeline wires it through).
+
+describe("Ashby — falls back to a sample posting page when the board page has no logo", () => {
+  const API = "https://api.ashbyhq.com/posting-api/job-board/sarvam?includeCompensation=true";
+  const BOARD_PAGE = "https://jobs.ashbyhq.com/sarvam";
+  const POSTING_PAGE = "https://jobs.ashbyhq.com/sarvam/72ed7709-e5e3-47fe-acd1-da837d03e5ce";
+  const LOGO = "https://jobs.ashbyhq.com/sarvam/ashby_assets/1af80f88-nav-wordmark.png";
+
+  function fetcher(): FakeFetcher {
+    return new FakeFetcher({
+      [API]: {
+        body: JSON.stringify({
+          apiVersion: "1",
+          jobs: [
+            {
+              id: "72ed7709-e5e3-47fe-acd1-da837d03e5ce",
+              title: "GTM Strategy - Chanakya",
+              location: "Delhi, Delhi, India",
+              publishedAt: RECENT,
+              isListed: true,
+              employmentType: "FullTime",
+              workplaceType: "OnSite",
+              address: {
+                postalAddress: {
+                  addressLocality: "Delhi",
+                  addressRegion: "Delhi",
+                  addressCountry: "India",
+                },
+              },
+              jobUrl: POSTING_PAGE,
+              descriptionHtml: "<p>Chanakya is Sarvam's national-security vertical.</p>",
+              descriptionPlain: "Chanakya is Sarvam's national-security vertical.",
+            },
+          ],
+        }),
+      },
+      // No og:image, no twitter:image, no itemprop="logo" — only Ashby's own
+      // favicon, which must never be used as the employer logo.
+      [BOARD_PAGE]: {
+        body: `<html><head>
+                 <link rel="icon" href="https://cdn.ashbyprd.com/cdn_assets/x/favicon.svg">
+               </head></html>`,
+      },
+      // The individual posting page carries the employer's own nav wordmark —
+      // its alt/class say nothing about "logo" literally, only the company name.
+      [POSTING_PAGE]: {
+        body: `<html><body>
+                 <img alt="Sarvam" class="_navLogoWordmarkImage_5bhg5_104" src="${LOGO}">
+               </body></html>`,
+      },
+    });
+  }
+
+  it("recovers the genuine logo from the sample posting page, not Ashby's favicon", async () => {
+    const [job] = await crawlBoard("https://jobs.ashbyhq.com/sarvam", "Sarvam", fetcher());
+    expect(job.companyLogoUrl).toBe(LOGO);
+    expect(job.companyLogoUrl).not.toMatch(/favicon/);
+    expect(job.companyLogoUrl).not.toMatch(/cdn\.ashbyprd\.com/);
   });
 });
 

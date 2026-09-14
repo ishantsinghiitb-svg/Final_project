@@ -5,7 +5,7 @@ import type { JobFilters, JobSort, RoleCategory } from "@/features/jobs/types";
 import { roleMatchesAnyCategory, extractRoleKeywords } from "@/features/jobs/utils";
 import { activeWindowCutoffIso } from "@/features/jobs/activeWindow";
 import { freshnessCutoffIso } from "@/features/jobs/postedWindow";
-import { indiaDiscoveryFilter } from "@/features/jobs/indiaPlaces";
+import { foreignLocationExclusions, indiaDiscoveryFilter } from "@/features/jobs/indiaPlaces";
 import { isSameDuplicateGroup } from "@/features/jobs/duplicatePostings";
 
 // Select all columns that map to the GlobalJob domain type.
@@ -177,46 +177,78 @@ export class JobRepository {
    */
   private applyDiscoveryVisibility<T>(query: T): T {
     const nowIso = new Date().toISOString();
-    return (
-      (query as unknown as DiscoveryFilterable)
-        .eq("is_manual_import", false)
-        .eq("is_closed", false)
-        .or(`expiry_date.is.null,expiry_date.gte.${nowIso}`)
-        // ── Module 10B.2: the 30-day active window ──
-        // Keyed on `last_seen_at` (when a crawl last OBSERVED the job live),
-        // never on `posted_at`. That distinction is the whole point: the
-        // comment above records that a `posted_at` age ceiling was shipped and
-        // reverted as a regression, because a still-open REPOST carries an old
-        // original date. A job re-observed today stays visible however old its
-        // posting date; a job that vanished from its source ages out on its
-        // own, with nothing deleted and no flag flipped.
-        //
-        // `is.null` keeps rows that predate the column (and anything written by
-        // the untouched extension path) visible rather than silently emptying
-        // the feed — the same "unknown is not stale" rule the ingestion gate
-        // uses. See features/jobs/activeWindow.ts.
-        .or(`last_seen_at.is.null,last_seen_at.gte.${activeWindowCutoffIso()}`)
-        // ── Launch requirement (2026-09-12): India-only, posted within 30 days ──
-        //
-        // ⚠️ This ADDS a `posted_at` ceiling, which the long comment above
-        // records as previously shipped-and-reverted. That reversal is
-        // deliberate and is a product decision, not an oversight: OfferLyst
-        // launches as an India-only board of genuinely fresh jobs, so a
-        // months-old open req no longer belongs in the feed even though it is
-        // still open. The crawler now enforces the same two rules at ingestion
-        // (server/jobIntelligence/eligibility/), and this is the independent
-        // second line — legacy rows, and rows written by the extension path
-        // which has no ingestion gate, still cannot reach the public feed.
-        //
-        // Both clauses are STRICT about unknowns, unlike `last_seen_at` above:
-        // a row with a NULL `posted_at` cannot be shown to be fresh, and a row
-        // naming no India location cannot be shown to be in scope. The
-        // ingestion gate refuses both for the same reason, so the two layers
-        // agree. The India predicate is built from the shared gazetteer in
-        // features/jobs/indiaPlaces.ts.
-        .gte("posted_at", freshnessCutoffIso())
-        .or(indiaDiscoveryFilter()) as unknown as T
-    );
+    let filterable = (query as unknown as DiscoveryFilterable)
+      .eq("is_manual_import", false)
+      .eq("is_closed", false)
+      .or(`expiry_date.is.null,expiry_date.gte.${nowIso}`)
+      // ── Module 10B.2: the 30-day active window ──
+      // Keyed on `last_seen_at` (when a crawl last OBSERVED the job live),
+      // never on `posted_at`. That distinction is the whole point: the
+      // comment above records that a `posted_at` age ceiling was shipped and
+      // reverted as a regression, because a still-open REPOST carries an old
+      // original date. A job re-observed today stays visible however old its
+      // posting date; a job that vanished from its source ages out on its
+      // own, with nothing deleted and no flag flipped.
+      //
+      // `is.null` keeps rows that predate the column (and anything written by
+      // the untouched extension path) visible rather than silently emptying
+      // the feed — the same "unknown is not stale" rule the ingestion gate
+      // uses. See features/jobs/activeWindow.ts.
+      .or(`last_seen_at.is.null,last_seen_at.gte.${activeWindowCutoffIso()}`)
+      // ── Launch requirement (2026-09-12): India-only, posted within 30 days ──
+      //
+      // ⚠️ This ADDS a `posted_at` ceiling, which the long comment above
+      // records as previously shipped-and-reverted. That reversal is
+      // deliberate and is a product decision, not an oversight: OfferLyst
+      // launches as an India-only board of genuinely fresh jobs, so a
+      // months-old open req no longer belongs in the feed even though it is
+      // still open. The crawler now enforces the same two rules at ingestion
+      // (server/jobIntelligence/eligibility/), and this is the independent
+      // second line — legacy rows, and rows written by the extension path
+      // which has no ingestion gate, still cannot reach the public feed.
+      //
+      // Both clauses are STRICT about unknowns, unlike `last_seen_at` above:
+      // a row with a NULL `posted_at` cannot be shown to be fresh, and a row
+      // naming no India location cannot be shown to be in scope. The
+      // ingestion gate refuses both for the same reason, so the two layers
+      // agree. The India predicate is built from the shared gazetteer in
+      // features/jobs/indiaPlaces.ts.
+      //
+      // ⚠️ 2026-09-14 fix: `indiaDiscoveryFilter()` alone only proves an
+      // India SIGNAL is present — it is not the whole rule. A city can
+      // genuinely, exactly match a real Indian city name while the row is
+      // still not an India job ("Hyderabad, Pakistan"; "Salem, Oregon" —
+      // Salem is also a real Tamil Nadu city). The loop below applies the
+      // other half: reject the row if ANY field ALSO carries a foreign
+      // signal, mirroring the two-sided rule `isIndiaJobLocation` (the
+      // ingestion-side gate) already used — "India signal required AND
+      // foreign signal rejected", not "India signal alone is enough".
+      // Applying `indiaDiscoveryFilter()` without this re-introduces that
+      // class of false positive (a US job in "Indianapolis, Indiana" would
+      // otherwise show up as an India job, since "Indianapolis" and
+      // "Indiana" both contain "india" as a substring — see indiaPlaces.ts
+      // for the full history).
+      //
+      // Each exclusion is applied via its OWN `.or()` call — never `.not()`
+      // directly — because `foreignLocationExclusions()` already builds each
+      // one as a NULL-SAFE `column.is.null,column.not.imatch.pattern` clause.
+      // A bare `.not(column, "imatch", pattern)` was tried and reverted after
+      // live verification: `NOT (city ~* pattern)` is SQL NULL (not TRUE)
+      // when `city IS NULL`, and a WHERE/PostgREST filter drops any row whose
+      // condition isn't TRUE — so it silently excluded every row with a NULL
+      // in ANY of country/city/state/location, foreign or not, and wrongly
+      // hid 118 of 319 genuine India rows in production data. Chaining
+      // `.or()` calls here follows the same idiom already used above for
+      // `expiry_date`/`last_seen_at`, which PostgREST ANDs together exactly
+      // like `.eq()`/`.gte()` calls do.
+      .gte("posted_at", freshnessCutoffIso())
+      .or(indiaDiscoveryFilter());
+
+    for (const exclusionClause of foreignLocationExclusions()) {
+      filterable = filterable.or(exclusionClause);
+    }
+
+    return filterable as unknown as T;
   }
 
   /**

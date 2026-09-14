@@ -9,6 +9,7 @@ import type {
   UniversalJob,
   WorkMode,
 } from "../types";
+import { parseRelativePostedDate } from "../shared/postedDate";
 import { extractLinkedInJobIdFromUrl } from "./externalId";
 import { CLOSED_JOB_PHRASES, linkedInSelectors } from "./linkedin.selectors";
 import { EMPLOYMENT_TYPE_PATTERNS, WORK_MODE_KEYWORDS } from "./patterns";
@@ -27,7 +28,7 @@ import {
 type JsonLdJobPosting = Record<string, unknown>;
 
 /** Bumped when this parser's extraction logic changes materially. */
-const LINKEDIN_PARSER_VERSION = "linkedin-2";
+const LINKEDIN_PARSER_VERSION = "linkedin-3";
 
 /**
  * LinkedIn tab titles that are NOT a job — used to reject the `document.title`
@@ -199,6 +200,13 @@ export class LinkedInParser extends BaseParser {
       this.readEmploymentType(jsonLd, fitPreferences, criteriaMap, insightSegments, criteriaText) ??
       top.employmentType;
 
+    // "13 hours ago" / "2 weeks ago" — the top card's own relative-age text.
+    // Read once and reused for both `postedAgo` (display) and, when neither
+    // JSON-LD `datePosted` nor a machine-readable `<time datetime>` is present
+    // (routinely true on LinkedIn's authenticated /jobs/* surfaces), as the
+    // only available signal for `postedAt`. See `readPostedAt`'s doc comment.
+    const postedAgo = primarySegments.postedAgo ?? top.postedAgo;
+
     return createUniversalJob({
       source: SupportedSite.LinkedIn,
       parserVersion: LINKEDIN_PARSER_VERSION,
@@ -219,8 +227,8 @@ export class LinkedInParser extends BaseParser {
       salaryCurrency: this.readSalaryCurrency(jsonLd),
       salaryPeriod: this.readSalaryPeriod(jsonLd),
       skills: this.readSkills(document),
-      postedAt: this.readPostedAt(document, jsonLd),
-      postedAgo: primarySegments.postedAgo ?? top.postedAgo,
+      postedAt: this.readPostedAt(document, jsonLd) ?? parseRelativePostedDate(postedAgo),
+      postedAgo,
       expiryDate: this.readExpiryDate(jsonLd),
       applicantCount: primarySegments.applicantCount ?? top.applicantCount,
       hiringTeam: this.readHiringTeam(document),
@@ -826,6 +834,18 @@ export class LinkedInParser extends BaseParser {
     );
   }
 
+  /**
+   * Absolute posted date from the two machine-readable sources LinkedIn
+   * sometimes provides — JSON-LD `datePosted`, then a `<time datetime>`
+   * attribute. Both are frequently ABSENT on the current authenticated
+   * /jobs/* DOM (no JobPosting JSON-LD block, and the visible `<time>` node
+   * carries only display text with no `datetime` attribute at all) — when
+   * that happens this returns null and `tryParse` falls back to converting
+   * the relative "N hours/days ago" text via `parseRelativePostedDate`,
+   * which is the only posted-date signal LinkedIn reliably renders. That
+   * fallback lives in `tryParse`, not here, because it needs `postedAgo`,
+   * which this method has no reason to read.
+   */
   private readPostedAt(document: Document, jsonLd: JsonLdJobPosting | null): string | null {
     if (typeof jsonLd?.datePosted === "string") {
       const parsed = new Date(jsonLd.datePosted);

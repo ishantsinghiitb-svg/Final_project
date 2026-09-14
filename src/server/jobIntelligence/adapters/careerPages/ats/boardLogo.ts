@@ -17,12 +17,26 @@
 //                   (its og:image is workable.com/assets/facebook-preview.png —
 //                   the same generic image for EVERY tenant, hence never HTML here)
 //   greenhouse      HTML  job-boards.greenhouse.io/{token}   → og:image
-//   lever           HTML  jobs.lever.co/{token}              → og:image
-//   ashby           HTML  jobs.ashbyhq.com/{token}           → og:image
+//   lever           HTML  jobs.lever.co/{token}, falling back to a sample
+//                         posting/apply page                → og:image
+//   ashby           HTML  jobs.ashbyhq.com/{token}, falling back to a sample
+//                         posting/apply page                → og:image, or a
+//                         visible nav wordmark <img> matched to `companyName`
 //   smartrecruiters HTML  a sample posting page              → itemprop="logo"
 //                   (the board listing page redirects to the employer's own
 //                   careers site and carries no logo markup)
 //   recruitee       HTML  {token}.recruitee.com              → best effort
+//
+// Lever and Ashby fall back to a sample posting page (the run's own first
+// fetched posting — never an extra request beyond what the board fetch
+// already spent) because the board INDEX page does not always carry a
+// company-specific image: a real Ashby board observed 2026-09-13 (Sarvam)
+// has no og:image, no twitter:image, and no itemprop="logo" anywhere on the
+// board page, while its individual posting/application pages render the
+// employer's own nav wordmark image. `board.companyName` is passed through
+// to `fetchHtmlLogo` for exactly that case: an identity-matched visible
+// <img> (see `collectLogoCandidatesFromHtml`) recovers a genuine logo even
+// with no reliable og:image anywhere.
 //
 // Every candidate still goes through `pickCompanyLogo`, so a platform that
 // changes its markup to serve house artwork degrades to null rather than
@@ -56,10 +70,30 @@ function cacheKey(board: AtsBoard): string {
   return `${board.provider}:${board.token.toLowerCase()}`;
 }
 
-async function fetchHtmlLogo(url: string, fetcher: CrawlFetcher): Promise<string | null> {
+async function fetchHtmlLogo(
+  url: string,
+  fetcher: CrawlFetcher,
+  companyName?: string | null,
+): Promise<string | null> {
   const response = await fetcher.fetchText(url, { retries: 1 });
   if (!response.ok) return null;
-  return extractCompanyLogoFromHtml(response.body, url);
+  return extractCompanyLogoFromHtml(response.body, url, companyName);
+}
+
+/**
+ * Falls back to a single posting's own page when the board-level page
+ * yielded no logo. `samplePostingUrl` is only ever the FIRST posting fetched
+ * for this board in this run (see `CareerPagesCrawler.fetchRawPostings`), so
+ * this never costs more than the one extra request the board-level fetch
+ * already spent — it is a fallback, not an additional per-provider strategy.
+ */
+async function fetchSamplePostingLogo(
+  samplePostingUrl: string | null | undefined,
+  fetcher: CrawlFetcher,
+  companyName?: string | null,
+): Promise<string | null> {
+  if (!samplePostingUrl) return null;
+  return fetchHtmlLogo(samplePostingUrl, fetcher, companyName);
 }
 
 /**
@@ -117,6 +151,7 @@ export async function resolveBoardIdentity(
           companyLogoUrl: await fetchHtmlLogo(
             `https://job-boards.greenhouse.io/${encodeURIComponent(board.token)}`,
             fetcher,
+            board.companyName,
           ),
           companyUrl: null,
         };
@@ -124,27 +159,42 @@ export async function resolveBoardIdentity(
 
       case "lever":
         identity = {
-          companyLogoUrl: await fetchHtmlLogo(
-            `https://jobs.lever.co/${encodeURIComponent(board.token)}`,
-            fetcher,
-          ),
+          companyLogoUrl:
+            (await fetchHtmlLogo(
+              `https://jobs.lever.co/${encodeURIComponent(board.token)}`,
+              fetcher,
+              board.companyName,
+            )) ?? (await fetchSamplePostingLogo(samplePostingUrl, fetcher, board.companyName)),
           companyUrl: null,
         };
         break;
 
       case "ashby":
+        // The board index page (jobs.ashbyhq.com/{token}) carries an og:image
+        // on SOME boards but not all — a company-branded board with no
+        // board-level social-preview image at all is a real, observed shape
+        // (2026-09-13), not an edge case. When it yields nothing, fall back to
+        // an individual posting/application page: Ashby always renders the
+        // employer's own nav wordmark there, even with no reliable og:image
+        // anywhere on the board (see the identity-match tier in
+        // collectLogoCandidatesFromHtml).
         identity = {
-          companyLogoUrl: await fetchHtmlLogo(
-            `https://jobs.ashbyhq.com/${encodeURIComponent(board.token)}`,
-            fetcher,
-          ),
+          companyLogoUrl:
+            (await fetchHtmlLogo(
+              `https://jobs.ashbyhq.com/${encodeURIComponent(board.token)}`,
+              fetcher,
+              board.companyName,
+            )) ?? (await fetchSamplePostingLogo(samplePostingUrl, fetcher, board.companyName)),
           companyUrl: null,
         };
         break;
 
       case "smartrecruiters":
         identity = samplePostingUrl
-          ? { companyLogoUrl: await fetchHtmlLogo(samplePostingUrl, fetcher), companyUrl: null }
+          ? {
+              companyLogoUrl: await fetchHtmlLogo(samplePostingUrl, fetcher, board.companyName),
+              companyUrl: null,
+            }
           : EMPTY;
         break;
 
@@ -153,6 +203,7 @@ export async function resolveBoardIdentity(
           companyLogoUrl: await fetchHtmlLogo(
             `https://${encodeURIComponent(board.token)}.recruitee.com/`,
             fetcher,
+            board.companyName,
           ),
           companyUrl: null,
         };

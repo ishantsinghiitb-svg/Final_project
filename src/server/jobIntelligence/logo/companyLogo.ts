@@ -63,6 +63,15 @@ const GENERIC_IMAGE_PATTERNS: readonly RegExp[] = [
   /apple-touch-icon/i,
   /android-chrome/i,
   /mstile/i,
+  // Google's favicon-by-domain service (see src/server/company/logo.ts) — a
+  // legitimate fallback for `companies.logo_url` in its own dedicated
+  // backfill script, but never a valid HTML extraction candidate: if it ever
+  // shows up as a candidate here it means a caller mistakenly fed this
+  // resolver an already-derived favicon URL rather than page content.
+  /google\.com\/s2\/favicons/i,
+  // ATS vendor "Powered by X" wordmarks — distinct from an employer's own
+  // logo even when they sit in the same visual spot on the page.
+  /powered[-_]?by[-_]?(ashby|lever|greenhouse|workable|smartrecruiters|recruitee)/i,
 ];
 
 /** True when a URL is platform chrome or placeholder art rather than a company logo. */
@@ -129,17 +138,47 @@ function attr(tag: string, name: string): string | null {
 }
 
 /**
+ * Loosely normalizes a company name for substring identity matching: strips
+ * everything but letters/digits and lowercases. "Meesho" and "meesho-logo"
+ * both normalize to a form where one contains the other; "Acme Corp Pvt Ltd"
+ * still matches an alt of "Acme Corp" on the shared prefix. Deliberately
+ * permissive — this is used to PREFER a candidate among several, never to
+ * reject a candidate outright, so a loose match costs nothing on its own.
+ */
+function normalizeForIdentityMatch(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+/** True when `haystack` (an alt/class attribute) plausibly names `companyName`. */
+function looksLikeEmployerIdentity(haystack: string, companyName: string): boolean {
+  const needle = normalizeForIdentityMatch(companyName);
+  if (needle.length < 2) return false;
+  return normalizeForIdentityMatch(haystack).includes(needle);
+}
+
+/**
  * Company-logo candidates found in a rendered page, most specific first:
  *
  *   1. `itemprop="logo"`        — schema.org, unambiguously the organization's logo
  *   2. JSON-LD `hiringOrganization.logo` / `organization.logo`
- *   3. an `<img>` whose class or alt says "logo"
- *   4. `og:image` / `twitter:image` — only survives if it is not a known generic
+ *   3. an `<img>` whose alt/class names the employer (`companyName`), when known —
+ *      e.g. Ashby's own nav wordmark `<img alt="Sarvam" class="_navLogoWordmarkImage_…">`
+ *      names the company but never says "logo" in either attribute, so a
+ *      generic "class or alt contains 'logo'" check alone would miss it
+ *   4. an `<img>` whose class or alt says "logo" (no identity check — used when
+ *      `companyName` isn't supplied, or as a second pass over images identity
+ *      matching didn't already catch)
+ *   5. `og:image` / `twitter:image` — only survives if it is not a known generic
+ *
+ * `companyName`, when supplied, is used ONLY to reorder/include tier-3
+ * candidates ahead of the rest — it never widens what tier 5 (the social
+ * preview meta tags) accepts, since there is no reliable way to check an
+ * image's PIXELS against a name.
  *
  * Returns candidates in order WITHOUT filtering, so callers can log what was
  * seen; use `pickCompanyLogo` to choose.
  */
-export function collectLogoCandidatesFromHtml(html: string): string[] {
+export function collectLogoCandidatesFromHtml(html: string, companyName?: string | null): string[] {
   const candidates: string[] = [];
   if (!html) return candidates;
 
@@ -158,17 +197,30 @@ export function collectLogoCandidatesFromHtml(html: string): string[] {
     if (value) candidates.push(value);
   }
 
-  // 3. A visible logo image.
+  // 3 + 4. Visible images: an employer-identity match first, then a plain
+  // "logo" substring match — read once, split into the two tiers below.
+  const identityMatches: string[] = [];
+  const genericLogoMatches: string[] = [];
   for (const match of html.matchAll(/<img\b[^>]*>/gi)) {
     const tag = match[0];
     const classes = attr(tag, "class") ?? "";
     const alt = attr(tag, "alt") ?? "";
-    if (!/logo/i.test(classes) && !/logo/i.test(alt)) continue;
     const src = attr(tag, "src") ?? attr(tag, "data-src");
-    if (src) candidates.push(src);
-  }
+    if (!src) continue;
 
-  // 4. Social preview images — last, because this is where the generics live.
+    const isIdentityMatch =
+      Boolean(companyName) &&
+      (looksLikeEmployerIdentity(alt, companyName as string) ||
+        looksLikeEmployerIdentity(classes, companyName as string));
+    if (isIdentityMatch) {
+      identityMatches.push(src);
+      continue;
+    }
+    if (/logo/i.test(classes) || /logo/i.test(alt)) genericLogoMatches.push(src);
+  }
+  candidates.push(...identityMatches, ...genericLogoMatches);
+
+  // 5. Social preview images — last, because this is where the generics live.
   for (const property of ["og:image", "twitter:image"]) {
     const meta = html.match(
       new RegExp(`<meta[^>]*(?:property|name)\\s*=\\s*["']${property}["'][^>]*>`, "i"),
@@ -181,7 +233,18 @@ export function collectLogoCandidatesFromHtml(html: string): string[] {
   return candidates;
 }
 
-/** One-shot: the best company-specific logo in a page, or null. */
-export function extractCompanyLogoFromHtml(html: string, baseUrl?: string | null): string | null {
-  return pickCompanyLogo(collectLogoCandidatesFromHtml(html), baseUrl);
+/**
+ * One-shot: the best company-specific logo in a page, or null.
+ *
+ * `companyName`, when supplied, only affects which VISIBLE `<img>` wins
+ * among several candidates (see `collectLogoCandidatesFromHtml`) — it is
+ * never required, and omitting it falls back to the plain "logo"
+ * substring match this function has always used.
+ */
+export function extractCompanyLogoFromHtml(
+  html: string,
+  baseUrl?: string | null,
+  companyName?: string | null,
+): string | null {
+  return pickCompanyLogo(collectLogoCandidatesFromHtml(html, companyName), baseUrl);
 }

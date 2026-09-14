@@ -4,6 +4,7 @@ import { BaseParser } from "../BaseParser";
 import { sanitizeDescriptionHtml } from "../linkedin/sanitize";
 import { classifyEmploymentTypeText } from "../shared/employmentType";
 import { isPlaceholderImage, readImageUrl, resolveImageUrl } from "../shared/image";
+import { parseRelativePostedDate } from "../shared/postedDate";
 import { extractListAfterHeading } from "../shared/sections";
 import { canonicalUrl } from "../shared/url";
 import { createUniversalJob } from "../types";
@@ -20,7 +21,7 @@ import { founditSelectors } from "./foundit.selectors";
 type JsonLd = Record<string, unknown>;
 
 /** Bumped when this parser's extraction logic changes materially. */
-const FOUNDIT_PARSER_VERSION = "foundit-detail-1";
+const FOUNDIT_PARSER_VERSION = "foundit-detail-2";
 
 /**
  * Production Foundit job-detail parser. Like Naukri, Foundit embeds a JSON-LD
@@ -84,7 +85,12 @@ export class FounditJobParser extends BaseParser {
       requirements,
       skills: this.readSkills(document, jsonLd),
       industry: this.readIndustry(document, jsonLd),
-      postedAt: parseFounditDate(jsonLd?.datePosted),
+      // Foundit's JSON-LD reliably includes `datePosted` (unlike Internshala's
+      // job pages), but defense in depth costs nothing here: if it's ever
+      // absent, fall back to the same "Posted N days ago" chip conversion
+      // used everywhere else rather than silently emitting a null posted_at.
+      postedAt:
+        parseFounditDate(jsonLd?.datePosted) ?? parseRelativePostedDate(this.readPostedAgo(stats)),
       postedAgo: this.readPostedAgo(stats),
       expiryDate: parseFounditDate(jsonLd?.validThrough),
       applicantCount: this.readApplicantCount(stats),

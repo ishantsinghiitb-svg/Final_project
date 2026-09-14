@@ -4,6 +4,7 @@ import { BaseParser } from "../BaseParser";
 // LinkedIn-specific — so it's reused rather than duplicated per board.
 import { sanitizeDescriptionHtml } from "../linkedin/sanitize";
 import { readImageUrl } from "../shared/image";
+import { parseRelativePostedDate } from "../shared/postedDate";
 import { parseSalary } from "../shared/salary";
 import { createUniversalJob } from "../types";
 import type { ParserContext, UniversalJob } from "../types";
@@ -27,7 +28,7 @@ import {
 type JsonLd = Record<string, unknown>;
 
 /** Bumped when this parser's extraction logic changes materially. */
-const INTERNSHALA_PARSER_VERSION = "internshala-detail-1";
+const INTERNSHALA_PARSER_VERSION = "internshala-detail-2";
 
 /**
  * Production Internshala detail-page parser (`/internship/detail/…`,
@@ -80,6 +81,7 @@ export class InternshalaJobParser extends BaseParser {
 
     const { text: description, html: descriptionHtml } = this.readDescription(details, jsonLd);
     const sourceUrl = this.readCanonicalUrl(document, url);
+    const postedAgo = this.readPostedAgo(document);
 
     return createUniversalJob({
       source: SupportedSite.Internshala,
@@ -92,6 +94,15 @@ export class InternshalaJobParser extends BaseParser {
       companyCareerUrl: details ? firstAttr(details, d.companyWebsite, "href") : null,
       location: locationText,
       city: this.readCity(locationText, workMode),
+      // Internshala lists exclusively Indian postings (server crawler's own
+      // InternshalaAdapter makes the same inference — see its `country` field)
+      // — every posting's own location text is always somewhere in India, even
+      // when that text is just a city name with no country word in it. Without
+      // this, a posting whose location is a bare city ("Bengaluru") or "Work
+      // From Home" carries no India signal at all and the shared discovery
+      // filter (`indiaDiscoveryFilter`) hides it as unrecognized, even though
+      // the platform itself guarantees it is an Indian posting.
+      country: locationText ? "India" : null,
       workMode,
       employmentType: classifyEmploymentType({ internship, partTime: this.readPartTime(mainCard) }),
       experienceLevel: internship ? null : firstText(scope, d.experience),
@@ -106,8 +117,8 @@ export class InternshalaJobParser extends BaseParser {
       skills: details ? this.readTabsAfter(details, d.skillsHeading) : [],
       benefits: details ? this.readTabsAfter(details, d.perksHeading) : [],
       industry: this.readIndustry(jsonLd),
-      postedAt: this.readPostedAt(jsonLd),
-      postedAgo: this.readPostedAgo(document),
+      postedAt: this.readPostedAt(jsonLd) ?? parseRelativePostedDate(postedAgo),
+      postedAgo,
       expiryDate: this.readExpiry(jsonLd, scope),
       applicantCount: parseApplicantCount(firstText(scope, d.applicants)),
       applyUrl: sourceUrl,
@@ -204,6 +215,16 @@ export class InternshalaJobParser extends BaseParser {
     return typeof jsonLd?.industry === "string" ? collapse(jsonLd.industry) || null : null;
   }
 
+  /**
+   * Absolute posted date from JSON-LD `datePosted`, when present. Internship
+   * pages usually carry it; job pages ("not guaranteed on every job page",
+   * see this class's own header comment) often don't — when it's missing,
+   * `tryParse` falls back to converting the "Posted N days ago" chip via
+   * `parseRelativePostedDate`, mirroring the server crawler's own
+   * `InternshalaAdapter`, which resolves the exact same relative text the
+   * exact same way for exactly the same reason (no absolute date is ever
+   * published there either).
+   */
   private readPostedAt(jsonLd: JsonLd | null): string | null {
     if (typeof jsonLd?.datePosted === "string") {
       const parsed = new Date(jsonLd.datePosted);
