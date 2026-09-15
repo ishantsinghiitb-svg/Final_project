@@ -93,7 +93,15 @@ export class ListingCapture {
   }
 
   private async captureCard(card: Element): Promise<void> {
-    const raw = this.parser.parseCard(card, { document, url: location.href });
+    let raw: ReturnType<ListingParser["parseCard"]>;
+    try {
+      raw = this.parser.parseCard(card, { document, url: location.href });
+    } catch (err) {
+      // One malformed card must never abort the observer or the cards after
+      // it — log and skip, exactly like a parser returning null for this card.
+      console.error("[OfferLyst] Listing card parse threw:", err);
+      raw = null;
+    }
     if (!raw) return;
 
     const job = JobNormalizer.normalize(raw);

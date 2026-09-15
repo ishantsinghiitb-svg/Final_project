@@ -420,7 +420,17 @@ function runDetailCapture(activeParser: JobParser): void {
     // Website → Parser (extraction only) → Normalizer. Validation, dedup
     // resolution and persistence happen in the background handler.
     const currentUrl = location.href;
-    const raw = activeParser.tryParse({ document, url: currentUrl });
+    let raw: UniversalJob | null;
+    try {
+      raw = activeParser.tryParse({ document, url: currentUrl });
+    } catch (err) {
+      // A parser must never crash the pipeline — treat a throw the same as an
+      // empty parse (this run found no job) so hydration retry / navigation
+      // recovery still applies, instead of an unhandled rejection silently
+      // freezing this one run with no visible signal.
+      console.error("[OfferLyst] Parser threw:", err);
+      raw = null;
+    }
 
     if (!raw) {
       // Transient empty re-render of a page we already show a job for — keep
@@ -442,7 +452,16 @@ function runDetailCapture(activeParser: JobParser): void {
           console.log("[OfferLyst] Panel state: loading (hydration retry)");
           panel.update({ kind: "loading" }, actions, null);
         }
-        setTimeout(() => run(), HYDRATION_RETRY_MS);
+        // Re-invoke the pipeline directly, NOT through the debounced `run()` —
+        // routing a retry through `run()` would restart its own
+        // JOB_CHANGE_DEBOUNCE_MS delay on top of this wait, silently stacking
+        // an extra ~600ms onto every retry (four retries would then take
+        // ~5.2s instead of the ~2.8s this file documents and the "parse
+        // within 1-3 seconds of content becoming available" requirement
+        // targets). `runPipeline` already guards re-entrancy via `generation`
+        // and bails if disposed, so calling it directly here is safe even if
+        // a navigation event fires `run()` concurrently.
+        setTimeout(() => void runPipeline(), HYDRATION_RETRY_MS);
         return;
       }
 
