@@ -42,6 +42,34 @@ const JOB_A_URL = "https://www.linkedin.com/jobs/view/1000000001/";
 const JOB_B_URL = "https://www.linkedin.com/jobs/view/1000000002/";
 const JOB_C_URL = "https://www.linkedin.com/jobs/view/1000000003/";
 const NO_JOB_URL = "https://www.linkedin.com/feed/";
+const MESSAGING_URL = "https://www.linkedin.com/messaging/thread/abc123/";
+
+/**
+ * Reproduces the real production false positive (2 real global_jobs rows,
+ * both `source_url: "https://www.linkedin.com/feed/"`): a shared job posting
+ * rendered as a preview card INSIDE a feed post. It genuinely contains a
+ * `/jobs/view/<id>` link and an "About the job"-style heading — the exact DOM
+ * signals `LinkedInParser.tryParse` uses (deliberately, with no URL gating of
+ * its own) to find the job-details pane wherever it lives on the page. This
+ * is what the orchestrator-level `isLinkedInJobSurfaceUrl` guard exists to
+ * block, since no DOM signal alone can distinguish this from a real job page.
+ */
+function buildFeedWithEmbeddedJobCard(): void {
+  document.body.innerHTML = `
+    <div id="feed">
+      <div class="feed-shared-update-v2">
+        <div class="job-card-preview">
+          <a href="/company/leonis-capital">Leonis Capital</a>
+          <a href="/jobs/view/4456164434/">Associate</a>
+          <span>San Francisco, CA (On-site)</span>
+          <button>View job</button>
+        </div>
+        <h3>About the job</h3>
+        <p>133,513 reactions</p>
+      </div>
+    </div>
+  `;
+}
 
 function buildLinkedInFixture(opts: { id: string; title: string; company: string }): void {
   document.body.innerHTML = `
@@ -221,5 +249,55 @@ describe("LinkedIn: unsupported/no-job page", () => {
     const callCountAtSettle = mock.allCalls().length;
     await flushPipeline(SETTLE_MS);
     expect(mock.allCalls().length).toBe(callCountAtSettle);
+  });
+});
+
+describe("LinkedIn: non-job pages never trigger a sync (feed false-positive guard)", () => {
+  it("a feed page containing an embedded job-preview card produces ZERO SYNC_GLOBAL_JOB calls", async () => {
+    // This exact DOM shape (a /jobs/view/<id> link + an "About the job"
+    // heading, both inside a feed card) is what produced two real garbage
+    // rows in production before the isLinkedInJobSurfaceUrl guard existed.
+    history.pushState({}, "", NO_JOB_URL);
+    buildFeedWithEmbeddedJobCard();
+
+    await import("../index");
+    await flushPipeline(SETTLE_MS);
+
+    expect(mock.syncCalls()).toHaveLength(0);
+  });
+
+  it("a plain non-job page (messaging) produces ZERO SYNC_GLOBAL_JOB calls", async () => {
+    history.pushState({}, "", MESSAGING_URL);
+    document.body.innerHTML = "<div id='messaging-shell'></div>";
+
+    await import("../index");
+    await flushPipeline(SETTLE_MS);
+
+    expect(mock.syncCalls()).toHaveLength(0);
+  });
+
+  it("navigating from the feed (with an embedded job card) to a real job page still captures the real job exactly once", async () => {
+    // The guard must not break the legitimate path: feed -> a real job page
+    // (no refresh) has to start capturing the instant the URL becomes a real
+    // job surface, exactly like any other SPA navigation.
+    history.pushState({}, "", NO_JOB_URL);
+    buildFeedWithEmbeddedJobCard();
+    await import("../index");
+    await flushPipeline(JOB_CHANGE_DEBOUNCE_MS);
+    expect(mock.syncCalls()).toHaveLength(0);
+
+    buildLinkedInFixture({
+      id: "1000000001",
+      title: "Senior Backend Engineer",
+      company: "Acme Corp",
+    });
+    history.pushState({}, "", JOB_A_URL);
+    await flushPipeline();
+    await flushPipeline(JOB_CHANGE_DEBOUNCE_MS);
+
+    const syncs = mock.syncCalls();
+    expect(syncs).toHaveLength(1);
+    expect(syncs[0].payload.title).toBe("Senior Backend Engineer");
+    expect(syncs[0].payload.sourceJobId).toBe("1000000001");
   });
 });

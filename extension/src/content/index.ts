@@ -282,6 +282,43 @@ function urlNamesLinkedInJob(url: string): boolean {
 }
 
 /**
+ * LinkedIn only: is this URL even a job SURFACE at all — as opposed to the
+ * feed, home, messaging, notifications, a profile, or people/company search?
+ *
+ * Real production false positive this guards against: a shared job posting
+ * embedded as a preview card inside a FEED post legitimately contains a
+ * `/jobs/view/<id>` link and an "About the job"-style heading — exactly the
+ * DOM-only signals `LinkedInParser.tryParse` uses to find the job-details
+ * pane (deliberately, per its own doc comment: "no page-URL gating happens
+ * here"). On `/feed/` that produced real `global_jobs` rows built from the
+ * feed card's concatenated, unrelated text (a reaction count read as a
+ * "city", for one) — a false positive no DOM signal alone can rule out,
+ * because the feed card's DOM genuinely contains those signals.
+ *
+ * The fix belongs HERE, in the orchestrator, never inside `LinkedInParser`
+ * (which stays frozen): deciding "is the current PAGE a job page" — as
+ * opposed to "how do I extract a job from THIS page" — is exactly this
+ * file's job per the Module 2D split. Checked BEFORE the parser ever runs,
+ * so a feed/home/messaging/profile/search page can never reach a parse
+ * attempt, regardless of what a feed card's embedded markup contains.
+ *
+ * Every dedicated job surface LinkedIn actually renders a details pane on —
+ * `/jobs/view/*`, `/jobs/search*`, `/jobs/search-results/*`,
+ * `/jobs/collections/*`, and any future one — lives under `/jobs/` (see
+ * LinkedInParser's own doc comment, which already enumerates exactly this
+ * set). Nothing else does, so this stays a narrow allowlist rather than a
+ * denylist of feed/home/etc. that would need updating every time LinkedIn
+ * adds another non-job surface.
+ */
+function isLinkedInJobSurfaceUrl(url: string): boolean {
+  try {
+    return /^\/jobs(\/|$)/i.test(new URL(url).pathname);
+  } catch {
+    return false;
+  }
+}
+
+/**
  * The single-job detail-page pipeline (LinkedIn, plus Internshala/Naukri detail
  * pages): parse the one job on the page, sync it, and drive the floating panel
  * and its CTAs. Behaviour is unchanged from before Module 4B — it was only
@@ -420,6 +457,24 @@ function runDetailCapture(activeParser: JobParser): void {
     // Website → Parser (extraction only) → Normalizer. Validation, dedup
     // resolution and persistence happen in the background handler.
     const currentUrl = location.href;
+
+    // LinkedIn eligibility guard — BEFORE any parse attempt. See
+    // isLinkedInJobSurfaceUrl's doc comment for the real false positive this
+    // closes (a feed-embedded job-preview card). No-op for every other site.
+    if (detectedSite === SupportedSite.LinkedIn && !isLinkedInJobSurfaceUrl(currentUrl)) {
+      if (currentUrl === renderedUrl) return;
+      currentJob = null;
+      currentGlobalJobId = null;
+      renderedUrl = null;
+      renderedKey = null;
+      if (gen === generation) {
+        console.log("[OfferLyst] Panel state: no-job (LinkedIn non-job-surface URL)");
+        panel.update({ kind: "no-job" }, actions, null);
+        publishCurrentJob(null);
+      }
+      return;
+    }
+
     let raw: UniversalJob | null;
     try {
       raw = activeParser.tryParse({ document, url: currentUrl });
