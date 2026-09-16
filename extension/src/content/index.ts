@@ -358,6 +358,14 @@ function runDetailCapture(activeParser: JobParser): void {
   // "loading") before concluding there is genuinely no job.
   let hydrationUrl: string | null = null;
   let hydrationAttempts = 0;
+  // Separate bounded grace for a job that DID parse (title/company already
+  // resolved) but whose SYNC_GLOBAL_JOB call itself failed or errored — a
+  // transient network/backend blip, not a hydration problem. Without this,
+  // recovery depended entirely on an unrelated DOM mutation happening to
+  // fire again, which could be never on a page that renders once and then
+  // sits still — leaving a REAL, already-parsed job permanently un-synced.
+  let syncRetryUrl: string | null = null;
+  let syncRetryAttempts = 0;
 
   const actions: PanelActions = {
     onApplyAndTrack: () => void handleApplyAndTrack(),
@@ -446,8 +454,38 @@ function runDetailCapture(activeParser: JobParser): void {
     JOB_CHANGE_MAX_WAIT_MS,
   );
 
-  run();
+  // The FIRST attempt is never debounced — debouncing exists to coalesce a
+  // BURST of subsequent DOM-mutation/navigation events (LinkedIn's constant
+  // unrelated re-renders), not to delay the very first look at a page that
+  // may already have everything a JSON-LD-embedding platform (LinkedIn,
+  // Naukri, Foundit, Unstop) needs to parse successfully at t≈0. Routing
+  // this call through the debounced `run()` wrapper — as before — added a
+  // flat JOB_CHANGE_DEBOUNCE_MS (600ms) to every single page load even when
+  // the parser could have succeeded immediately, which is exactly the
+  // "unnecessary debounce before the first parse" this pipeline must not
+  // have. `watchForNavigation` still uses the debounced `run` for every
+  // event AFTER this one, where coalescing a burst genuinely matters.
+  void runPipeline();
   watchForNavigation(run);
+
+  /**
+   * Architectural boundary: the automatic capture pipeline (detect → parse →
+   * validate → SYNC_GLOBAL_JOB → dedupe) below in `runPipeline` must succeed
+   * or fail entirely on its own — a floating-panel render exception must
+   * never be able to abort it. Every `panel.update` call inside `runPipeline`
+   * goes through this wrapper instead of calling `panel.update` directly, so
+   * a UI failure here is caught, logged, and swallowed rather than thrown
+   * back into the surrounding pipeline code (which, for the "pre-sync
+   * loading" update in particular, runs BEFORE the SYNC_GLOBAL_JOB dispatch
+   * that follows it).
+   */
+  function safeUpdatePanel(state: PanelViewState): void {
+    try {
+      panel.update(state, actions, pending);
+    } catch (err) {
+      console.error("[OfferLyst] Panel render failed (capture pipeline unaffected):", err);
+    }
+  }
 
   async function runPipeline(): Promise<void> {
     // A disposed (dead-context) instance must do nothing — this is the loop
@@ -469,7 +507,7 @@ function runDetailCapture(activeParser: JobParser): void {
       renderedKey = null;
       if (gen === generation) {
         console.log("[OfferLyst] Panel state: no-job (LinkedIn non-job-surface URL)");
-        panel.update({ kind: "no-job" }, actions, null);
+        safeUpdatePanel({ kind: "no-job" });
         publishCurrentJob(null);
       }
       return;
@@ -505,7 +543,7 @@ function runDetailCapture(activeParser: JobParser): void {
         hydrationAttempts += 1;
         if (gen === generation) {
           console.log("[OfferLyst] Panel state: loading (hydration retry)");
-          panel.update({ kind: "loading" }, actions, null);
+          safeUpdatePanel({ kind: "loading" });
         }
         // Re-invoke the pipeline directly, NOT through the debounced `run()` —
         // routing a retry through `run()` would restart its own
@@ -533,7 +571,7 @@ function runDetailCapture(activeParser: JobParser): void {
       if (urlNamesLinkedInJob(currentUrl)) {
         if (gen === generation) {
           console.log("[OfferLyst] Panel state: loading (url still names a job)");
-          panel.update({ kind: "loading" }, actions, null);
+          safeUpdatePanel({ kind: "loading" });
         }
         return;
       }
@@ -548,7 +586,7 @@ function runDetailCapture(activeParser: JobParser): void {
       renderedKey = null;
       if (gen === generation) {
         console.log("[OfferLyst] Panel state: no-job (hydration grace exhausted)");
-        panel.update({ kind: "no-job" }, actions, null);
+        safeUpdatePanel({ kind: "no-job" });
         publishCurrentJob(null);
       }
       return;
@@ -581,7 +619,7 @@ function runDetailCapture(activeParser: JobParser): void {
       if (err instanceof ExtensionContextInvalidatedError) {
         if (gen === generation) {
           console.log("[OfferLyst] Panel state: extension-invalidated (auth call)");
-          panel.update({ kind: "extension-invalidated" }, actions, null);
+          safeUpdatePanel({ kind: "extension-invalidated" });
         }
         return;
       }
@@ -594,16 +632,19 @@ function runDetailCapture(activeParser: JobParser): void {
 
     if (!authResponse.ok || !authResponse.data.authenticated) {
       console.log("[OfferLyst] Panel state: not-logged-in");
-      panel.update({ kind: "not-logged-in" }, actions, null);
+      safeUpdatePanel({ kind: "not-logged-in" });
       publishCurrentJob(null);
       return;
     }
 
     // Only show "loading" if we don't already have this exact page rendered —
-    // avoids a re-sync (e.g. description enrichment) blanking the visible card.
+    // avoids a re-sync (e.g. description enrichment) blanking the visible
+    // card. This UI update is fire-and-forget (safeUpdatePanel swallows any
+    // render failure) — the SYNC_GLOBAL_JOB dispatch a few lines below is
+    // NEVER gated on it succeeding.
     if (currentUrl !== renderedUrl) {
       console.log("[OfferLyst] Panel state: loading (pre-sync)");
-      panel.update({ kind: "loading" }, actions, null);
+      safeUpdatePanel({ kind: "loading" });
     }
 
     const now = Date.now();
@@ -634,7 +675,7 @@ function runDetailCapture(activeParser: JobParser): void {
       if (err instanceof ExtensionContextInvalidatedError) {
         if (gen === generation) {
           console.log("[OfferLyst] Panel state: extension-invalidated (sync call)");
-          panel.update({ kind: "extension-invalidated" }, actions, null);
+          safeUpdatePanel({ kind: "extension-invalidated" });
         }
         return;
       }
@@ -643,26 +684,48 @@ function runDetailCapture(activeParser: JobParser): void {
     if (gen !== generation) return; // superseded by a newer run
 
     if (!syncResponse.ok) {
+      // Log the real reason (now a genuine message from the background —
+      // see service-worker.ts's stringifyError — never the old fixed
+      // "Unknown error" constant) rather than only showing a generic UI
+      // state with no diagnosable signal.
+      console.error("[OfferLyst] SYNC_GLOBAL_JOB failed:", syncResponse.error);
+
       // Identity invalid (no title/company/id) — genuinely nothing to save.
       // Never overwrite a job we're already showing for this same url.
       if (currentUrl === renderedUrl) return;
       // …but on LinkedIn a url that STILL names a specific job is a job page:
       // the id resolves from the url before the title/company hydrate, so a
-      // transiently-partial parse can fail validation mid-navigation. Hold
-      // "loading" instead of flashing "no job" — the observer re-drives a full
-      // parse the moment the details pane finishes mounting (same rationale as
-      // the hydration-grace branch above).
+      // transiently-partial parse can fail validation mid-navigation — OR
+      // the parse was already complete and this is a genuinely transient
+      // sync failure (network/backend blip). Either way, retry a bounded
+      // number of times on our OWN schedule rather than relying purely on an
+      // unrelated future DOM mutation to ever re-drive the pipeline — a page
+      // that renders once and then sits still would otherwise leave an
+      // already-parsed, real job permanently un-synced.
       if (urlNamesLinkedInJob(currentUrl)) {
+        if (currentUrl !== syncRetryUrl) {
+          syncRetryUrl = currentUrl;
+          syncRetryAttempts = 0;
+        }
+        if (syncRetryAttempts < MAX_HYDRATION_ATTEMPTS) {
+          syncRetryAttempts += 1;
+          console.log("[OfferLyst] Panel state: loading (sync retry)");
+          safeUpdatePanel({ kind: "loading" });
+          setTimeout(() => void runPipeline(), HYDRATION_RETRY_MS);
+          return;
+        }
         console.log("[OfferLyst] Panel state: loading (url still names a job)");
-        panel.update({ kind: "loading" }, actions, null);
+        safeUpdatePanel({ kind: "loading" });
         return;
       }
       console.log("[OfferLyst] Panel state: no-job (invalid sync response)");
-      panel.update({ kind: "no-job" }, actions, null);
+      safeUpdatePanel({ kind: "no-job" });
       publishCurrentJob(null);
       return;
     }
 
+    syncRetryUrl = null;
+    syncRetryAttempts = 0;
     lastSyncedKey = dedupKey;
     lastSyncedAt = now;
     lastSyncedHadDescription = jobHasDescription;
@@ -694,7 +757,11 @@ function runDetailCapture(activeParser: JobParser): void {
     const state: PanelViewState = { kind, job: panelJob };
 
     console.log("[OfferLyst] Rendering:", state);
-    panel.update(state, actions, pending);
+    // A render failure here is AFTER the sync already succeeded/reused — the
+    // data pipeline is done regardless — but still goes through the safe
+    // wrapper (used by both the automatic pipeline and the Save/Apply/Track
+    // CTA handlers below) so it can never surface as an unhandled rejection.
+    safeUpdatePanel(state);
     // Same state the floating panel just rendered — republished on every
     // sync and every CTA response so the popup (which has no direct channel
     // to this content script) always reflects it too. See background/

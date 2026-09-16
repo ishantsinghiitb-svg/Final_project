@@ -9,7 +9,6 @@
 // is a JobPosting block rather than DOM markup.
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { JOB_CHANGE_DEBOUNCE_MS } from "../../shared/constants";
 import {
   disposeContentScript,
   flushPipeline,
@@ -56,11 +55,12 @@ afterEach(async () => {
 });
 
 describe("Naukri: initial load", () => {
-  it("parses and syncs automatically with no Save/Apply/popup click", async () => {
+  it("parses and syncs automatically with no Save/Apply/popup click, immediately (no artificial delay before the first attempt)", async () => {
     buildNaukriFixture();
 
     await import("../index");
-    await flushPipeline(JOB_CHANGE_DEBOUNCE_MS);
+    // 0ms — real microtask draining only, no fake-timer advancement.
+    await flushPipeline(0);
 
     const syncs = mock.syncCalls();
     expect(syncs).toHaveLength(1);

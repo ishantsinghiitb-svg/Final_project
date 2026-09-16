@@ -67,11 +67,14 @@ afterEach(async () => {
 });
 
 describe("Internshala: initial load", () => {
-  it("parses and syncs automatically with no Save/Apply/popup click", async () => {
+  it("parses and syncs automatically with no Save/Apply/popup click, immediately (no artificial delay before the first attempt)", async () => {
     buildInternshalaFixture();
 
     await import("../index");
-    await flushPipeline(JOB_CHANGE_DEBOUNCE_MS);
+    // 0ms — real microtask draining only, no fake-timer advancement. Content
+    // is already present, so nothing about the FIRST attempt should need a
+    // debounce wait.
+    await flushPipeline(0);
 
     const syncs = mock.syncCalls();
     expect(syncs).toHaveLength(1);
@@ -88,7 +91,8 @@ describe("Internshala: readiness (DOM hydrates after initial load)", () => {
     document.body.innerHTML = "<div id='details_container'></div>";
 
     await import("../index");
-    // First attempt (debounced) finds nothing; two bounded retries follow.
+    // First attempt (immediate, not debounced) finds nothing; two bounded
+    // retries follow.
     await flushPipeline(JOB_CHANGE_DEBOUNCE_MS);
     await flushPipeline(HYDRATION_RETRY_MS);
     expect(mock.syncCalls()).toHaveLength(0); // not ready yet — must not have synced garbage

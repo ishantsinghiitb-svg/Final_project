@@ -137,6 +137,27 @@ describe("LinkedIn: initial load", () => {
     expect(types).not.toContain("APPLY_AND_TRACK");
     expect(types).not.toContain("TRACK_APPLICATION");
   });
+
+  it("SYNC_GLOBAL_JOB is dispatched immediately after a successful parse — the first attempt is never debounced", async () => {
+    // Job content is already fully present when the content script loads
+    // (exactly like a LinkedIn page whose server-rendered top card is ready
+    // at document_idle). Flushing by 0ms — real microtask draining only, NO
+    // fake-timer advancement at all — is the point: if the sync call is only
+    // visible after also advancing time, the first attempt is still gated
+    // behind an artificial delay.
+    buildLinkedInFixture({
+      id: "1000000001",
+      title: "Senior Backend Engineer",
+      company: "Acme Corp",
+    });
+
+    await import("../index");
+    await flushPipeline(0);
+
+    const syncs = mock.syncCalls();
+    expect(syncs).toHaveLength(1);
+    expect(syncs[0].payload.title).toBe("Senior Backend Engineer");
+  });
 });
 
 describe("LinkedIn: SPA navigation (no full page reload)", () => {

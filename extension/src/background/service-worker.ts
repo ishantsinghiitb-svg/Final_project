@@ -66,12 +66,36 @@ chrome.runtime.onMessage.addListener((message: ExtensionMessage, sender, sendRes
       sendResponse({ ok: true, data } satisfies ExtensionResponse);
     })
     .catch((error: unknown) => {
-      const reason = error instanceof Error ? error.message : "Unknown error";
-      sendResponse({ ok: false, error: reason } satisfies ExtensionResponse);
+      // Log the raw value BEFORE it's collapsed into a response string — this
+      // listener is the only place a `handleMessage` rejection is ever
+      // observed; once collapsed below, the original is gone for good. Every
+      // named error type `handleMessage` can throw (JobValidator's
+      // `new Error(...)`, Supabase's `PostgrestError`/`AuthError` and its
+      // subclasses) already extends `Error`, so anything landing in the
+      // non-Error fallback below is something else entirely — worth seeing.
+      console.error(`[OfferLyst] ${message.type} failed:`, error);
+      sendResponse({ ok: false, error: stringifyError(error) } satisfies ExtensionResponse);
     });
 
   return true; // keep the message channel open for the async response
 });
+
+/**
+ * Best-effort readable string for a caught value that isn't a real `Error`
+ * (a bare thrown string/object, or a non-Error rejection from a lower-level
+ * API). Never collapses to a fixed, uninformative constant — the content
+ * script's own error logging/retry logic reads this string, so it should
+ * carry whatever signal is actually available.
+ */
+function stringifyError(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  if (typeof error === "string") return error;
+  try {
+    return JSON.stringify(error);
+  } catch {
+    return String(error);
+  }
+}
 
 async function handleMessage(
   message: ExtensionMessage,
