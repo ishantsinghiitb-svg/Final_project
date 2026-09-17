@@ -225,6 +225,7 @@ describe("crawl report counters", () => {
       excluded: 0,
       ineligibleLocation: 0,
       ineligibleStale: 0,
+      lowQuality: 0,
       failed: 0,
     });
   });
@@ -268,7 +269,7 @@ describe("crawl report counters", () => {
 
   it("summarizes in one line", () => {
     expect(summarizeReport(report())).toBe(
-      "Crawl: 3 target(s), 40 discovered, 30 imported, 8 duplicate(s), 0 rejected, 0 non-India, 0 stale, 0 excluded, 0 skipped, 2 failed in 12.0s",
+      "Crawl: 3 target(s), 40 discovered, 30 imported, 8 duplicate(s), 0 rejected, 0 non-India, 0 stale, 0 excluded, 0 low-quality, 0 skipped, 2 failed in 12.0s",
     );
   });
 

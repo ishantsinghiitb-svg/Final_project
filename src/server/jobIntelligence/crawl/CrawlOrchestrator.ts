@@ -54,6 +54,7 @@ import {
   EligibilityCollector,
   EligibilityFilteringJobParser,
 } from "./eligibility/EligibilityFilteringJobParser";
+import { QualityCollector, QualityFilteringJobParser } from "./quality/QualityFilteringJobParser";
 import { CareerPagesCrawler } from "../adapters/careerPages/CareerPagesAdapter";
 
 export type CrawlRequest = {
@@ -190,6 +191,7 @@ export class CrawlOrchestrator {
     const collector = new ValidationCollector();
     const relevanceCollector = new RelevanceCollector();
     const eligibilityCollector = new EligibilityCollector();
+    const qualityCollector = new QualityCollector();
     /** Filled by the crawler while it runs; read after the pipeline finishes. */
     const observations = newObservations();
     let adapter: PlatformAdapter;
@@ -206,20 +208,26 @@ export class CrawlOrchestrator {
       adapter = {
         platform: built.platform,
         crawler: built.crawler,
-        // Three gates, innermost first:
+        // Four gates, innermost first:
         //   relevance    — the source's own applicant-eligibility signal
         //   eligibility  — this catalog's India-only + 30-day rules
+        //   quality      — the platform-thresholded role-taxonomy classifier
         //   validation   — data quality
-        // Eligibility sits between them so an out-of-scope posting never
-        // spends validator effort, while relevance stays innermost and keeps
-        // owning the report's `parsed` count.
+        // Eligibility sits before quality so an out-of-scope posting never
+        // spends classifier effort; quality sits before validation for the
+        // same reason (no point validating field completeness of a title
+        // we've already decided not to keep). Relevance stays innermost and
+        // keeps owning the report's `parsed` count.
         parser: new ValidatingJobParser(
-          new EligibilityFilteringJobParser(
-            new RelevanceFilteringJobParser(built.parser, relevanceCollector),
-            eligibilityCollector,
-            // The orchestrator's injectable clock reaches the freshness rule
-            // too, so a test that controls time controls eligibility with it.
-            { now: new Date(this.now()) },
+          new QualityFilteringJobParser(
+            new EligibilityFilteringJobParser(
+              new RelevanceFilteringJobParser(built.parser, relevanceCollector),
+              eligibilityCollector,
+              // The orchestrator's injectable clock reaches the freshness rule
+              // too, so a test that controls time controls eligibility with it.
+              { now: new Date(this.now()) },
+            ),
+            qualityCollector,
           ),
           collector,
         ),
@@ -246,6 +254,7 @@ export class CrawlOrchestrator {
         collector,
         relevanceCollector,
         eligibilityCollector,
+        qualityCollector,
         result.total,
       );
       // Postings the crawler excluded before parsing (drafts, unpublished).
@@ -255,6 +264,7 @@ export class CrawlOrchestrator {
         collector,
         relevanceCollector,
         eligibilityCollector,
+        qualityCollector,
       );
       const warnings = this.collectWarnings(collector, observations.warnings);
 
@@ -319,6 +329,7 @@ export class CrawlOrchestrator {
     collector: ValidationCollector,
     relevanceCollector: RelevanceCollector,
     eligibilityCollector: EligibilityCollector,
+    qualityCollector: QualityCollector,
     discovered: number,
   ): CrawlCounters {
     const counters = emptyCounters();
@@ -352,6 +363,8 @@ export class CrawlOrchestrator {
           } else if (ineligible?.kind === "ineligible") {
             if (ineligible.rule === "location") counters.ineligibleLocation++;
             else counters.ineligibleStale++;
+          } else if (qualityCollector.get(outcome.sourceUrl)?.kind === "low_quality") {
+            counters.lowQuality++;
           } else if (collector.get(outcome.sourceUrl)?.kind === "skipped") {
             counters.rejected++;
           } else {
@@ -370,6 +383,7 @@ export class CrawlOrchestrator {
     collector: ValidationCollector,
     relevanceCollector: RelevanceCollector,
     eligibilityCollector: EligibilityCollector,
+    qualityCollector: QualityCollector,
   ): CrawlIssue[] {
     const issues: CrawlIssue[] = [];
     for (const outcome of outcomes) {
@@ -383,16 +397,22 @@ export class CrawlOrchestrator {
       } else if (outcome.status === "parse_failed") {
         const excluded = relevanceCollector.get(outcome.sourceUrl)?.kind === "excluded";
         const ineligible = eligibilityCollector.get(outcome.sourceUrl);
+        const lowQuality =
+          !excluded &&
+          ineligible?.kind !== "ineligible" &&
+          qualityCollector.get(outcome.sourceUrl)?.kind === "low_quality";
         const skipped =
           !excluded &&
           ineligible?.kind !== "ineligible" &&
+          !lowQuality &&
           collector.get(outcome.sourceUrl)?.kind === "skipped";
 
         let kind: CrawlIssue["kind"] = "parse_failed";
         if (excluded) kind = "region_excluded";
         else if (ineligible?.kind === "ineligible") {
           kind = ineligible.rule === "location" ? "not_india" : "stale_posting";
-        } else if (skipped) kind = "validation_skipped";
+        } else if (lowQuality) kind = "low_quality";
+        else if (skipped) kind = "validation_skipped";
 
         issues.push({
           kind,

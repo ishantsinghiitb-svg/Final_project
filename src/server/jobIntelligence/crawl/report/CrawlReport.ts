@@ -62,6 +62,15 @@ export type CrawlCounters = {
    */
   ineligibleLocation: number;
   ineligibleStale: number;
+  /**
+   * Postings the JOB-QUALITY gate refused — a low-signal listing (data entry,
+   * telecalling, generic back-office/support/BD-executive, ...) per the
+   * platform-specific taxonomy classifier (see ../quality/jobQuality.ts).
+   * Distinct from `rejected` (a structural/data-quality refusal): this
+   * posting was perfectly well-formed, it simply isn't the kind of role
+   * OfferLyst prioritizes surfacing.
+   */
+  lowQuality: number;
   /** Postings lost to an error (parse crash, store failure). */
   failed: number;
 };
@@ -80,6 +89,7 @@ export function emptyCounters(): CrawlCounters {
     excluded: 0,
     ineligibleLocation: 0,
     ineligibleStale: 0,
+    lowQuality: 0,
     failed: 0,
   };
 }
@@ -142,6 +152,7 @@ export function addCounters(a: CrawlCounters, b: CrawlCounters): CrawlCounters {
     excluded: a.excluded + b.excluded,
     ineligibleLocation: a.ineligibleLocation + b.ineligibleLocation,
     ineligibleStale: a.ineligibleStale + b.ineligibleStale,
+    lowQuality: a.lowQuality + b.lowQuality,
     failed: a.failed + b.failed,
   };
 }
@@ -154,6 +165,7 @@ export type CrawlIssue = {
     | "region_excluded"
     | "not_india"
     | "stale_posting"
+    | "low_quality"
     | "store_failed";
   sourceUrl: string;
   reason: string;
@@ -234,7 +246,7 @@ export function summarizeReport(report: CrawlReport): string {
     `${prefix}: ${report.companiesScanned} target(s), ${totals.discovered} discovered, ` +
     `${totals.imported} imported, ${totals.duplicates} duplicate(s), ` +
     `${totals.rejected} rejected, ${totals.ineligibleLocation} non-India, ` +
-    `${totals.ineligibleStale} stale, ${totals.excluded} excluded, ${totals.skipped} skipped, ` +
-    `${totals.failed} failed in ${(report.durationMs / 1000).toFixed(1)}s`
+    `${totals.ineligibleStale} stale, ${totals.excluded} excluded, ${totals.lowQuality} low-quality, ` +
+    `${totals.skipped} skipped, ${totals.failed} failed in ${(report.durationMs / 1000).toFixed(1)}s`
   );
 }
