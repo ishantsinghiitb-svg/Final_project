@@ -46,11 +46,27 @@ function toEntry(row: CrawlCompanyRegistryRow): CompanyRegistryEntry {
 export class SupabaseCompanyRegistryStore implements CompanyRegistryStore {
   constructor(private readonly supabase: ServerSupabase = createServiceSupabase()) {}
 
+  /**
+   * Module 13: ordered least-recently-crawled first (nulls — never crawled —
+   * first), not alphabetically. This is what makes a run that stops partway
+   * through (see CrawlOrchestrator's time budget) progress on the NEXT run
+   * instead of re-processing the same alphabetical prefix every time: an
+   * entry a run reaches and actually attempts gets a fresh `last_crawl_at`
+   * (live mode only — see `markCrawlResult`'s `recordAttempt`), which pushes
+   * it to the back of this same ordering next time, while an entry the
+   * budget never reached keeps its old (or null) timestamp and naturally
+   * rises back to the front. No separate cursor/offset is persisted — this
+   * one column, already on the table, is the entire mechanism, and it is
+   * read fresh from the database on every invocation (Cloudflare Workers are
+   * stateless; nothing here relies on in-memory state surviving between
+   * calls). `company_name` is only the tie-break for equal timestamps.
+   */
   async listEntries(platform?: string): Promise<CompanyRegistryEntry[]> {
     let query = this.supabase
       .from("crawl_company_registry")
       .select("*")
       .eq("enabled", true)
+      .order("last_crawl_at", { ascending: true, nullsFirst: true })
       .order("company_name", { ascending: true });
 
     if (platform) query = query.eq("platform", platform);

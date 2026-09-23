@@ -74,13 +74,137 @@ export type OrchestratorDependencies = {
   reports: CrawlReportStore;
   /** Injectable for deterministic tests. */
   now?: () => number;
+  /** Overrides RUN_DEADLINE_MS — for tests; production uses the default. */
+  maxRunDurationMs?: number;
+  /** Overrides ENTRY_TIMEOUT_MS — for tests; production uses the default. */
+  entryTimeoutMs?: number;
 };
+
+/**
+ * Wall-clock ceiling on when `run()` may START its NEXT entry (Module 13 fix
+ * — see the "Dry Run reported crawl failed" investigation).
+ *
+ * `runRegistryCrawl` is a single synchronous request/response cycle, and the
+ * registry this iterates over is large (~180 entries — see
+ * PlatformCrawlSummary's doc comment) with NO scope narrower than "platform"
+ * available from the UI's default (no platform selected) — "Dry Run"/"Crawl
+ * All" both mean "every enabled entry, in one call". An unbounded loop over
+ * the full registry routinely ran for many minutes before this existed.
+ *
+ * IMPORTANT — this bounds when a NEW entry starts, not the run's total
+ * duration. A live production Dry Run with this exact deadline still
+ * measured 80.1s end to end (45s deadline + ~35s for the ONE entry that was
+ * already in flight when the deadline passed to finish on its own) — see
+ * ENTRY_TIMEOUT_MS below, which is the other half of the fix: it bounds how
+ * long that already-started entry is itself allowed to run, so the two
+ * together (not this constant alone) bound the run's TOTAL wall time.
+ *
+ * Lowered from the original 45s to 30s given that live evidence: the typical
+ * overrun from one in-flight entry is tens of seconds on its own, so the
+ * deadline itself needed more headroom underneath it, not just a cap on new
+ * entries starting. Neither number has been verified against this project's
+ * actual deployed platform limits (not observable from this environment) —
+ * tune down further if a live run still fails, tune up once the real ceiling
+ * is confirmed.
+ *
+ * When the deadline is reached, `run()` stops starting NEW entries (an
+ * in-flight entry is never aborted mid-write — see ENTRY_TIMEOUT_MS for what
+ * "aborted" means here) and reports every remaining entry as `skipped` with
+ * an explicit reason — never silently dropped, and never counted as failed.
+ * The run still finishes normally: `finishRun` persists a real report, so
+ * "View Last Crawl Report" always has something to show, and the operator
+ * can simply run again for the remainder.
+ */
+export const RUN_DEADLINE_MS = 30_000;
+
+/**
+ * Wall-clock ceiling on ONE entry's own crawl (Module 13 — the 80.1s live
+ * duration investigation). Before this existed, nothing bounded how long a
+ * SINGLE already-started entry could run: HttpFetcher's own retry/backoff on
+ * ONE request already worst-cases at ~62s (20s timeout × up to 3 attempts,
+ * plus backoff between — see HttpFetcher.ts's DEFAULT_TIMEOUT_MS/
+ * DEFAULT_RETRIES/RETRY_BASE_DELAY_MS/RETRY_MAX_DELAY_MS, all unchanged), and
+ * several ATS providers paginate or fetch one request per posting (Lever and
+ * SmartRecruiters page until a short page; Internshala fetches up to
+ * maxDetailFetches individual detail pages per company — see
+ * InternshalaAdapter.ts's DEFAULT_INTERNSHALA_LIMITS) — so ONE entry could
+ * legitimately issue dozens of sequential requests, each with its own
+ * multi-attempt worst case. RUN_DEADLINE_MS only ever bounded when a NEW
+ * entry could START; nothing bounded an entry already running.
+ *
+ * 90s is deliberately generous, not tight: real, SUCCESSFUL (non-retrying)
+ * Internshala entries were observed taking up to ~60s each (30 sequential
+ * detail-page fetches), and a single legitimately-retrying request can
+ * already cost ~62s on its own (above) — a shorter watchdog would abort
+ * entries that were genuinely going to succeed, turning real coverage into
+ * false failures. This does not shrink the TYPICAL run's duration (a normal
+ * entry finishes in seconds, long before this ever matters); what it fixes
+ * is the previously-UNBOUNDED pathological case (a large, paginated board
+ * failing repeatedly) — that is now capped at a known worst case instead of
+ * running for minutes.
+ *
+ * Implemented as a race around ONE entry's `runPlatformCrawl` call, not
+ * real cancellation: nothing here can (or needs to) touch HttpFetcher/the
+ * ATS adapters to add an AbortSignal. A timeout is reported exactly like any
+ * other per-entry failure (`status: "failed"`) — safe, because every write
+ * this pipeline makes is already atomic per posting; abandoning the rest of
+ * one entry's own loop never leaves a corrupt or partial row.
+ */
+export const ENTRY_TIMEOUT_MS = 90_000;
+
+/** Thrown into `crawlEntry`'s own catch when ENTRY_TIMEOUT_MS is reached — handled exactly like any other per-entry failure. */
+class EntryTimeoutError extends Error {
+  constructor(ms: number) {
+    super(`Timed out after ${ms}ms — this entry took too long and was abandoned for this run.`);
+    this.name = "EntryTimeoutError";
+  }
+}
+
+/**
+ * Round-robins a fetched, already-per-platform-ordered entry list across
+ * platforms: one entry from each platform present, in turn, until every
+ * entry has been placed. Each platform's OWN relative order (least-recently-
+ * crawled first) is preserved — this only interleaves BETWEEN platforms, it
+ * never reorders WITHIN one. Platform turn order follows first appearance in
+ * the input, which — given the input is itself least-recently-crawled-first
+ * — means the platform with the single most overdue entry goes first each
+ * round; a principled tie-break, not an arbitrary one.
+ *
+ * Pure and synchronous: exported standalone (not a private method) so it can
+ * be unit-tested directly, without a store/fetcher/clock.
+ */
+export function interleaveByPlatform(entries: CompanyRegistryEntry[]): CompanyRegistryEntry[] {
+  const groups = new Map<string, CompanyRegistryEntry[]>();
+  const platformOrder: string[] = [];
+  for (const entry of entries) {
+    let group = groups.get(entry.platform);
+    if (!group) {
+      group = [];
+      groups.set(entry.platform, group);
+      platformOrder.push(entry.platform);
+    }
+    group.push(entry);
+  }
+
+  const result: CompanyRegistryEntry[] = [];
+  for (let round = 0; result.length < entries.length; round++) {
+    for (const platform of platformOrder) {
+      const group = groups.get(platform)!;
+      if (round < group.length) result.push(group[round]);
+    }
+  }
+  return result;
+}
 
 export class CrawlOrchestrator {
   private readonly now: () => number;
+  private readonly maxRunDurationMs: number;
+  private readonly entryTimeoutMs: number;
 
   constructor(private readonly deps: OrchestratorDependencies) {
     this.now = deps.now ?? (() => Date.now());
+    this.maxRunDurationMs = deps.maxRunDurationMs ?? RUN_DEADLINE_MS;
+    this.entryTimeoutMs = deps.entryTimeoutMs ?? ENTRY_TIMEOUT_MS;
   }
 
   async run(request: CrawlRequest): Promise<CrawlReport> {
@@ -100,11 +224,53 @@ export class CrawlOrchestrator {
     });
 
     try {
-      const entries = await this.deps.registry.listEntries(platform ?? undefined);
+      const fetched = await this.deps.registry.listEntries(platform ?? undefined);
+      // Module 13: fair scheduling across platforms. The registry read above
+      // already orders each platform's OWN entries least-recently-crawled
+      // first (see SupabaseCompanyRegistryStore.listEntries); this then
+      // interleaves ACROSS platforms so a large one (career-pages, ~56
+      // entries) cannot occupy the entire time budget before a small one
+      // (internshala, ~2) ever gets a turn — every platform present gets one
+      // entry per round. A no-op when `scope` is 'platform' (one group) or
+      // there is only one platform enabled. Purely an in-memory reordering of
+      // THIS invocation's own freshly-fetched list — no persisted cursor, so
+      // it costs nothing across the stateless Worker boundary; the actual
+      // cross-run progress comes entirely from `last_crawl_at` above.
+      const entries = interleaveByPlatform(fetched);
       const companies: CompanyCrawlReport[] = [];
+      let deadlineHit = false;
 
       for (const entry of entries) {
+        // Checked BEFORE starting the next entry, never mid-crawl — an
+        // in-flight fetch/store sequence always runs to completion, so a
+        // truncated run can never leave a partial write for one entry.
+        if (this.now() - startedAtMs >= this.maxRunDurationMs) {
+          deadlineHit = true;
+          break;
+        }
         companies.push(await this.crawlEntry(entry, request));
+      }
+
+      if (deadlineHit) {
+        // Placeholder reports only — no `crawlEntry` call, no registry write,
+        // no network request, so surfacing them costs nothing of the budget
+        // that just ran out. Never marked "failed": these entries were never
+        // attempted, exactly like the existing "not due yet" skip.
+        for (const entry of entries.slice(companies.length)) {
+          companies.push({
+            registryId: entry.id,
+            companyName: entry.companyName,
+            platform: entry.platform,
+            careersUrl: entry.careersUrl,
+            status: "skipped",
+            counters: emptyCounters(),
+            durationMs: 0,
+            warnings: [],
+            issues: [],
+            message:
+              "Not reached — this run's time budget was used by earlier entries. Run again to continue with the rest.",
+          });
+        }
       }
 
       const report = this.buildReport({
@@ -114,6 +280,7 @@ export class CrawlOrchestrator {
         startedAt,
         startedAtMs,
         companies,
+        truncated: deadlineHit,
       });
       await this.deps.reports.finishRun(runId, report);
       return report;
@@ -248,7 +415,7 @@ export class CrawlOrchestrator {
         : this.deps.store;
 
     try {
-      const result = await runPlatformCrawl(adapter, toCrawlTarget(entry), store);
+      const result = await this.withEntryTimeout(runPlatformCrawl(adapter, toCrawlTarget(entry), store));
       const counters = this.countOutcomes(
         result.outcomes,
         collector,
@@ -424,6 +591,29 @@ export class CrawlOrchestrator {
     return issues;
   }
 
+  /**
+   * Bounds how long ONE entry's crawl is awaited — see ENTRY_TIMEOUT_MS.
+   * Not real cancellation (no AbortSignal reaches HttpFetcher/the ATS
+   * adapters): the loser of the race is simply never awaited further. A
+   * timeout rejects with `EntryTimeoutError`, which `crawlEntry`'s existing
+   * catch block already handles exactly like any other per-entry failure.
+   */
+  private withEntryTimeout<T>(work: Promise<T>): Promise<T> {
+    return new Promise<T>((resolve, reject) => {
+      const timer = setTimeout(() => reject(new EntryTimeoutError(this.entryTimeoutMs)), this.entryTimeoutMs);
+      work.then(
+        (value) => {
+          clearTimeout(timer);
+          resolve(value);
+        },
+        (err) => {
+          clearTimeout(timer);
+          reject(err);
+        },
+      );
+    });
+  }
+
   private collectWarnings(collector: ValidationCollector, crawlerWarnings: string[]): string[] {
     // Bounded: a board of 300 postings with one sanitized field each must not
     // produce a 300-line report. Crawler warnings come first — they explain
@@ -458,6 +648,7 @@ export class CrawlOrchestrator {
     startedAt: string;
     startedAtMs: number;
     companies: CompanyCrawlReport[];
+    truncated: boolean;
   }): CrawlReport {
     const finishedAtMs = this.now();
     const totals = input.companies.reduce(
@@ -479,6 +670,7 @@ export class CrawlOrchestrator {
       companies: input.companies,
       platforms: rollupByPlatform(input.companies),
       limitations: relevantLimitations(input.platform, input.companies),
+      truncated: input.truncated,
     };
   }
 }

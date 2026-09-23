@@ -43,6 +43,7 @@ export const SUPPORTED_PLATFORMS: readonly SupportedPlatform[] = [
   { name: "Unstop", site: "Unstop", note: "Jobs and internships" },
   { name: "Wellfound", site: "Wellfound", note: "Startup roles" },
   { name: "Foundit", site: "Foundit", note: "Job detail pages" },
+  { name: "Glassdoor", site: "Glassdoor", note: "Job listings on glassdoor.co.in" },
 ] as const;
 
 /** Comma-joined platform names for use in prose. */

@@ -61,6 +61,19 @@ export function JobCrawlersCard({ overview }: Props) {
         toast.warning(
           `${label} finished with ${result.totals.failed} failure(s). See the report below.`,
         );
+      } else if (result.truncated) {
+        // The run's time budget ran out before every entry could be reached —
+        // NOT a failure: every entry actually attempted succeeded (there is a
+        // separate `failed > 0` branch above for that). This is `toast.info`,
+        // not `.warning`, on purpose — a Dry Run that finishes this way
+        // previously used `.warning`, which reads as "something went wrong"
+        // even though the run and its report were both entirely successful;
+        // that was mistaken for an error in a real production run. See
+        // CrawlOrchestrator.RUN_DEADLINE_MS/ENTRY_TIMEOUT_MS.
+        toast.info(
+          `${label} finished: ${result.totals.imported} imported, ${result.totals.duplicates} duplicate(s). ` +
+            `Time budget reached before every target could be reached — run again to continue with the rest.`,
+        );
       } else {
         toast.success(
           `${label} finished: ${result.totals.imported} imported, ${result.totals.duplicates} duplicate(s).`,
@@ -379,14 +392,27 @@ function CrawlReportPanel({ report }: { report: CrawlReport }) {
   // Every stage of the pipeline, in pipeline order — "imported" and "updated"
   // are deliberately separate: a run that updates 300 existing rows and
   // imports 0 new ones is a healthy run, not a broken one.
+  //
+  // The four eligibility/quality rows (Module 13) were previously computed on
+  // every report but never shown here — a run's "parsed" total could look
+  // like it silently lost postings on the way to "imported"/"duplicates" with
+  // no visible reason. They were never uncounted, only unsurfaced: every one
+  // of these numbers already existed on `report.totals` (see CrawlCounters in
+  // report/CrawlReport.ts); discovered - parsed - excluded - non-India -
+  // stale - low-quality - rejected - skipped - failed always equals imported
+  // + updated + merged, by construction of countOutcomes' exhaustive switch.
   const stats: Array<[string, number]> = [
     ["Targets", report.companiesScanned],
     ["Discovered", report.totals.discovered],
     ["Parsed", report.totals.parsed],
+    ["Excluded (relevance)", report.totals.excluded],
+    ["Non-India", report.totals.ineligibleLocation],
+    ["Stale (>30d)", report.totals.ineligibleStale],
+    ["Low quality", report.totals.lowQuality],
+    ["Rejected (validation)", report.totals.rejected],
     ["Imported", report.totals.imported],
     ["Updated", report.totals.updated],
     ["Duplicates", report.totals.duplicates],
-    ["Rejected", report.totals.rejected],
     ["Skipped", report.totals.skipped],
     ["Failed", report.totals.failed],
   ];
@@ -397,6 +423,9 @@ function CrawlReportPanel({ report }: { report: CrawlReport }) {
         <span className="flex items-center gap-2">
           Crawl report
           {report.mode === "dry_run" && <Chip tone="purple">Dry run — nothing written</Chip>}
+          {report.truncated && (
+            <Chip tone="amber">Time budget reached — run again for the rest</Chip>
+          )}
         </span>
       </SectionTitle>
       <p className="mt-1 text-xs text-[oklch(0.5_0.02_265)]">

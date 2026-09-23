@@ -221,6 +221,14 @@ export type CrawlReport = {
   limitations: ReportedLimitation[];
   /** Run-level failure (not a per-company one). */
   error?: string;
+  /**
+   * True when the run's time budget (`RUN_DEADLINE_MS`) ran out before every
+   * registry entry could be started — the run still completed and persisted
+   * normally; the remaining entries are reported individually as `skipped`
+   * with an explicit reason, never silently dropped. Running again continues
+   * with whatever is left.
+   */
+  truncated: boolean;
 };
 
 /** The denormalized counter columns on `crawl_runs`, derived from a report. */
@@ -242,11 +250,12 @@ export function toRunCounters(report: CrawlReport) {
 export function summarizeReport(report: CrawlReport): string {
   const { totals } = report;
   const prefix = report.mode === "dry_run" ? "Dry run" : "Crawl";
+  const truncatedNote = report.truncated ? " — time budget reached, run again for the rest" : "";
   return (
     `${prefix}: ${report.companiesScanned} target(s), ${totals.discovered} discovered, ` +
     `${totals.imported} imported, ${totals.duplicates} duplicate(s), ` +
     `${totals.rejected} rejected, ${totals.ineligibleLocation} non-India, ` +
     `${totals.ineligibleStale} stale, ${totals.excluded} excluded, ${totals.lowQuality} low-quality, ` +
-    `${totals.skipped} skipped, ${totals.failed} failed in ${(report.durationMs / 1000).toFixed(1)}s`
+    `${totals.skipped} skipped, ${totals.failed} failed in ${(report.durationMs / 1000).toFixed(1)}s${truncatedNote}`
   );
 }

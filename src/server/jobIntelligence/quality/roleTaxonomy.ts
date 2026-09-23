@@ -44,7 +44,14 @@ export type RoleFamily =
   | "professional_domain"
   | "low_signal";
 
-export type TaxonomyEntry = { family: RoleFamily; label: string; pattern: RegExp; weight: number };
+export type TaxonomyEntry = {
+  family: RoleFamily;
+  label: string;
+  pattern: RegExp;
+  weight: number;
+  /** When this ALSO matches the text, the entry is treated as not matching (e.g. "Technical Writer" is not a generic "Writer"). */
+  unless?: RegExp;
+};
 
 export type TaxonomyMatch = { family: RoleFamily; label: string; weight: number };
 
@@ -233,8 +240,11 @@ const LOW_SIGNAL = entries("low_signal", -3, [
   "Content Writer",
   "Copywriter",
   "Video Editor",
-  "Field Sales Executive",
+  "Field Sales",
   "Back Office",
+  "Translator",
+  "Teacher",
+  "Tutor",
   "Customer Support",
   "Recruitment Executive",
   "HR Executive",
@@ -243,6 +253,22 @@ const LOW_SIGNAL = entries("low_signal", -3, [
   "Business Development Executive",
   "Relationship Manager",
 ]);
+
+/**
+ * A bare "Writer" is a generic content role, but "Technical Writer", "UX
+ * Writer" and "Documentation Writer" are legitimate professional roles — so
+ * those are excluded rather than the bare word being left out (an exclusion
+ * on one entry, not lookbehind: older Safari builds reject lookbehind).
+ */
+const GENERIC_WRITER: TaxonomyEntry[] = [
+  {
+    family: "low_signal",
+    label: "Writer",
+    pattern: /\bwriter\b/i,
+    weight: -3,
+    unless: /\b(?:technical|ux|documentation|api|medical|scientific)\s+writer\b/i,
+  },
+];
 
 /** Every entry, ordered strongest-first — used by `matchTaxonomy` to break ties. */
 export const TAXONOMY: readonly TaxonomyEntry[] = [
@@ -254,6 +280,7 @@ export const TAXONOMY: readonly TaxonomyEntry[] = [
   ...TECHNICAL_SUFFIX_WEAK,
   ...PROFESSIONAL_DOMAIN,
   ...LOW_SIGNAL,
+  ...GENERIC_WRITER,
   ...SENIORITY,
 ];
 
@@ -273,7 +300,7 @@ export function matchTaxonomy(
   if (!text) return [];
   const matches: TaxonomyMatch[] = [];
   for (const entry of pool) {
-    if (entry.pattern.test(text)) {
+    if (entry.pattern.test(text) && !entry.unless?.test(text)) {
       matches.push({ family: entry.family, label: entry.label, weight: entry.weight });
     }
   }
@@ -281,7 +308,7 @@ export function matchTaxonomy(
 }
 
 export const SENIORITY_ENTRIES = SENIORITY;
-export const LOW_SIGNAL_ENTRIES = LOW_SIGNAL;
+export const LOW_SIGNAL_ENTRIES = [...LOW_SIGNAL, ...GENERIC_WRITER];
 export const CORE_HIGH_SIGNAL_ENTRIES = [
   ...SOFTWARE_ENGINEERING,
   ...PRODUCT,

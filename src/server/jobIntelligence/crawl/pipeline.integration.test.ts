@@ -123,7 +123,9 @@ describe("integration: crawler → parser → validator → normalizer → dedup
     });
 
     await orchestrator.run({ mode: "live", scope: "all" });
-    const second = await orchestrator.run({ mode: "live", scope: "all" });
+    // force: true — the admin button's own default; without it the entry is
+    // correctly not-due yet immediately after being crawled.
+    const second = await orchestrator.run({ mode: "live", scope: "all", force: true });
 
     expect(second.totals.imported).toBe(0);
     expect(second.totals.duplicates).toBe(1);

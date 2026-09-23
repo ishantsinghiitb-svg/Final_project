@@ -254,6 +254,7 @@ describe("crawl report counters", () => {
       companies: [],
       platforms: [],
       limitations: [],
+      truncated: false,
     };
   }
 

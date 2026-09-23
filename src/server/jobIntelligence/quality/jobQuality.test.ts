@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { classifyJobQuality, PLATFORM_QUALITY_THRESHOLDS, qualityThresholdFor } from "./jobQuality";
+import { classifyJobQuality, DEFAULT_QUALITY_THRESHOLD, qualityThresholdFor } from "./jobQuality";
 
 function job(
   role: string,
@@ -9,32 +9,101 @@ function job(
   return classifyJobQuality({ role, source, ...extra });
 }
 
-describe("platform thresholds", () => {
-  it("Greenhouse/Lever/Ashby use the broad (most permissive) threshold", () => {
-    expect(qualityThresholdFor("greenhouse")).toBe(-2);
-    expect(qualityThresholdFor("lever")).toBe(-2);
-    expect(qualityThresholdFor("ashby")).toBe(-2);
+describe("one quality policy for every source", () => {
+  it("every source, configured or not, uses the same (most permissive) threshold", () => {
+    for (const source of [
+      "greenhouse",
+      "lever",
+      "ashby",
+      "smartrecruiters",
+      "workable",
+      "internshala",
+      "glassdoor",
+      "some-new-platform",
+      "",
+    ]) {
+      expect(qualityThresholdFor(source)).toBe(DEFAULT_QUALITY_THRESHOLD);
+    }
+    expect(DEFAULT_QUALITY_THRESHOLD).toBe(-2);
   });
 
-  it("SmartRecruiters/Workable use the balanced threshold", () => {
-    expect(qualityThresholdFor("smartrecruiters")).toBe(0);
-    expect(qualityThresholdFor("workable")).toBe(0);
+  it("the same title gets the same decision on every source", () => {
+    const sources = ["greenhouse", "smartrecruiters", "internshala", "glassdoor"];
+    for (const title of ["Product Intern", "Data Analyst", "Translator", "Telecaller"]) {
+      const decisions = sources.map((s) => job(title, s).retain);
+      expect(new Set(decisions).size).toBe(1);
+    }
+  });
+});
+
+describe("filter for bad jobs, not an allowlist: legitimate roles are kept", () => {
+  const keep = [
+    "Backend Trainee",
+    "Data Analyst",
+    "Business Analyst",
+    "Product Analyst",
+    "Data Engineer",
+    "Software Engineer",
+    "Backend Developer",
+    "Product Intern",
+    "Finance Analyst",
+    "Quant Analyst",
+    "Research Analyst",
+    "Operations Analyst",
+    "Management Trainee",
+    "Technical Support Engineer",
+    "Technical Writer",
+    "UX Writer",
+  ];
+  it.each(keep)('"%s" is retained (on Glassdoor and Internshala alike)', (title) => {
+    expect(job(title, "glassdoor").retain).toBe(true);
+    expect(job(title, "internshala").retain).toBe(true);
   });
 
-  it("Internshala uses the strictest threshold", () => {
-    expect(qualityThresholdFor("internshala")).toBe(1);
-    expect(qualityThresholdFor("internshala")).toBeGreaterThan(
-      qualityThresholdFor("smartrecruiters"),
-    );
-    expect(qualityThresholdFor("smartrecruiters")).toBeGreaterThan(
-      qualityThresholdFor("greenhouse"),
-    );
+  it("an unknown/ambiguous professional title scoring 0 is KEPT, not rejected for lacking a positive signal", () => {
+    const d = job("Bilingual Marketing Specialist (Telugu/English) - AI Trainer", "glassdoor");
+    expect(d.score).toBe(0);
+    expect(d.retain).toBe(true);
+    expect(d.reason).toMatch(/retained/i);
   });
 
-  it("an unconfigured/future platform defaults to the balanced (not permissive) threshold", () => {
-    expect(qualityThresholdFor("some-new-platform")).toBe(
-      PLATFORM_QUALITY_THRESHOLDS.smartrecruiters,
-    );
+  it("a score of exactly 0 is retained on its own", () => {
+    for (const source of ["glassdoor", "internshala", "smartrecruiters"]) {
+      const d = job("Associate Specialist", source);
+      expect(d.score).toBe(0);
+      expect(d.retain).toBe(true);
+    }
+  });
+});
+
+describe("clearly generic / low-signal roles are still rejected", () => {
+  const reject = [
+    "Translator",
+    "Teacher",
+    "Tutor",
+    "Telecaller",
+    "Data Entry",
+    "Content Writer",
+    "Writer",
+    "Field Sales",
+    "Basic Customer Support",
+    "Video Editor",
+  ];
+  it.each(reject)('"%s" is rejected (on Glassdoor and Internshala alike)', (title) => {
+    for (const source of ["glassdoor", "internshala"]) {
+      const d = job(title, source);
+      expect(d.retain).toBe(false);
+      expect(d.primaryFamily).toBe("low_signal");
+    }
+  });
+
+  it("an explicit low-signal keyword rejects even with a title that has other neutral words", () => {
+    expect(job("Part Time Tutor for Class 10", "glassdoor").retain).toBe(false);
+    expect(job("Hindi to English Translator", "glassdoor").retain).toBe(false);
+  });
+
+  it("a real technical word outweighs an incidental low-signal one", () => {
+    expect(job("Customer Support Engineer", "glassdoor").retain).toBe(true);
   });
 });
 
@@ -173,6 +242,9 @@ describe("obvious low-signal listings are rejected", () => {
     "Copywriter",
     "Video Editor",
     "Field Sales Executive",
+    "Translator",
+    "Teacher",
+    "Tutor",
     "Back Office Executive",
     "Customer Support Executive",
     "Recruitment Executive",
@@ -183,7 +255,7 @@ describe("obvious low-signal listings are rejected", () => {
     "Relationship Manager",
   ];
 
-  it.each(lowSignalTitles)('"%s" is rejected on Internshala (the strictest platform)', (title) => {
+  it.each(lowSignalTitles)('"%s" is rejected on Internshala', (title) => {
     const d = job(title, "internshala");
     expect(d.retain).toBe(false);
     expect(d.primaryFamily).toBe("low_signal");
@@ -224,7 +296,14 @@ describe("false-positive risk: a technical role must not be rejected for an inci
 
 describe("production sanity-check finding: CA Articleship must not be rejected as a generic internship", () => {
   it('"CA Articleship - Internship" is retained on every platform, including Internshala', () => {
-    for (const source of ["greenhouse", "lever", "ashby", "smartrecruiters", "workable", "internshala"]) {
+    for (const source of [
+      "greenhouse",
+      "lever",
+      "ashby",
+      "smartrecruiters",
+      "workable",
+      "internshala",
+    ]) {
       const d = job("CA Articleship - Internship", source, {
         description:
           "Work closely with the Partners and act as an EA to Partners on key assignments. " +
@@ -274,8 +353,9 @@ describe("description scanning ignores generic single-word signals prone to inci
       description:
         "Join our platform team's mission. We take security and cloud reliability seriously across our systems, and our mobile app serves millions.",
     });
-    expect(d.retain).toBe(false);
+    // Boilerplate must not LIFT the title (score stays 0); a neutral title is kept regardless.
     expect(d.score).toBe(0);
+    expect(d.retain).toBe(true);
   });
 
   it("a genuinely technical description phrase (multi-word / rare acronym) still rescues a neutral title", () => {
@@ -286,25 +366,19 @@ describe("description scanning ignores generic single-word signals prone to inci
   });
 });
 
-describe("ambiguous/neutral roles — platform-dependent, and reported as borderline", () => {
-  it("a title with no signal either way is retained on the permissive tier but not on the balanced/strict tiers", () => {
-    // Greenhouse's threshold (-2) is negative, so a neutral (0) score passes;
-    // SmartRecruiters/Internshala's thresholds (0 / +1) require score > 0,
-    // so a genuinely neutral title does not — "balanced"/"strict" means
-    // "absence of a red flag is not enough on its own", by design.
-    const greenhouse = job("Office Coordinator", "greenhouse");
-    const smartrecruiters = job("Office Coordinator", "smartrecruiters");
-    const internshala = job("Office Coordinator", "internshala");
-
-    expect(greenhouse.retain).toBe(true);
-    expect(smartrecruiters.retain).toBe(false);
-    expect(internshala.retain).toBe(false);
-    expect(internshala.primaryFamily).toBeNull();
-    expect(greenhouse.primaryFamily).toBeNull();
+describe("ambiguous/neutral roles are kept, and reported as such", () => {
+  it("a title with no signal either way is retained on every source", () => {
+    for (const source of ["greenhouse", "smartrecruiters", "internshala", "glassdoor"]) {
+      const d = job("Office Coordinator", source);
+      expect(d.retain).toBe(true);
+      expect(d.primaryFamily).toBeNull();
+    }
   });
 
-  it("a neutral title sitting exactly at a threshold is flagged borderline", () => {
-    const d = job("Office Coordinator", "internshala");
+  it("a title one point above the reject line is flagged borderline for review, yet retained", () => {
+    const d = job("Customer Support Engineer", "glassdoor");
+    expect(d.score).toBe(-1);
+    expect(d.retain).toBe(true);
     expect(d.borderline).toBe(true);
   });
 
@@ -315,8 +389,10 @@ describe("ambiguous/neutral roles — platform-dependent, and reported as border
     const withoutSignal = job("Coordinator", "internshala", {
       description: "You will coordinate schedules and manage the office calendar.",
     });
+    // A description signal lifts a neutral title, but its absence never rejects it.
+    expect(withSignal.score).toBeGreaterThan(withoutSignal.score);
     expect(withSignal.retain).toBe(true);
-    expect(withoutSignal.retain).toBe(false);
+    expect(withoutSignal.retain).toBe(true);
   });
 
   it("description signals never ADD to a title that already scored (positive or negative)", () => {

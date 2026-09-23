@@ -116,18 +116,29 @@ export class InMemoryRegistryStore implements CompanyRegistryStore {
 
   constructor(private entries: CompanyRegistryEntry[] = []) {}
 
+  /** Mirrors SupabaseCompanyRegistryStore's real ordering — see its own doc comment. */
   async listEntries(platform?: string): Promise<CompanyRegistryEntry[]> {
-    return this.entries.filter(
-      (entry) => entry.enabled && (!platform || entry.platform === platform),
-    );
+    return this.entries
+      .filter((entry) => entry.enabled && (!platform || entry.platform === platform))
+      .slice()
+      .sort((a, b) => {
+        const aTime = a.lastCrawlAt ? Date.parse(a.lastCrawlAt) : -Infinity;
+        const bTime = b.lastCrawlAt ? Date.parse(b.lastCrawlAt) : -Infinity;
+        if (aTime !== bTime) return aTime - bTime;
+        return a.companyName.localeCompare(b.companyName);
+      });
   }
 
   async listAllEntries(): Promise<CompanyRegistryEntry[]> {
     return [...this.entries];
   }
 
+  /** Mirrors the real store's write: a recorded attempt advances `lastCrawlAt`, which is what makes the ordering above rotate. */
   async markCrawlResult(entryId: string, result: RegistryCrawlResult): Promise<void> {
     this.results.push({ entryId, result });
+    if (!result.recordAttempt) return;
+    const entry = this.entries.find((candidate) => candidate.id === entryId);
+    if (entry) entry.lastCrawlAt = new Date().toISOString();
   }
 
   async markVerification(entryId: string, verification: SourceVerification): Promise<void> {

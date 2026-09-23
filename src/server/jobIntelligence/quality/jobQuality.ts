@@ -1,30 +1,36 @@
 // ── Job quality classification ──
 //
 // Deterministic, explainable, title-first scoring — never an external AI
-// call. Goal per the product brief: a materially higher-signal India job
-// database with enough breadth to stay useful, NOT a reduction to only
-// PM/SWE roles and NOT a crude keyword blacklist.
+// call. This is a FILTER FOR BAD JOBS, not an allowlist of good ones: keep
+// legitimate roles broadly, remove only those with clear evidence they are
+// outside the target set.
 //
 // Scoring model: every taxonomy phrase (see roleTaxonomy.ts) that appears in
-// the title contributes its signed weight; the total is compared against a
-// PLATFORM-specific threshold (career-pages ATS boards get a broader
-// threshold than Internshala, which needs the strongest filtering — see the
-// product brief). A title with no signal at all scores 0 ("neutral") and is
-// retained everywhere except the strictest platform threshold, which is
-// deliberate: absence of a red flag is enough on a curated startup/tech
-// board, but not enough on a board that is mostly low-signal listings.
+// the title contributes its signed weight. Positive families (engineering,
+// product, data, finance, analyst/business roles, ...) raise the score;
+// explicit LOW_SIGNAL phrases (Data Entry, Telecaller, Translator, Teacher,
+// generic Writer, ...) lower it. A role is rejected only when the total
+// reaches REJECT evidence (score <= -2), so:
+//
+//   - a title with NO signal either way (score 0) is KEPT — an ambiguous but
+//     otherwise legitimate professional title ("Product Intern", "Management
+//     Trainee") is not evidence of a bad job;
+//   - one explicit low-signal phrase is enough to reject on its own (-3);
+//   - a technical/analytical word alongside a low-signal phrase ("Customer
+//     Support Engineer") outweighs it, so real technical roles are not lost
+//     to incidental word overlap.
+//
+// One policy for every source (crawler platforms and the extension alike).
+// Per-platform thresholds used to exist and made the same title survive on
+// one board and vanish on another purely because of where it was posted.
 //
 // Seniority words ("Senior", "Manager", ...) contribute at most ONE point
-// total, however many of them appear — strong enough to tip a genuinely
-// ambiguous title (see PROFESSIONAL_DOMAIN in roleTaxonomy.ts), never strong
-// enough to rescue a title that also matches an explicit LOW_SIGNAL phrase
-// (a "Senior Relationship Manager" must still be rejected).
+// total — never enough to rescue a title that also matches an explicit
+// LOW_SIGNAL phrase (a "Senior Relationship Manager" is still rejected).
 //
 // Description-based signals are used ONLY to disambiguate a title that
-// scored exactly 0 (no signal either way) — never to add extra weight on
-// top of a title that already has a clear signal, and never to subtract
-// (a real technical job's description mentioning "handles customer support
-// tickets" as one responsibility among many must never cost it points).
+// scored exactly 0 — they can lift a neutral title, never lower any title
+// and never add to one that already has a signal. They are never required.
 
 import {
   matchTaxonomy,
@@ -58,35 +64,17 @@ export type QualityDecision = {
 };
 
 /**
- * Retain threshold per source platform — score must be STRICTLY GREATER than
- * this to retain. Lower (more negative) = more permissive.
- *
- *   - Greenhouse/Lever/Ashby: broader threshold. These boards are
- *     predominantly startup/tech company postings, so the prior is "probably
- *     substantive" — only reject a clear, multi-signal low-quality title.
- *   - SmartRecruiters/Workable: balanced threshold. These boards mix strong
- *     professional roles with generic ones in both directions.
- *   - Internshala: the strictest threshold. It is the single largest source
- *     of low-signal listings per the product brief, so a neutral (no
- *     signal either way) title is NOT enough — it needs at least one
- *     positive signal to be retained.
+ * Score must be STRICTLY GREATER than this to retain, i.e. a role is rejected
+ * only at score <= -2: clear evidence, not merely a lack of positive signal.
+ * Applies to every source (see the header) — it is the most permissive tier
+ * the per-platform table used to have, now shared by all.
  */
-export const PLATFORM_QUALITY_THRESHOLDS: Record<string, number> = {
-  greenhouse: -2,
-  lever: -2,
-  ashby: -2,
-  smartrecruiters: 0,
-  workable: 0,
-  internshala: 1,
-  // A generic JSON-LD careers board (no ATS-specific signal resolved) — the
-  // company mix here is unverified, so it gets the balanced threshold, not
-  // the permissive one reserved for the three named ATS boards.
-  careers: 0,
-  recruitee: 0,
-};
+export const DEFAULT_QUALITY_THRESHOLD = -2;
 
-/** Any source not explicitly configured above — balanced, never the permissive tier, per "prioritize substantive roles" over raw volume. */
-export const DEFAULT_QUALITY_THRESHOLD = 0;
+/** The retain threshold for `source`. Source-independent by design; kept so callers can still ask. */
+export function qualityThresholdFor(_source?: string): number {
+  return DEFAULT_QUALITY_THRESHOLD;
+}
 
 /** However many seniority words match, they contribute at most this many points combined. */
 const SENIORITY_BONUS_CAP = 1;
@@ -97,10 +85,6 @@ const DESCRIPTION_WEIGHT_DIVISOR = 2;
 const BORDERLINE_MARGIN = 1;
 /** Bound how much free-text we scan — a multi-page JD must not slow this down or change the outcome based on incidental late-document mentions. */
 const DESCRIPTION_SCAN_CHARS = 2000;
-
-export function qualityThresholdFor(source: string): number {
-  return PLATFORM_QUALITY_THRESHOLDS[(source ?? "").toLowerCase()] ?? DEFAULT_QUALITY_THRESHOLD;
-}
 
 function familyPriority(family: RoleFamily): number {
   // Used only to pick ONE "primary" family for reporting when several
@@ -131,7 +115,7 @@ function describeSignal(m: TaxonomyMatch, where: "title" | "description"): strin
 
 export function classifyJobQuality(job: QualityInput): QualityDecision {
   const title = job.role ?? "";
-  const threshold = qualityThresholdFor(job.source ?? "");
+  const threshold = qualityThresholdFor(job.source);
 
   const titleMatches = matchTaxonomy(title);
   const seniorityMatches = titleMatches.filter((m) => m.family === "seniority");
@@ -196,7 +180,7 @@ export function classifyJobQuality(job: QualityInput): QualityDecision {
 
   const reason =
     applied.length === 0
-      ? `No quality signal either way (score ${score} vs. threshold ${threshold} for "${job.source}").`
+      ? `No quality signal either way (score ${score}); retained — nothing marks it as outside the target set.`
       : `${retain ? "Retained" : "Rejected"} on score ${score} vs. threshold ${threshold} for "${job.source}" — ${signals.join(", ")}.`;
 
   return { retain, score, threshold, primaryFamily, signals, borderline, reason };

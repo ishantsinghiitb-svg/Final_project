@@ -66,21 +66,20 @@ describe("QualityFilteringJobParser", () => {
     expect(collector.lowQualityCount).toBe(1);
   });
 
-  it("applies the platform-specific threshold via the job's own source, not the raw payload's platform", () => {
+  it("applies one policy regardless of the job's source: a neutral title is kept, a generic one is rejected", () => {
     const collector = new QualityCollector();
     const parser = new QualityFilteringJobParser(new FakeParser(), collector);
 
-    // A neutral title: retained on Greenhouse's permissive threshold, but
-    // rejected on Internshala's strict one — driven by `job.source`.
-    const greenhouseOutcome = parser.parse(
-      raw(job({ role: "Office Coordinator", source: "greenhouse", sourceUrl: "https://x/1" })),
-    );
-    const internshalaOutcome = parser.parse(
-      raw(job({ role: "Office Coordinator", source: "internshala", sourceUrl: "https://x/2" })),
-    );
-
-    expect(greenhouseOutcome.ok).toBe(true);
-    expect(internshalaOutcome.ok).toBe(false);
+    for (const source of ["greenhouse", "internshala", "glassdoor"]) {
+      const neutral = parser.parse(
+        raw(job({ role: "Office Coordinator", source, sourceUrl: `https://x/${source}/n` })),
+      );
+      const generic = parser.parse(
+        raw(job({ role: "Translator", source, sourceUrl: `https://x/${source}/g` })),
+      );
+      expect(neutral.ok).toBe(true);
+      expect(generic.ok).toBe(false);
+    }
   });
 
   it("a genuine parse failure never reaches the gate", () => {
